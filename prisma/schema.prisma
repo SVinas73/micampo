@@ -1,0 +1,374 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Usuario
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  campos        Campo[]
+  transacciones Transaccion[]
+  lotes         Lote[]        
+  siembras      Siembra[]     
+  cosechas      Cosecha[]
+  animales          Animal[]           
+  eventosSanitarios EventoSanitario[]  
+  registrosPeso     RegistroPeso[]     
+  movimientos       Movimiento[]       
+  maquinas          Maquina[]          
+  mantenimientos    Mantenimiento[]    
+  registrosHoras    RegistroHoras[]
+  contratos           Contrato[]          // ← NUEVO
+  entregas            Entrega[]           // ← NUEVO
+  preciosReferencia   PrecioReferencia[]  // ← NUEVO
+  emisionesCarbono      EmisionCarbono[]      // ← NUEVO
+  practicasSostenibles  PracticaSostenible[]  // ← NUEVO
+  certificaciones       Certificacion[]       // ← NUEVO         
+  
+  @@map("users")
+}
+
+// Campo/Establecimiento
+model Campo {
+  id         String   @id @default(cuid())
+  nombre     String
+  hectareas  Decimal? @db.Decimal(10, 2)
+  ubicacion  String?
+  userId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transacciones Transaccion[]
+
+  @@map("campos")
+}
+
+// Transacción Financiera
+model Transaccion {
+  id          String   @id @default(cuid())
+  tipo        String   // 'ingreso' o 'gasto'
+  categoria   String
+  monto       Decimal  @db.Decimal(12, 2)
+  descripcion String?
+  fecha       DateTime
+  userId      String
+  campoId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campo Campo? @relation(fields: [campoId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([fecha])
+  @@index([tipo])
+  @@map("transacciones")
+}
+
+model Lote {
+  id          String   @id @default(cuid())
+  nombre      String
+  hectareas   Float
+  cultivo     String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siembras    Siembra[]
+  cosechas    Cosecha[]
+  emisionesCarbono EmisionCarbono[]     // ← NUEVO
+  practicasSostenibles PracticaSostenible[] // ← NUEVO
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Siembra {
+  id          String   @id @default(cuid())
+  cultivo     String
+  variedad    String?
+  fechaSiembra DateTime
+  hectareas   Float
+  loteId      String
+  lote        Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cosechas    Cosecha[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+}
+
+model Cosecha {
+  id             String   @id @default(cuid())
+  fechaCosecha   DateTime
+  rendimiento    Float    // kg/ha
+  calidad        String?
+  precioVenta    Float?
+  siembraId      String
+  siembra        Siembra  @relation(fields: [siembraId], references: [id], onDelete: Cascade)
+  loteId         String
+  lote           Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([siembraId])
+  @@index([loteId])
+}
+
+model Animal {
+  id              String   @id @default(cuid())
+  caravana        String   // Identificador único
+  tipo            String   // Vacuno, Ovino, etc
+  raza            String?
+  sexo            String   // Macho, Hembra
+  fechaNacimiento DateTime?
+  pesoNacimiento  Float?
+  madre           String?  // Caravana de la madre
+  padre           String?  // Caravana del padre
+  estado          String   @default("Activo") // Activo, Vendido, Muerto
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventosSanitarios EventoSanitario[]
+  registrosPeso   RegistroPeso[]
+  movimientos     Movimiento[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([caravana])
+}
+
+model EventoSanitario {
+  id          String   @id @default(cuid())
+  tipo        String   // Vacunación, Desparasitación, Tratamiento
+  descripcion String
+  fecha       DateTime
+  producto    String?
+  dosis       String?
+  animalId    String
+  animal      Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([animalId])
+}
+
+model RegistroPeso {
+  id        String   @id @default(cuid())
+  fecha     DateTime
+  peso      Float    // kg
+  animalId  String
+  animal    Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([animalId])
+}
+
+model Movimiento {
+  id          String   @id @default(cuid())
+  tipo        String   // Compra, Venta, Nacimiento, Muerte
+  fecha       DateTime
+  descripcion String?
+  monto       Float?   // Para compras/ventas
+  animalId    String
+  animal      Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([animalId])
+}
+
+model Maquina {
+  id              String   @id @default(cuid())
+  nombre          String
+  tipo            String   // Tractor, Cosechadora, Sembradora, etc
+  marca           String?
+  modelo          String?
+  anio            Int?
+  horasActuales   Float    @default(0)
+  estado          String   @default("Operativa") // Operativa, En Mantenimiento, Fuera de Servicio
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mantenimientos  Mantenimiento[]
+  registrosHoras  RegistroHoras[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Mantenimiento {
+  id          String   @id @default(cuid())
+  tipo        String   // Preventivo, Correctivo
+  descripcion String
+  fecha       DateTime
+  costo       Float?
+  horasActuales Float?
+  maquinaId   String
+  maquina     Maquina  @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([maquinaId])
+}
+
+model RegistroHoras {
+  id          String   @id @default(cuid())
+  fecha       DateTime
+  horasInicio Float
+  horasFin    Float
+  actividad   String?  // Siembra, Cosecha, Pulverización, etc
+  maquinaId   String
+  maquina     Maquina  @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([maquinaId])
+}
+
+
+model Contrato {
+  id            String   @id @default(cuid())
+  tipo          String   // Compra, Venta
+  producto      String   // Soja, Maíz, Trigo, etc
+  cantidad      Float    // Toneladas
+  precioUnitario Float   // USD/ton
+  montoTotal    Float    // USD
+  comprador     String?  // Nombre comprador/vendedor
+  fechaContrato DateTime
+  fechaEntrega  DateTime?
+  estado        String   @default("Pendiente") // Pendiente, Entregado, Cancelado
+  observaciones String?
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entregas      Entrega[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fechaContrato])
+}
+
+model Entrega {
+  id          String   @id @default(cuid())
+  fecha       DateTime
+  cantidad    Float    // Toneladas entregadas
+  contratoId  String
+  contrato    Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([contratoId])
+}
+
+model PrecioReferencia {
+  id        String   @id @default(cuid())
+  producto  String   // Soja, Maíz, Trigo
+  precio    Float    // USD/ton
+  fecha     DateTime
+  fuente    String?  // Bolsa de Rosario, Chicago, etc
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([producto])
+  @@index([fecha])
+}
+
+
+model EmisionCarbono {
+  id          String   @id @default(cuid())
+  fuente      String   // Combustible, Fertilizantes, Ganadería, Electricidad
+  actividad   String   // Descripción de la actividad
+  cantidad    Float    // Cantidad (litros, kg, kWh, cabezas)
+  unidad      String   // Litros, kg, kWh, cabezas
+  factorEmision Float  // kg CO2eq por unidad
+  emisionTotal Float   // kg CO2eq total
+  fecha       DateTime
+  loteId      String?
+  lote        Lote?    @relation(fields: [loteId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fecha])
+  @@index([fuente])
+}
+
+model PracticaSostenible {
+  id          String   @id @default(cuid())
+  tipo        String   // Rotación cultivos, Siembra directa, Agroforestería, etc
+  nombre      String
+  descripcion String
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  beneficio   String?  // Reducción estimada de emisiones, mejora suelo, etc
+  loteId      String?
+  lote        Lote?    @relation(fields: [loteId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tipo])
+}
+
+model Certificacion {
+  id              String   @id @default(cuid())
+  nombre          String   // Orgánico, Rainforest Alliance, Fair Trade, etc
+  entidadEmisora  String   // Organismo certificador
+  numeroRegistro  String?
+  fechaEmision    DateTime
+  fechaVencimiento DateTime?
+  estado          String   @default("Vigente") // Vigente, Vencida, En Proceso
+  documentoUrl    String?  // Link al certificado
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([estado])
+}

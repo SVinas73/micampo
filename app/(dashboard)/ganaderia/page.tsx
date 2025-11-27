@@ -1,0 +1,762 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Beef, Activity, Scale, Plus, Trash2 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+
+type Animal = {
+  id: string;
+  caravana: string;
+  tipo: string;
+  raza: string | null;
+  sexo: string;
+  fechaNacimiento: string | null;
+  pesoNacimiento: number | null;
+  estado: string;
+  registrosPeso: { peso: number }[];
+};
+
+type EventoSanitario = {
+  id: string;
+  tipo: string;
+  descripcion: string;
+  fecha: string;
+  producto: string | null;
+  dosis: string | null;
+  animal: {
+    caravana: string;
+  };
+};
+
+type RegistroPeso = {
+  id: string;
+  fecha: string;
+  peso: number;
+  animal: {
+    caravana: string;
+  };
+};
+
+const TIPOS_ANIMAL = ["Vacuno", "Ovino", "Porcino", "Equino", "Caprino"];
+const RAZAS_VACUNO = ["Aberdeen Angus", "Hereford", "Holando", "Jersey", "Braford", "Brangus"];
+const SEXOS = ["Macho", "Hembra"];
+const TIPOS_EVENTO = ["Vacunación", "Desparasitación", "Tratamiento", "Revisión"];
+
+export default function GanaderiaPage() {
+  const [animales, setAnimales] = useState<Animal[]>([]);
+  const [eventos, setEventos] = useState<EventoSanitario[]>([]);
+  const [registrosPeso, setRegistrosPeso] = useState<RegistroPeso[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Dialogs
+  const [animalDialogOpen, setAnimalDialogOpen] = useState(false);
+  const [eventoDialogOpen, setEventoDialogOpen] = useState(false);
+  const [pesoDialogOpen, setPesoDialogOpen] = useState(false);
+
+  // Forms
+  const [animalForm, setAnimalForm] = useState({
+    caravana: "",
+    tipo: "",
+    raza: "",
+    sexo: "",
+    fechaNacimiento: "",
+    pesoNacimiento: "",
+    madre: "",
+    padre: "",
+  });
+
+  const [eventoForm, setEventoForm] = useState({
+    tipo: "",
+    descripcion: "",
+    fecha: new Date().toISOString().split("T")[0],
+    producto: "",
+    dosis: "",
+    animalId: "",
+  });
+
+  const [pesoForm, setPesoForm] = useState({
+    fecha: new Date().toISOString().split("T")[0],
+    peso: "",
+    animalId: "",
+  });
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  const fetchAll = async () => {
+    setLoading(true);
+    await Promise.all([fetchAnimales(), fetchEventos(), fetchRegistrosPeso()]);
+    setLoading(false);
+  };
+
+  const fetchAnimales = async () => {
+    try {
+      const response = await fetch("/api/animales");
+      if (response.ok) {
+        const data = await response.json();
+        setAnimales(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar animales:", error);
+    }
+  };
+
+  const fetchEventos = async () => {
+    try {
+      const response = await fetch("/api/eventos-sanitarios");
+      if (response.ok) {
+        const data = await response.json();
+        setEventos(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar eventos:", error);
+    }
+  };
+
+  const fetchRegistrosPeso = async () => {
+    try {
+      const response = await fetch("/api/registros-peso");
+      if (response.ok) {
+        const data = await response.json();
+        setRegistrosPeso(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar registros:", error);
+    }
+  };
+
+  const handleCreateAnimal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("/api/animales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(animalForm),
+      });
+
+      if (response.ok) {
+        setAnimalDialogOpen(false);
+        setAnimalForm({
+          caravana: "",
+          tipo: "",
+          raza: "",
+          sexo: "",
+          fechaNacimiento: "",
+          pesoNacimiento: "",
+          madre: "",
+          padre: "",
+        });
+        fetchAnimales();
+      }
+    } catch (error) {
+      console.error("Error al crear animal:", error);
+    }
+  };
+
+  const handleCreateEvento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("/api/eventos-sanitarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventoForm),
+      });
+
+      if (response.ok) {
+        setEventoDialogOpen(false);
+        setEventoForm({
+          tipo: "",
+          descripcion: "",
+          fecha: new Date().toISOString().split("T")[0],
+          producto: "",
+          dosis: "",
+          animalId: "",
+        });
+        fetchEventos();
+      }
+    } catch (error) {
+      console.error("Error al crear evento:", error);
+    }
+  };
+
+  const handleCreatePeso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("/api/registros-peso", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pesoForm),
+      });
+
+      if (response.ok) {
+        setPesoDialogOpen(false);
+        setPesoForm({
+          fecha: new Date().toISOString().split("T")[0],
+          peso: "",
+          animalId: "",
+        });
+        fetchRegistrosPeso();
+        fetchAnimales(); // Para actualizar el último peso
+      }
+    } catch (error) {
+      console.error("Error al crear registro:", error);
+    }
+  };
+
+  const handleDeleteAnimal = async (id: string) => {
+    if (!confirm("¿Eliminar este animal?")) return;
+    try {
+      const response = await fetch(`/api/animales/${id}`, { method: "DELETE" });
+      if (response.ok) fetchAnimales();
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const animalesActivos = animales.filter((a) => a.estado === "Activo");
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Ganadería</h1>
+        <p className="text-gray-600 mt-2">
+          Gestioná tu rodeo, sanidad y registros de peso
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Total Animales
+            </CardTitle>
+            <Beef className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{animalesActivos.length}</div>
+            <p className="text-xs text-gray-500 mt-1">Activos en el rodeo</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Eventos Sanitarios
+            </CardTitle>
+            <Activity className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{eventos.length}</div>
+            <p className="text-xs text-gray-500 mt-1">Registros totales</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Registros de Peso
+            </CardTitle>
+            <Scale className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{registrosPeso.length}</div>
+            <p className="text-xs text-gray-500 mt-1">Pesadas realizadas</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="animales" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="animales">
+            <Beef className="h-4 w-4 mr-2" />
+            Animales
+          </TabsTrigger>
+          <TabsTrigger value="sanidad">
+            <Activity className="h-4 w-4 mr-2" />
+            Sanidad
+          </TabsTrigger>
+          <TabsTrigger value="peso">
+            <Scale className="h-4 w-4 mr-2" />
+            Peso
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB ANIMALES */}
+        <TabsContent value="animales">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Animales</CardTitle>
+                <CardDescription>Registro individual del rodeo</CardDescription>
+              </div>
+              <Dialog open={animalDialogOpen} onOpenChange={setAnimalDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-green-600 hover:bg-green-700">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuevo Animal
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <form onSubmit={handleCreateAnimal}>
+                    <DialogHeader>
+                      <DialogTitle>Registrar Animal</DialogTitle>
+                      <DialogDescription>
+                        Agregá un nuevo animal al rodeo
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Caravana *</Label>
+                        <Input
+                          placeholder="001"
+                          value={animalForm.caravana}
+                          onChange={(e) => setAnimalForm({ ...animalForm, caravana: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tipo *</Label>
+                        <Select
+                          value={animalForm.tipo}
+                          onValueChange={(value) => setAnimalForm({ ...animalForm, tipo: value, raza: "" })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccioná tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIPOS_ANIMAL.map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Raza</Label>
+                        <Select
+                          value={animalForm.raza}
+                          onValueChange={(value) => setAnimalForm({ ...animalForm, raza: value })}
+                          disabled={animalForm.tipo !== "Vacuno"}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccioná raza" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {RAZAS_VACUNO.map((r) => (
+                              <SelectItem key={r} value={r}>{r}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Sexo *</Label>
+                        <Select
+                          value={animalForm.sexo}
+                          onValueChange={(value) => setAnimalForm({ ...animalForm, sexo: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccioná sexo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SEXOS.map((s) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fecha Nacimiento</Label>
+                        <Input
+                          type="date"
+                          value={animalForm.fechaNacimiento}
+                          onChange={(e) => setAnimalForm({ ...animalForm, fechaNacimiento: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Peso Nacimiento (kg)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="35"
+                          value={animalForm.pesoNacimiento}
+                          onChange={(e) => setAnimalForm({ ...animalForm, pesoNacimiento: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Madre (Caravana)</Label>
+                        <Input
+                          placeholder="002"
+                          value={animalForm.madre}
+                          onChange={(e) => setAnimalForm({ ...animalForm, madre: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Padre (Caravana)</Label>
+                        <Input
+                          placeholder="003"
+                          value={animalForm.padre}
+                          onChange={(e) => setAnimalForm({ ...animalForm, padre: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setAnimalDialogOpen(false)}>
+                        Cancelar
+                      </Button>
+                      <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                        Guardar
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">Cargando...</div>
+              ) : animalesActivos.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">No hay animales registrados</p>
+                  <Button onClick={() => setAnimalDialogOpen(true)} variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Registrar primer animal
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Caravana</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Tipo</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Raza</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Sexo</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Nacimiento</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-600">Último Peso</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-600">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {animalesActivos.map((animal) => (
+                        <tr key={animal.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm font-medium">{animal.caravana}</td>
+                          <td className="py-3 px-4 text-sm">{animal.tipo}</td>
+                          <td className="py-3 px-4 text-sm">{animal.raza || "-"}</td>
+                          <td className="py-3 px-4 text-sm">{animal.sexo}</td>
+                          <td className="py-3 px-4 text-sm">
+                            {animal.fechaNacimiento ? formatDate(animal.fechaNacimiento) : "-"}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-right">
+                            {animal.registrosPeso.length > 0
+                              ? `${animal.registrosPeso[0].peso} kg`
+                              : animal.pesoNacimiento
+                              ? `${animal.pesoNacimiento} kg (nac.)`
+                              : "-"}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteAnimal(animal.id)}
+                              className="text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB SANIDAD */}
+        <TabsContent value="sanidad">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Eventos Sanitarios</CardTitle>
+                <CardDescription>Vacunaciones, tratamientos y revisiones</CardDescription>
+              </div>
+              <Dialog open={eventoDialogOpen} onOpenChange={setEventoDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-green-600 hover:bg-green-700" disabled={animalesActivos.length === 0}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuevo Evento
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <form onSubmit={handleCreateEvento}>
+                    <DialogHeader>
+                      <DialogTitle>Registrar Evento Sanitario</DialogTitle>
+                      <DialogDescription>
+                        Registrá una vacunación, tratamiento o revisión
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Animal</Label>
+                        <Select
+                          value={eventoForm.animalId}
+                          onValueChange={(value) => setEventoForm({ ...eventoForm, animalId: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccioná animal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {animalesActivos.map((a) => (
+                              <SelectItem key={a.id} value={a.id}>
+                                {a.caravana} - {a.tipo}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tipo</Label>
+                        <Select
+                          value={eventoForm.tipo}
+                          onValueChange={(value) => setEventoForm({ ...eventoForm, tipo: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccioná tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIPOS_EVENTO.map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Descripción</Label>
+                        <Textarea
+                          placeholder="Ej: Vacuna aftosa"
+                          value={eventoForm.descripcion}
+                          onChange={(e) => setEventoForm({ ...eventoForm, descripcion: e.target.value })}
+                          required
+                          rows={2}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Producto (opcional)</Label>
+                        <Input
+                          placeholder="Ej: Vacuna Triple"
+                          value={eventoForm.producto}
+                          onChange={(e) => setEventoForm({ ...eventoForm, producto: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Dosis (opcional)</Label>
+                        <Input
+                          placeholder="Ej: 2ml"
+                          value={eventoForm.dosis}
+                          onChange={(e) => setEventoForm({ ...eventoForm, dosis: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fecha</Label>
+                        <Input
+                          type="date"
+                          value={eventoForm.fecha}
+                          onChange={(e) => setEventoForm({ ...eventoForm, fecha: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setEventoDialogOpen(false)}>
+                        Cancelar
+                      </Button>
+                      <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                        Guardar
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">Cargando...</div>
+              ) : eventos.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">No hay eventos registrados</p>
+                  {animalesActivos.length === 0 ? (
+                    <p className="text-sm text-gray-400">Primero registrá un animal</p>
+                  ) : (
+                    <Button onClick={() => setEventoDialogOpen(true)} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Registrar primer evento
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Fecha</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Animal</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Tipo</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Descripción</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Producto</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Dosis</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eventos.map((evento) => (
+                        <tr key={evento.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm">{formatDate(evento.fecha)}</td>
+                          <td className="py-3 px-4 text-sm font-medium">{evento.animal.caravana}</td>
+                          <td className="py-3 px-4 text-sm">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {evento.tipo}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm">{evento.descripcion}</td>
+                          <td className="py-3 px-4 text-sm">{evento.producto || "-"}</td>
+                          <td className="py-3 px-4 text-sm">{evento.dosis || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB PESO */}
+        <TabsContent value="peso">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Registros de Peso</CardTitle>
+                <CardDescription>Control de evolución de peso</CardDescription>
+              </div>
+              <Dialog open={pesoDialogOpen} onOpenChange={setPesoDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-green-600 hover:bg-green-700" disabled={animalesActivos.length === 0}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuevo Peso
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <form onSubmit={handleCreatePeso}>
+                    <DialogHeader>
+                      <DialogTitle>Registrar Peso</DialogTitle>
+                      <DialogDescription>
+                        Registrá una pesada de animal
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Animal</Label>
+                        <Select
+                          value={pesoForm.animalId}
+                          onValueChange={(value) => setPesoForm({ ...pesoForm, animalId: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccioná animal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {animalesActivos.map((a) => (
+                              <SelectItem key={a.id} value={a.id}>
+                                {a.caravana} - {a.tipo}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fecha</Label>
+                        <Input
+                          type="date"
+                          value={pesoForm.fecha}
+                          onChange={(e) => setPesoForm({ ...pesoForm, fecha: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Peso (kg)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="250"
+                          value={pesoForm.peso}
+                          onChange={(e) => setPesoForm({ ...pesoForm, peso: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setPesoDialogOpen(false)}>
+                        Cancelar
+                      </Button>
+                      <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                        Guardar
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">Cargando...</div>
+              ) : registrosPeso.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">No hay registros de peso</p>
+                  {animalesActivos.length === 0 ? (
+                    <p className="text-sm text-gray-400">Primero registrá un animal</p>
+                  ) : (
+                    <Button onClick={() => setPesoDialogOpen(true)} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Registrar primer peso
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Fecha</th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-600">Animal</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-600">Peso (kg)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {registrosPeso.map((registro) => (
+                        <tr key={registro.id} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm">{formatDate(registro.fecha)}</td>
+                          <td className="py-3 px-4 text-sm font-medium">{registro.animal.caravana}</td>
+                          <td className="py-3 px-4 text-sm text-right font-medium text-green-600">
+                            {registro.peso.toLocaleString()} kg
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
