@@ -3,29 +3,38 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { 
   LayoutDashboard, 
   DollarSign, 
-  Sprout, 
+  Sprout,
+  BookOpen, 
   Beef, 
   Truck, 
-  TrendingUp, 
+  TrendingUp,
+  Package,
+  CloudSun,
+  Apple,
+  Receipt,
   Leaf,
   LogOut,
   Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useState } from "react";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: DollarSign, label: "Finanzas", href: "/finanzas" },
   { icon: Sprout, label: "Agronomía", href: "/agronomia" },
+  { icon: BookOpen, label: "Cuaderno de Campo", href: "/cuaderno-campo" },
   { icon: Beef, label: "Ganadería", href: "/ganaderia" },
   { icon: Truck, label: "Maquinaria", href: "/maquinaria" },
   { icon: TrendingUp, label: "Comercialización", href: "/comercializacion" },
+  { icon: Package, label: "Inventario", href: "/inventario" },
+  { icon: CloudSun, label: "Clima", href: "/clima" },
+  { icon: Apple, label: "Nutrición", href: "/nutricion" },
+  { icon: Receipt, label: "Conciliación Bancaria", href: "/conciliacion-bancaria" },
   { icon: Leaf, label: "Sostenibilidad", href: "/sostenibilidad" },
 ];
 
@@ -87,32 +96,23 @@ export default function DashboardLayout({
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
-              const isDisabled = item.disabled;
 
               return (
                 <Link
                   key={item.href}
-                  href={isDisabled ? "#" : item.href}
+                  href={item.href}
                   className={`
                     group flex items-center px-3 py-2 text-sm font-medium rounded-md
                     ${isActive 
                       ? "bg-green-50 text-green-700" 
-                      : isDisabled
-                      ? "text-gray-400 cursor-not-allowed"
                       : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                     }
                   `}
-                  onClick={(e) => isDisabled && e.preventDefault()}
                 >
                   <Icon className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                    isActive ? "text-green-700" : isDisabled ? "text-gray-400" : "text-gray-500"
+                    isActive ? "text-green-700" : "text-gray-500"
                   }`} />
                   {item.label}
-                  {isDisabled && (
-                    <span className="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-                      Próximamente
-                    </span>
-                  )}
                 </Link>
               );
             })}
@@ -197,35 +197,24 @@ export default function DashboardLayout({
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
-                  const isDisabled = item.disabled;
 
                   return (
                     <Link
                       key={item.href}
-                      href={isDisabled ? "#" : item.href}
+                      href={item.href}
                       className={`
                         group flex items-center px-3 py-2 text-sm font-medium rounded-md
                         ${isActive 
                           ? "bg-green-50 text-green-700" 
-                          : isDisabled
-                          ? "text-gray-400 cursor-not-allowed"
                           : "text-gray-700 hover:bg-gray-50"
                         }
                       `}
-                      onClick={(e) => {
-                        if (isDisabled) e.preventDefault();
-                        else setSidebarOpen(false);
-                      }}
+                      onClick={() => setSidebarOpen(false)}
                     >
                       <Icon className={`mr-3 h-5 w-5 ${
-                        isActive ? "text-green-700" : isDisabled ? "text-gray-400" : "text-gray-500"
+                        isActive ? "text-green-700" : "text-gray-500"
                       }`} />
                       {item.label}
-                      {isDisabled && (
-                        <span className="ml-auto text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-                          Próximamente
-                        </span>
-                      )}
                     </Link>
                   );
                 })}
