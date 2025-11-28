@@ -16,6 +16,9 @@ import {
   CloudSun,
   Apple,
   Receipt,
+  Calculator,
+  FileText,
+  Activity,
   Leaf,
   LogOut,
   Menu
@@ -35,6 +38,9 @@ const menuItems = [
   { icon: CloudSun, label: "Clima", href: "/clima" },
   { icon: Apple, label: "Nutrición", href: "/nutricion" },
   { icon: Receipt, label: "Conciliación Bancaria", href: "/conciliacion-bancaria" },
+  { icon: Calculator, label: "Costos", href: "/costos" },
+  { icon: FileText, label: "Arrendamientos", href: "/arrendamientos" },
+  { icon: Activity, label: "Márgenes en Vivo", href: "/margenes-vivo" },
   { icon: Leaf, label: "Sostenibilidad", href: "/sostenibilidad" },
 ];
 

@@ -51,7 +51,12 @@ model User {
   cuentasBancarias        CuentaBancaria[]          // ← NUEVO
   extractosBancarios      ExtractoBancario[]        // ← NUEVO
   conciliaciones          Conciliacion[]            // ← NUEVO
-  diferenciasConciliacion DiferenciaConciliacion[]  // ← NUEVO         
+  diferenciasConciliacion DiferenciaConciliacion[]  // ← NUEVO
+  registrosLecheros       RegistroLechero[]        // ← NUEVO
+  costosLote              CostoLote[]              // ← NUEVO
+  costosAnimal            CostoAnimal[]            // ← NUEVO
+  margenesBrutos          MargenBruto[]            // ← NUEVO
+  arrendamientos          Arrendamiento[]          // ← NUEVO         
   
   @@map("users")
 }
@@ -108,6 +113,8 @@ model Lote {
   practicasSostenibles PracticaSostenible[] // ← NUEVO
   labores     Labor[]
   ubicacionesProducto UbicacionProducto[]  // ← NUEVO
+  costos                CostoLote[]
+  arrendamientos        Arrendamiento[]          // ← NUEVO
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -170,6 +177,8 @@ model Animal {
   movimientos     Movimiento[]
   eventosReproductivos EventoReproductivo[]      // ← NUEVO
   historialReproductivo HistorialReproductivo?   // ← NUEVO
+  registrosLecheros RegistroLechero[]      // ← NUEVO
+  costos                CostoAnimal[]            // ← NUEVO
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -186,6 +195,7 @@ model EventoSanitario {
   dosis       String?
   animalId    String
   animal      Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  costos      CostoAnimal[]                    // ← NUEVO
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -415,6 +425,7 @@ model Labor {
   
   // Productos aplicados
   aplicacionesProductos AplicacionProducto[]
+  costos                CostoLote[]              // ← NUEVO
   
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -757,4 +768,109 @@ model DiferenciaConciliacion {
 
   @@index([userId])
   @@index([conciliacionId])
+}
+
+model RegistroLechero {
+  id          String   @id @default(cuid())
+  animalId    String
+  animal      Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  fecha       DateTime
+  litros      Float    // Litros de leche producidos
+  turno       String?  // Mañana, Tarde, Noche
+  calidad     String?  // A, B, C (según parámetros de grasa/proteína)
+  observaciones String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([animalId])
+  @@index([fecha])
+}
+
+model CostoLote {
+  id              String   @id @default(cuid())
+  loteId          String
+  lote            Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  concepto        String   // Semilla, Fertilizante, Fitosanitario, Labor, Maquinaria, Riego
+  descripcion     String
+  monto           Float
+  fecha           DateTime
+  laborId         String?
+  labor           Labor?   @relation(fields: [laborId], references: [id], onDelete: SetNull)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+  @@index([fecha])
+}
+
+model CostoAnimal {
+  id              String   @id @default(cuid())
+  animalId        String
+  animal          Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  concepto        String   // Alimentación, Sanidad, Reproducción, Compra, Otros
+  descripcion     String
+  monto           Float
+  fecha           DateTime
+  eventoSanitarioId String?
+  eventoSanitario   EventoSanitario? @relation(fields: [eventoSanitarioId], references: [id], onDelete: SetNull)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([animalId])
+  @@index([fecha])
+}
+
+model MargenBruto {
+  id              String   @id @default(cuid())
+  tipo            String   // Lote, Animal
+  referenciaId    String   // ID del lote o animal
+  referenciaNombre String  // Nombre para display
+  periodo         String   // Ej: "2024-Q1", "2024-01"
+  ingresos        Float    @default(0)
+  costos          Float    @default(0)
+  margen          Float    @default(0)
+  margenPorcentaje Float   @default(0)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tipo])
+  @@index([referenciaId])
+  @@index([periodo])
+  @@unique([userId, tipo, referenciaId, periodo])  // ← AGREGÁ ESTA LÍNEA
+}
+
+model Arrendamiento {
+  id                String   @id @default(cuid())
+  loteId            String
+  lote              Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  arrendatario      String   // Nombre del dueño de la tierra
+  tipoContrato      String   // PagoFijo, QuintalesFijos, PorcentajeProduccion
+  moneda            String   @default("USD")
+  montoFijo         Float?   // Para PagoFijo (USD/UYU)
+  quintales         Float?   // Para QuintalesFijos
+  porcentaje        Float?   // Para PorcentajeProduccion (ej: 25%)
+  fechaInicio       DateTime
+  fechaFin          DateTime
+  activo            Boolean  @default(true)
+  observaciones     String?
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+  @@index([activo])
 }

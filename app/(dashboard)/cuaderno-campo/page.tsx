@@ -52,6 +52,18 @@ type Maquina = {
   tipo: string;
 };
 
+type Producto = {
+  id: string;
+  nombre: string;
+  tipo: string;
+  unidad: string;
+  ubicaciones: {
+    id: string;
+    ubicacion: string;
+    cantidad: number;
+  }[];
+};
+
 const TIPOS_LABOR = [
   "Siembra",
   "Cosecha",
@@ -78,6 +90,7 @@ export default function CuadernoCampoPage() {
   const [labores, setLabores] = useState<Labor[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [maquinas, setMaquinas] = useState<Maquina[]>([]);
+  const [productosInventario, setProductosInventario] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [laborDialogOpen, setLaborDialogOpen] = useState(false);
@@ -92,20 +105,21 @@ export default function CuadernoCampoPage() {
     operarios: "",
     horasTrabajadas: "",
     maquinaId: "",
-  });
-
-  const [productos, setProductos] = useState<any[]>([]);
-  const [productoForm, setProductoForm] = useState({
-    tipoProducto: "",
-    nombreProducto: "",
-    principioActivo: "",
-    dosis: "",
-    unidadDosis: "",
-    metodoAplicacion: "",
+    productos: [] as Array<{
+      tipoProducto: string;
+      nombreProducto: string;
+      principioActivo: string;
+      dosis: string;
+      unidadDosis: string;
+      metodoAplicacion: string;
+      productoId: string;
+      ubicacionId: string;
+    }>,
   });
 
   useEffect(() => {
     fetchAll();
+    fetchProductosInventario();
   }, []);
 
   const fetchAll = async () => {
@@ -150,25 +164,16 @@ export default function CuadernoCampoPage() {
     }
   };
 
-  const handleAgregarProducto = () => {
-    if (!productoForm.tipoProducto || !productoForm.nombreProducto || !productoForm.dosis || !productoForm.unidadDosis) {
-      alert("Completá todos los campos del producto");
-      return;
+  const fetchProductosInventario = async () => {
+    try {
+      const response = await fetch("/api/productos");
+      if (response.ok) {
+        const data = await response.json();
+        setProductosInventario(data);
+      }
+    } catch (error) {
+      console.error("Error:", error);
     }
-
-    setProductos([...productos, { ...productoForm }]);
-    setProductoForm({
-      tipoProducto: "",
-      nombreProducto: "",
-      principioActivo: "",
-      dosis: "",
-      unidadDosis: "",
-      metodoAplicacion: "",
-    });
-  };
-
-  const handleEliminarProducto = (index: number) => {
-    setProductos(productos.filter((_, i) => i !== index));
   };
 
   const handleCreateLabor = async (e: React.FormEvent) => {
@@ -177,10 +182,7 @@ export default function CuadernoCampoPage() {
       const response = await fetch("/api/labores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...laborForm,
-          productos: productos.length > 0 ? productos : null,
-        }),
+        body: JSON.stringify(laborForm),
       });
 
       if (response.ok) {
@@ -195,9 +197,10 @@ export default function CuadernoCampoPage() {
           operarios: "",
           horasTrabajadas: "",
           maquinaId: "",
+          productos: [],
         });
-        setProductos([]);
         fetchLabores();
+        fetchProductosInventario(); // Refrescar inventario después del descuento automático
       }
     } catch (error) {
       console.error("Error:", error);
@@ -222,7 +225,7 @@ export default function CuadernoCampoPage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Cuaderno de Campo Digital</h1>
         <p className="text-gray-600 mt-2">
-          Registro de labores agrícolas y trazabilidad
+          Registro de labores agrícolas y trazabilidad con descuento automático de stock
         </p>
       </div>
 
@@ -280,12 +283,12 @@ export default function CuadernoCampoPage() {
                 Nueva Labor
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <form onSubmit={handleCreateLabor}>
                 <DialogHeader>
                   <DialogTitle>Registrar Labor</DialogTitle>
                   <DialogDescription>
-                    Registrá una nueva actividad en el campo
+                    Registrá una nueva actividad en el campo con descuento automático de stock
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -410,118 +413,249 @@ export default function CuadernoCampoPage() {
                     </Select>
                   </div>
 
+                  {/* SECCIÓN DE PRODUCTOS CON REGISTRO ATÓMICO */}
                   <div className="border-t pt-4 mt-4">
-                    <h3 className="font-medium mb-4 flex items-center">
-                      <Package className="h-4 w-4 mr-2" />
-                      Productos Aplicados (opcional)
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <Package className="h-4 w-4 mr-2" />
+                        <Label className="text-base font-semibold">Productos Aplicados (Opcional)</Label>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setLaborForm({
+                            ...laborForm,
+                            productos: [
+                              ...laborForm.productos,
+                              {
+                                tipoProducto: "",
+                                nombreProducto: "",
+                                principioActivo: "",
+                                dosis: "",
+                                unidadDosis: "",
+                                metodoAplicacion: "",
+                                productoId: "",
+                                ubicacionId: "",
+                              },
+                            ],
+                          });
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar Producto
+                      </Button>
+                    </div>
 
-                    {productos.length > 0 && (
-                      <div className="mb-4 space-y-2">
-                        {productos.map((p, index) => (
-                          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                            <div className="text-sm">
-                              <span className="font-medium">{p.nombreProducto}</span>
-                              {" - "}
-                              <span className="text-gray-600">{p.tipoProducto}</span>
-                              {" - "}
-                              <span className="font-medium">{p.dosis} {p.unidadDosis}</span>
-                            </div>
+                    {laborForm.productos.map((prod, index) => (
+                      <Card key={index} className="p-3 bg-gray-50 mb-3">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Tipo</Label>
+                            <Select
+                              value={prod.tipoProducto}
+                              onValueChange={(value) => {
+                                const newProds = [...laborForm.productos];
+                                newProds[index].tipoProducto = value;
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Tipo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Herbicida">Herbicida</SelectItem>
+                                <SelectItem value="Insecticida">Insecticida</SelectItem>
+                                <SelectItem value="Fungicida">Fungicida</SelectItem>
+                                <SelectItem value="Fertilizante">Fertilizante</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs">Producto del Inventario</Label>
+                            <Select
+                              value={prod.productoId}
+                              onValueChange={(value) => {
+                                const newProds = [...laborForm.productos];
+                                const productoSeleccionado = productosInventario.find(p => p.id === value);
+                                if (productoSeleccionado) {
+                                  newProds[index].productoId = value;
+                                  newProds[index].nombreProducto = productoSeleccionado.nombre;
+                                  // Seleccionar primera ubicación disponible
+                                  if (productoSeleccionado.ubicaciones.length > 0) {
+                                    newProds[index].ubicacionId = productoSeleccionado.ubicaciones[0].id;
+                                  }
+                                }
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Seleccionar" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {productosInventario.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.nombre} ({p.ubicaciones.reduce((sum, u) => sum + u.cantidad, 0)} {p.unidad})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs">Ubicación Stock</Label>
+                            <Select
+                              value={prod.ubicacionId}
+                              onValueChange={(value) => {
+                                const newProds = [...laborForm.productos];
+                                newProds[index].ubicacionId = value;
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
+                              disabled={!prod.productoId}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Ubicación" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {productosInventario
+                                  .find(p => p.id === prod.productoId)
+                                  ?.ubicaciones.map((u) => (
+                                    <SelectItem key={u.id} value={u.id}>
+                                      {u.ubicacion} ({u.cantidad} disponible)
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs">Nombre Comercial</Label>
+                            <Input
+                              className="h-8"
+                              placeholder="Ej: Glifosato 48%"
+                              value={prod.nombreProducto}
+                              onChange={(e) => {
+                                const newProds = [...laborForm.productos];
+                                newProds[index].nombreProducto = e.target.value;
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs">Principio Activo</Label>
+                            <Input
+                              className="h-8"
+                              placeholder="Ej: Glifosato"
+                              value={prod.principioActivo}
+                              onChange={(e) => {
+                                const newProds = [...laborForm.productos];
+                                newProds[index].principioActivo = e.target.value;
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs">Dosis por Ha</Label>
+                            <Input
+                              className="h-8"
+                              type="number"
+                              step="0.01"
+                              placeholder="2.5"
+                              value={prod.dosis}
+                              onChange={(e) => {
+                                const newProds = [...laborForm.productos];
+                                newProds[index].dosis = e.target.value;
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs">Unidad</Label>
+                            <Select
+                              value={prod.unidadDosis}
+                              onValueChange={(value) => {
+                                const newProds = [...laborForm.productos];
+                                newProds[index].unidadDosis = value;
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Unidad" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="L/ha">L/ha</SelectItem>
+                                <SelectItem value="kg/ha">kg/ha</SelectItem>
+                                <SelectItem value="cc/ha">cc/ha</SelectItem>
+                                <SelectItem value="gr/ha">gr/ha</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs">Método</Label>
+                            <Select
+                              value={prod.metodoAplicacion}
+                              onValueChange={(value) => {
+                                const newProds = [...laborForm.productos];
+                                newProds[index].metodoAplicacion = value;
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Método" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Terrestre">Terrestre</SelectItem>
+                                <SelectItem value="Aéreo">Aéreo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="flex items-end">
                             <Button
                               type="button"
                               variant="ghost"
-                              size="icon"
-                              onClick={() => handleEliminarProducto(index)}
+                              size="sm"
                               className="text-red-600"
+                              onClick={() => {
+                                const newProds = laborForm.productos.filter((_, i) => i !== index);
+                                setLaborForm({ ...laborForm, productos: newProds });
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
-                        ))}
+                        </div>
+
+                        {/* Cálculo automático de cantidad total */}
+                        {prod.dosis && laborForm.superficieTrabajada && (
+                          <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
+                            <strong>Cantidad total requerida:</strong>{" "}
+                            {(parseFloat(prod.dosis) * parseFloat(laborForm.superficieTrabajada)).toFixed(2)}{" "}
+                            {prod.unidadDosis?.replace("/ha", "")}
+                            {prod.ubicacionId && productosInventario.find(p => p.id === prod.productoId)?.ubicaciones.find(u => u.id === prod.ubicacionId) && (
+                              <span className="ml-2">
+                                | Stock disponible: {productosInventario.find(p => p.id === prod.productoId)?.ubicaciones.find(u => u.id === prod.ubicacionId)?.cantidad || 0}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </Card>
+                    ))}
+
+                    {laborForm.productos.length > 0 && (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p className="text-sm text-yellow-800">
+                          <strong>⚡ Registro Atómico:</strong> Al guardar la labor, el stock de los productos seleccionados
+                          se descontará automáticamente del inventario. No necesitás hacer el descuento manual.
+                        </p>
                       </div>
                     )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Tipo Producto</Label>
-                        <Select
-                          value={productoForm.tipoProducto}
-                          onValueChange={(value) => setProductoForm({ ...productoForm, tipoProducto: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TIPOS_PRODUCTO.map((t) => (
-                              <SelectItem key={t} value={t}>{t}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Nombre Producto</Label>
-                        <Input
-                          placeholder="Ej: Roundup"
-                          value={productoForm.nombreProducto}
-                          onChange={(e) => setProductoForm({ ...productoForm, nombreProducto: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 mt-4">
-                      <div className="space-y-2">
-                        <Label>Dosis</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="2.5"
-                          value={productoForm.dosis}
-                          onChange={(e) => setProductoForm({ ...productoForm, dosis: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Unidad</Label>
-                        <Select
-                          value={productoForm.unidadDosis}
-                          onValueChange={(value) => setProductoForm({ ...productoForm, unidadDosis: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Unidad" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {UNIDADES_DOSIS.map((u) => (
-                              <SelectItem key={u} value={u}>{u}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Método</Label>
-                        <Select
-                          value={productoForm.metodoAplicacion}
-                          onValueChange={(value) => setProductoForm({ ...productoForm, metodoAplicacion: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Método" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {METODOS_APLICACION.map((m) => (
-                              <SelectItem key={m} value={m}>{m}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="mt-4 w-full"
-                      onClick={handleAgregarProducto}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar Producto
-                    </Button>
                   </div>
                 </div>
                 <DialogFooter>
@@ -603,7 +737,12 @@ export default function CuadernoCampoPage() {
                       </div>
                       {labor.aplicacionesProductos.length > 0 && (
                         <div className="pt-2 border-t">
-                          <strong className="block mb-2">Productos Aplicados:</strong>
+                          <div className="flex items-center gap-2 mb-2">
+                            <strong>Productos Aplicados:</strong>
+                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                              ⚡ Stock descontado automáticamente ({labor.aplicacionesProductos.length} productos)
+                            </span>
+                          </div>
                           <div className="space-y-1">
                             {labor.aplicacionesProductos.map((prod) => (
                               <div key={prod.id} className="bg-blue-50 p-2 rounded text-sm">

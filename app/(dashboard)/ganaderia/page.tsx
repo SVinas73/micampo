@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Beef, Activity, Scale, Plus, Trash2, Heart } from "lucide-react";
+import { Beef, Activity, Scale, Plus, Trash2, Heart, Milk } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 type Animal = {
@@ -81,6 +81,19 @@ type HistorialReproductivo = {
   };
 };
 
+type RegistroLechero = {
+  id: string;
+  fecha: string;
+  litros: number;
+  turno: string | null;
+  calidad: string | null;
+  observaciones: string | null;
+  animal: {
+    caravana: string;
+    raza: string | null;
+  };
+};
+
 const TIPOS_ANIMAL = ["Vacuno", "Ovino", "Porcino", "Equino", "Caprino"];
 const RAZAS_VACUNO = ["Aberdeen Angus", "Hereford", "Holando", "Jersey", "Braford", "Brangus"];
 const SEXOS = ["Macho", "Hembra"];
@@ -96,13 +109,16 @@ export default function GanaderiaPage() {
   const [registrosPeso, setRegistrosPeso] = useState<RegistroPeso[]>([]);
   const [eventosReproductivos, setEventosReproductivos] = useState<EventoReproductivo[]>([]);
   const [historialesReproductivos, setHistorialesReproductivos] = useState<HistorialReproductivo[]>([]);
+  const [registrosLecheros, setRegistrosLecheros] = useState<RegistroLechero[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingLeche, setLoadingLeche] = useState(false);
 
   // Dialogs
   const [animalDialogOpen, setAnimalDialogOpen] = useState(false);
   const [eventoDialogOpen, setEventoDialogOpen] = useState(false);
   const [pesoDialogOpen, setPesoDialogOpen] = useState(false);
   const [reproductivoDialogOpen, setReproductivoDialogOpen] = useState(false);
+  const [lecheDialogOpen, setLecheDialogOpen] = useState(false);
 
   // Forms
   const [animalForm, setAnimalForm] = useState({
@@ -146,6 +162,19 @@ export default function GanaderiaPage() {
     observaciones: "",
   });
 
+  const [lecheForm, setLecheForm] = useState({
+    animalId: "",
+    fecha: new Date().toISOString().split("T")[0],
+    litros: "",
+    turno: "",
+    calidad: "",
+    observaciones: "",
+  });
+
+  const animalesActivos = animales.filter((a) => a.estado === "Activo");
+  const hembrasActivas = animalesActivos.filter((a) => a.sexo === "Hembra");
+  const animalesLecheros = animales.filter(a => a.estado === "Activo" && a.tipo === "Vacuno");
+
   useEffect(() => {
     fetchAll();
   }, []);
@@ -157,7 +186,8 @@ export default function GanaderiaPage() {
       fetchEventos(),
       fetchRegistrosPeso(),
       fetchEventosReproductivos(),
-      fetchHistorialesReproductivos()
+      fetchHistorialesReproductivos(),
+      fetchRegistrosLecheros()
     ]);
     setLoading(false);
   };
@@ -219,6 +249,21 @@ export default function GanaderiaPage() {
       }
     } catch (error) {
       console.error("Error al cargar historiales reproductivos:", error);
+    }
+  };
+
+  const fetchRegistrosLecheros = async () => {
+    setLoadingLeche(true);
+    try {
+      const response = await fetch("/api/registros-lecheros");
+      if (response.ok) {
+        const data = await response.json();
+        setRegistrosLecheros(data);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoadingLeche(false);
     }
   };
 
@@ -334,6 +379,32 @@ export default function GanaderiaPage() {
     }
   };
 
+  const handleCreateRegistroLechero = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("/api/registros-lecheros", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(lecheForm),
+      });
+
+      if (response.ok) {
+        setLecheDialogOpen(false);
+        setLecheForm({
+          animalId: "",
+          fecha: new Date().toISOString().split("T")[0],
+          litros: "",
+          turno: "",
+          calidad: "",
+          observaciones: "",
+        });
+        fetchRegistrosLecheros();
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
   const handleDeleteAnimal = async (id: string) => {
     if (!confirm("¿Eliminar este animal?")) return;
     try {
@@ -357,19 +428,26 @@ export default function GanaderiaPage() {
     }
   };
 
-  const animalesActivos = animales.filter((a) => a.estado === "Activo");
-  const hembrasActivas = animalesActivos.filter((a) => a.sexo === "Hembra");
+  const handleDeleteRegistroLechero = async (id: string) => {
+    if (!confirm("¿Eliminar este registro?")) return;
+    try {
+      const response = await fetch(`/api/registros-lecheros/${id}`, { method: "DELETE" });
+      if (response.ok) fetchRegistrosLecheros();
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Ganadería</h1>
         <p className="text-gray-600 mt-2">
-          Gestioná tu rodeo, sanidad, peso y reproducción
+          Gestioná tu rodeo, sanidad, peso, reproducción y producción
         </p>
       </div>
 
-      {/* Stats Cards - ACTUALIZADO CON 4 CARDS */}
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -415,13 +493,13 @@ export default function GanaderiaPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Registros de Peso
+              Producción Lechera
             </CardTitle>
-            <Scale className="h-4 w-4 text-purple-600" />
+            <Milk className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{registrosPeso.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Pesadas realizadas</p>
+            <div className="text-2xl font-bold">{registrosLecheros.length}</div>
+            <p className="text-xs text-gray-500 mt-1">Registros de ordeñe</p>
           </CardContent>
         </Card>
       </div>
@@ -443,6 +521,10 @@ export default function GanaderiaPage() {
           <TabsTrigger value="peso">
             <Scale className="h-4 w-4 mr-2" />
             Peso
+          </TabsTrigger>
+          <TabsTrigger value="leche">
+            <Milk className="h-4 w-4 mr-2" />
+            Producción Lechera
           </TabsTrigger>
         </TabsList>
 
@@ -637,7 +719,7 @@ export default function GanaderiaPage() {
           </Card>
         </TabsContent>
 
-        {/* TAB REPRODUCCIÓN - NUEVO */}
+        {/* TAB REPRODUCCIÓN */}
         <TabsContent value="reproduccion">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -708,7 +790,6 @@ export default function GanaderiaPage() {
                         />
                       </div>
 
-                      {/* Campos específicos para Servicio */}
                       {reproductivoForm.tipo === "Servicio" && (
                         <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded">
                           <div className="space-y-2">
@@ -750,7 +831,6 @@ export default function GanaderiaPage() {
                         </div>
                       )}
 
-                      {/* Campos específicos para Diagnóstico */}
                       {reproductivoForm.tipo === "Diagnostico" && (
                         <div className="grid grid-cols-2 gap-4 p-4 bg-purple-50 rounded">
                           <div className="space-y-2">
@@ -783,7 +863,6 @@ export default function GanaderiaPage() {
                         </div>
                       )}
 
-                      {/* Campos específicos para Parto */}
                       {reproductivoForm.tipo === "Parto" && (
                         <div className="grid grid-cols-2 gap-4 p-4 bg-pink-50 rounded">
                           <div className="space-y-2">
@@ -1199,6 +1278,194 @@ export default function GanaderiaPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB PRODUCCIÓN LECHERA - NUEVO */}
+        <TabsContent value="leche">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Producción Lechera</CardTitle>
+                <CardDescription>Registro diario de litros por animal</CardDescription>
+              </div>
+              <Dialog open={lecheDialogOpen} onOpenChange={setLecheDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-green-600 hover:bg-green-700" disabled={animales.length === 0}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuevo Registro
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <form onSubmit={handleCreateRegistroLechero}>
+                    <DialogHeader>
+                      <DialogTitle>Registrar Producción</DialogTitle>
+                      <DialogDescription>
+                        Registrá la producción lechera diaria
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Animal *</Label>
+                        <Select
+                          value={lecheForm.animalId}
+                          onValueChange={(value) => setLecheForm({ ...lecheForm, animalId: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccioná animal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {animalesLecheros.map((animal) => (
+                              <SelectItem key={animal.id} value={animal.id}>
+                                {animal.caravana} ({animal.raza})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Fecha *</Label>
+                          <Input
+                            type="date"
+                            value={lecheForm.fecha}
+                            onChange={(e) => setLecheForm({ ...lecheForm, fecha: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Litros *</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            placeholder="25.5"
+                            value={lecheForm.litros}
+                            onChange={(e) => setLecheForm({ ...lecheForm, litros: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Turno</Label>
+                          <Select
+                            value={lecheForm.turno}
+                            onValueChange={(value) => setLecheForm({ ...lecheForm, turno: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccioná turno" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Mañana">Mañana</SelectItem>
+                              <SelectItem value="Tarde">Tarde</SelectItem>
+                              <SelectItem value="Noche">Noche</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Calidad</Label>
+                          <Select
+                            value={lecheForm.calidad}
+                            onValueChange={(value) => setLecheForm({ ...lecheForm, calidad: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Calidad" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="A">A (Premium)</SelectItem>
+                              <SelectItem value="B">B (Estándar)</SelectItem>
+                              <SelectItem value="C">C (Básica)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Observaciones</Label>
+                        <Textarea
+                          placeholder="Notas adicionales"
+                          value={lecheForm.observaciones}
+                          onChange={(e) => setLecheForm({ ...lecheForm, observaciones: e.target.value })}
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setLecheDialogOpen(false)}>
+                        Cancelar
+                      </Button>
+                      <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                        Guardar
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {loadingLeche ? (
+                <div className="text-center py-8">Cargando...</div>
+              ) : registrosLecheros.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">No hay registros de producción</p>
+                  {animales.length === 0 ? (
+                    <p className="text-sm text-gray-400">Primero registrá animales lecheros</p>
+                  ) : (
+                    <Button onClick={() => setLecheDialogOpen(true)} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Registrar primera producción
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {registrosLecheros.map((registro) => (
+                    <Card key={registro.id}>
+                      <CardContent className="pt-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{registro.animal.caravana}</p>
+                              <span className="text-sm text-gray-500">({registro.animal.raza})</span>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">{formatDate(registro.fecha)}</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-blue-600">{registro.litros} L</p>
+                              {registro.turno && (
+                                <p className="text-xs text-gray-500">{registro.turno}</p>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteRegistroLechero(registro.id)}
+                              className="text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        {registro.calidad && (
+                          <div className="mt-2">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              registro.calidad === "A" ? "bg-green-100 text-green-800" :
+                              registro.calidad === "B" ? "bg-yellow-100 text-yellow-800" :
+                              "bg-orange-100 text-orange-800"
+                            }`}>
+                              Calidad {registro.calidad}
+                            </span>
+                          </div>
+                        )}
+                        {registro.observaciones && (
+                          <p className="text-sm text-gray-600 mt-2">{registro.observaciones}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
             </CardContent>
