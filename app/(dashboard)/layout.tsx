@@ -19,6 +19,9 @@ import {
   Calculator,
   FileText,
   Activity,
+  Sparkles,
+  Calendar,
+  Droplets,
   Leaf,
   LogOut,
   Menu
@@ -41,6 +44,9 @@ const menuItems = [
   { icon: Calculator, label: "Costos", href: "/costos" },
   { icon: FileText, label: "Arrendamientos", href: "/arrendamientos" },
   { icon: Activity, label: "Márgenes en Vivo", href: "/margenes-vivo" },
+  { icon: Sparkles, label: "Alertas IA", href: "/alertas-predictivas" },
+  { icon: Calendar, label: "Planificación Siembras", href: "/planificacion-siembras" },
+  { icon: Droplets, label: "Producción Lechera", href: "/produccion-lechera" },
   { icon: Leaf, label: "Sostenibilidad", href: "/sostenibilidad" },
 ];
 
@@ -64,9 +70,11 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-2xl font-bold">MC</span>
-          </div>
+          <img 
+            src="/logo.jpg" 
+            alt="MiCampo" 
+            className="w-20 h-20 mx-auto mb-4 rounded-lg object-contain"
+          />
           <p className="text-gray-600">Cargando...</p>
         </div>
       </div>
@@ -85,147 +93,70 @@ export default function DashboardLayout({
     .slice(0, 2) || "U";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar Desktop */}
-      <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
-          {/* Logo */}
-          <div className="flex items-center flex-shrink-0 px-4 mb-6">
-            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xl font-bold">MC</span>
-            </div>
-            <span className="ml-3 text-xl font-bold text-gray-900">MiCampo</span>
-          </div>
+    <div className="min-h-screen bg-gray-50 relative">
+      {/* Fondo Difuminado */}
+      <div 
+        className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: 'url(/campo-fondo.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          filter: 'blur(8px) brightness(0.9)',
+          opacity: 0.2,
+        }}
+      />
 
-          {/* Navigation */}
-          <nav className="mt-5 flex-1 px-2 space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`
-                    group flex items-center px-3 py-2 text-sm font-medium rounded-md
-                    ${isActive 
-                      ? "bg-green-50 text-green-700" 
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                    }
-                  `}
-                >
-                  <Icon className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                    isActive ? "text-green-700" : "text-gray-500"
-                  }`} />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* User Profile */}
-          <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-            <div className="flex items-center w-full">
-              <Avatar>
-                <AvatarFallback className="bg-green-600 text-white">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-700">
-                  {session.user?.name}
+      {/* Contenido Principal */}
+      <div className="relative z-10">
+        {/* Sidebar Desktop */}
+        <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
+          <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
+            {/* Logo - CAMBIÁ AQUÍ EL TAMAÑO */}
+            <div className="flex flex-col items-center flex-shrink-0 px-4 mb-6">
+              <img 
+                src="/logo.jpg" 
+                alt="MiCampo Logo" 
+                className="w-24 h-24 rounded-lg object-contain mb-2"
+                style={{ maxWidth: '100%', height: 'auto' }}
+              />
+              <span className="text-xl font-bold text-gray-900">MiCampo</span>
+              <div className="mt-2 text-center">
+                <p className="text-xs text-gray-500">Bienvenido,</p>
+                <p className="text-sm font-semibold text-gray-700">
+                  {session.user?.name?.split(" ")[0]}
                 </p>
-                <p className="text-xs text-gray-500">{session.user?.email}</p>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                title="Cerrar sesión"
-              >
-                <LogOut className="h-5 w-5 text-gray-500" />
-              </Button>
             </div>
-          </div>
-        </div>
-      </aside>
 
-      {/* Mobile Header */}
-      <div className="md:hidden sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white border-b border-gray-200">
-        <button
-          type="button"
-          className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          <Menu className="h-6 w-6" />
-        </button>
-        <div className="flex-1 px-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm font-bold">MC</span>
-            </div>
-            <span className="ml-2 text-lg font-bold text-gray-900">MiCampo</span>
-          </div>
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-green-600 text-white text-xs">
-              {userInitials}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-      </div>
+            {/* Navigation */}
+            <nav className="mt-5 flex-1 px-2 space-y-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
 
-      {/* Mobile Sidebar */}
-      {sidebarOpen && (
-        <div className="md:hidden fixed inset-0 z-40 flex">
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
-            <div className="absolute top-0 right-0 -mr-12 pt-2">
-              <button
-                type="button"
-                className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="sr-only">Close sidebar</span>
-                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-              <div className="flex items-center flex-shrink-0 px-4 mb-6">
-                <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-xl font-bold">MC</span>
-                </div>
-                <span className="ml-3 text-xl font-bold text-gray-900">MiCampo</span>
-              </div>
-              <nav className="mt-5 px-2 space-y-1">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`
+                      group flex items-center px-3 py-2 text-sm font-medium rounded-md
+                      ${isActive 
+                        ? "bg-green-50 text-green-700" 
+                        : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      }
+                    `}
+                  >
+                    <Icon className={`mr-3 h-5 w-5 flex-shrink-0 ${
+                      isActive ? "text-green-700" : "text-gray-500"
+                    }`} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
 
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`
-                        group flex items-center px-3 py-2 text-sm font-medium rounded-md
-                        ${isActive 
-                          ? "bg-green-50 text-green-700" 
-                          : "text-gray-700 hover:bg-gray-50"
-                        }
-                      `}
-                      onClick={() => setSidebarOpen(false)}
-                    >
-                      <Icon className={`mr-3 h-5 w-5 ${
-                        isActive ? "text-green-700" : "text-gray-500"
-                      }`} />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
+            {/* User Profile */}
             <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
               <div className="flex items-center w-full">
                 <Avatar>
@@ -234,33 +165,139 @@ export default function DashboardLayout({
                   </AvatarFallback>
                 </Avatar>
                 <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-gray-700">
-                    {session.user?.name}
-                  </p>
-                  <p className="text-xs text-gray-500">{session.user?.email}</p>
+                  <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => signOut({ callbackUrl: "/login" })}
+                  title="Cerrar sesión"
                 >
                   <LogOut className="h-5 w-5 text-gray-500" />
                 </Button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </aside>
 
-      {/* Main Content */}
-      <div className="md:pl-64 flex flex-col flex-1">
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {children}
+        {/* Mobile Header */}
+        <div className="md:hidden sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white border-b border-gray-200">
+          <button
+            type="button"
+            className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <div className="flex-1 px-4 flex justify-between items-center">
+            <div className="flex items-center">
+              <img 
+                src="/logo.jpg" 
+                alt="MiCampo" 
+                className="w-10 h-10 rounded-lg object-contain"
+              />
+              <span className="ml-2 text-lg font-bold text-gray-900">MiCampo</span>
+            </div>
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-green-600 text-white text-xs">
+                {userInitials}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+
+        {/* Mobile Sidebar */}
+        {sidebarOpen && (
+          <div className="md:hidden fixed inset-0 z-40 flex">
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
+            <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+              <div className="absolute top-0 right-0 -mr-12 pt-2">
+                <button
+                  type="button"
+                  className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <span className="sr-only">Close sidebar</span>
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
+                <div className="flex flex-col items-center flex-shrink-0 px-4 mb-6">
+                  <img 
+                    src="/logo.jpg" 
+                    alt="MiCampo" 
+                    className="w-20 h-20 rounded-lg object-contain mb-2"
+                  />
+                  <span className="text-xl font-bold text-gray-900">MiCampo</span>
+                  <div className="mt-2 text-center">
+                    <p className="text-xs text-gray-500">Bienvenido,</p>
+                    <p className="text-sm font-semibold text-gray-700">
+                      {session.user?.name?.split(" ")[0]}
+                    </p>
+                  </div>
+                </div>
+                <nav className="mt-5 px-2 space-y-1">
+                  {menuItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`
+                          group flex items-center px-3 py-2 text-sm font-medium rounded-md
+                          ${isActive 
+                            ? "bg-green-50 text-green-700" 
+                            : "text-gray-700 hover:bg-gray-50"
+                          }
+                        `}
+                        onClick={() => setSidebarOpen(false)}
+                      >
+                        <Icon className={`mr-3 h-5 w-5 ${
+                          isActive ? "text-green-700" : "text-gray-500"
+                        }`} />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+              <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
+                <div className="flex items-center w-full">
+                  <Avatar>
+                    <AvatarFallback className="bg-green-600 text-white">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="ml-3 flex-1">
+                    <p className="text-xs text-gray-500">{session.user?.email}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => signOut({ callbackUrl: "/login" })}
+                  >
+                    <LogOut className="h-5 w-5 text-gray-500" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
-        </main>
+        )}
+
+        {/* Main Content */}
+        <div className="md:pl-64 flex flex-col flex-1">
+          <main className="flex-1">
+            <div className="py-6">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+                {children}
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );

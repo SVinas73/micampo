@@ -56,7 +56,10 @@ model User {
   costosLote              CostoLote[]              // ← NUEVO
   costosAnimal            CostoAnimal[]            // ← NUEVO
   margenesBrutos          MargenBruto[]            // ← NUEVO
-  arrendamientos          Arrendamiento[]          // ← NUEVO         
+  arrendamientos          Arrendamiento[]          // ← NUEVO
+  alertasPredictivas      AlertaPredictiva[]       // ← NUEVO
+  planesSiembra           PlanSiembra[]            // ← NUEVO
+  analisisSuelo           AnalisisSuelo[]          // ← NUEVO         
   
   @@map("users")
 }
@@ -115,6 +118,8 @@ model Lote {
   ubicacionesProducto UbicacionProducto[]  // ← NUEVO
   costos                CostoLote[]
   arrendamientos        Arrendamiento[]          // ← NUEVO
+  planesSiembra         PlanSiembra[]            // ← NUEVO
+  analisisSuelo         AnalisisSuelo[]          // ← NUEVO
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -873,4 +878,79 @@ model Arrendamiento {
   @@index([userId])
   @@index([loteId])
   @@index([activo])
+}
+
+model AlertaPredictiva {
+  id            String   @id @default(cuid())
+  tipo          String   // Enfermedad, Clima, Nutrición, Reproducción, Financiero
+  severidad     String   // Baja, Media, Alta, Crítica
+  titulo        String
+  descripcion   String
+  recomendacion String
+  entidad       String?  // Lote, Animal, General
+  entidadId     String?  // ID del lote o animal
+  entidadNombre String?  // Nombre para display
+  fechaDeteccion DateTime @default(now())
+  estado        String   @default("Activa") // Activa, Resuelta, Ignorada
+  metadata      String?  // JSON con datos adicionales del análisis
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tipo])
+  @@index([severidad])
+  @@index([estado])
+  @@index([fechaDeteccion])
+}
+
+model PlanSiembra {
+  id              String   @id @default(cuid())
+  loteId          String
+  lote            Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  cultivo         String
+  variedad        String?
+  fechaSiembraRecomendada DateTime
+  fechaCosechaEstimada    DateTime
+  hectareas       Float
+  rendimientoEstimado     Float?  // qq/ha o ton/ha
+  costoEstimado   Float?
+  ingresoEstimado Float?
+  margenEstimado  Float?
+  confianza       Float?   // 0-100 (% de confianza del análisis IA)
+  analisisIA      String?  // JSON con detalles del análisis
+  estado          String   @default("Planificado") // Planificado, Aprobado, Sembrado, Cosechado
+  observaciones   String?
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+  @@index([estado])
+  @@index([fechaSiembraRecomendada])
+}
+
+model AnalisisSuelo {
+  id              String   @id @default(cuid())
+  loteId          String
+  lote            Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  fechaAnalisis   DateTime
+  pH              Float?
+  materiaOrganica Float?   // %
+  nitrogeno       Float?   // ppm
+  fosforo         Float?   // ppm
+  potasio         Float?   // ppm
+  observaciones   String?
+  recomendaciones String?  // Generadas por IA
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+  @@index([fechaAnalisis])
 }
