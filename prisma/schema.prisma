@@ -59,7 +59,13 @@ model User {
   arrendamientos          Arrendamiento[]          // ← NUEVO
   alertasPredictivas      AlertaPredictiva[]       // ← NUEVO
   planesSiembra           PlanSiembra[]            // ← NUEVO
-  analisisSuelo           AnalisisSuelo[]          // ← NUEVO         
+  analisisSuelo           AnalisisSuelo[]          // ← NUEVO
+  registrosTrazabilidad   RegistroTrazabilidad[]    // ← NUEVO
+  etapasTrazabilidad      EtapaTrazabilidad[]       // ← NUEVO
+  marcadoresGeo           MarcadorGeorreferenciado[]  // ← NUEVO
+  imagenesSatelitales     ImagenSatelital[]           // ← NUEVO
+  registrosPluviometricos RegistroPluviometrico[]  // ← NUEVO
+  calculosDosis           CalculoDosis[]           // ← NUEVO         
   
   @@map("users")
 }
@@ -108,6 +114,10 @@ model Lote {
   nombre      String
   hectareas   Float
   cultivo     String?
+  coordenadas           String?
+  centroLatitud         Float?
+  centroLongitud        Float?
+  perimetro             Float?
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   siembras    Siembra[]
@@ -120,6 +130,11 @@ model Lote {
   arrendamientos        Arrendamiento[]          // ← NUEVO
   planesSiembra         PlanSiembra[]            // ← NUEVO
   analisisSuelo         AnalisisSuelo[]          // ← NUEVO
+  marcadoresGeo         MarcadorGeorreferenciado[]  // ← NUEVO
+  imagenesSatelitales   ImagenSatelital[]           // ← NUEVO
+  registrosPluviometricos RegistroPluviometrico[]  // ← NUEVO
+  calculosDosis           CalculoDosis[]           // ← NUEVO
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -953,4 +968,183 @@ model AnalisisSuelo {
   @@index([userId])
   @@index([loteId])
   @@index([fechaAnalisis])
+}
+
+model RegistroTrazabilidad {
+  id              String   @id @default(cuid())
+  codigoQR        String   @unique  // Código único del producto/lote
+  tipoProducto    String   // Soja, Trigo, Leche, Carne, etc.
+  nombreProducto  String
+  loteProduccion  String?
+  
+  // Blockchain simulado
+  hashBlockchain  String   @unique
+  hashAnterior    String?
+  timestamp       DateTime @default(now())
+  
+  // Etapas de trazabilidad
+  etapas          EtapaTrazabilidad[]
+  
+  // Información de origen
+  campo           String?
+  ubicacion       String?  // GPS o descripción
+  certificaciones String?  // JSON con certificaciones
+  
+  // Estado
+  estado          String   @default("Activo") // Activo, Vendido, Procesado
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([codigoQR])
+  @@index([tipoProducto])
+  @@index([timestamp])
+}
+
+model EtapaTrazabilidad {
+  id              String   @id @default(cuid())
+  registroId      String
+  registro        RegistroTrazabilidad @relation(fields: [registroId], references: [id], onDelete: Cascade)
+  
+  etapa           String   // Siembra, Cosecha, Procesamiento, Transporte, Venta
+  descripcion     String
+  fecha           DateTime
+  responsable     String?
+  ubicacion       String?
+  
+  // Datos específicos (JSON)
+  datos           String?  // Temperatura, humedad, tratamientos, etc.
+  
+  // Evidencia
+  imagenes        String?  // URLs de imágenes separadas por comas
+  documentos      String?  // URLs de documentos
+  
+  // Hash de validación
+  hashValidacion  String   @unique
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([registroId])
+  @@index([userId])
+  @@index([fecha])
+}
+
+model MarcadorGeorreferenciado {
+  id          String   @id @default(cuid())
+  loteId      String
+  lote        Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  
+  latitud     Float
+  longitud    Float
+  tipo        String   // Observación, Problema, Foto, Muestra
+  titulo      String
+  descripcion String?
+  
+  // Media
+  imagenes    String?  // URLs separadas por comas
+  
+  // Datos técnicos
+  fecha       DateTime @default(now())
+  responsable String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([loteId])
+  @@index([userId])
+  @@index([fecha])
+}
+
+model ImagenSatelital {
+  id              String   @id @default(cuid())
+  loteId          String
+  lote            Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  
+  fecha           DateTime
+  fuente          String   // Sentinel-2, Landsat-8, etc.
+  tipoIndice      String   // NDVI, NDWI, EVI, RGB
+  
+  // URLs de las imágenes
+  urlImagen       String
+  urlThumbnail    String?
+  
+  // Metadatos
+  nubosidad       Float?   // porcentaje
+  resolucion      Float?   // metros
+  bandas          String?  // JSON con info de bandas
+  
+  // Análisis automático
+  ndviPromedio    Float?
+  ndviMin         Float?
+  ndviMax         Float?
+  areaVerde       Float?   // porcentaje
+  areaProblema    Float?   // porcentaje
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([loteId])
+  @@index([userId])
+  @@index([fecha])
+  @@index([tipoIndice])
+}
+
+model RegistroPluviometrico {
+  id          String   @id @default(cuid())
+  fecha       DateTime
+  milimetros  Float    // mm de lluvia
+  loteId      String?
+  lote        Lote?    @relation(fields: [loteId], references: [id], onDelete: SetNull)
+  ubicacion   String?  // Descripción del lugar
+  metodo      String   @default("Manual") // Manual, Automático, Estimado
+  observaciones String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fecha])
+  @@index([loteId])
+}
+
+model CalculoDosis {
+  id              String   @id @default(cuid())
+  nombre          String   // Nombre del cálculo guardado
+  tipoProducto    String   // Fertilizante, Herbicida, Insecticida, Fungicida
+  nombreProducto  String
+  concentracion   Float?   // % o g/L del principio activo
+  dosisObjetivo   Float    // kg/ha o L/ha objetivo
+  superficieHa    Float    // Hectáreas a aplicar
+  
+  // Resultados calculados
+  cantidadTotal   Float    // Total de producto necesario
+  costoUnitario   Float?   // Costo por kg o L
+  costoTotal      Float?   // Costo total
+  
+  // Dilución (para líquidos)
+  aguaPorHa       Float?   // Litros de agua por ha
+  aguaTotal       Float?   // Total de agua necesaria
+  
+  observaciones   String?
+  loteId          String?
+  lote            Lote?    @relation(fields: [loteId], references: [id], onDelete: SetNull)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+  @@index([tipoProducto])
 }

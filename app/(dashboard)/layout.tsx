@@ -22,6 +22,8 @@ import {
   Sparkles,
   Calendar,
   Droplets,
+  Shield,
+  Map,
   Leaf,
   LogOut,
   Menu
@@ -47,6 +49,9 @@ const menuItems = [
   { icon: Sparkles, label: "Alertas IA", href: "/alertas-predictivas" },
   { icon: Calendar, label: "Planificación Siembras", href: "/planificacion-siembras" },
   { icon: Droplets, label: "Producción Lechera", href: "/produccion-lechera" },
+  { icon: Shield, label: "Trazabilidad", href: "/trazabilidad" },
+  { icon: Map, label: "Agricultura Precisión", href: "/agricultura-precision" },
+  { icon: Calculator, label: "Herramientas Agrícolas", href: "/herramientas-agricolas" },
   { icon: Leaf, label: "Sostenibilidad", href: "/sostenibilidad" },
 ];
 

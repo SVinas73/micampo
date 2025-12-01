@@ -15,10 +15,6 @@ export async function GET(request: Request) {
       where: {
         userId: session.user.id,
       },
-      include: {
-        siembras: true,
-        cosechas: true,
-      },
       orderBy: {
         createdAt: "desc",
       },
@@ -42,7 +38,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { nombre, hectareas, cultivo } = await request.json();
+    const { 
+      nombre, 
+      hectareas, 
+      cultivo,
+      coordenadas,
+      centroLatitud,
+      centroLongitud,
+      perimetro,
+    } = await request.json();
 
     if (!nombre || !hectareas) {
       return NextResponse.json(
@@ -56,6 +60,10 @@ export async function POST(request: Request) {
         nombre,
         hectareas: parseFloat(hectareas),
         cultivo: cultivo || null,
+        coordenadas: coordenadas ? JSON.stringify(coordenadas) : null,
+        centroLatitud: centroLatitud ? parseFloat(centroLatitud) : null,
+        centroLongitud: centroLongitud ? parseFloat(centroLongitud) : null,
+        perimetro: perimetro ? parseFloat(perimetro) : null,
         userId: session.user.id,
       },
     });
