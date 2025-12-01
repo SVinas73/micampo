@@ -65,7 +65,16 @@ model User {
   marcadoresGeo           MarcadorGeorreferenciado[]  // ← NUEVO
   imagenesSatelitales     ImagenSatelital[]           // ← NUEVO
   registrosPluviometricos RegistroPluviometrico[]  // ← NUEVO
-  calculosDosis           CalculoDosis[]           // ← NUEVO         
+  calculosDosis           CalculoDosis[]           // ← NUEVO
+  alertasPlagas     AlertaPlaga[]      // ← NUEVO
+  planesRiego       PlanRiego[]        // ← NUEVO
+  eventosRiego      EventoRiego[]      // ← NUEVO
+  diagnosticosSalud     DiagnosticoSalud[]     // ← NUEVO
+  planesNutricionales   PlanNutricional[]      // ← NUEVO
+  registrosConsumo      RegistroConsumo[]      // ← NUEVO
+  ajustesNutricionales  AjusteNutricional[]    // ← NUEVO
+  analisisReproductivos AnalisisReproductivo[] // ← NUEVO
+  alertasSanitarias     AlertaSanitaria[]      // ← NUEVO         
   
   @@map("users")
 }
@@ -134,6 +143,8 @@ model Lote {
   imagenesSatelitales   ImagenSatelital[]           // ← NUEVO
   registrosPluviometricos RegistroPluviometrico[]  // ← NUEVO
   calculosDosis           CalculoDosis[]           // ← NUEVO
+  alertasPlagas     AlertaPlaga[]      // ← NUEVO
+  planesRiego       PlanRiego[]        // ← NUEVO
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -199,6 +210,8 @@ model Animal {
   historialReproductivo HistorialReproductivo?   // ← NUEVO
   registrosLecheros RegistroLechero[]      // ← NUEVO
   costos                CostoAnimal[]            // ← NUEVO
+  diagnosticosSalud   DiagnosticoSalud[]   // ← NUEVO
+  planesNutricionales PlanNutricional[]    // ← NUEVO
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -1147,4 +1160,349 @@ model CalculoDosis {
   @@index([userId])
   @@index([loteId])
   @@index([tipoProducto])
+}
+
+model AlertaPlaga {
+  id              String   @id @default(cuid())
+  loteId          String
+  lote            Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  
+  plaga           String   // Nombre de la plaga/enfermedad
+  tipo            String   // Insecto, Hongo, Bacteria, Virus, Maleza
+  severidad       String   // Baja, Media, Alta, Crítica
+  confianza       Float    // 0-100% confianza del modelo IA
+  
+  // Detección
+  fechaDeteccion  DateTime @default(now())
+  metodoDeteccion String   // IA-Imagen, IA-Datos, Manual, Sensor
+  imagenUrl       String?  // URL de imagen si aplica
+  
+  // Síntomas y descripción
+  sintomas        String?  // JSON con lista de síntomas
+  areaAfectada    Float?   // Hectáreas afectadas estimadas
+  ubicacionGPS    String?  // JSON con coordenadas
+  
+  // Recomendaciones IA
+  recomendacion   String   // Acción sugerida
+  productos       String?  // JSON con productos recomendados
+  momento         String?  // Cuándo aplicar (Inmediato, 24-48h, Preventivo)
+  
+  // Estado
+  estado          String   @default("Activa") // Activa, EnTratamiento, Resuelta, Falsa
+  fechaResolucion DateTime?
+  tratamientoAplicado String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+  @@index([fechaDeteccion])
+  @@index([estado])
+  @@index([severidad])
+}
+
+model PlanRiego {
+  id              String   @id @default(cuid())
+  loteId          String
+  lote            Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  
+  nombre          String
+  cultivo         String
+  etapaFenologica String   // Germinación, Vegetativo, Floración, Fructificación
+  
+  // Datos del suelo
+  tipoSuelo       String?  // Arcilloso, Limoso, Arenoso, Franco
+  capacidadCampo  Float?   // mm de agua
+  puntoMarchitez  Float?   // mm de agua
+  
+  // Necesidades hídricas
+  etcDiaria       Float    // mm/día (Evapotranspiración del cultivo)
+  frecuenciaRiego Int      // Días entre riegos
+  laminaRiego     Float    // mm por riego
+  
+  // Programación
+  fechaInicio     DateTime
+  fechaFin        DateTime?
+  diasActivoSemana String  @default("1,2,3,4,5,6,7") // CSV días activos
+  horaInicio      String   @default("06:00")
+  duracionMinutos Int?     // Duración de cada riego
+  
+  // Costos y eficiencia
+  costoMM         Float?   // USD por mm
+  eficienciaRiego Float    @default(85) // % eficiencia del sistema
+  
+  // IA y automatización
+  modoIA          Boolean  @default(false) // Ajuste automático con IA
+  ajustesIA       String?  // JSON con histórico de ajustes
+  
+  // Estado
+  estado          String   @default("Planificado") // Planificado, Activo, Pausado, Completado
+  
+  // Eventos de riego
+  eventosRiego    EventoRiego[]
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+  @@index([estado])
+  @@index([fechaInicio])
+}
+
+model EventoRiego {
+  id              String   @id @default(cuid())
+  planRiegoId     String
+  planRiego       PlanRiego @relation(fields: [planRiegoId], references: [id], onDelete: Cascade)
+  
+  fechaProgramada DateTime
+  fechaReal       DateTime?
+  laminaAplicada  Float?   // mm aplicados
+  duracionReal    Int?     // Minutos
+  
+  estado          String   @default("Programado") // Programado, Completado, Cancelado, Fallido
+  motivoCancelacion String?
+  
+  // Condiciones al momento del riego
+  temperatura     Float?   // °C
+  humedadSuelo    Float?   // %
+  precipitacion   Float?   // mm
+  viento          Float?   // km/h
+  
+  // Costo
+  costo           Float?   // USD
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([planRiegoId])
+  @@index([fechaProgramada])
+  @@index([estado])
+}
+
+model DiagnosticoSalud {
+  id              String   @id @default(cuid())
+  animalId        String
+  animal          Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  
+  fecha           DateTime @default(now())
+  veterinario     String?
+  motivoConsulta  String   // Chequeo rutinario, Enfermedad, Emergencia
+  
+  // Signos vitales
+  temperatura     Float?   // °C
+  frecuenciaCardiaca Int?  // latidos/min
+  frecuenciaRespiratoria Int? // resp/min
+  condicionCorporal Float? // 1-5
+  
+  // Diagnóstico
+  diagnostico     String
+  sintomas        String?  // JSON con lista
+  tratamiento     String
+  medicamentos    String?  // JSON con medicamentos y dosis
+  
+  // Seguimiento
+  proximaRevision DateTime?
+  observaciones   String?
+  costoConsulta   Float?
+  
+  // IA
+  riesgo          String?  // Bajo, Medio, Alto, Crítico
+  recomendacionIA String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([animalId])
+  @@index([fecha])
+}
+
+model PlanNutricional {
+  id              String   @id @default(cuid())
+  animalId        String?
+  animal          Animal?  @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  
+  nombre          String
+  tipo            String   // Individual, Grupo, Rodeo
+  categoriaAnimal String   // Vaca lechera, Ternero, Novillo, Vaquillona, Toro
+  
+  // Objetivos
+  pesoActual      Float?   // kg
+  pesoObjetivo    Float?   // kg
+  gananciaEsperada Float?  // kg/día
+  produccionLeche Float?   // litros/día (si aplica)
+  
+  // Requerimientos calculados
+  energiaDiaria   Float    // Mcal/día
+  proteinaDiaria  Float    // kg/día
+  fibraDiaria     Float?   // kg/día
+  
+  // Composición de la dieta
+  composicionDieta String  // JSON con alimentos y cantidades
+  costoTotal      Float?   // USD/día
+  
+  // Período
+  fechaInicio     DateTime
+  fechaFin        DateTime?
+  estado          String   @default("Activo") // Activo, Completado, Ajustado
+  
+  // IA
+  generadoPorIA   Boolean  @default(false)
+  analisisIA      String?  // JSON con análisis y recomendaciones
+  eficienciaAlimenticia Float? // Conversión alimenticia
+  
+  // Seguimiento
+  registrosConsumo RegistroConsumo[]
+  ajustes         AjusteNutricional[]
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([animalId])
+  @@index([estado])
+}
+
+model RegistroConsumo {
+  id              String   @id @default(cuid())
+  planNutricionalId String
+  planNutricional   PlanNutricional @relation(fields: [planNutricionalId], references: [id], onDelete: Cascade)
+  
+  fecha           DateTime
+  alimentoId      String?
+  cantidadOfrecida Float  // kg MS
+  cantidadConsumida Float? // kg MS
+  rechazo         Float?   // %
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([planNutricionalId])
+  @@index([fecha])
+}
+
+model AjusteNutricional {
+  id              String   @id @default(cuid())
+  planNutricionalId String
+  planNutricional   PlanNutricional @relation(fields: [planNutricionalId], references: [id], onDelete: Cascade)
+  
+  fecha           DateTime @default(now())
+  motivo          String   // Peso, Producción, Salud, IA
+  ajusteRealizado String
+  datosAnteriores String?  // JSON
+  datosNuevos     String   // JSON
+  
+  responsable     String?
+  generadoPorIA   Boolean  @default(false)
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([planNutricionalId])
+  @@index([fecha])
+}
+
+model AnalisisReproductivo {
+  id              String   @id @default(cuid())
+  
+  tipoAnalisis    String   // Rodeo, Individual, Periodo
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  
+  // Métricas generales
+  totalHembras    Int
+  hembrasCubiertas Int
+  tasaServicio    Float    // %
+  tasaPreniez     Float    // %
+  tasaNatalidad   Float    // %
+  tasaMortalidad  Float    // %
+  
+  // Eficiencia reproductiva
+  intervaloPartos Float?   // días promedio
+  edadPrimerParto Float?   // meses promedio
+  criasDestetadas Int?
+  pesoDestete     Float?   // kg promedio
+  
+  // Análisis por toro (si aplica)
+  torosUtilizados Int?
+  mejorToroId     String?  // ID del mejor toro
+  
+  // Costos
+  costoTotal      Float?   // USD
+  costoServicio   Float?   // USD por servicio
+  costoCria       Float?   // USD por cría nacida
+  
+  // Recomendaciones IA
+  recomendacionIA String?
+  areasDeRecomen  String?  // JSON con áreas específicas
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fechaInicio])
+}
+
+model AlertaSanitaria {
+  id              String   @id @default(cuid())
+  
+  tipo            String   // Enfermedad, Vacunación, Tratamiento, Emergencia
+  severidad       String   // Baja, Media, Alta, Crítica
+  titulo          String
+  descripcion     String
+  
+  // Alcance
+  animalId        String?  // Si es individual
+  categoria       String?  // Si es por categoría (todos los terneros, etc)
+  numeroAfectados Int      @default(1)
+  
+  // Acción requerida
+  accionRequerida String
+  fechaLimite     DateTime?
+  estado          String   @default("Pendiente") // Pendiente, EnProceso, Completada
+  
+  // IA
+  deteccionIA     Boolean  @default(false)
+  confianza       Float?   // 0-100
+  recomendacion   String?
+  
+  // Resolución
+  fechaResolucion DateTime?
+  accionTomada    String?
+  responsable     String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([estado])
+  @@index([severidad])
+  @@index([tipo])
 }

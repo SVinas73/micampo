@@ -24,6 +24,7 @@ import {
   Droplets,
   Shield,
   Map,
+  Bug,
   Leaf,
   LogOut,
   Menu
@@ -52,6 +53,8 @@ const menuItems = [
   { icon: Shield, label: "Trazabilidad", href: "/trazabilidad" },
   { icon: Map, label: "Agricultura Precisión", href: "/agricultura-precision" },
   { icon: Calculator, label: "Herramientas Agrícolas", href: "/herramientas-agricolas" },
+  { icon: Bug, label: "Plagas y Riego", href: "/plagas-riego" },
+  { icon: Beef, label: "Ganadería Avanzada", href: "/ganaderia-avanzada" },
   { icon: Leaf, label: "Sostenibilidad", href: "/sostenibilidad" },
 ];
 
