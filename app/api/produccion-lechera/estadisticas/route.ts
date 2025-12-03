@@ -17,8 +17,8 @@ export async function GET(request: Request) {
     const fechaDesde = new Date();
     fechaDesde.setDate(fechaDesde.getDate() - dias);
 
-    // Registros del período
-    const registros = await prisma.registroLechero.findMany({
+    // Registros del período (NUEVO modelo)
+    const registros = await prisma.produccionLechera.findMany({
       where: {
         userId: session.user.id,
         fecha: {
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     });
 
     // Calcular estadísticas
-    const totalLitros = registros.reduce((sum, r) => sum + r.litros, 0);
+    const totalLitros = registros.reduce((sum, r) => sum + r.litrosTotales, 0);
     const promedioLitros = registros.length > 0 ? totalLitros / registros.length : 0;
     
     const registrosConCalidad = registros.filter(r => r.grasa !== null || r.proteina !== null);
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
       if (!produccionPorDiaMap[fecha]) {
         produccionPorDiaMap[fecha] = { fecha, litros: 0, registros: 0 };
       }
-      produccionPorDiaMap[fecha].litros += r.litros;
+      produccionPorDiaMap[fecha].litros += r.litrosTotales; // CAMBIO AQUÍ
       produccionPorDiaMap[fecha].registros += 1;
     });
 
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
       if (!produccionPorTurno[turno]) {
         produccionPorTurno[turno] = 0;
       }
-      produccionPorTurno[turno] += r.litros;
+      produccionPorTurno[turno] += r.litrosTotales; // CAMBIO AQUÍ
     });
 
     // Top animales productores
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
           raza: r.animal.raza 
         };
       }
-      produccionPorAnimalMap[caravana].litros += r.litros;
+      produccionPorAnimalMap[caravana].litros += r.litrosTotales; // CAMBIO AQUÍ
       produccionPorAnimalMap[caravana].registros += 1;
     });
 
@@ -118,7 +118,7 @@ export async function GET(request: Request) {
       .sort((a, b) => b.litros - a.litros)
       .slice(0, 10);
 
-    // Detectar alertas (caídas significativas)
+    // Detectar alertas
     type Alerta = {
       tipo: string;
       severidad: string;
@@ -126,21 +126,18 @@ export async function GET(request: Request) {
     };
 
     const alertas: Alerta[] = [];
-    const ultimosDias = serieProduccion.slice(-7);
     
-    if (ultimosDias.length >= 2) {
-      const promedioUltimos7 = ultimosDias.reduce((sum, d) => sum + d.litros, 0) / ultimosDias.length;
-      const ultimoDia = ultimosDias[ultimosDias.length - 1];
-      
-      if (ultimoDia && ultimoDia.litros < promedioUltimos7 * 0.8) {
-        alertas.push({
-          tipo: "Caída Producción",
-          severidad: "Alta",
-          mensaje: `Producción del último día (${ultimoDia.litros.toFixed(1)}L) es 20% menor al promedio semanal (${promedioUltimos7.toFixed(1)}L)`,
-        });
-      }
+    // Alertas de caída de producción
+    const registrosConAlerta = registros.filter(r => r.alertaCaida);
+    if (registrosConAlerta.length > 0) {
+      alertas.push({
+        tipo: "Caída Producción",
+        severidad: "Alta",
+        mensaje: `${registrosConAlerta.length} animales con caída de producción detectada`,
+      });
     }
 
+    // Alerta de calidad
     if (promedioSCC && promedioSCC > 200000) {
       alertas.push({
         tipo: "Calidad Leche",

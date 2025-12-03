@@ -55,6 +55,8 @@ const menuItems = [
   { icon: Calculator, label: "Herramientas Agrícolas", href: "/herramientas-agricolas" },
   { icon: Bug, label: "Plagas y Riego", href: "/plagas-riego" },
   { icon: Beef, label: "Ganadería Avanzada", href: "/ganaderia-avanzada" },
+  { icon: TrendingUp, label: "Agricultura Avanzada", href: "/agricultura-avanzada" },
+  { icon: Activity, label: "Ganadería Completa", href: "/ganaderia-completa" },
   { icon: Leaf, label: "Sostenibilidad", href: "/sostenibilidad" },
 ];
 

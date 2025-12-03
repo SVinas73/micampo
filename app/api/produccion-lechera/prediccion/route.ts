@@ -16,11 +16,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // Obtener últimos 90 días de producción
+    // Obtener últimos 90 días de producción (NUEVO modelo)
     const fechaDesde = new Date();
     fechaDesde.setDate(fechaDesde.getDate() - 90);
 
-    const registros = await prisma.registroLechero.findMany({
+    const registros = await prisma.produccionLechera.findMany({
       where: {
         userId: session.user.id,
         fecha: {
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       if (!acc[fecha]) {
         acc[fecha] = { fecha, litros: 0, registros: 0 };
       }
-      acc[fecha].litros += r.litros;
+      acc[fecha].litros += r.litrosTotales; // CAMBIO AQUÍ
       acc[fecha].registros += 1;
       return acc;
     }, {});
