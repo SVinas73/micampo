@@ -57,6 +57,7 @@ const menuItems = [
   { icon: Beef, label: "Ganadería Avanzada", href: "/ganaderia-avanzada" },
   { icon: TrendingUp, label: "Agricultura Avanzada", href: "/agricultura-avanzada" },
   { icon: Activity, label: "Ganadería Completa", href: "/ganaderia-completa" },
+  { icon: Package, label: "Logística e Inventario", href: "/logistica-inventario" },
   { icon: Leaf, label: "Sostenibilidad", href: "/sostenibilidad" },
 ];
 

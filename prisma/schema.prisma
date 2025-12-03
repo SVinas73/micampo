@@ -107,7 +107,26 @@ model User {
   silos               Silo[]
   movimientosSilo     MovimientoSilo[]
   calidadesGrano      CalidadGrano[]
-  ticketsBalanza      TicketBalanza[]         
+  ticketsBalanza      TicketBalanza[]
+  comprobantes          Comprobante[]
+  itemsComprobante      ItemComprobante[]
+  asignacionesCosto     AsignacionCosto[]
+  activosFijos          ActivoFijo[]
+  registrosDepreciacion RegistroDepreciacion[]
+  tiposCambio           TipoCambio[]
+  facturasEmitidas      FacturaEmitida[]
+  itemsFacturaEmitida   ItemFacturaEmitida[]
+  pagosRecibidos        PagoRecibido[]
+  cuentasPorPagar       CuentaPorPagar[]
+  pagosRealizados       PagoRealizado[]
+  empleados             Empleado[]
+  registrosHorasEmpleado RegistroHorasEmpleado[]
+  pagosSalario          PagoSalario[]
+  tareasEmpleado        TareaEmpleado[]
+  roles                 Rol[]
+  usuariosRol           UsuarioRol[]
+  contratistas          Contratista[]
+  trabajosContratista   TrabajoContratista[]         
   
   @@map("users")
 }
@@ -138,6 +157,7 @@ model Transaccion {
   fecha       DateTime
   userId      String
   campoId     String?
+  comprobante           Comprobante?  // ← AGREGAR
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   extractoBancario ExtractoBancario?  // ← NUEVO
@@ -327,6 +347,7 @@ model Maquina {
   registrosHoras  RegistroHoras[]
   labores         Labor[]
   cargasCombustible   CargaCombustible[]  // ← AGREGAR
+  activoFijo            ActivoFijo?   // ← AGREGAR (relación inversa)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -768,6 +789,7 @@ model CuentaBancaria {
   activa          Boolean  @default(true)
   extractos       ExtractoBancario[]
   conciliaciones  Conciliacion[]
+  pagosRealizados       PagoRealizado[]  // ← AGREGAR
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
@@ -2874,4 +2896,632 @@ model TicketBalanza {
   @@index([userId])
   @@index([fecha])
   @@index([numeroTicket])
+}
+
+// ============================================================================
+// MÓDULO: FINANZAS Y ADMINISTRACIÓN AVANZADA
+// ============================================================================
+
+// Comprobantes (Facturas, Recibos, etc.)
+model Comprobante {
+  id              String   @id @default(cuid())
+  tipo            String
+  numero          String
+  fecha           DateTime
+  
+  // Proveedor/Cliente
+  razonSocial     String
+  rut             String?
+  direccion       String?
+  
+  // Montos
+  moneda          String   @default("USD")
+  subtotal        Float
+  iva             Float    @default(0)
+  total           Float
+  
+  // Items del comprobante
+  items           ItemComprobante[]
+  
+  // Archivo
+  archivoUrl      String?
+  archivoNombre   String?
+  
+  // OCR
+  procesadoOCR    Boolean  @default(false)
+  datosOCR        String?
+  confianzaOCR    Float?
+  
+  // Relación con transacción
+  transaccionId   String?  @unique
+  transaccion     Transaccion? @relation(fields: [transaccionId], references: [id], onDelete: SetNull)
+  
+  // Asignación de costos
+  asignacionCostos AsignacionCosto[]
+  
+  // Relación con cuenta por pagar (AGREGAR ESTA LÍNEA) ⬇️
+  cuentaPorPagar   CuentaPorPagar?
+  
+  // Estado
+  estado          String   @default("Pendiente")
+  fechaPago       DateTime?
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fecha])
+  @@index([estado])
+  @@index([tipo])
+}
+
+// Items de Comprobantes
+model ItemComprobante {
+  id              String   @id @default(cuid())
+  comprobanteId   String
+  comprobante     Comprobante @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
+  
+  descripcion     String
+  cantidad        Float
+  precioUnitario  Float
+  subtotal        Float
+  iva             Float    @default(0)
+  total           Float
+  
+  // Categorización
+  categoria       String?  // Semilla, Fertilizante, Combustible, etc
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([comprobanteId])
+}
+
+// Asignación de Costos a Lotes/Animales
+model AsignacionCosto {
+  id              String   @id @default(cuid())
+  comprobanteId   String
+  comprobante     Comprobante @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
+  
+  // Destino del costo
+  tipoDestino     String   // Lote, Animal, General
+  destinoId       String?  // ID del lote o animal
+  destinoNombre   String?  // Nombre para display
+  
+  // Monto asignado
+  monto           Float
+  porcentaje      Float?   // % del total si es prorrateo
+  
+  // Tipo de costo
+  tipoCosto       String   // Directo, Indirecto, Fijo, Variable
+  categoria       String   // Semilla, Fertilizante, Labor, Sanidad, etc
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([comprobanteId])
+  @@index([destinoId])
+}
+
+// Activos Fijos (Maquinaria, Instalaciones)
+model ActivoFijo {
+  id              String   @id @default(cuid())
+  codigo          String   @unique
+  nombre          String
+  tipo            String   // Maquinaria, Instalacion, Vehiculo, Herramienta
+  
+  // Datos del activo
+  descripcion     String?
+  marca           String?
+  modelo          String?
+  anioFabricacion Int?
+  numeroSerie     String?
+  
+  // Valuación
+  valorAdquisicion Float   // USD
+  moneda          String   @default("USD")
+  fechaAdquisicion DateTime
+  
+  // Depreciación
+  vidaUtilAnios   Int      // Años de vida útil
+  valorResidual   Float    @default(0) // Valor al final de la vida útil
+  metodoDepreciacion String @default("Lineal") // Lineal, Acelerado
+  
+  // Cálculos automáticos
+  depreciacionAnual Float  // Calculado
+  depreciacionMensual Float // Calculado
+  depreciacionAcumulada Float @default(0)
+  valorActual     Float    // Valor - Depreciación acumulada
+  
+  // Estado
+  estado          String   @default("Activo") // Activo, Vendido, Dado de Baja
+  fechaBaja       DateTime?
+  motivoBaja      String?
+  
+  // Relación con maquinaria (si aplica)
+  maquinaId       String?  @unique
+  maquina         Maquina? @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
+  
+  // Historial de depreciación
+  registrosDepreciacion RegistroDepreciacion[]
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([estado])
+  @@index([tipo])
+}
+
+// Registro de Depreciación Mensual
+model RegistroDepreciacion {
+  id              String   @id @default(cuid())
+  activoFijoId    String
+  activoFijo      ActivoFijo @relation(fields: [activoFijoId], references: [id], onDelete: Cascade)
+  
+  periodo         String   // YYYY-MM
+  mes             Int
+  anio            Int
+  
+  montoDepreciacion Float
+  depreciacionAcumulada Float
+  valorLibros     Float    // Valor en libros al final del período
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([activoFijoId])
+  @@index([periodo])
+  @@unique([activoFijoId, periodo])
+}
+
+// Tipos de Cambio (Multi-Moneda)
+model TipoCambio {
+  id              String   @id @default(cuid())
+  fecha           DateTime @default(now())
+  
+  // Monedas
+  monedaBase      String   @default("USD")
+  monedaDestino   String   // UYU, ARS, BRL
+  
+  // Tasas
+  compra          Float
+  venta           Float
+  promedio        Float
+  
+  // Fuente
+  fuente          String   @default("Manual") // Manual, API, BancoCentral
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([fecha])
+  @@index([monedaDestino])
+  @@unique([fecha, monedaBase, monedaDestino, userId])
+}
+
+// Facturas Emitidas (Ventas)
+model FacturaEmitida {
+  id              String   @id @default(cuid())
+  numero          String   @unique
+  serie           String?  // A, B, C
+  tipo            String   @default("Factura") // Factura, NotaCredito, NotaDebito
+  
+  fecha           DateTime
+  fechaVencimiento DateTime?
+  
+  // Cliente
+  clienteNombre   String
+  clienteRut      String?
+  clienteDireccion String?
+  clienteEmail    String?
+  
+  // Montos
+  moneda          String   @default("USD")
+  subtotal        Float
+  iva             Float
+  total           Float
+  
+  // Items
+  items           ItemFacturaEmitida[]
+  
+  // Cobro
+  estadoCobro     String   @default("Pendiente") // Pendiente, Parcial, Cobrado
+  montoCobrado    Float    @default(0)
+  saldo           Float    // Total - MontoCobrado
+  
+  // Pagos recibidos
+  pagos           PagoRecibido[]
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fecha])
+  @@index([estadoCobro])
+}
+
+// Items de Facturas Emitidas
+model ItemFacturaEmitida {
+  id              String   @id @default(cuid())
+  facturaId       String
+  factura         FacturaEmitida @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  
+  descripcion     String
+  cantidad        Float
+  precioUnitario  Float
+  subtotal        Float
+  iva             Float
+  total           Float
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([facturaId])
+}
+
+// Pagos Recibidos
+model PagoRecibido {
+  id              String   @id @default(cuid())
+  facturaId       String
+  factura         FacturaEmitida @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  
+  fecha           DateTime
+  monto           Float
+  moneda          String   @default("USD")
+  
+  metodoPago      String   // Efectivo, Transferencia, Cheque, Tarjeta
+  referencia      String?  // Número de transferencia, cheque, etc
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([facturaId])
+  @@index([fecha])
+}
+
+// Cuentas por Pagar
+model CuentaPorPagar {
+  id              String   @id @default(cuid())
+  comprobanteId   String?  @unique
+  comprobante     Comprobante? @relation(fields: [comprobanteId], references: [id], onDelete: SetNull)
+  
+  // Proveedor
+  proveedor       String
+  proveedorRut    String?
+  
+  // Deuda
+  concepto        String
+  fechaEmision    DateTime
+  fechaVencimiento DateTime
+  monto           Float
+  moneda          String   @default("USD")
+  
+  // Pagos
+  estadoPago      String   @default("Pendiente") // Pendiente, Parcial, Pagado
+  montoPagado     Float    @default(0)
+  saldo           Float    // Monto - MontoPagado
+  
+  pagos           PagoRealizado[]
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([estadoPago])
+  @@index([fechaVencimiento])
+}
+
+// Pagos Realizados
+model PagoRealizado {
+  id              String   @id @default(cuid())
+  cuentaPorPagarId String
+  cuentaPorPagar  CuentaPorPagar @relation(fields: [cuentaPorPagarId], references: [id], onDelete: Cascade)
+  
+  fecha           DateTime
+  monto           Float
+  moneda          String   @default("USD")
+  
+  metodoPago      String   // Efectivo, Transferencia, Cheque
+  referencia      String?
+  
+  cuentaBancariaId String?
+  cuentaBancaria  CuentaBancaria? @relation(fields: [cuentaBancariaId], references: [id], onDelete: SetNull)
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([cuentaPorPagarId])
+  @@index([fecha])
+}
+
+// Empleados
+model Empleado {
+  id              String   @id @default(cuid())
+  legajo          String   @unique
+  
+  // Datos personales
+  nombre          String
+  apellido        String
+  documento       String
+  fechaNacimiento DateTime?
+  email           String?
+  telefono        String?
+  direccion       String?
+  
+  // Laborales
+  cargo           String
+  area            String?  // Agricultura, Ganadería, Administración, Mantenimiento
+  fechaIngreso    DateTime
+  fechaEgreso     DateTime?
+  estado          String   @default("Activo") // Activo, Inactivo, Despedido
+  
+  // Remuneración
+  tipoContrato    String   // Mensual, Jornal, Por Hora
+  salarioBase     Float    // En moneda base
+  moneda          String   @default("USD")
+  
+  // Beneficios
+  aguinaldo       Boolean  @default(true)
+  salarioVacacional Boolean @default(true)
+  
+  // Relaciones
+  registrosHoras  RegistroHorasEmpleado[]
+  pagos           PagoSalario[]
+  tareas          TareaEmpleado[]
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([estado])
+  @@index([area])
+}
+
+// Registro de Horas de Empleados
+model RegistroHorasEmpleado {
+  id              String   @id @default(cuid())
+  empleadoId      String
+  empleado        Empleado @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  
+  fecha           DateTime
+  horasRegulares  Float    @default(0)
+  horasExtra      Float    @default(0)
+  horasNocturnas  Float    @default(0)
+  
+  // Actividad
+  actividad       String?  // Siembra, Cosecha, Mantenimiento, etc
+  loteId          String?
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([empleadoId])
+  @@index([fecha])
+}
+
+// Pagos de Salario
+model PagoSalario {
+  id              String   @id @default(cuid())
+  empleadoId      String
+  empleado        Empleado @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  
+  periodo         String   // YYYY-MM
+  fechaPago       DateTime
+  
+  // Conceptos
+  salarioBase     Float
+  horasExtra      Float    @default(0)
+  bonificaciones  Float    @default(0)
+  deducciones     Float    @default(0)
+  
+  // Total
+  totalBruto      Float
+  totalNeto       Float
+  
+  moneda          String   @default("USD")
+  metodoPago      String   @default("Transferencia")
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([empleadoId])
+  @@index([periodo])
+  @@unique([empleadoId, periodo])
+}
+
+// Tareas Asignadas a Empleados
+model TareaEmpleado {
+  id              String   @id @default(cuid())
+  empleadoId      String
+  empleado        Empleado @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  
+  titulo          String
+  descripcion     String?
+  prioridad       String   @default("Media") // Baja, Media, Alta, Urgente
+  
+  fechaAsignacion DateTime @default(now())
+  fechaVencimiento DateTime?
+  fechaCompletada DateTime?
+  
+  estado          String   @default("Pendiente") // Pendiente, EnProceso, Completada, Cancelada
+  
+  // Ubicación
+  loteId          String?
+  ubicacion       String?
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([empleadoId])
+  @@index([estado])
+  @@index([fechaVencimiento])
+}
+
+// Roles y Permisos
+model Rol {
+  id              String   @id @default(cuid())
+  nombre          String   // Admin, Gerente, Agronomo, Inversor, Contratista
+  descripcion     String?
+  
+  // Permisos por módulo (JSON)
+  permisos        String   // JSON: {finanzas: {ver: true, editar: false}, ganaderia: {...}}
+  
+  // Usuarios con este rol
+  usuariosRol     UsuarioRol[]
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@unique([userId, nombre])
+}
+
+// Relación Usuario-Rol
+model UsuarioRol {
+  id              String   @id @default(cuid())
+  usuarioEmail    String   // Email del usuario invitado
+  rolId           String
+  rol             Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  
+  estado          String   @default("Activo") // Activo, Inactivo, Invitado
+  fechaInvitacion DateTime @default(now())
+  fechaAceptacion DateTime?
+  
+  // Restricciones adicionales
+  restricciones   String?  // JSON con restricciones específicas
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([usuarioEmail])
+  @@unique([usuarioEmail, rolId, userId])
+}
+
+// Portal de Contratistas
+model Contratista {
+  id              String   @id @default(cuid())
+  nombre          String
+  empresa         String?
+  rut             String?
+  email           String   @unique
+  telefono        String?
+  
+  // Especialidad
+  especialidad    String   // Siembra, Cosecha, Pulverizacion, Transporte
+  
+  // Acceso
+  codigoAcceso    String   @unique
+  estado          String   @default("Activo") // Activo, Inactivo, Bloqueado
+  
+  // Trabajos asignados
+  trabajos        TrabajoContratista[]
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([email])
+  @@index([estado])
+}
+
+// Trabajos Asignados a Contratistas
+model TrabajoContratista {
+  id              String   @id @default(cuid())
+  contratistaId   String
+  contratista     Contratista @relation(fields: [contratistaId], references: [id], onDelete: Cascade)
+  
+  titulo          String
+  descripcion     String
+  tipo            String   // Siembra, Cosecha, Pulverizacion, etc
+  
+  // Ubicación
+  loteId          String?
+  loteNombre      String?
+  hectareas       Float?
+  
+  // Fechas
+  fechaAsignacion DateTime @default(now())
+  fechaInicio     DateTime?
+  fechaCompletada DateTime?
+  
+  // Estado
+  estado          String   @default("Asignado") // Asignado, EnProceso, Completado, Cancelado
+  
+  // Archivos subidos por contratista
+  archivosUrl     String?  // JSON con URLs
+  
+  // Pago
+  monto           Float?
+  moneda          String   @default("USD")
+  estadoPago      String   @default("Pendiente") // Pendiente, Pagado
+  
+  observaciones   String?
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([contratistaId])
+  @@index([estado])
 }
