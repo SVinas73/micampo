@@ -4,13 +4,13 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { 
-  LayoutDashboard, 
-  DollarSign, 
+import {
+  LayoutDashboard,
+  DollarSign,
   Sprout,
-  BookOpen, 
-  Beef, 
-  Truck, 
+  BookOpen,
+  Beef,
+  Truck,
   TrendingUp,
   Package,
   CloudSun,
@@ -81,9 +81,9 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <img 
-            src="/logo.jpg" 
-            alt="MiCampo" 
+          <img
+            src="/logo.jpg"
+            alt="MiCampo"
             className="w-20 h-20 mx-auto mb-4 rounded-lg object-contain"
           />
           <p className="text-gray-600">Cargando...</p>
@@ -106,7 +106,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50 relative">
       {/* Fondo Difuminado */}
-      <div 
+      <div
         className="fixed inset-0 z-0"
         style={{
           backgroundImage: 'url(/campo-fondo.jpg)',
@@ -125,9 +125,9 @@ export default function DashboardLayout({
           <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
             {/* Logo - CAMBIÁ AQUÍ EL TAMAÑO */}
             <div className="flex flex-col items-center flex-shrink-0 px-4 mb-6">
-              <img 
-                src="/logo.jpg" 
-                alt="MiCampo Logo" 
+              <img
+                src="/logo.jpg"
+                alt="MiCampo Logo"
                 className="w-24 h-24 rounded-lg object-contain mb-2"
                 style={{ maxWidth: '100%', height: 'auto' }}
               />
@@ -152,15 +152,14 @@ export default function DashboardLayout({
                     href={item.href}
                     className={`
                       group flex items-center px-3 py-2 text-sm font-medium rounded-md
-                      ${isActive 
-                        ? "bg-green-50 text-green-700" 
+                      ${isActive
+                        ? "bg-green-50 text-green-700"
                         : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                       }
                     `}
                   >
-                    <Icon className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                      isActive ? "text-green-700" : "text-gray-500"
-                    }`} />
+                    <Icon className={`mr-3 h-5 w-5 flex-shrink-0 ${isActive ? "text-green-700" : "text-gray-500"
+                      }`} />
                     {item.label}
                   </Link>
                 );
@@ -202,9 +201,9 @@ export default function DashboardLayout({
           </button>
           <div className="flex-1 px-4 flex justify-between items-center">
             <div className="flex items-center">
-              <img 
-                src="/logo.jpg" 
-                alt="MiCampo" 
+              <img
+                src="/logo.jpg"
+                alt="MiCampo"
                 className="w-10 h-10 rounded-lg object-contain"
               />
               <span className="ml-2 text-lg font-bold text-gray-900">MiCampo</span>
@@ -236,9 +235,9 @@ export default function DashboardLayout({
               </div>
               <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
                 <div className="flex flex-col items-center flex-shrink-0 px-4 mb-6">
-                  <img 
-                    src="/logo.jpg" 
-                    alt="MiCampo" 
+                  <img
+                    src="/logo.jpg"
+                    alt="MiCampo"
                     className="w-20 h-20 rounded-lg object-contain mb-2"
                   />
                   <span className="text-xl font-bold text-gray-900">MiCampo</span>
@@ -260,16 +259,15 @@ export default function DashboardLayout({
                         href={item.href}
                         className={`
                           group flex items-center px-3 py-2 text-sm font-medium rounded-md
-                          ${isActive 
-                            ? "bg-green-50 text-green-700" 
+                          ${isActive
+                            ? "bg-green-50 text-green-700"
                             : "text-gray-700 hover:bg-gray-50"
                           }
                         `}
                         onClick={() => setSidebarOpen(false)}
                       >
-                        <Icon className={`mr-3 h-5 w-5 ${
-                          isActive ? "text-green-700" : "text-gray-500"
-                        }`} />
+                        <Icon className={`mr-3 h-5 w-5 ${isActive ? "text-green-700" : "text-gray-500"
+                          }`} />
                         {item.label}
                       </Link>
                     );

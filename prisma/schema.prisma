@@ -208,6 +208,8 @@ model Lote {
   sensoresIoT             SensorIoT[] // ← NUEVO
   mapasRendimiento        MapaRendimiento[] // ← NUEVO
   controlCargaAnimal      ControlCargaAnimal[] // ← NUEVO
+  // NUEVA RELACIÓN:
+  recetasAgronomicas      RecetaAgronomica[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -465,6 +467,9 @@ model Labor {
   // Productos aplicados
   aplicacionesProductos AplicacionProducto[]
   costos                CostoLote[] // ← NUEVO
+
+  recetaAgronomica RecetaAgronomica?
+  aplicadoPor      String? // ⬅️ AGREGAR (nombre del operador que ejecutó)
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -3464,8 +3469,17 @@ model Establecimiento {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  cuit String? // ⬅️ AGREGAR
+
   // Relaciones
   maquinarias Maquinaria[]
+
+  // NUEVAS RELACIONES SOSTENIBILIDAD:
+  huellasCarbono       HuellaCarbono[]
+  recetasAgronomicas   RecetaAgronomica[]
+  reportesAgroquimicos ReporteAgroquimico[]
+  certificaciones      CertificacionSostenibilidad[]
+  declaracionesEUDR    ComplianceEUDR[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -4010,4 +4024,491 @@ model ChecklistDiario {
   @@index([maquinariaId])
   @@index([fecha])
   @@index([operador])
+}
+
+// ============================================
+// MÓDULO 6: SOSTENIBILIDAD Y CUMPLIMIENTO
+// ============================================
+
+// 1. HUELLA DE CARBONO - Cálculo automático de emisiones
+model HuellaCarbono {
+  id                String          @id @default(cuid())
+  establecimientoId String
+  establecimiento   Establecimiento @relation(fields: [establecimientoId], references: [id], onDelete: Cascade)
+
+  // Período de cálculo
+  periodo     String // "2024-Q1", "2024-Enero", "2024-Año"
+  fechaInicio DateTime
+  fechaFin    DateTime
+
+  // Emisiones por categoría (kg CO2e - dióxido de carbono equivalente)
+  emisionesCombustible   Float @default(0) // De maquinaria
+  emisionesFertilizantes Float @default(0) // De labores agrícolas
+  emisionesAgroquimicos  Float @default(0) // De labores agrícolas
+  emisionesGanaderia     Float @default(0) // De ganado (metano CH4)
+  emisionesElectricidad  Float @default(0) // De consumo eléctrico
+  emisionesTransporte    Float @default(0) // De transporte de productos
+
+  // Totales calculados
+  emisionesTotales     Float  @default(0) // Suma de todas las categorías
+  emisionesPorHectarea Float  @default(0) // Total / hectáreas del establecimiento
+  emisionesPorTonelada Float? // Total / toneladas producidas
+
+  // Comparación y objetivos
+  objetivoReduccion Float? // % de reducción objetivo
+  reduccionLograda  Float? // % vs período anterior
+  tendencia         String? // "Mejorando", "Estable", "Empeorando"
+
+  // Metodología y detalles técnicos
+  metodologiaCalculo String @default("GHG Protocol") // "GHG Protocol", "ISO 14064", "PAS 2050"
+  factoresEmision    Json? // Factores de emisión usados en el cálculo
+  alcance1           Float  @default(0) // Emisiones directas
+  alcance2           Float  @default(0) // Emisiones indirectas energía
+  alcance3           Float? // Otras emisiones indirectas
+
+  // Compensación
+  capturaCarbono  Float? // kg CO2 capturados (forestación, etc)
+  creditosCarbono Int? // Créditos de carbono adquiridos
+
+  // Auditoría y verificación
+  calculadoPor         String? // Usuario que generó el cálculo
+  verificadoPor        String? // Auditor externo
+  certificado          Boolean @default(false)
+  documentoCertificado String? // URL del certificado
+
+  observaciones String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([establecimientoId, periodo])
+  @@index([establecimientoId])
+  @@index([fechaInicio, fechaFin])
+}
+
+// 2. RECETA AGRONÓMICA - Prescripción legal de agroquímicos
+model RecetaAgronomica {
+  id                String          @id @default(cuid())
+  establecimientoId String
+  establecimiento   Establecimiento @relation(fields: [establecimientoId], references: [id], onDelete: Cascade)
+
+  // Identificación única
+  numeroReceta String @unique // "RA-2024-001"
+  estado       String // "Pendiente", "Aprobada", "Aplicada", "Vencida", "Cancelada"
+
+  // Profesional responsable (OBLIGATORIO por ley)
+  ingenieroAgronomo    String // Nombre completo del profesional
+  matriculaProfesional String // Matrícula o registro profesional
+  telefonoProfesional  String?
+  emailProfesional     String?
+  firmaProfesional     String? // URL de firma digital/escaneada
+
+  // Lote y cultivo objetivo
+  loteId    String?
+  lote      Lote?   @relation(fields: [loteId], references: [id], onDelete: SetNull)
+  cultivo   String // Cultivo a tratar
+  variedad  String? // Variedad específica
+  hectareas Float // Superficie a tratar
+
+  // Diagnóstico del problema
+  diagnostico      String  @db.Text // Descripción detallada del problema
+  plagaEnfermedad  String? // Nombre científico de la plaga/enfermedad
+  nivelInfestacion String? // "Bajo", "Medio", "Alto", "Muy Alto"
+  estadoFenologico String? // Código BBCH o descripción
+
+  // Productos prescriptos
+  productos RecetaProducto[]
+
+  // Período de vigencia
+  fechaEmision     DateTime  @default(now())
+  fechaVencimiento DateTime // Generalmente 30-60 días después
+  fechaAplicacion  DateTime? // Cuando se aplicó realmente
+
+  // Condiciones de aplicación
+  temperaturaMaxima Float? // °C máxima para aplicar
+  humedadMinima     Float? // % humedad mínima
+  vientoMaximo      Float? // km/h máximo de viento
+  restricciones     String[] // ["No aplicar con lluvia", "Evitar horas de calor", etc]
+
+  // Seguridad y protección
+  epp              String[] // Equipos de protección personal requeridos
+  periodoReingreso Int? // Horas hasta reingreso seguro al lote
+  periodoCarencia  Int? // Días hasta poder cosechar
+  lmr              String? // Límite Máximo de Residuos
+
+  // Trazabilidad de aplicación
+  laborId     String? @unique
+  labor       Labor?  @relation(fields: [laborId], references: [id], onDelete: SetNull)
+  aplicadoPor String? // Operador que aplicó
+
+  // Documentación
+  documentoPdfUrl     String? // PDF de la receta generada
+  documentoFirmadoUrl String? // PDF con firma digital
+
+  observaciones String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([establecimientoId])
+  @@index([numeroReceta])
+  @@index([estado])
+  @@index([fechaEmision])
+}
+
+// 3. PRODUCTOS EN RECETA AGRONÓMICA
+model RecetaProducto {
+  id       String           @id @default(cuid())
+  recetaId String
+  receta   RecetaAgronomica @relation(fields: [recetaId], references: [id], onDelete: Cascade)
+
+  // Identificación del producto
+  nombreComercial   String // Nombre comercial del producto
+  ingredienteActivo String // Principio activo
+  concentracion     String // "48% EC", "80% WG", etc
+  registroSenasa    String? // Número de registro oficial
+
+  // Dosis prescripta
+  dosis        Float // Cantidad por hectárea
+  unidadDosis  String // "L/ha", "kg/ha", "cc/100L", "gr/ha"
+  dosisTotal   Float // dosis * hectáreas (total a usar)
+  volumenCaldo Float? // Litros de caldo por hectárea
+
+  // Clasificación toxicológica
+  bandaToxicologica  String // "Ia", "Ib", "II", "III", "IV", "U"
+  clasificacionOMS   String? // Clasificación OMS
+  categoriaAmbiental String? // I, II, III, IV (impacto ambiental)
+
+  // Tipo de producto
+  tipoProducto String // "Herbicida", "Insecticida", "Fungicida", "Fertilizante"
+  modoAccion   String? // Contacto, Sistémico, etc
+
+  // Información comercial
+  fabricante       String?
+  distribuidor     String?
+  lote             String? // Lote del producto
+  fechaVencimiento DateTime?
+
+  // Restricciones específicas
+  restriccionesEspecificas String[] // Restricciones adicionales de este producto
+  intervaloAplicacion      Int? // Días entre aplicaciones
+  numeroMaximoAplicaciones Int? // Máximo de aplicaciones por ciclo
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([recetaId])
+}
+
+// 4. REPORTE DE AGROQUÍMICOS - Para autoridades
+model ReporteAgroquimico {
+  id                String          @id @default(cuid())
+  establecimientoId String
+  establecimiento   Establecimiento @relation(fields: [establecimientoId], references: [id], onDelete: Cascade)
+
+  // Período reportado
+  periodo     String // "2024-Semestre-1", "2024-Trimestre-2"
+  fechaInicio DateTime
+  fechaFin    DateTime
+
+  // Tipo de reporte y destino
+  tipoReporte      String // "SENASA", "MinAgro", "Aduana", "Provincial", "Municipal"
+  numeroReporte    String? @unique // Número asignado por autoridad
+  organismoDestino String? // Organismo que recibe
+
+  // Resumen cuantitativo
+  totalProductos    Int   @default(0) // Productos diferentes usados
+  totalLitros       Float @default(0) // Total litros (líquidos)
+  totalKilos        Float @default(0) // Total kilos (sólidos)
+  totalHectareas    Float @default(0) // Hectáreas tratadas
+  totalAplicaciones Int   @default(0) // Número de aplicaciones
+
+  // Detalle de productos (JSON agrupado)
+  productosDetalle Json // Array de {producto, cantidad, unidad, hectareas}
+
+  // Clasificación por tipo
+  herbicidas    Float @default(0) // kg o L
+  insecticidas  Float @default(0)
+  fungicidas    Float @default(0)
+  fertilizantes Float @default(0)
+  coadyuvantes  Float @default(0)
+  otros         Float @default(0)
+
+  // Clasificación por banda toxicológica
+  bandaIa  Float @default(0) // Extremadamente peligroso
+  bandaIb  Float @default(0) // Altamente peligroso
+  bandaII  Float @default(0) // Moderadamente peligroso
+  bandaIII Float @default(0) // Ligeramente peligroso
+  bandaIV  Float @default(0) // Normalmente no peligroso
+  bandaU   Float @default(0) // Improbable peligro
+
+  // Clasificación ambiental
+  categoriaI   Float @default(0) // Muy peligroso
+  categoriaII  Float @default(0) // Peligroso
+  categoriaIII Float @default(0) // Moderadamente peligroso
+  categoriaIV  Float @default(0) // Poco peligroso
+
+  // Estado del reporte
+  estado          String    @default("Borrador") // "Borrador", "Enviado", "Aprobado", "Rechazado"
+  fechaEnvio      DateTime?
+  fechaAprobacion DateTime?
+
+  // Documentación
+  documentoPdfUrl      String? // PDF del reporte
+  comprobanteEnvio     String? // Comprobante de envío
+  constanciaAprobacion String? // Constancia de aprobación
+
+  // Funcionarios
+  funcionarioReceptor  String? // Quién recibió el reporte
+  funcionarioAprobador String? // Quién aprobó
+
+  // Envases vacíos (punto triple lavado)
+  envasesTratados   Int? // Cantidad de envases tratados
+  envasesPendientes Int? // Cantidad pendiente
+
+  observaciones String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([establecimientoId])
+  @@index([periodo])
+  @@index([estado])
+}
+
+// 5. CERTIFICACIÓN DE SOSTENIBILIDAD
+model CertificacionSostenibilidad {
+  id                String          @id @default(cuid())
+  establecimientoId String
+  establecimiento   Establecimiento @relation(fields: [establecimientoId], references: [id], onDelete: Cascade)
+
+  // Tipo de certificación
+  tipoCertificacion String // "GLOBALG.A.P.", "Organic", "Rainforest Alliance", "UTZ", "Fair Trade"
+  esquema           String? // "IFA", "FSMA", etc (sub-esquema)
+  alcance           String[] // ["Frutas", "Hortalizas", "Granos"]
+
+  // Identificación
+  numeroCertificado String? @unique
+  gln               String? // Global Location Number
+
+  // Estado
+  estado String // "En Proceso", "Vigente", "Por Renovar", "Suspendida", "Vencida"
+
+  // Fechas clave
+  fechaSolicitud        DateTime?
+  fechaAuditoriaInicial DateTime?
+  fechaAuditoriaFinal   DateTime?
+  fechaEmision          DateTime?
+  fechaVencimiento      DateTime?
+
+  // Organismo certificador
+  organismoCertificador String // Nombre de la certificadora
+  numeroAcreditacion    String? // Número de acreditación del organismo
+  auditores             String[] // Nombres de auditores asignados
+
+  // Checklist de requisitos
+  checklistItems ChecklistCertificacion[]
+
+  // Documentación
+  carpetaDocumentos DocumentoCertificacion[]
+
+  // No conformidades
+  noConformidadesMayores Int     @default(0)
+  noConformidadesMenures Int     @default(0)
+  observacionesAuditoria String? @db.Text
+
+  // Plan de acción correctiva
+  accionesCorrectivas     String?   @db.Text
+  fechaLimiteCorrecciones DateTime?
+
+  // Costos
+  costoAuditoria Float? // Costo de auditoría
+  costoAnual     Float? // Costo anual de certificación
+
+  // Beneficios comerciales
+  mercadosAcceso  String[] // Mercados habilitados con esta certificación
+  premioComercial Float? // % de premio comercial obtenido
+
+  observaciones String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([establecimientoId])
+  @@index([estado])
+  @@index([tipoCertificacion])
+}
+
+// 6. CHECKLIST DE CERTIFICACIÓN
+model ChecklistCertificacion {
+  id              String                      @id @default(cuid())
+  certificacionId String
+  certificacion   CertificacionSostenibilidad @relation(fields: [certificacionId], references: [id], onDelete: Cascade)
+
+  // Identificación del punto de control
+  codigo       String // "AF 1.1", "CB 4.3.2", "FV 5.2.1" (códigos GLOBALG.A.P.)
+  categoria    String // "Trazabilidad", "Seguridad Alimentaria", "Bienestar Animal"
+  subcategoria String? // Subcategoría más específica
+  descripcion  String  @db.Text // Descripción del requisito
+
+  // Nivel de cumplimiento
+  nivelRequerido         String // "Mayor Must", "Minor Must", "Recomendación"
+  cumple                 Boolean @default(false)
+  porcentajeCumplimiento Float? // Para requisitos graduales (0-100%)
+
+  // Evidencia
+  evidencia    String? @db.Text // Descripción de la evidencia
+  documentoUrl String? // URL de documento probatorio
+  fotoUrl      String? // URL de foto de evidencia
+
+  // Evaluación
+  criticidad        String // "Mayor", "Menor", "Recomendación"
+  esNoConformidad   Boolean @default(false)
+  tipoNoConformidad String? // "Mayor", "Menor" si es no conformidad
+
+  // Acciones correctivas (si no cumple)
+  accionCorrectiva  String?   @db.Text
+  responsableAccion String?
+  fechaLimiteAccion DateTime?
+  estadoAccion      String? // "Pendiente", "En Proceso", "Completada"
+
+  // Verificación
+  fechaVerificacion DateTime?
+  verificadoPor     String? // Nombre del auditor
+
+  observaciones String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([certificacionId])
+  @@index([codigo])
+}
+
+// 7. DOCUMENTOS DE CERTIFICACIÓN
+model DocumentoCertificacion {
+  id              String                      @id @default(cuid())
+  certificacionId String
+  certificacion   CertificacionSostenibilidad @relation(fields: [certificacionId], references: [id], onDelete: Cascade)
+
+  // Información del documento
+  titulo      String
+  categoria   String // "Registros", "Procedimientos", "Planos", "Análisis", "Capacitaciones"
+  descripcion String? @db.Text
+
+  // Archivo
+  archivoUrl    String // URL del archivo almacenado
+  tipoArchivo   String // "PDF", "Excel", "Word", "Imagen", "Video"
+  tamanioBytes  Int
+  nombreArchivo String
+
+  // Metadatos
+  requisitoRelacionado String? // Código del requisito que cumple
+  puntoControl         String[] // Códigos de puntos de control relacionados
+
+  // Vigencia
+  fechaDocumento DateTime?
+  fechaEmision   DateTime?
+  validoHasta    DateTime?
+
+  // Control de versiones
+  version           String  @default("1.0")
+  esVersionActual   Boolean @default(true)
+  versionAnteriorId String? // ID de versión anterior
+
+  // Aprobación
+  aprobadoPor     String?
+  cargoAprobador  String?
+  fechaAprobacion DateTime?
+
+  // Etiquetas
+  etiquetas String[] // Para búsqueda y filtrado
+
+  observaciones String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([certificacionId])
+  @@index([categoria])
+}
+
+// 8. COMPLIANCE EUDR - Reglamento UE de No-Deforestación
+model ComplianceEUDR {
+  id                String          @id @default(cuid())
+  establecimientoId String
+  establecimiento   Establecimiento @relation(fields: [establecimientoId], references: [id], onDelete: Cascade)
+
+  // Identificación de la declaración
+  numeroDeclaracion String  @unique // "EUDR-2024-001"
+  referenceNumber   String? // Número de referencia UE (cuando se aprueba)
+
+  // Producto y destino
+  producto           String // "Soja", "Carne Bovina", "Cacao", "Café", "Aceite de Palma", "Caucho", "Madera"
+  codigoHS           String? // Código arancelario
+  volumenToneladas   Float // Volumen a exportar
+  destinoExportacion String // País de destino
+  importadorUE       String? // Nombre del importador en UE
+
+  // Geolocalización (CRÍTICO - requisito EUDR)
+  loteIds              String[] // IDs de lotes incluidos en la declaración
+  geometriaGeoJSON     Json // Polígonos de todos los lotes en formato GeoJSON
+  coordenadasCentrales String // "Lat, Long" del centroide
+  areaHectareas        Float // Área total geolocalizada
+
+  // Declaración de no-deforestación
+  fechaCorte          DateTime @default("2020-12-31T00:00:00Z") // 31-dic-2020 para EUDR
+  sinDeforestacion    Boolean  @default(false) // Declaración jurada
+  metodologiaAnalisis String? // Metodología usada para verificar
+
+  // Evidencia geoespacial (OBLIGATORIO)
+  imagenSatelital2019   String? // URL imagen antes del corte
+  imagenSatelital2020   String? // URL imagen en fecha de corte
+  imagenSatelitalActual String? // URL imagen actual
+  fuenteImagenes        String? // "Sentinel-2", "Landsat", "Planet", etc
+
+  // Análisis de cambio de cobertura
+  coberturaBoscosa2019   Float? // % de cobertura boscosa en 2019
+  coberturaBoscosa2020   Float? // % en fecha de corte
+  coberturaBoscosaActual Float? // % actual
+  cambioDetectado        Boolean @default(false)
+  detallesCambio         String? @db.Text
+
+  // Trazabilidad de la cadena de suministro
+  proveedorInsumos     String? // Proveedor de insumos/animales
+  certificadoOrigen    String? // URL de certificado
+  trazabilidadCompleta Boolean @default(false)
+
+  // Cumplimiento legal local
+  cumpleLegislacionLocal Boolean @default(true)
+  permisoAmbiental       String? // URL de permiso ambiental
+  registroPropiedad      String? // URL de título de propiedad
+  certificadoLegalidad   String? // URL de certificado de legalidad
+
+  // Evaluación de riesgo
+  nivelRiesgo       String? // "Bajo", "Medio", "Alto"
+  factoresRiesgo    String[] // Factores identificados
+  medidasMitigacion String?  @db.Text
+
+  // Estado de la declaración
+  estado            String    @default("En Preparación") // "En Preparación", "Declarado", "Verificado", "Aprobado", "Rechazado"
+  fechaDeclaracion  DateTime?
+  fechaVerificacion DateTime?
+  verificadoPor     String? // Autoridad/auditor que verificó
+
+  // Documentación Due Diligence
+  declaracionDueDiligence String? // URL del PDF de Due Diligence Statement
+  informeRiesgo           String? // URL del informe de análisis de riesgo
+  planMitigacion          String? // URL del plan de mitigación
+
+  // Información del operador
+  operadorNombre   String? // Nombre del operador responsable
+  operadorEORI     String? // EORI number (para operadores UE)
+  operadorContacto String?
+
+  // Observaciones y notas
+  observaciones String? @db.Text
+  notas         String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([establecimientoId])
+  @@index([numeroDeclaracion])
+  @@index([producto])
+  @@index([estado])
 }

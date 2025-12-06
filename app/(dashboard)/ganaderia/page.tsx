@@ -696,8 +696,8 @@ export default function GanaderiaPage() {
                             {animal.registrosPeso.length > 0
                               ? `${animal.registrosPeso[0].peso} kg`
                               : animal.pesoNacimiento
-                              ? `${animal.pesoNacimiento} kg (nac.)`
-                              : "-"}
+                                ? `${animal.pesoNacimiento} kg (nac.)`
+                                : "-"}
                           </td>
                           <td className="py-3 px-4 text-right">
                             <Button
@@ -947,12 +947,11 @@ export default function GanaderiaPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <CardTitle className="text-lg">{evento.tipo}</CardTitle>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                evento.tipo === "Parto" ? "bg-pink-100 text-pink-800" :
-                                evento.tipo === "Servicio" ? "bg-blue-100 text-blue-800" :
-                                evento.tipo === "Diagnostico" ? "bg-purple-100 text-purple-800" :
-                                "bg-green-100 text-green-800"
-                              }`}>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${evento.tipo === "Parto" ? "bg-pink-100 text-pink-800" :
+                                  evento.tipo === "Servicio" ? "bg-blue-100 text-blue-800" :
+                                    evento.tipo === "Diagnostico" ? "bg-purple-100 text-purple-800" :
+                                      "bg-green-100 text-green-800"
+                                }`}>
                                 {evento.animal.caravana}
                               </span>
                             </div>
@@ -1006,7 +1005,7 @@ export default function GanaderiaPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </ Card>
         </TabsContent>
 
         {/* TAB SANIDAD */}
@@ -1451,11 +1450,10 @@ export default function GanaderiaPage() {
                         </div>
                         {registro.calidad && (
                           <div className="mt-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              registro.calidad === "A" ? "bg-green-100 text-green-800" :
-                              registro.calidad === "B" ? "bg-yellow-100 text-yellow-800" :
-                              "bg-orange-100 text-orange-800"
-                            }`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${registro.calidad === "A" ? "bg-green-100 text-green-800" :
+                                registro.calidad === "B" ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-orange-100 text-orange-800"
+                              }`}>
                               Calidad {registro.calidad}
                             </span>
                           </div>
