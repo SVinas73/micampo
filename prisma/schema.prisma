@@ -18,18 +18,18 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  campos                   Campo[]
-  transacciones            Transaccion[]
-  lotes                    Lote[]
-  siembras                 Siembra[]
-  cosechas                 Cosecha[]
-  animales                 Animal[]
-  eventosSanitarios        EventoSanitario[]
-  registrosPeso            RegistroPeso[]
-  movimientos              Movimiento[]
-  maquinas                 Maquina[]
-  mantenimientos           Mantenimiento[]
-  registrosHoras           RegistroHoras[]
+  campos            Campo[]
+  transacciones     Transaccion[]
+  lotes             Lote[]
+  siembras          Siembra[]
+  cosechas          Cosecha[]
+  animales          Animal[]
+  eventosSanitarios EventoSanitario[]
+  registrosPeso     RegistroPeso[]
+  movimientos       Movimiento[]
+
+  mantenimientos Mantenimiento[]
+
   contratos                Contrato[] // ← NUEVO
   entregas                 Entrega[] // ← NUEVO
   preciosReferencia        PrecioReferencia[] // ← NUEVO
@@ -127,6 +127,8 @@ model User {
   usuariosRol              UsuarioRol[]
   contratistas             Contratista[]
   trabajosContratista      TrabajoContratista[]
+  establecimientos         Establecimiento[] // ⬅️ AGREGAR ESTA LÍNEA
+  EvaluacionOperador       EvaluacionOperador[]
 
   @@map("users")
 }
@@ -332,64 +334,6 @@ model Movimiento {
   @@index([animalId])
 }
 
-model Maquina {
-  id                String             @id @default(cuid())
-  nombre            String
-  tipo              String // Tractor, Cosechadora, Sembradora, etc
-  marca             String?
-  modelo            String?
-  anio              Int?
-  horasActuales     Float              @default(0)
-  estado            String             @default("Operativa") // Operativa, En Mantenimiento, Fuera de Servicio
-  userId            String
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mantenimientos    Mantenimiento[]
-  registrosHoras    RegistroHoras[]
-  labores           Labor[]
-  cargasCombustible CargaCombustible[] // ← AGREGAR
-  activoFijo        ActivoFijo? // ← AGREGAR (relación inversa)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-
-  @@index([userId])
-}
-
-model Mantenimiento {
-  id            String        @id @default(cuid())
-  tipo          String // Preventivo, Correctivo
-  descripcion   String
-  fecha         DateTime
-  costo         Float?
-  horasActuales Float?
-  maquinaId     String
-  maquina       Maquina       @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
-  usosRepuesto  UsoRepuesto[] // ← AGREGAR
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  @@index([userId])
-  @@index([maquinaId])
-}
-
-model RegistroHoras {
-  id          String   @id @default(cuid())
-  fecha       DateTime
-  horasInicio Float
-  horasFin    Float
-  actividad   String? // Siembra, Cosecha, Pulverización, etc
-  maquinaId   String
-  maquina     Maquina  @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([userId])
-  @@index([maquinaId])
-}
-
 model Contrato {
   id             String    @id @default(cuid())
   tipo           String // Compra, Venta
@@ -515,9 +459,8 @@ model Labor {
   operarios       String? // Nombres separados por coma
   horasTrabajadas Float?
 
-  // Maquinaria
-  maquinaId String?
-  maquina   Maquina? @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
+  maquinariaId String?
+  maquinaria   Maquinaria? @relation(fields: [maquinariaId], references: [id], onDelete: SetNull)
 
   // Productos aplicados
   aplicacionesProductos AplicacionProducto[]
@@ -1786,29 +1729,6 @@ model SensorIoT {
   @@index([tipo])
 }
 
-model LecturaSensor {
-  id       String    @id @default(cuid())
-  sensorId String
-  sensor   SensorIoT @relation(fields: [sensorId], references: [id], onDelete: Cascade)
-
-  timestamp DateTime @default(now())
-  valor     Float
-  unidad    String
-
-  // Metadatos
-  calidad String? // Buena, Regular, Mala
-  bateria Float? // %
-  senal   Float? // dBm o %
-
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([sensorId])
-  @@index([timestamp])
-}
-
 model MapaRendimiento {
   id        String   @id @default(cuid())
   loteId    String
@@ -2696,9 +2616,8 @@ model CargaCombustible {
   fecha     DateTime @default(now())
   tipoCarga String // CargaTanque, CargaMaquina, Ajuste
 
-  // Maquinaria (si aplica)
-  maquinaId String?
-  maquina   Maquina? @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
+  maquinariaId String?
+  maquinaria   Maquinaria? @relation(fields: [maquinariaId], references: [id], onDelete: SetNull)
 
   // Cantidades
   litros         Float
@@ -2726,7 +2645,7 @@ model CargaCombustible {
 
   @@index([userId])
   @@index([tanqueId])
-  @@index([maquinaId])
+  @@index([maquinariaId])
   @@index([fecha])
 }
 
@@ -3049,8 +2968,8 @@ model ActivoFijo {
   motivoBaja String?
 
   // Relación con maquinaria (si aplica)
-  maquinaId String?  @unique
-  maquina   Maquina? @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
+  maquinariaId String?     @unique
+  maquinaria   Maquinaria? @relation(fields: [maquinariaId], references: [id], onDelete: SetNull)
 
   // Historial de depreciación
   registrosDepreciacion RegistroDepreciacion[]
@@ -3526,4 +3445,569 @@ model TrabajoContratista {
   @@index([userId])
   @@index([contratistaId])
   @@index([estado])
+}
+
+// ============================================
+// MODELOS BASE NECESARIOS PARA MAQUINARIA
+// ============================================
+
+model Establecimiento {
+  id               String  @id @default(cuid())
+  nombre           String
+  direccion        String?
+  ciudad           String?
+  provincia        String?
+  pais             String  @default("Uruguay")
+  hectareasTotales Float?
+
+  // ⬇️ AGREGAR ESTAS LÍNEAS
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relaciones
+  maquinarias Maquinaria[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([nombre])
+  @@index([userId]) // ⬅️ AGREGAR ÍNDICE
+}
+
+model RegistroCombustible {
+  id           String     @id @default(cuid())
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  fecha         DateTime @default(now())
+  litros        Float
+  costoLitro    Float
+  costoTotal    Float
+  horasMotor    Float?
+  operador      String?
+  estacion      String?
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maquinariaId])
+  @@index([fecha])
+}
+
+model UsoMaquinaria {
+  id           String     @id @default(cuid())
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  fecha           DateTime @default(now())
+  operador        String
+  horasInicio     Float
+  horasFin        Float
+  horasTrabajadas Float
+  tarea           String // "Siembra", "Pulverización", "Cosecha", etc
+  loteId          String?
+  loteNombre      String?
+  observaciones   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maquinariaId])
+  @@index([fecha])
+  @@index([operador])
+}
+
+model Mantenimiento {
+  id           String     @id @default(cuid())
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  tipo          String // "Preventivo", "Correctivo", "Predictivo"
+  descripcion   String
+  fecha         DateTime @default(now())
+  horasMotor    Float?
+  costo         Float?
+  observaciones String?
+  estado        String   @default("Pendiente") // "Pendiente", "En Proceso", "Completado"
+
+  // NUEVO: Relación con orden de taller
+  ordenTallerId String? // Si el mantenimiento generó una orden
+
+  repuestos UsoRepuesto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+
+  @@index([maquinariaId])
+  @@index([estado])
+  @@index([tipo])
+}
+
+model Maquinaria {
+  id              String  @id @default(cuid())
+  codigo          String  @unique
+  tipo            String // "Tractor", "Cosechadora", "Pulverizadora", "Sembradora", "Tolva"
+  marca           String
+  modelo          String
+  numeroSerie     String? @unique
+  anioFabricacion Int?
+  patente         String? @unique
+  horasMotor      Float   @default(0)
+  estado          String  @default("Operativo") // "Operativo", "Mantenimiento", "Averiado", "Fuera de Servicio"
+
+  // Información adicional
+  capacidad        String? // "180 HP", "500 litros", etc
+  valorAdquisicion Float?
+  fechaAdquisicion DateTime?
+
+  // Configuración de mantenimiento
+  intervaloMantenimiento Float? @default(250) // Cada cuántas horas
+  ultimoMantenimiento    Float? @default(0) // Horas del último servicio
+
+  // Relaciones existentes
+  establecimientoId String
+  establecimiento   Establecimiento @relation(fields: [establecimientoId], references: [id], onDelete: Cascade)
+
+  mantenimientos       Mantenimiento[]
+  registrosCombustible RegistroCombustible[]
+  usosMaquinaria       UsoMaquinaria[]
+
+  // NUEVAS RELACIONES
+  posicionesGPS        TelemetriaGPS[]
+  eficiencia           EficienciaMaquinaria[]
+  alertas              AlertaMantenimiento[]
+  sensores             SensorPredictivo[]
+  ordenesTaller        OrdenTaller[]
+  evaluacionesOperador EvaluacionOperador[]
+
+  // ✅ AGREGAR ESTAS 3 RELACIONES FALTANTES:
+  labores           Labor[] // ← AGREGAR
+  cargasCombustible CargaCombustible[] // ← AGREGAR
+  activoFijo        ActivoFijo? // ← AGREGAR (relación 1-1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([establecimientoId])
+  @@index([estado])
+  @@index([tipo])
+}
+
+// ============================================
+// 1. TELEMÁTICA GPS
+// ============================================
+
+model TelemetriaGPS {
+  id           String     @id @default(cuid())
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  // Coordenadas
+  latitud  Float
+  longitud Float
+
+  // Datos de movimiento
+  velocidad Float? @default(0) // km/h
+  rumbo     Float? @default(0) // grados (0-360)
+  altitud   Float? // metros
+  precision Float? // metros
+
+  // Estado de la máquina
+  estadoMotor      String? @default("Apagado") // "Encendido", "Apagado", "Ralenti"
+  horasMotor       Float?
+  nivelCombustible Float? // Porcentaje
+
+  // Metadata
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([maquinariaId])
+  @@index([timestamp])
+}
+
+// ============================================
+// 2. EFICIENCIA DE USO
+// ============================================
+
+model EficienciaMaquinaria {
+  id           String     @id @default(cuid())
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  fecha DateTime @default(now())
+
+  // Tiempos
+  horasTrabajando Float @default(0) // Tiempo real de trabajo productivo
+  horasRalenti    Float @default(0) // Tiempo en marcha mínima
+  horasApagado    Float @default(0) // Tiempo apagado durante jornada
+  horasTotales    Float @default(0) // Total de horas registradas
+
+  // Consumo
+  consumoCombustible Float? @default(0) // Litros
+  consumoPorHora     Float? @default(0) // Litros/hora
+
+  // Distancia y área
+  distanciaRecorrida Float? @default(0) // Kilómetros
+  areaTrabajadasHa   Float? @default(0) // Hectáreas trabajadas
+
+  // Scores calculados
+  eficienciaScore    Float? @default(0) // 0-100 (% tiempo trabajando / tiempo total)
+  consumoScore       Float? @default(0) // 0-100 (comparado con ideal)
+  productividadScore Float? @default(0) // 0-100 (ha/hora vs ideal)
+  scoreGeneral       Float? @default(0) // 0-100 (promedio ponderado)
+
+  // Contexto
+  operador String?
+  loteId   String?
+  tarea    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([maquinariaId])
+  @@index([fecha])
+  @@index([operador])
+}
+
+// ============================================
+// 3. ALERTAS DE MANTENIMIENTO
+// ============================================
+
+model AlertaMantenimiento {
+  id           String     @id @default(cuid())
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  tipo      String // "HorasMotor", "FechaVencimiento", "Predictivo", "Manual"
+  categoria String // "Aceite", "Filtros", "Correas", "Neumáticos", "Hidráulico", "Otro"
+  prioridad String // "Crítica", "Alta", "Media", "Baja"
+
+  titulo      String
+  descripcion String
+
+  // Triggers
+  horasMotorAlerta Float? // Horas en las que debe saltar
+  fechaAlerta      DateTime? // Fecha en la que debe saltar
+  sensorAlerta     Boolean?  @default(false) // Viene de sensor predictivo
+
+  // Estado
+  estado          String    @default("Activa") // "Activa", "Atendida", "Pospuesta", "Cancelada"
+  fechaCreacion   DateTime  @default(now())
+  fechaResolucion DateTime?
+  resueltoPor     String?
+  observaciones   String?
+
+  // Relación con orden de taller
+  ordenTallerId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maquinariaId])
+  @@index([estado])
+  @@index([prioridad])
+  @@index([tipo])
+}
+
+// ============================================
+// 4. SENSORES PREDICTIVOS
+// ============================================
+
+model SensorPredictivo {
+  id           String     @id @default(cuid())
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  // Identificación del sensor
+  codigoSensor String // "TEMP-MOT-01", "VIB-TRANS-01"
+  tipoSensor   String // "Temperatura", "Vibración", "Presión", "Aceite"
+  ubicacion    String // "Motor", "Transmisión", "Hidráulico", "Frenos"
+
+  // Valores
+  valorActual   Float
+  valorMinimo   Float // Valor mínimo normal
+  valorMaximo   Float // Valor máximo normal
+  umbralAlerta  Float // Cuándo alertar
+  umbralCritico Float // Cuándo es crítico
+  unidad        String // "°C", "Hz", "PSI", "ppm"
+
+  // Estado
+  estado        String   @default("Normal") // "Normal", "Alerta", "Crítico"
+  ultimaLectura DateTime @default(now())
+
+  // Historial
+  lecturas LecturaSensor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([maquinariaId, codigoSensor])
+  @@index([maquinariaId])
+  @@index([estado])
+  @@index([tipoSensor])
+}
+
+// Lecturas históricas de sensores
+model LecturaSensor {
+  id       String           @id @default(cuid())
+  sensorId String
+  sensor   SensorPredictivo @relation(fields: [sensorId], references: [id], onDelete: Cascade)
+
+  valor       Float
+  estado      String // "Normal", "Alerta", "Crítico"
+  timestamp   DateTime   @default(now())
+  User        User?      @relation(fields: [userId], references: [id])
+  userId      String?
+  SensorIoT   SensorIoT? @relation(fields: [sensorIoTId], references: [id])
+  sensorIoTId String?
+
+  @@index([sensorId])
+  @@index([timestamp])
+}
+
+// ============================================
+// 5. ÓRDENES DE TALLER
+// ============================================
+
+model OrdenTaller {
+  id           String     @id @default(cuid())
+  numeroOrden  String     @unique // "OT-2024-001"
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  // Clasificación
+  tipo      String // "Reparación", "Mantenimiento", "Inspección", "Modificación"
+  categoria String // "Motor", "Transmisión", "Hidráulico", "Eléctrico", "Chapa", "Otro"
+  prioridad String // "Urgente", "Alta", "Media", "Baja"
+
+  // Descripción del trabajo
+  descripcionFalla String  @db.Text
+  diagnostico      String? @db.Text
+  trabajoRealizado String? @db.Text
+
+  // Fechas
+  fechaIngreso  DateTime  @default(now())
+  fechaEstimada DateTime?
+  fechaInicio   DateTime?
+  fechaSalida   DateTime?
+
+  // Asignación
+  mecanicoAsignado String?
+  ayudantes        String[] // Array de nombres
+
+  // Estado
+  estado            String @default("Ingresada") // "Ingresada", "Diagnosticando", "En Proceso", "Esperando Repuestos", "Completada", "Cancelada"
+  horasMotorIngreso Float?
+
+  // Repuestos y mano de obra
+  repuestos RepuestoUsado[]
+  manoObra  ManoObraTaller[]
+
+  // Costos
+  costoRepuestos Float @default(0)
+  costoManoObra  Float @default(0)
+  otrosCostos    Float @default(0)
+  costoTotal     Float @default(0)
+
+  // Observaciones
+  observaciones String? @db.Text
+
+  // Relación con alerta
+  alertaId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maquinariaId])
+  @@index([estado])
+  @@index([prioridad])
+  @@index([mecanicoAsignado])
+  @@index([fechaIngreso])
+}
+
+// ============================================
+// 6. REPUESTOS USADOS EN TALLER
+// ============================================
+
+model RepuestoUsado {
+  id            String      @id @default(cuid())
+  ordenTallerId String
+  ordenTaller   OrdenTaller @relation(fields: [ordenTallerId], references: [id], onDelete: Cascade)
+
+  codigo      String
+  descripcion String
+  marca       String?
+
+  cantidad       Int
+  precioUnitario Float
+  precioTotal    Float
+
+  proveedor     String?
+  observaciones String?
+
+  createdAt DateTime @default(now())
+
+  @@index([ordenTallerId])
+}
+
+// ============================================
+// 7. MANO DE OBRA TALLER
+// ============================================
+
+model ManoObraTaller {
+  id            String      @id @default(cuid())
+  ordenTallerId String
+  ordenTaller   OrdenTaller @relation(fields: [ordenTallerId], references: [id], onDelete: Cascade)
+
+  mecanico     String
+  especialidad String? // "Mecánica General", "Motor", "Hidráulica", "Eléctrica"
+  descripcion  String
+
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  horas       Float
+  tarifaHora  Float
+  total       Float
+
+  observaciones String?
+
+  createdAt DateTime @default(now())
+
+  @@index([ordenTallerId])
+  @@index([mecanico])
+}
+
+// ============================================
+// 8. EVALUACIÓN DE OPERADORES
+// ============================================
+
+model EvaluacionOperador {
+  id           String     @id @default(cuid())
+  operador     String // Nombre del operador
+  maquinariaId String
+  maquinaria   Maquinaria @relation(fields: [maquinariaId], references: [id], onDelete: Cascade)
+
+  fecha           DateTime @default(now())
+  duracionJornada Float // Horas
+
+  // Métricas de seguridad (telemetría)
+  velocidadPromedio    Float @default(0)
+  velocidadMaxima      Float @default(0)
+  frenadosBruscos      Int   @default(0)
+  aceleracionesBruscas Int   @default(0)
+  girosBruscos         Int   @default(0)
+  excesosVelocidad     Int   @default(0)
+
+  // Métricas de eficiencia
+  tiempoTrabajando   Float @default(0) // Horas productivas
+  tiempoRalenti      Float @default(0) // Horas en ralentí
+  consumoCombustible Float @default(0) // Litros
+  consumoPorHora     Float @default(0)
+
+  // Métricas de cuidado
+  usoAdecuado         Boolean @default(true)
+  mantenimientoDiario Boolean @default(true)
+  reporteProblemas    Boolean @default(true)
+
+  // Scores calculados (0-100)
+  scoreSeguridad  Float @default(0)
+  scoreEficiencia Float @default(0)
+  scoreCuidado    Float @default(0)
+  scoreGeneral    Float @default(0)
+
+  // Calificación
+  calificacion String @default("Buena") // "Excelente", "Muy Buena", "Buena", "Regular", "Mala"
+
+  observaciones String?
+  incidentes    String? // Descripción de incidentes si los hubo
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([operador])
+  @@index([maquinariaId])
+  @@index([fecha])
+  @@index([scoreGeneral])
+  @@index([userId]) // ⬅️ AGREGAR ÍNDICE
+}
+
+// ============================================
+// 9. OPERADORES (REGISTRO)
+// ============================================
+
+model Operador {
+  id        String @id @default(cuid())
+  nombre    String
+  apellido  String
+  documento String @unique
+
+  licenciaConducir    String?
+  categoriaLicencia   String? // "A", "B", "C", "G"
+  vencimientoLicencia DateTime?
+
+  // Especialidades
+  especialidades String[] // ["Tractor", "Cosechadora", "Pulverizadora"]
+
+  // Contacto
+  telefono String?
+  email    String?
+
+  // Empleo
+  fechaIngreso DateTime
+  estado       String   @default("Activo") // "Activo", "Inactivo", "Licencia"
+
+  // Scores acumulados
+  totalEvaluaciones Int   @default(0)
+  scorePromedio     Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([estado])
+  @@index([scorePromedio])
+}
+
+// ============================================
+// 10. CHECKLIST DIARIO
+// ============================================
+
+model ChecklistDiario {
+  id           String @id @default(cuid())
+  maquinariaId String
+
+  fecha    DateTime @default(now())
+  operador String
+  turno    String // "Mañana", "Tarde", "Noche"
+
+  // Items de verificación (true/false)
+  nivelAceite       Boolean @default(false)
+  nivelCombustible  Boolean @default(false)
+  nivelRefrigerante Boolean @default(false)
+  presionNeumaticos Boolean @default(false)
+  lucesOperativas   Boolean @default(false)
+  frenosOperativos  Boolean @default(false)
+  instrumentosOK    Boolean @default(false)
+  limpiezaGeneral   Boolean @default(false)
+
+  // Valores medidos
+  horasMotorInicio Float?
+  horasMotorFin    Float?
+  kmInicio         Float?
+  kmFin            Float?
+
+  // Observaciones
+  problemasDetectados String?
+  accionesTomadas     String?
+
+  completado Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@index([maquinariaId])
+  @@index([fecha])
+  @@index([operador])
 }

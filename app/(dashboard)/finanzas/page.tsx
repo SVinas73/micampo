@@ -35,6 +35,7 @@ import {
   Trash2,
   Filter,
   RefreshCw,
+  Edit,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import {
@@ -51,8 +52,6 @@ import {
   Cell,
   LineChart,
   Line,
-  Area,
-  AreaChart,
 } from "recharts";
 
 type Comprobante = {
@@ -61,11 +60,15 @@ type Comprobante = {
   numero: string;
   fecha: string;
   razonSocial: string;
+  rut?: string;
+  subtotal?: number;
+  iva?: number;
   total: number;
   moneda: string;
   estado: string;
   procesadoOCR: boolean;
   confianzaOCR?: number;
+  observaciones?: string;
 };
 
 type ActivoFijo = {
@@ -78,6 +81,9 @@ type ActivoFijo = {
   depreciacionAcumulada: number;
   estado: string;
   fechaAdquisicion: string;
+  marca?: string;
+  modelo?: string;
+  observaciones?: string;
 };
 
 type FacturaEmitida = {
@@ -112,6 +118,7 @@ type Empleado = {
   salarioBase: number;
   estado: string;
   fechaIngreso: string;
+  tipoContrato: string;
 };
 
 type TipoCambio = {
@@ -139,6 +146,7 @@ type DashboardData = {
 };
 
 export default function FinanzasPage() {
+  // Estados principales
   const [comprobantes, setComprobantes] = useState<Comprobante[]>([]);
   const [activosFijos, setActivosFijos] = useState<ActivoFijo[]>([]);
   const [facturasEmitidas, setFacturasEmitidas] = useState<FacturaEmitida[]>([]);
@@ -150,6 +158,7 @@ export default function FinanzasPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Dialogs principales
   const [comprobanteDialogOpen, setComprobanteDialogOpen] = useState(false);
   const [ocrDialogOpen, setOcrDialogOpen] = useState(false);
   const [activoDialogOpen, setActivoDialogOpen] = useState(false);
@@ -161,8 +170,39 @@ export default function FinanzasPage() {
   const [rolDialogOpen, setRolDialogOpen] = useState(false);
   const [contratistaDialogOpen, setContratistaDialogOpen] = useState(false);
   const [trabajoDialogOpen, setTrabajoDialogOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
 
+  // Dialogs adicionales
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [horasDialogOpen, setHorasDialogOpen] = useState(false);
+  const [pagarSalarioDialogOpen, setPagarSalarioDialogOpen] = useState(false);
+  const [asignarUsuarioDialogOpen, setAsignarUsuarioDialogOpen] = useState(false);
+  const [verTrabajosDialogOpen, setVerTrabajosDialogOpen] = useState(false);
+
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Filtros y búsqueda
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterEstado, setFilterEstado] = useState("Todos");
+  const [filterTipo, setFilterTipo] = useState("Todos");
+  const [sortBy, setSortBy] = useState<"fecha" | "monto" | "nombre">("fecha");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Loading states
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Datos adicionales
+  const [trabajosContratista, setTrabajosContratista] = useState<any[]>([]);
+  const [ocrFile, setOcrFile] = useState<File | null>(null);
+  const [ocrResult, setOcrResult] = useState<any>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+
+  // Formularios
   const [comprobanteForm, setComprobanteForm] = useState({
     tipo: "Factura",
     numero: "",
@@ -271,13 +311,40 @@ export default function FinanzasPage() {
     monto: "",
   });
 
-  const [ocrFile, setOcrFile] = useState<File | null>(null);
-  const [ocrResult, setOcrResult] = useState<any>(null);
-  const [ocrLoading, setOcrLoading] = useState(false);
+  const [horasForm, setHorasForm] = useState({
+    fecha: new Date().toISOString().split("T")[0],
+    horasTrabajadas: "",
+    tipoTarea: "Campo",
+    descripcion: "",
+  });
+
+  const [pagarSalarioForm, setPagarSalarioForm] = useState({
+    mes: new Date().getMonth() + 1,
+    anio: new Date().getFullYear(),
+    horasTrabajadas: "",
+    horasExtra: "",
+    bonificaciones: "",
+    deducciones: "",
+    metodoPago: "Transferencia",
+    observaciones: "",
+  });
+
+  const [asignarUsuarioForm, setAsignarUsuarioForm] = useState({
+    usuarioEmail: "",
+    mensaje: "",
+  });
+
+  // ============================================
+  // FETCH DATA
+  // ============================================
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterEstado, filterTipo, sortBy, sortOrder]);
 
   const fetchData = async () => {
     try {
@@ -320,6 +387,63 @@ export default function FinanzasPage() {
     }
   };
 
+  // ============================================
+  // FUNCIONES DE FILTRADO Y PAGINACIÓN
+  // ============================================
+
+  const filterAndSort = <T extends any>(
+    items: T[],
+    searchFields: (keyof T)[],
+    estadoField?: keyof T,
+    tipoField?: keyof T
+  ): T[] => {
+    let filtered = [...items];
+
+    if (searchTerm) {
+      filtered = filtered.filter((item) =>
+        searchFields.some((field) =>
+          String(item[field]).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    if (filterEstado !== "Todos" && estadoField) {
+      filtered = filtered.filter((item) => item[estadoField] === filterEstado);
+    }
+
+    if (filterTipo !== "Todos" && tipoField) {
+      filtered = filtered.filter((item) => item[tipoField] === filterTipo);
+    }
+
+    filtered.sort((a, b) => {
+      let aVal = a[sortBy as keyof T];
+      let bVal = b[sortBy as keyof T];
+
+      if (sortBy === "fecha") {
+        aVal = new Date(aVal as any).getTime() as any;
+        bVal = new Date(bVal as any).getTime() as any;
+      }
+
+      if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  };
+
+  const paginate = <T extends any>(items: T[]): T[] => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return items.slice(startIndex, endIndex);
+  };
+
+  const totalPages = (items: any[]) => Math.ceil(items.length / itemsPerPage);
+
+  // ============================================
+  // HANDLERS: OCR
+  // ============================================
+
   const handleOCRUpload = async () => {
     if (!ocrFile) return;
 
@@ -336,7 +460,7 @@ export default function FinanzasPage() {
       if (response.ok) {
         const result = await response.json();
         setOcrResult(result.datos);
-        
+
         if (result.datos) {
           setComprobanteForm({
             tipo: result.datos.tipo || "Factura",
@@ -362,15 +486,23 @@ export default function FinanzasPage() {
     }
   };
 
+  // ============================================
+  // HANDLERS: CREAR/ACTUALIZAR
+  // ============================================
+
   const handleCreateComprobante = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/comprobantes", {
-        method: "POST",
+      setActionLoading(true);
+      const endpoint = isEditing ? `/api/comprobantes/${selectedItem.id}` : "/api/comprobantes";
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...comprobanteForm,
-          crearTransaccion: true,
+          crearTransaccion: !isEditing,
         }),
       });
 
@@ -390,20 +522,28 @@ export default function FinanzasPage() {
           observaciones: "",
         });
         setOcrResult(null);
+        setIsEditing(false);
+        setSelectedItem(null);
         fetchData();
-        alert("Comprobante creado");
+        alert(isEditing ? "Comprobante actualizado" : "Comprobante creado");
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Error al crear comprobante");
+      alert(isEditing ? "Error al actualizar" : "Error al crear comprobante");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleCreateActivo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/activos-fijos", {
-        method: "POST",
+      setActionLoading(true);
+      const endpoint = isEditing ? `/api/activos-fijos/${selectedItem.id}` : "/api/activos-fijos";
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(activoForm),
       });
@@ -422,18 +562,23 @@ export default function FinanzasPage() {
           modelo: "",
           observaciones: "",
         });
+        setIsEditing(false);
+        setSelectedItem(null);
         fetchData();
-        alert("Activo creado");
+        alert(isEditing ? "Activo actualizado" : "Activo creado");
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Error al crear activo");
+      alert(isEditing ? "Error al actualizar" : "Error al crear activo");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleCreateFactura = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setActionLoading(true);
       const response = await fetch("/api/facturas-emitidas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -461,12 +606,15 @@ export default function FinanzasPage() {
     } catch (error) {
       console.error("Error:", error);
       alert("Error al crear factura");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleCreateCuenta = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setActionLoading(true);
       const response = await fetch("/api/cuentas-por-pagar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -491,14 +639,20 @@ export default function FinanzasPage() {
     } catch (error) {
       console.error("Error:", error);
       alert("Error al crear cuenta");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleCreateEmpleado = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/empleados", {
-        method: "POST",
+      setActionLoading(true);
+      const endpoint = isEditing ? `/api/empleados/${selectedItem.id}` : "/api/empleados";
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(empleadoForm),
       });
@@ -519,18 +673,23 @@ export default function FinanzasPage() {
           email: "",
           telefono: "",
         });
+        setIsEditing(false);
+        setSelectedItem(null);
         fetchData();
-        alert("Empleado creado");
+        alert(isEditing ? "Empleado actualizado" : "Empleado creado");
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Error al crear empleado");
+      alert(isEditing ? "Error al actualizar" : "Error al crear empleado");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleCreateTipoCambio = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setActionLoading(true);
       const response = await fetch("/api/tipos-cambio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -550,14 +709,20 @@ export default function FinanzasPage() {
     } catch (error) {
       console.error("Error:", error);
       alert("Error al registrar tipo de cambio");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleCreateRol = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/roles", {
-        method: "POST",
+      setActionLoading(true);
+      const endpoint = isEditing ? `/api/roles/${selectedItem.id}` : "/api/roles";
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...rolForm,
@@ -577,20 +742,30 @@ export default function FinanzasPage() {
             logistica: { ver: true, editar: false },
           },
         });
+        setIsEditing(false);
+        setSelectedItem(null);
         fetchData();
-        alert("Rol creado");
+        alert(isEditing ? "Rol actualizado" : "Rol creado");
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Error al crear rol");
+      alert(isEditing ? "Error al actualizar" : "Error al crear rol");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleCreateContratista = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/contratistas", {
-        method: "POST",
+      setActionLoading(true);
+      const endpoint = isEditing
+        ? `/api/contratistas/${selectedItem.id}`
+        : "/api/contratistas";
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(contratistaForm),
       });
@@ -606,12 +781,20 @@ export default function FinanzasPage() {
           telefono: "",
           especialidad: "Siembra",
         });
+        setIsEditing(false);
+        setSelectedItem(null);
         fetchData();
-        alert(`Contratista creado. Código de acceso: ${nuevoContratista.codigoAcceso}`);
+        if (!isEditing) {
+          alert(`Contratista creado. Código de acceso: ${nuevoContratista.codigoAcceso}`);
+        } else {
+          alert("Contratista actualizado");
+        }
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Error al crear contratista");
+      alert(isEditing ? "Error al actualizar" : "Error al crear contratista");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -620,6 +803,7 @@ export default function FinanzasPage() {
     if (!selectedItem) return;
 
     try {
+      setActionLoading(true);
       const response = await fetch(`/api/contratistas/${selectedItem.id}/trabajos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -643,6 +827,8 @@ export default function FinanzasPage() {
     } catch (error) {
       console.error("Error:", error);
       alert("Error al asignar trabajo");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -651,9 +837,11 @@ export default function FinanzasPage() {
     if (!selectedItem) return;
 
     try {
-      const endpoint = selectedItem.tipo === "factura"
-        ? `/api/facturas-emitidas/${selectedItem.id}/pagos`
-        : `/api/cuentas-por-pagar/${selectedItem.id}/pagos`;
+      setActionLoading(true);
+      const endpoint =
+        selectedItem.tipo === "factura"
+          ? `/api/facturas-emitidas/${selectedItem.id}/pagos`
+          : `/api/cuentas-por-pagar/${selectedItem.id}/pagos`;
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -679,6 +867,8 @@ export default function FinanzasPage() {
     } catch (error) {
       console.error("Error:", error);
       alert("Error al registrar pago");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -688,6 +878,7 @@ export default function FinanzasPage() {
     const anio = now.getFullYear();
 
     try {
+      setActionLoading(true);
       const response = await fetch("/api/activos-fijos/depreciar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -702,6 +893,351 @@ export default function FinanzasPage() {
     } catch (error) {
       console.error("Error:", error);
       alert("Error al calcular depreciación");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ============================================
+  // HANDLERS: VER DETALLES
+  // ============================================
+
+  const handleVerTrabajosContratista = async (contratistaId: string) => {
+    try {
+      setActionLoading(true);
+      const response = await fetch(`/api/contratistas/${contratistaId}/trabajos`);
+      if (response.ok) {
+        const trabajos = await response.json();
+        setTrabajosContratista(trabajos);
+        setVerTrabajosDialogOpen(true);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al cargar trabajos");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ============================================
+  // HANDLERS: EDITAR
+  // ============================================
+
+  const handleEditItem = (item: any, type: string) => {
+    setSelectedItem({ ...item, type });
+    setIsEditing(true);
+
+    switch (type) {
+      case "comprobante":
+        setComprobanteForm({
+          tipo: item.tipo,
+          numero: item.numero,
+          fecha: item.fecha.split("T")[0],
+          razonSocial: item.razonSocial,
+          rut: item.rut || "",
+          moneda: item.moneda,
+          subtotal: item.subtotal?.toString() || "",
+          iva: item.iva?.toString() || "",
+          total: item.total?.toString() || "",
+          observaciones: item.observaciones || "",
+        });
+        setComprobanteDialogOpen(true);
+        break;
+
+      case "activo":
+        setActivoForm({
+          codigo: item.codigo,
+          nombre: item.nombre,
+          tipo: item.tipo,
+          valorAdquisicion: item.valorAdquisicion?.toString() || "",
+          fechaAdquisicion: item.fechaAdquisicion.split("T")[0],
+          vidaUtilAnios: item.vidaUtilAnios?.toString() || "",
+          valorResidual: item.valorResidual?.toString() || "",
+          marca: item.marca || "",
+          modelo: item.modelo || "",
+          observaciones: item.observaciones || "",
+        });
+        setActivoDialogOpen(true);
+        break;
+
+      case "empleado":
+        setEmpleadoForm({
+          legajo: item.legajo,
+          nombre: item.nombre,
+          apellido: item.apellido,
+          documento: item.documento || "",
+          cargo: item.cargo,
+          area: item.area,
+          fechaIngreso: item.fechaIngreso.split("T")[0],
+          tipoContrato: item.tipoContrato,
+          salarioBase: item.salarioBase?.toString() || "",
+          moneda: item.moneda || "USD",
+          email: item.email || "",
+          telefono: item.telefono || "",
+        });
+        setEmpleadoDialogOpen(true);
+        break;
+
+      case "rol":
+        setRolForm({
+          nombre: item.nombre,
+          descripcion: item.descripcion || "",
+          permisos: JSON.parse(item.permisos || "{}"),
+        });
+        setRolDialogOpen(true);
+        break;
+
+      case "contratista":
+        setContratistaForm({
+          nombre: item.nombre,
+          empresa: item.empresa || "",
+          rut: item.rut || "",
+          email: item.email,
+          telefono: item.telefono || "",
+          especialidad: item.especialidad,
+        });
+        setContratistaDialogOpen(true);
+        break;
+    }
+  };
+
+  // ============================================
+  // HANDLERS: ELIMINAR
+  // ============================================
+
+  const handleDeleteItem = async () => {
+    if (!selectedItem) return;
+
+    try {
+      setActionLoading(true);
+      const { type, id } = selectedItem;
+      let endpoint = "";
+
+      switch (type) {
+        case "comprobante":
+          endpoint = `/api/comprobantes/${id}`;
+          break;
+        case "activo":
+          endpoint = `/api/activos-fijos/${id}`;
+          break;
+        case "empleado":
+          endpoint = `/api/empleados/${id}`;
+          break;
+        case "rol":
+          endpoint = `/api/roles/${id}`;
+          break;
+        case "contratista":
+          endpoint = `/api/contratistas/${id}`;
+          break;
+        case "factura":
+          endpoint = `/api/facturas-emitidas/${id}`;
+          break;
+        case "cuenta":
+          endpoint = `/api/cuentas-por-pagar/${id}`;
+          break;
+      }
+
+      const response = await fetch(endpoint, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setDeleteDialogOpen(false);
+        setSelectedItem(null);
+        fetchData();
+        alert("Eliminado correctamente");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al eliminar");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ============================================
+  // HANDLERS: EMPLEADOS (Horas y Salarios)
+  // ============================================
+
+  const handleRegistrarHoras = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+
+    try {
+      setActionLoading(true);
+      const response = await fetch(`/api/empleados/${selectedItem.id}/horas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(horasForm),
+      });
+
+      if (response.ok) {
+        setHorasDialogOpen(false);
+        setHorasForm({
+          fecha: new Date().toISOString().split("T")[0],
+          horasTrabajadas: "",
+          tipoTarea: "Campo",
+          descripcion: "",
+        });
+        alert("Horas registradas");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al registrar horas");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePagarSalario = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+
+    try {
+      setActionLoading(true);
+      const response = await fetch(`/api/empleados/${selectedItem.id}/pagos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pagarSalarioForm),
+      });
+
+      if (response.ok) {
+        setPagarSalarioDialogOpen(false);
+        setPagarSalarioForm({
+          mes: new Date().getMonth() + 1,
+          anio: new Date().getFullYear(),
+          horasTrabajadas: "",
+          horasExtra: "",
+          bonificaciones: "",
+          deducciones: "",
+          metodoPago: "Transferencia",
+          observaciones: "",
+        });
+        fetchData();
+        alert("Pago registrado");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al registrar pago");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ============================================
+  // HANDLERS: ASIGNAR USUARIO A ROL
+  // ============================================
+
+  const handleAsignarUsuario = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+
+    try {
+      setActionLoading(true);
+      const response = await fetch(`/api/roles/${selectedItem.id}/usuarios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(asignarUsuarioForm),
+      });
+
+      if (response.ok) {
+        setAsignarUsuarioDialogOpen(false);
+        setAsignarUsuarioForm({
+          usuarioEmail: "",
+          mensaje: "",
+        });
+        alert("Invitación enviada");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al enviar invitación");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ============================================
+  // HANDLERS: REPORTES Y EXPORTACIONES
+  // ============================================
+
+  const handleGenerarEstadoResultados = async () => {
+    try {
+      setActionLoading(true);
+      const response = await fetch("/api/reportes/estado-resultados");
+      if (response.ok) {
+        const data = await response.json();
+        const { generateEstadoResultadosPDF } = await import("@/lib/pdf-generator");
+        generateEstadoResultadosPDF(data);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al generar reporte");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleGenerarFlujoCaja = async () => {
+    try {
+      setActionLoading(true);
+      const response = await fetch("/api/reportes/flujo-caja");
+      if (response.ok) {
+        const data = await response.json();
+        const { generateFlujoCajaPDF } = await import("@/lib/pdf-generator");
+        generateFlujoCajaPDF(data);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al generar reporte");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleGenerarBalance = async () => {
+    try {
+      setActionLoading(true);
+      const response = await fetch("/api/reportes/balance");
+      if (response.ok) {
+        const data = await response.json();
+        const { generateBalancePDF } = await import("@/lib/pdf-generator");
+        generateBalancePDF(data);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al generar reporte");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleExportarTransacciones = async () => {
+    try {
+      const { exportToExcel } = await import("@/lib/pdf-generator");
+      exportToExcel(comprobantes, "transacciones");
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al exportar");
+    }
+  };
+
+  const handleExportarEmpleados = async () => {
+    try {
+      const { exportToExcel } = await import("@/lib/pdf-generator");
+      exportToExcel(empleados, "empleados");
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al exportar");
+    }
+  };
+
+  const handleExportarActivos = async () => {
+    try {
+      const { exportToExcel } = await import("@/lib/pdf-generator");
+      exportToExcel(activosFijos, "activos-fijos");
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al exportar");
     }
   };
 
@@ -753,9 +1289,7 @@ export default function FinanzasPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Margen Bruto
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Margen Bruto</CardTitle>
               <DollarSign className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
@@ -780,12 +1314,102 @@ export default function FinanzasPage() {
                 {dashboardData.alertas.cuentasVencidas + dashboardData.alertas.cuentasPorCobrar}
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                ${(dashboardData.alertas.montoVencido + dashboardData.alertas.montoPorCobrar).toFixed(0)} pendiente
+                $
+                {(
+                  dashboardData.alertas.montoVencido + dashboardData.alertas.montoPorCobrar
+                ).toFixed(0)}{" "}
+                pendiente
               </p>
             </CardContent>
           </Card>
         </div>
       )}
+
+      {/* BARRA DE FILTROS Y BÚSQUEDA */}
+      <Card className="bg-white border-2">
+        <CardContent className="pt-6">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Búsqueda</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Estado</Label>
+              <Select value={filterEstado} onValueChange={setFilterEstado}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Todos">Todos</SelectItem>
+                  <SelectItem value="Activo">Activo</SelectItem>
+                  <SelectItem value="Inactivo">Inactivo</SelectItem>
+                  <SelectItem value="Pendiente">Pendiente</SelectItem>
+                  <SelectItem value="Pagado">Pagado</SelectItem>
+                  <SelectItem value="Cobrado">Cobrado</SelectItem>
+                  <SelectItem value="Parcial">Parcial</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Ordenar por</Label>
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fecha">Fecha</SelectItem>
+                  <SelectItem value="monto">Monto</SelectItem>
+                  <SelectItem value="nombre">Nombre</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Orden</Label>
+              <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">Descendente</SelectItem>
+                  <SelectItem value="asc">Ascendente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-4">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setFilterEstado("Todos");
+                setFilterTipo("Todos");
+                setSortBy("fecha");
+                setSortOrder("desc");
+                setCurrentPage(1);
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Limpiar Filtros
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="dashboard" className="space-y-4">
         <TabsList className="grid w-full grid-cols-11">
@@ -838,7 +1462,6 @@ export default function FinanzasPage() {
         {/* TAB: DASHBOARD */}
         <TabsContent value="dashboard" className="space-y-4">
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Gráfico de Costos por Categoría */}
             <Card>
               <CardHeader>
                 <CardTitle>Costos por Categoría</CardTitle>
@@ -873,7 +1496,6 @@ export default function FinanzasPage() {
               </CardContent>
             </Card>
 
-            {/* Márgenes por Lote */}
             <Card>
               <CardHeader>
                 <CardTitle>Top Márgenes por Lote</CardTitle>
@@ -882,10 +1504,7 @@ export default function FinanzasPage() {
               <CardContent>
                 {dashboardData && dashboardData.margenesPorLote.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart
-                      data={dashboardData.margenesPorLote.slice(0, 5)}
-                      layout="vertical"
-                    >
+                    <BarChart data={dashboardData.margenesPorLote.slice(0, 5)} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" />
                       <YAxis
@@ -904,7 +1523,6 @@ export default function FinanzasPage() {
             </Card>
           </div>
 
-          {/* Alertas Financieras */}
           <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200">
             <CardHeader>
               <CardTitle className="text-orange-900">Alertas Financieras</CardTitle>
@@ -943,7 +1561,7 @@ export default function FinanzasPage() {
           </Card>
         </TabsContent>
 
-        {/* TAB: COMPROBANTES */}
+        {/* TAB: COMPROBANTES - MEJORADO */}
         <TabsContent value="comprobantes" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Comprobantes</h2>
@@ -957,7 +1575,10 @@ export default function FinanzasPage() {
                 Cargar con OCR
               </Button>
               <Button
-                onClick={() => setComprobanteDialogOpen(true)}
+                onClick={() => {
+                  setIsEditing(false);
+                  setComprobanteDialogOpen(true);
+                }}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -969,68 +1590,155 @@ export default function FinanzasPage() {
           <Card>
             <CardHeader>
               <CardTitle>Facturas y Comprobantes</CardTitle>
-              <CardDescription>Gestión con OCR automático</CardDescription>
+              <CardDescription>{comprobantes.length} comprobantes registrados</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8">Cargando...</div>
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400 mb-2" />
+                  <p className="text-gray-500">Cargando...</p>
+                </div>
               ) : comprobantes.length === 0 ? (
                 <div className="text-center py-8">
                   <Receipt className="h-12 w-12 mx-auto text-gray-400 mb-2" />
                   <p className="text-gray-500">No hay comprobantes registrados</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {comprobantes.map((comp) => (
-                    <div key={comp.id} className="p-4 border rounded-lg hover:bg-gray-50">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline">{comp.tipo}</Badge>
-                            <p className="font-medium">{comp.numero}</p>
-                            {comp.procesadoOCR && (
-                              <Badge className="bg-purple-500">
-                                OCR {comp.confianzaOCR}%
+                <>
+                  <div className="space-y-3">
+                    {paginate(
+                      filterAndSort(
+                        comprobantes,
+                        ["numero", "razonSocial", "tipo"],
+                        "estado" as any,
+                        "tipo" as any
+                      )
+                    ).map((comp) => (
+                      <div key={comp.id} className="p-4 border rounded-lg hover:bg-gray-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline">{comp.tipo}</Badge>
+                              <p className="font-medium">{comp.numero}</p>
+                              {comp.procesadoOCR && (
+                                <Badge className="bg-purple-500">
+                                  OCR {comp.confianzaOCR}%
+                                </Badge>
+                              )}
+                              <Badge
+                                className={
+                                  comp.estado === "Pagado"
+                                    ? "bg-green-500"
+                                    : comp.estado === "Pendiente"
+                                    ? "bg-yellow-500"
+                                    : "bg-gray-500"
+                                }
+                              >
+                                {comp.estado}
                               </Badge>
-                            )}
-                            <Badge
-                              className={
-                                comp.estado === "Pagado"
-                                  ? "bg-green-500"
-                                  : comp.estado === "Pendiente"
-                                  ? "bg-yellow-500"
-                                  : "bg-gray-500"
-                              }
-                            >
-                              {comp.estado}
-                            </Badge>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-500">Razón Social</p>
+                                <p className="font-medium">{comp.razonSocial}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Fecha</p>
+                                <p className="font-medium">{formatDate(comp.fecha)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Total</p>
+                                <p className="font-bold text-blue-600">
+                                  {comp.moneda} ${comp.total.toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <p className="text-gray-500">Razón Social</p>
-                              <p className="font-medium">{comp.razonSocial}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Fecha</p>
-                              <p className="font-medium">{formatDate(comp.fecha)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Total</p>
-                              <p className="font-bold text-blue-600">
-                                {comp.moneda} ${comp.total.toFixed(2)}
-                              </p>
-                            </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedItem(comp);
+                                setViewDialogOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditItem(comp, "comprobante")}
+                            >
+                              <Edit className="h-4 w-4 text-blue-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedItem({ ...comp, type: "comprobante" });
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
                           </div>
                         </div>
-
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
                       </div>
+                    ))}
+                  </div>
+
+                  {totalPages(
+                    filterAndSort(
+                      comprobantes,
+                      ["numero", "razonSocial", "tipo"],
+                      "estado" as any,
+                      "tipo" as any
+                    )
+                  ) > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Anterior
+                      </Button>
+                      <span className="text-sm text-gray-600">
+                        Página {currentPage} de{" "}
+                        {totalPages(
+                          filterAndSort(
+                            comprobantes,
+                            ["numero", "razonSocial", "tipo"],
+                            "estado" as any,
+                            "tipo" as any
+                          )
+                        )}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={
+                          currentPage ===
+                          totalPages(
+                            filterAndSort(
+                              comprobantes,
+                              ["numero", "razonSocial", "tipo"],
+                              "estado" as any,
+                              "tipo" as any
+                            )
+                          )
+                        }
+                      >
+                        Siguiente
+                      </Button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -1045,12 +1753,16 @@ export default function FinanzasPage() {
                 onClick={calcularDepreciacion}
                 variant="outline"
                 className="bg-orange-600 text-white hover:bg-orange-700"
+                disabled={actionLoading}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Depreciar Mes Actual
               </Button>
               <Button
-                onClick={() => setActivoDialogOpen(true)}
+                onClick={() => {
+                  setIsEditing(false);
+                  setActivoDialogOpen(true);
+                }}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1065,17 +1777,34 @@ export default function FinanzasPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{activo.nombre}</CardTitle>
-                    <Badge
-                      className={
-                        activo.estado === "Activo"
-                          ? "bg-green-500"
-                          : "bg-gray-500"
-                      }
-                    >
-                      {activo.estado}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge
+                        className={activo.estado === "Activo" ? "bg-green-500" : "bg-gray-500"}
+                      >
+                        {activo.estado}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditItem(activo, "activo")}
+                      >
+                        <Edit className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedItem({ ...activo, type: "activo" });
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600">{activo.tipo} - {activo.codigo}</p>
+                  <p className="text-sm text-gray-600">
+                    {activo.tipo} - {activo.codigo}
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -1102,7 +1831,9 @@ export default function FinanzasPage() {
                       <div
                         className="bg-red-600 h-2 rounded-full"
                         style={{
-                          width: `${(activo.depreciacionAcumulada / activo.valorAdquisicion) * 100}%`,
+                          width: `${
+                            (activo.depreciacionAcumulada / activo.valorAdquisicion) * 100
+                          }%`,
                         }}
                       />
                     </div>
@@ -1122,7 +1853,10 @@ export default function FinanzasPage() {
                 <Building2 className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500 text-lg">No hay activos fijos registrados</p>
                 <Button
-                  onClick={() => setActivoDialogOpen(true)}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setActivoDialogOpen(true);
+                  }}
                   className="mt-4 bg-blue-600 hover:bg-blue-700"
                 >
                   Crear Primer Activo
@@ -1338,12 +2072,15 @@ export default function FinanzasPage() {
           </Card>
         </TabsContent>
 
-        {/* TAB: EMPLEADOS */}
+        {/* TAB: EMPLEADOS - MEJORADO */}
         <TabsContent value="empleados" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Gestión de Empleados</h2>
             <Button
-              onClick={() => setEmpleadoDialogOpen(true)}
+              onClick={() => {
+                setIsEditing(false);
+                setEmpleadoDialogOpen(true);
+              }}
               className="bg-purple-600 hover:bg-purple-700"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -1352,22 +2089,39 @@ export default function FinanzasPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {empleados.map((empleado) => (
+            {paginate(
+              filterAndSort(empleados, ["nombre", "apellido", "cargo"], "estado" as any)
+            ).map((empleado) => (
               <Card key={empleado.id} className="border-2">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">
                       {empleado.nombre} {empleado.apellido}
                     </CardTitle>
-                    <Badge
-                      className={
-                        empleado.estado === "Activo"
-                          ? "bg-green-500"
-                          : "bg-gray-500"
-                      }
-                    >
-                      {empleado.estado}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge
+                        className={empleado.estado === "Activo" ? "bg-green-500" : "bg-gray-500"}
+                      >
+                        {empleado.estado}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditItem(empleado, "empleado")}
+                      >
+                        <Edit className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedItem({ ...empleado, type: "empleado" });
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-600">
                     {empleado.cargo} - {empleado.area}
@@ -1393,11 +2147,27 @@ export default function FinanzasPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedItem(empleado);
+                        setHorasDialogOpen(true);
+                      }}
+                    >
                       <Clock className="h-4 w-4 mr-2" />
                       Horas
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedItem(empleado);
+                        setPagarSalarioDialogOpen(true);
+                      }}
+                    >
                       <DollarSign className="h-4 w-4 mr-2" />
                       Pagar
                     </Button>
@@ -1413,13 +2183,45 @@ export default function FinanzasPage() {
                 <Users className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500 text-lg">No hay empleados registrados</p>
                 <Button
-                  onClick={() => setEmpleadoDialogOpen(true)}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEmpleadoDialogOpen(true);
+                  }}
                   className="mt-4 bg-purple-600 hover:bg-purple-700"
                 >
                   Agregar Primer Empleado
                 </Button>
               </CardContent>
             </Card>
+          )}
+
+          {totalPages(filterAndSort(empleados, ["nombre", "apellido", "cargo"], "estado" as any)) >
+            1 && (
+            <div className="flex justify-center items-center gap-2 mt-4">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm text-gray-600">
+                Página {currentPage} de{" "}
+                {totalPages(filterAndSort(empleados, ["nombre", "apellido", "cargo"], "estado" as any))}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={
+                  currentPage ===
+                  totalPages(filterAndSort(empleados, ["nombre", "apellido", "cargo"], "estado" as any))
+                }
+              >
+                Siguiente
+              </Button>
+            </div>
           )}
         </TabsContent>
 
@@ -1452,14 +2254,15 @@ export default function FinanzasPage() {
               ) : (
                 <div className="space-y-3">
                   {tiposCambio.slice(0, 10).map((tipo) => (
-                    <div key={tipo.id} className="p-3 border rounded flex items-center justify-between">
+                    <div
+                      key={tipo.id}
+                      className="p-3 border rounded flex items-center justify-between"
+                    >
                       <div className="flex items-center gap-4">
                         <Badge variant="outline" className="text-lg">
                           USD → {tipo.monedaDestino}
                         </Badge>
-                        <p className="text-sm text-gray-500">
-                          {formatDate(tipo.fecha)}
-                        </p>
+                        <p className="text-sm text-gray-500">{formatDate(tipo.fecha)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-blue-600">
@@ -1567,7 +2370,9 @@ export default function FinanzasPage() {
                           <div className="flex items-center justify-between mb-2">
                             <div>
                               <p className="font-medium text-lg">
-                                {margen.detalles?.loteNombre || margen.referenciaNombre || "Lote"}
+                                {margen.detalles?.loteNombre ||
+                                  margen.referenciaNombre ||
+                                  "Lote"}
                               </p>
                               <p className="text-sm text-gray-500">
                                 {margen.detalles?.cultivo} - {margen.detalles?.hectareas} ha
@@ -1624,7 +2429,7 @@ export default function FinanzasPage() {
           )}
         </TabsContent>
 
-        {/* TAB: REPORTES */}
+        {/* TAB: REPORTES - MEJORADO */}
         <TabsContent value="reportes" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Reportes Profesionales</h2>
@@ -1640,8 +2445,16 @@ export default function FinanzasPage() {
                 <CardDescription>Ingresos y gastos por período</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                  <Download className="h-4 w-4 mr-2" />
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  onClick={handleGenerarEstadoResultados}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
                   Generar PDF
                 </Button>
               </CardContent>
@@ -1650,14 +2463,22 @@ export default function FinanzasPage() {
             <Card className="border-2 border-green-200 hover:border-green-400 cursor-pointer">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-green-600" />
+                    <BarChart3 className="h-5 w-5 text-green-600" />
                   Flujo de Caja
                 </CardTitle>
                 <CardDescription>Movimientos de efectivo</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full bg-green-600 hover:bg-green-700">
-                  <Download className="h-4 w-4 mr-2" />
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={handleGenerarFlujoCaja}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
                   Generar PDF
                 </Button>
               </CardContent>
@@ -1672,8 +2493,16 @@ export default function FinanzasPage() {
                 <CardDescription>Activos, pasivos y patrimonio</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                  <Download className="h-4 w-4 mr-2" />
+                <Button
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  onClick={handleGenerarBalance}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
                   Generar PDF
                 </Button>
               </CardContent>
@@ -1687,33 +2516,48 @@ export default function FinanzasPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid gap-3 md:grid-cols-2">
-                <Button variant="outline" className="justify-start">
+                <Button
+                  variant="outline"
+                  className="justify-start"
+                  onClick={handleExportarTransacciones}
+                >
                   <Download className="h-4 w-4 mr-2" />
-                  Transacciones (Excel)
+                  Transacciones (CSV)
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start"
+                  onClick={handleExportarActivos}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Activos Fijos (CSV)
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start"
+                  onClick={handleExportarEmpleados}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Empleados (CSV)
                 </Button>
                 <Button variant="outline" className="justify-start">
                   <Download className="h-4 w-4 mr-2" />
-                  Comprobantes (PDF)
-                </Button>
-                <Button variant="outline" className="justify-start">
-                  <Download className="h-4 w-4 mr-2" />
-                  Activos Fijos (Excel)
-                </Button>
-                <Button variant="outline" className="justify-start">
-                  <Download className="h-4 w-4 mr-2" />
-                  Empleados (Excel)
+                  Cuentas por Pagar (CSV)
                 </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* TAB: ROLES */}
+        {/* TAB: ROLES - MEJORADO */}
         <TabsContent value="roles" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Gestión de Roles y Permisos</h2>
             <Button
-              onClick={() => setRolDialogOpen(true)}
+              onClick={() => {
+                setIsEditing(false);
+                setRolDialogOpen(true);
+              }}
               className="bg-indigo-600 hover:bg-indigo-700"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -1729,33 +2573,74 @@ export default function FinanzasPage() {
               } catch (e) {
                 console.error("Error parsing permisos:", e);
               }
-              
+
               return (
                 <Card key={rol.id} className="border-2">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">{rol.nombre}</CardTitle>
-                      <Badge className="bg-indigo-500">
-                        {Object.keys(permisos).length} módulos
-                      </Badge>
+                      <div className="flex gap-2">
+                        <Badge className="bg-indigo-500">
+                          {Object.keys(permisos).length} módulos
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditItem(rol, "rol")}
+                        >
+                          <Edit className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedItem({ ...rol, type: "rol" });
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
                     </div>
-                    {rol.descripcion && (
-                      <p className="text-sm text-gray-600">{rol.descripcion}</p>
-                    )}
+                    {rol.descripcion && <p className="text-sm text-gray-600">{rol.descripcion}</p>}
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="bg-indigo-50 p-3 rounded">
                       <p className="text-xs text-gray-600 mb-2">Permisos por módulo:</p>
                       {Object.entries(permisos).map(([modulo, perms]: [string, any]) => (
-                        <div key={modulo} className="flex items-center justify-between text-sm mb-1">
+                        <div
+                          key={modulo}
+                          className="flex items-center justify-between text-sm mb-1"
+                        >
                           <span className="font-medium capitalize">{modulo}:</span>
                           <div className="flex gap-2">
-                            {perms.ver && <Badge variant="outline" className="text-xs">Ver</Badge>}
-                            {perms.editar && <Badge variant="outline" className="text-xs">Editar</Badge>}
+                            {perms.ver && (
+                              <Badge variant="outline" className="text-xs">
+                                Ver
+                              </Badge>
+                            )}
+                            {perms.editar && (
+                              <Badge variant="outline" className="text-xs">
+                                Editar
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedItem(rol);
+                        setAsignarUsuarioDialogOpen(true);
+                      }}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Asignar Usuario
+                    </Button>
                   </CardContent>
                 </Card>
               );
@@ -1768,7 +2653,10 @@ export default function FinanzasPage() {
                 <Users className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500 text-lg">No hay roles creados</p>
                 <Button
-                  onClick={() => setRolDialogOpen(true)}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setRolDialogOpen(true);
+                  }}
                   className="mt-4 bg-indigo-600 hover:bg-indigo-700"
                 >
                   Crear Primer Rol
@@ -1778,12 +2666,15 @@ export default function FinanzasPage() {
           )}
         </TabsContent>
 
-        {/* TAB: CONTRATISTAS */}
+        {/* TAB: CONTRATISTAS - MEJORADO */}
         <TabsContent value="contratistas" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Portal de Contratistas</h2>
             <Button
-              onClick={() => setContratistaDialogOpen(true)}
+              onClick={() => {
+                setIsEditing(false);
+                setContratistaDialogOpen(true);
+              }}
               className="bg-orange-600 hover:bg-orange-700"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -1797,17 +2688,36 @@ export default function FinanzasPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{contratista.nombre}</CardTitle>
-                    <Badge
-                      className={
-                        contratista.estado === "Activo"
-                          ? "bg-green-500"
-                          : contratista.estado === "Bloqueado"
-                          ? "bg-red-500"
-                          : "bg-gray-500"
-                      }
-                    >
-                      {contratista.estado}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge
+                        className={
+                          contratista.estado === "Activo"
+                            ? "bg-green-500"
+                            : contratista.estado === "Bloqueado"
+                            ? "bg-red-500"
+                            : "bg-gray-500"
+                        }
+                      >
+                        {contratista.estado}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditItem(contratista, "contratista")}
+                      >
+                        <Edit className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedItem({ ...contratista, type: "contratista" });
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-600">
                     {contratista.empresa || "Sin empresa"} - {contratista.especialidad}
@@ -1845,7 +2755,12 @@ export default function FinanzasPage() {
                       <Briefcase className="h-4 w-4 mr-2" />
                       Asignar Trabajo
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleVerTrabajosContratista(contratista.id)}
+                    >
                       <Eye className="h-4 w-4 mr-2" />
                       Ver Trabajos
                     </Button>
@@ -1861,7 +2776,10 @@ export default function FinanzasPage() {
                 <Briefcase className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500 text-lg">No hay contratistas registrados</p>
                 <Button
-                  onClick={() => setContratistaDialogOpen(true)}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setContratistaDialogOpen(true);
+                  }}
                   className="mt-4 bg-orange-600 hover:bg-orange-700"
                 >
                   Agregar Primer Contratista
@@ -1871,6 +2789,9 @@ export default function FinanzasPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      
+
       {/* DIALOG: Cargar Comprobante con OCR */}
       <Dialog open={ocrDialogOpen} onOpenChange={setOcrDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1882,7 +2803,6 @@ export default function FinanzasPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Upload */}
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
               <div className="text-center">
                 <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -1905,7 +2825,6 @@ export default function FinanzasPage() {
               </div>
             </div>
 
-            {/* Botón procesar */}
             <Button
               onClick={handleOCRUpload}
               disabled={!ocrFile || ocrLoading}
@@ -1924,7 +2843,6 @@ export default function FinanzasPage() {
               )}
             </Button>
 
-            {/* Resultado OCR */}
             {ocrResult && (
               <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                 <p className="font-medium text-purple-900 mb-2">
@@ -1948,7 +2866,6 @@ export default function FinanzasPage() {
               </div>
             )}
 
-            {/* Formulario para editar/confirmar */}
             {ocrResult && (
               <form onSubmit={handleCreateComprobante} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -2054,7 +2971,8 @@ export default function FinanzasPage() {
                   <Button type="button" variant="outline" onClick={() => setOcrDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={actionLoading}>
+                    {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                     Guardar Comprobante
                   </Button>
                 </DialogFooter>
@@ -2064,12 +2982,12 @@ export default function FinanzasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG: Nuevo Comprobante Manual */}
+      {/* DIALOG: Nuevo/Editar Comprobante Manual */}
       <Dialog open={comprobanteDialogOpen} onOpenChange={setComprobanteDialogOpen}>
         <DialogContent className="max-w-2xl">
           <form onSubmit={handleCreateComprobante}>
             <DialogHeader>
-              <DialogTitle>Nuevo Comprobante Manual</DialogTitle>
+              <DialogTitle>{isEditing ? "Editar Comprobante" : "Nuevo Comprobante Manual"}</DialogTitle>
               <DialogDescription>Ingresar datos manualmente</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -2222,27 +3140,30 @@ export default function FinanzasPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setComprobanteDialogOpen(false)}
+                onClick={() => {
+                  setComprobanteDialogOpen(false);
+                  setIsEditing(false);
+                  setSelectedItem(null);
+                }}
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                Crear Comprobante
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                {isEditing ? "Actualizar" : "Crear Comprobante"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG: Nuevo Activo Fijo */}
+      {/* DIALOG: Nuevo/Editar Activo Fijo */}
       <Dialog open={activoDialogOpen} onOpenChange={setActivoDialogOpen}>
         <DialogContent className="max-w-2xl">
           <form onSubmit={handleCreateActivo}>
             <DialogHeader>
-              <DialogTitle>Nuevo Activo Fijo</DialogTitle>
-              <DialogDescription>
-                Registro con depreciación automática
-              </DialogDescription>
+              <DialogTitle>{isEditing ? "Editar Activo Fijo" : "Nuevo Activo Fijo"}</DialogTitle>
+              <DialogDescription>Registro con depreciación automática</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
@@ -2357,9 +3278,7 @@ export default function FinanzasPage() {
                     setActivoForm({ ...activoForm, valorResidual: e.target.value })
                   }
                 />
-                <p className="text-xs text-gray-500">
-                  Valor estimado al final de la vida útil
-                </p>
+                <p className="text-xs text-gray-500">Valor estimado al final de la vida útil</p>
               </div>
 
               <div className="space-y-2">
@@ -2375,11 +3294,20 @@ export default function FinanzasPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setActivoDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setActivoDialogOpen(false);
+                  setIsEditing(false);
+                  setSelectedItem(null);
+                }}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                Crear Activo
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                {isEditing ? "Actualizar" : "Crear Activo"}
               </Button>
             </DialogFooter>
           </form>
@@ -2538,7 +3466,8 @@ export default function FinanzasPage() {
               <Button type="button" variant="outline" onClick={() => setFacturaDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Crear Factura
               </Button>
             </DialogFooter>
@@ -2661,7 +3590,8 @@ export default function FinanzasPage() {
               <Button type="button" variant="outline" onClick={() => setCuentaDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-red-600 hover:bg-red-700">
+              <Button type="submit" className="bg-red-600 hover:bg-red-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Crear Cuenta
               </Button>
             </DialogFooter>
@@ -2669,12 +3599,12 @@ export default function FinanzasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG: Nuevo Empleado */}
+      {/* DIALOG: Nuevo/Editar Empleado */}
       <Dialog open={empleadoDialogOpen} onOpenChange={setEmpleadoDialogOpen}>
         <DialogContent className="max-w-2xl">
           <form onSubmit={handleCreateEmpleado}>
             <DialogHeader>
-              <DialogTitle>Nuevo Empleado</DialogTitle>
+              <DialogTitle>{isEditing ? "Editar Empleado" : "Nuevo Empleado"}</DialogTitle>
               <DialogDescription>Registro de personal y nómina</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -2830,18 +3760,22 @@ export default function FinanzasPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setEmpleadoDialogOpen(false)}
+                onClick={() => {
+                  setEmpleadoDialogOpen(false);
+                  setIsEditing(false);
+                  setSelectedItem(null);
+                }}
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
-                Crear Empleado
+              <Button type="submit" className="bg-purple-600 hover:bg-purple-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                {isEditing ? "Actualizar" : "Crear Empleado"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
       {/* DIALOG: Nuevo Tipo de Cambio */}
       <Dialog open={tipoCambioDialogOpen} onOpenChange={setTipoCambioDialogOpen}>
         <DialogContent className="max-w-md">
@@ -2906,8 +3840,7 @@ export default function FinanzasPage() {
                 <p className="text-2xl font-bold text-blue-700">
                   {tipoCambioForm.compra && tipoCambioForm.venta
                     ? (
-                        (parseFloat(tipoCambioForm.compra) +
-                          parseFloat(tipoCambioForm.venta)) /
+                        (parseFloat(tipoCambioForm.compra) + parseFloat(tipoCambioForm.venta)) /
                         2
                       ).toFixed(2)
                     : "0.00"}
@@ -2922,7 +3855,8 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Registrar
               </Button>
             </DialogFooter>
@@ -2954,9 +3888,7 @@ export default function FinanzasPage() {
                     </div>
                     <div>
                       <p className="text-gray-600">Saldo Pendiente:</p>
-                      <p className="font-bold text-orange-600">
-                        ${selectedItem.saldo?.toFixed(2)}
-                      </p>
+                      <p className="font-bold text-orange-600">${selectedItem.saldo?.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -2973,9 +3905,7 @@ export default function FinanzasPage() {
                   required
                 />
                 {selectedItem && parseFloat(pagoForm.monto || "0") > selectedItem.saldo && (
-                  <p className="text-xs text-red-600">
-                    ⚠️ El monto excede el saldo pendiente
-                  </p>
+                  <p className="text-xs text-red-600">⚠️ El monto excede el saldo pendiente</p>
                 )}
               </div>
 
@@ -3034,8 +3964,13 @@ export default function FinanzasPage() {
                     ? "bg-green-600 hover:bg-green-700"
                     : "bg-blue-600 hover:bg-blue-700"
                 }
+                disabled={actionLoading}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
+                {actionLoading ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
                 Registrar Pago
               </Button>
             </DialogFooter>
@@ -3043,12 +3978,12 @@ export default function FinanzasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG: Nuevo Rol */}
+      {/* DIALOG: Nuevo/Editar Rol */}
       <Dialog open={rolDialogOpen} onOpenChange={setRolDialogOpen}>
         <DialogContent className="max-w-2xl">
           <form onSubmit={handleCreateRol}>
             <DialogHeader>
-              <DialogTitle>Nuevo Rol</DialogTitle>
+              <DialogTitle>{isEditing ? "Editar Rol" : "Nuevo Rol"}</DialogTitle>
               <DialogDescription>
                 Define roles y permisos para usuarios del sistema
               </DialogDescription>
@@ -3129,23 +4064,32 @@ export default function FinanzasPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setRolDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setRolDialogOpen(false);
+                  setIsEditing(false);
+                  setSelectedItem(null);
+                }}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
-                Crear Rol
+              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                {isEditing ? "Actualizar" : "Crear Rol"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG: Nuevo Contratista */}
+      {/* DIALOG: Nuevo/Editar Contratista */}
       <Dialog open={contratistaDialogOpen} onOpenChange={setContratistaDialogOpen}>
         <DialogContent className="max-w-2xl">
           <form onSubmit={handleCreateContratista}>
             <DialogHeader>
-              <DialogTitle>Nuevo Contratista</DialogTitle>
+              <DialogTitle>{isEditing ? "Editar Contratista" : "Nuevo Contratista"}</DialogTitle>
               <DialogDescription>
                 Registra un contratista externo con código de acceso
               </DialogDescription>
@@ -3239,12 +4183,17 @@ export default function FinanzasPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setContratistaDialogOpen(false)}
+                onClick={() => {
+                  setContratistaDialogOpen(false);
+                  setIsEditing(false);
+                  setSelectedItem(null);
+                }}
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
-                Crear Contratista
+              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                {isEditing ? "Actualizar" : "Crear Contratista"}
               </Button>
             </DialogFooter>
           </form>
@@ -3277,9 +4226,7 @@ export default function FinanzasPage() {
                 <Textarea
                   placeholder="Detalles del trabajo a realizar..."
                   value={trabajoForm.descripcion}
-                  onChange={(e) =>
-                    setTrabajoForm({ ...trabajoForm, descripcion: e.target.value })
-                  }
+                  onChange={(e) => setTrabajoForm({ ...trabajoForm, descripcion: e.target.value })}
                   rows={3}
                   required
                 />
@@ -3325,9 +4272,7 @@ export default function FinanzasPage() {
                     step="0.1"
                     placeholder="50"
                     value={trabajoForm.hectareas}
-                    onChange={(e) =>
-                      setTrabajoForm({ ...trabajoForm, hectareas: e.target.value })
-                    }
+                    onChange={(e) => setTrabajoForm({ ...trabajoForm, hectareas: e.target.value })}
                   />
                 </div>
 
@@ -3354,11 +4299,631 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
+              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={actionLoading}>
+                {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Asignar Trabajo
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============================================ */}
+      {/* DIALOGS ADICIONALES */}
+      {/* ============================================ */}
+
+      {/* DIALOG: Ver Detalles */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalles del Comprobante</DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">Tipo</Label>
+                  <p className="font-medium">{selectedItem.tipo}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">Número</Label>
+                  <p className="font-medium">{selectedItem.numero}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">Fecha</Label>
+                  <p className="font-medium">{formatDate(selectedItem.fecha)}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">Estado</Label>
+                  <Badge
+                    className={
+                      selectedItem.estado === "Pagado"
+                        ? "bg-green-500"
+                        : selectedItem.estado === "Pendiente"
+                        ? "bg-yellow-500"
+                        : "bg-gray-500"
+                    }
+                  >
+                    {selectedItem.estado}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <Label className="text-sm text-gray-600">Razón Social</Label>
+                <p className="font-medium text-lg">{selectedItem.razonSocial}</p>
+                {selectedItem.rut && (
+                  <p className="text-sm text-gray-600">RUT: {selectedItem.rut}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 border-t pt-4">
+                <div className="bg-blue-50 p-3 rounded">
+                  <Label className="text-sm text-gray-600">Subtotal</Label>
+                  <p className="font-bold text-blue-700">
+                    ${selectedItem.subtotal?.toFixed(2) || "0.00"}
+                  </p>
+                </div>
+                <div className="bg-green-50 p-3 rounded">
+                  <Label className="text-sm text-gray-600">IVA</Label>
+                  <p className="font-bold text-green-700">
+                    ${selectedItem.iva?.toFixed(2) || "0.00"}
+                  </p>
+                </div>
+                <div className="bg-purple-50 p-3 rounded">
+                  <Label className="text-sm text-gray-600">Total</Label>
+                  <p className="font-bold text-purple-700 text-xl">
+                    {selectedItem.moneda} ${selectedItem.total?.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              {selectedItem.procesadoOCR && (
+                <div className="bg-purple-50 p-3 rounded border-t">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Upload className="h-4 w-4 text-purple-600" />
+                    <Label className="text-sm font-medium text-purple-900">
+                      Procesado con OCR
+                    </Label>
+                  </div>
+                  <p className="text-sm text-purple-700">
+                    Confianza: {selectedItem.confianzaOCR}%
+                  </p>
+                </div>
+              )}
+
+              {selectedItem.observaciones && (
+                <div className="border-t pt-4">
+                  <Label className="text-sm text-gray-600">Observaciones</Label>
+                  <p className="text-sm mt-1">{selectedItem.observaciones}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG: Confirmar Eliminación */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Confirmar Eliminación
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción no se puede deshacer. ¿Estás seguro de que deseas eliminar este registro?
+            </DialogDescription>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="bg-red-50 p-4 rounded border border-red-200">
+              <p className="font-medium">
+                {selectedItem.nombre ||
+                  selectedItem.razonSocial ||
+                  selectedItem.numero ||
+                  "Registro"}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Tipo: {selectedItem.type || selectedItem.tipo}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setSelectedItem(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleDeleteItem}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Eliminar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG: Registrar Horas de Empleado */}
+      <Dialog open={horasDialogOpen} onOpenChange={setHorasDialogOpen}>
+        <DialogContent className="max-w-md">
+          <form onSubmit={handleRegistrarHoras}>
+            <DialogHeader>
+              <DialogTitle>Registrar Horas Trabajadas</DialogTitle>
+              <DialogDescription>
+                {selectedItem && `Empleado: ${selectedItem.nombre} ${selectedItem.apellido}`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Fecha *</Label>
+                <Input
+                  type="date"
+                  value={horasForm.fecha}
+                  onChange={(e) => setHorasForm({ ...horasForm, fecha: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Horas Trabajadas *</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  placeholder="8.0"
+                  value={horasForm.horasTrabajadas}
+                  onChange={(e) => setHorasForm({ ...horasForm, horasTrabajadas: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipo de Tarea *</Label>
+                <Select
+                  value={horasForm.tipoTarea}
+                  onValueChange={(value) => setHorasForm({ ...horasForm, tipoTarea: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Campo">Campo</SelectItem>
+                    <SelectItem value="Administrativo">Administrativo</SelectItem>
+                    <SelectItem value="Mantenimiento">Mantenimiento</SelectItem>
+                    <SelectItem value="Transporte">Transporte</SelectItem>
+                    <SelectItem value="Otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Descripción</Label>
+                <Textarea
+                  placeholder="Detalles de la tarea realizada..."
+                  value={horasForm.descripcion}
+                  onChange={(e) => setHorasForm({ ...horasForm, descripcion: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              {selectedItem && (
+                <div className="bg-blue-50 p-3 rounded">
+                  <p className="text-sm text-gray-600">Costo estimado</p>
+                  <p className="text-lg font-bold text-blue-700">
+                    $
+                    {(
+                      (parseFloat(horasForm.horasTrabajadas || "0") * selectedItem.salarioBase) /
+                      160
+                    ).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-gray-500">Basado en salario mensual / 160 horas</p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setHorasDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-purple-600 hover:bg-purple-700" disabled={actionLoading}>
+                {actionLoading ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Clock className="h-4 w-4 mr-2" />
+                )}
+                Registrar Horas
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {/* DIALOG: Pagar Salario */}
+      <Dialog open={pagarSalarioDialogOpen} onOpenChange={setPagarSalarioDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <form onSubmit={handlePagarSalario}>
+            <DialogHeader>
+              <DialogTitle>Pagar Salario</DialogTitle>
+              <DialogDescription>
+                {selectedItem && `Empleado: ${selectedItem.nombre} ${selectedItem.apellido}`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Mes *</Label>
+                  <Select
+                    value={pagarSalarioForm.mes.toString()}
+                    onValueChange={(value) =>
+                      setPagarSalarioForm({ ...pagarSalarioForm, mes: parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <SelectItem key={i + 1} value={(i + 1).toString()}>
+                          {new Date(2024, i).toLocaleDateString("es", { month: "long" })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Año *</Label>
+                  <Input
+                    type="number"
+                    value={pagarSalarioForm.anio}
+                    onChange={(e) =>
+                      setPagarSalarioForm({
+                        ...pagarSalarioForm,
+                        anio: parseInt(e.target.value),
+                      })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              {selectedItem && (
+                <div className="bg-blue-50 p-3 rounded">
+                  <Label className="text-sm text-gray-600">Salario Base</Label>
+                  <p className="text-2xl font-bold text-blue-700">
+                    ${selectedItem.salarioBase.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-gray-500">Tipo: {selectedItem.tipoContrato}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Horas Trabajadas</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    placeholder="160"
+                    value={pagarSalarioForm.horasTrabajadas}
+                    onChange={(e) =>
+                      setPagarSalarioForm({ ...pagarSalarioForm, horasTrabajadas: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Horas Extra</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    placeholder="0"
+                    value={pagarSalarioForm.horasExtra}
+                    onChange={(e) =>
+                      setPagarSalarioForm({ ...pagarSalarioForm, horasExtra: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Bonificaciones</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={pagarSalarioForm.bonificaciones}
+                    onChange={(e) =>
+                      setPagarSalarioForm({ ...pagarSalarioForm, bonificaciones: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Deducciones</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={pagarSalarioForm.deducciones}
+                    onChange={(e) =>
+                      setPagarSalarioForm({ ...pagarSalarioForm, deducciones: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Método de Pago *</Label>
+                <Select
+                  value={pagarSalarioForm.metodoPago}
+                  onValueChange={(value) =>
+                    setPagarSalarioForm({ ...pagarSalarioForm, metodoPago: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Efectivo">Efectivo</SelectItem>
+                    <SelectItem value="Transferencia">Transferencia Bancaria</SelectItem>
+                    <SelectItem value="Cheque">Cheque</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observaciones</Label>
+                <Textarea
+                  placeholder="Notas adicionales..."
+                  value={pagarSalarioForm.observaciones}
+                  onChange={(e) =>
+                    setPagarSalarioForm({ ...pagarSalarioForm, observaciones: e.target.value })
+                  }
+                  rows={2}
+                />
+              </div>
+
+              {selectedItem && (
+                <div className="bg-green-50 p-4 rounded border border-green-200">
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                    <div>
+                      <p className="text-gray-600">Salario Base</p>
+                      <p className="font-medium">${selectedItem.salarioBase.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Horas Extra</p>
+                      <p className="font-medium">
+                        $
+                        {(
+                          parseFloat(pagarSalarioForm.horasExtra || "0") *
+                          (selectedItem.salarioBase / 160) *
+                          1.5
+                        ).toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">+ Bonificaciones</p>
+                      <p className="font-medium text-green-600">
+                        ${parseFloat(pagarSalarioForm.bonificaciones || "0").toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">- Deducciones</p>
+                      <p className="font-medium text-red-600">
+                        ${parseFloat(pagarSalarioForm.deducciones || "0").toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="border-t pt-2 mt-2">
+                    <p className="text-sm text-gray-600">TOTAL A PAGAR</p>
+                    <p className="text-2xl font-bold text-green-700">
+                      $
+                      {(
+                        selectedItem.salarioBase +
+                        parseFloat(pagarSalarioForm.horasExtra || "0") *
+                          (selectedItem.salarioBase / 160) *
+                          1.5 +
+                        parseFloat(pagarSalarioForm.bonificaciones || "0") -
+                        parseFloat(pagarSalarioForm.deducciones || "0")
+                      ).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPagarSalarioDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-green-600 hover:bg-green-700"
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <DollarSign className="h-4 w-4 mr-2" />
+                )}
+                Registrar Pago
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG: Asignar Usuario a Rol */}
+      <Dialog open={asignarUsuarioDialogOpen} onOpenChange={setAsignarUsuarioDialogOpen}>
+        <DialogContent className="max-w-md">
+          <form onSubmit={handleAsignarUsuario}>
+            <DialogHeader>
+              <DialogTitle>Asignar Usuario al Rol</DialogTitle>
+              <DialogDescription>
+                {selectedItem && `Rol: ${selectedItem.nombre}`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {selectedItem && (
+                <div className="bg-indigo-50 p-3 rounded">
+                  <p className="font-medium text-indigo-900">{selectedItem.nombre}</p>
+                  {selectedItem.descripcion && (
+                    <p className="text-sm text-indigo-700 mt-1">{selectedItem.descripcion}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Email del Usuario *</Label>
+                <Input
+                  type="email"
+                  placeholder="usuario@email.com"
+                  value={asignarUsuarioForm.usuarioEmail}
+                  onChange={(e) =>
+                    setAsignarUsuarioForm({ ...asignarUsuarioForm, usuarioEmail: e.target.value })
+                  }
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Se enviará una invitación al email del usuario
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Mensaje Personalizado</Label>
+                <Textarea
+                  placeholder="Escribe un mensaje para el usuario..."
+                  value={asignarUsuarioForm.mensaje}
+                  onChange={(e) =>
+                    setAsignarUsuarioForm({ ...asignarUsuarioForm, mensaje: e.target.value })
+                  }
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAsignarUsuarioDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700"
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Users className="h-4 w-4 mr-2" />
+                )}
+                Enviar Invitación
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG: Ver Trabajos de Contratista */}
+      <Dialog open={verTrabajosDialogOpen} onOpenChange={setVerTrabajosDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Trabajos Asignados</DialogTitle>
+            <DialogDescription>
+              {selectedItem && `Contratista: ${selectedItem.nombre}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {actionLoading ? (
+              <div className="text-center py-8">
+                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400 mb-2" />
+                <p className="text-gray-500">Cargando trabajos...</p>
+              </div>
+            ) : trabajosContratista.length === 0 ? (
+              <div className="text-center py-8">
+                <Briefcase className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                <p className="text-gray-500">No hay trabajos asignados</p>
+              </div>
+            ) : (
+              trabajosContratista.map((trabajo) => (
+                <Card key={trabajo.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{trabajo.titulo}</CardTitle>
+                      <Badge
+                        className={
+                          trabajo.estado === "Completado"
+                            ? "bg-green-500"
+                            : trabajo.estado === "EnProgreso"
+                            ? "bg-blue-500"
+                            : trabajo.estado === "Pendiente"
+                            ? "bg-yellow-500"
+                            : "bg-gray-500"
+                        }
+                      >
+                        {trabajo.estado}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-sm text-gray-600">{trabajo.descripcion}</p>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <p className="text-gray-500">Tipo</p>
+                        <p className="font-medium">{trabajo.tipo}</p>
+                      </div>
+                      {trabajo.loteNombre && (
+                        <div>
+                          <p className="text-gray-500">Lote</p>
+                          <p className="font-medium">{trabajo.loteNombre}</p>
+                        </div>
+                      )}
+                      {trabajo.monto && (
+                        <div>
+                          <p className="text-gray-500">Monto</p>
+                          <p className="font-bold text-green-600">${trabajo.monto.toFixed(2)}</p>
+                        </div>
+                      )}
+                    </div>
+                    {trabajo.fechaCompletado && (
+                      <p className="text-xs text-gray-500">
+                        Completado: {formatDate(trabajo.fechaCompletado)}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVerTrabajosDialogOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -3372,10 +4937,11 @@ export default function FinanzasPage() {
                 Módulo de Finanzas y Administración 100% Completo
               </p>
               <p className="text-sm text-blue-700 mt-1">
-                Sistema profesional con: OCR automático con Claude Vision • Motor de costos real-time
-                • Activos fijos con depreciación automática • Márgenes brutos en tiempo real •
-                Multi-moneda • Facturación completa • Cuentas por pagar • Gestión laboral •
-                Roles y permisos • Portal de contratistas • Reportes profesionales
+                Sistema profesional con: OCR automático con Claude Vision • Motor de costos
+                real-time • Activos fijos con depreciación automática • Márgenes brutos en tiempo
+                real • Multi-moneda • Facturación completa • Cuentas por pagar • Gestión laboral •
+                Roles y permisos • Portal de contratistas • Reportes profesionales • Búsqueda y
+                filtros avanzados • Edición y eliminación • Paginación • Exportación a PDF/CSV
               </p>
             </div>
           </div>
