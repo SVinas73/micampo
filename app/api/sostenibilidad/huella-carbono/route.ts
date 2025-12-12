@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 // ============================================
 // FACTORES DE EMISIÓN (kg CO2e por unidad)
@@ -158,21 +158,22 @@ export async function POST(req: Request) {
     // ============================================
     const laboresConFertilizantes = await prisma.labor.findMany({
       where: {
-        lote: { establecimientoId },
+        userId: session.user.id,  // ← usar userId
         fecha: { gte: inicio, lte: fin },
-        tipoLabor: { contains: "Fertilización" },
+        tipo: { contains: "Fertilización" },  // ← campo correcto es "tipo"
+      },
+      include: {
+        aplicacionesProductos: true,  // ← incluir para obtener dosis
       },
     });
 
     let emisionesFertilizantes = 0;
     laboresConFertilizantes.forEach((labor) => {
-      // Parsear dosis (ejemplo: "200 kg/ha")
-      const dosisMatch = labor.dosis?.match(/(\d+(?:\.\d+)?)/);
-      if (dosisMatch && labor.lote) {
-        const dosis = parseFloat(dosisMatch[1]);
-        // Asumimos urea como promedio (simplificación - en producción usar producto real)
-        emisionesFertilizantes += dosis * FACTORES_EMISION.urea;
-      }
+      labor.aplicacionesProductos.forEach((ap) => {  // ← dosis está aquí
+        if (ap.tipoProducto.includes("Fertilizante")) {
+          emisionesFertilizantes += ap.dosis * FACTORES_EMISION.urea;
+        }
+      });
     });
 
     // ============================================
@@ -180,30 +181,28 @@ export async function POST(req: Request) {
     // ============================================
     const laboresConAgroquimicos = await prisma.labor.findMany({
       where: {
-        lote: { establecimientoId },
+        userId: session.user.id,
         fecha: { gte: inicio, lte: fin },
-        OR: [
-          { tipoLabor: { contains: "Herbicida" } },
-          { tipoLabor: { contains: "Insecticida" } },
-          { tipoLabor: { contains: "Fungicida" } },
-          { tipoLabor: { contains: "Pulverización" } },
-        ],
+        tipo: "Pulverización",  // ← campo correcto
+      },
+      include: {
+        aplicacionesProductos: true,
       },
     });
 
     let emisionesAgroquimicos = 0;
     laboresConAgroquimicos.forEach((labor) => {
-      const dosisMatch = labor.dosis?.match(/(\d+(?:\.\d+)?)/);
-      if (dosisMatch) {
-        const dosis = parseFloat(dosisMatch[1]);
-        // Promedio entre tipos de agroquímicos
-        const factorPromedio =
-          (FACTORES_EMISION.herbicida +
-            FACTORES_EMISION.insecticida +
-            FACTORES_EMISION.fungicida) /
-          3;
-        emisionesAgroquimicos += dosis * factorPromedio;
-      }
+      labor.aplicacionesProductos.forEach((ap) => {
+        let factor = FACTORES_EMISION.herbicida;  // default
+    
+        if (ap.tipoProducto.includes("Insecticida")) {
+          factor = FACTORES_EMISION.insecticida;
+        } else if (ap.tipoProducto.includes("Fungicida")) {
+          factor = FACTORES_EMISION.fungicida;
+        }
+    
+        emisionesAgroquimicos += ap.dosis * factor;
+      });
     });
 
     // ============================================
@@ -211,16 +210,9 @@ export async function POST(req: Request) {
     // ============================================
     const animales = await prisma.animal.findMany({
       where: {
-        rodeo: { establecimientoId },
-        OR: [
-          { fechaNacimiento: { lte: fin } },
-          { fechaIngreso: { lte: fin } },
-        ],
-        AND: [
-          {
-            OR: [{ fechaSalida: null }, { fechaSalida: { gte: inicio } }],
-          },
-        ],
+        userId: session.user.id,
+        fechaNacimiento: { lte: fin },
+        estado: "Activo",  // ← solo animales activos
       },
     });
 
@@ -231,14 +223,10 @@ export async function POST(req: Request) {
 
     let emisionesGanaderia = 0;
     animales.forEach((animal) => {
-      // Calcular edad aproximada
-      const fechaRef = animal.fechaNacimiento || animal.fechaIngreso || inicio;
-      const edadAnios =
-        (fin.getTime() - new Date(fechaRef).getTime()) / (1000 * 60 * 60 * 24 * 365);
-
-      const factor =
-        edadAnios >= 2 ? FACTORES_EMISION.bovinoAdulto : FACTORES_EMISION.bovinoJoven;
-
+      const fechaRef = animal.fechaNacimiento || animal.createdAt;  // ← usar createdAt
+      const edadAnios = (fin.getTime() - new Date(fechaRef).getTime()) / (1000 * 60 * 60 * 24 * 365);
+  
+      const factor = edadAnios >= 2 ? FACTORES_EMISION.bovinoAdulto : FACTORES_EMISION.bovinoJoven;
       emisionesGanaderia += factor * fraccionAnio;
     });
 
@@ -266,7 +254,7 @@ export async function POST(req: Request) {
 
     // Obtener hectáreas del establecimiento
     const lotes = await prisma.lote.findMany({
-      where: { establecimientoId },
+      where: { userId: session.user.id },
       select: { hectareas: true },
     });
 
