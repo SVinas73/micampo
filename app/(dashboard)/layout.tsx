@@ -1,5 +1,6 @@
 "use client";
 
+import { Inter } from 'next/font/google'
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -31,6 +32,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700']
+})
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -104,7 +110,7 @@ export default function DashboardLayout({
     .slice(0, 2) || "U";
 
   return (
-    <div className="min-h-screen bg-gray-50 relative">
+    <div className={`min-h-screen bg-gray-50 ${inter.className}`}>
       {/* Fondo Difuminado */}
       <div
         className="fixed inset-0 z-0"

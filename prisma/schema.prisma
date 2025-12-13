@@ -244,6 +244,7 @@ model Cosecha {
   siembraId        String
   siembra          Siembra           @relation(fields: [siembraId], references: [id], onDelete: Cascade)
   mapasRendimiento MapaRendimiento[] // ← NUEVO
+  siembraId        String
   loteId           String
   lote             Lote              @relation(fields: [loteId], references: [id], onDelete: Cascade)
   userId           String
