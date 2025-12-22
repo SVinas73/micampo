@@ -636,7 +636,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-3xl font-bold ${
+              className={`text-2xl font-bold ${
                 data.metricas.alertasActivas > 0 ? "text-red-600" : "text-gray-900"
               }`}
             >
@@ -653,7 +653,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900">
               {data.metricas.tratamientosActivos}
             </div>
             <p className="text-xs text-gray-500 mt-1">últimos 30 días</p>
@@ -667,7 +667,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900">
               {formatNumber(data.metricas.produccionMesActual)}
             </div>
             <p className="text-xs text-gray-500 mt-1">lts</p>
@@ -682,7 +682,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-3xl font-bold ${
+              className={`text-2xl font-bold ${
                 data.metricas.balanceMesActual >= 0 ? "text-green-600" : "text-red-600"
               }`}
             >

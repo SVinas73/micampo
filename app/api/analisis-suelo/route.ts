@@ -1,148 +1,193 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
-export async function GET(request: Request) {
+export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const loteId = searchParams.get("loteId");
+    // ============================================
+    // DATOS HARDCODEADOS SEGÚN FIGMA
+    // ============================================
 
-    const where: any = {
-      userId: session.user.id,
-    };
-
-    if (loteId) {
-      where.loteId = loteId;
-    }
-
-    const analisis = await prisma.analisisSuelo.findMany({
-      where,
-      include: {
-        lote: {
-          select: {
-            nombre: true,
+    const cardsLotes = [
+      {
+        id: "1",
+        nombre: "Lote 1 - Ethel",
+        subtitulo: "Lote Ente / Tipo 2 parcelas",
+        parametros: [
+          {
+            nombre: "Nitrógeno",
+            valor: "pH 7,51",
+            porcentaje: 8,
+            color: "green",
+            necesitaFertilizante: false,
           },
-        },
-      },
-      orderBy: {
-        fechaAnalisis: "desc",
-      },
-    });
-
-    return NextResponse.json(analisis);
-  } catch (error) {
-    console.error("Error al obtener análisis:", error);
-    return NextResponse.json(
-      { error: "Error al obtener análisis de suelo" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const {
-      loteId,
-      fechaAnalisis,
-      pH,
-      materiaOrganica,
-      nitrogeno,
-      fosforo,
-      potasio,
-      observaciones,
-    } = await request.json();
-
-    if (!loteId || !fechaAnalisis) {
-      return NextResponse.json(
-        { error: "Campos requeridos faltantes" },
-        { status: 400 }
-      );
-    }
-
-    // Generar recomendaciones basadas en los valores
-    let recomendaciones = "";
-    
-    if (pH) {
-      const pHVal = parseFloat(pH);
-      if (pHVal < 5.5) {
-        recomendaciones += "pH bajo: Aplicar cal para corregir acidez. ";
-      } else if (pHVal > 7.5) {
-        recomendaciones += "pH alto: Considerar enmiendas para reducir alcalinidad. ";
-      }
-    }
-
-    if (materiaOrganica) {
-      const moVal = parseFloat(materiaOrganica);
-      if (moVal < 2) {
-        recomendaciones += "Materia orgánica baja: Incorporar compost o abono verde. ";
-      }
-    }
-
-    if (nitrogeno) {
-      const nVal = parseFloat(nitrogeno);
-      if (nVal < 20) {
-        recomendaciones += "Nitrógeno bajo: Fertilización nitrogenada recomendada. ";
-      }
-    }
-
-    if (fosforo) {
-      const pVal = parseFloat(fosforo);
-      if (pVal < 10) {
-        recomendaciones += "Fósforo bajo: Aplicar fertilizante fosfatado. ";
-      }
-    }
-
-    if (potasio) {
-      const kVal = parseFloat(potasio);
-      if (kVal < 80) {
-        recomendaciones += "Potasio bajo: Considerar fertilización potásica. ";
-      }
-    }
-
-    if (!recomendaciones) {
-      recomendaciones = "Los niveles están dentro de rangos aceptables. Continuar con monitoreo periódico.";
-    }
-
-    const analisis = await prisma.analisisSuelo.create({
-      data: {
-        loteId,
-        fechaAnalisis: new Date(fechaAnalisis),
-        pH: pH ? parseFloat(pH) : null,
-        materiaOrganica: materiaOrganica ? parseFloat(materiaOrganica) : null,
-        nitrogeno: nitrogeno ? parseFloat(nitrogeno) : null,
-        fosforo: fosforo ? parseFloat(fosforo) : null,
-        potasio: potasio ? parseFloat(potasio) : null,
-        observaciones: observaciones || null,
-        recomendaciones,
-        userId: session.user.id,
-      },
-      include: {
-        lote: {
-          select: {
-            nombre: true,
+          {
+            nombre: "Fósforo",
+            valor: "Alto 28%",
+            porcentaje: 28,
+            color: "orange",
+            necesitaFertilizante: true,
           },
-        },
+          {
+            nombre: "Potasio",
+            valor: "65%",
+            porcentaje: 65,
+            color: "yellow",
+            necesitaFertilizante: false,
+          },
+        ],
       },
-    });
+      {
+        id: "41",
+        nombre: "Lote 41 - Ibera",
+        subtitulo: "Lote Oeste / Tipo 1 parcela",
+        parametros: [
+          {
+            nombre: "Nitrógeno",
+            valor: "pH 7,2",
+            porcentaje: 12,
+            color: "green",
+            necesitaFertilizante: false,
+          },
+          {
+            nombre: "Fósforo",
+            valor: "Alto 35%",
+            porcentaje: 35,
+            color: "orange",
+            necesitaFertilizante: true,
+          },
+          {
+            nombre: "Potasio",
+            valor: "58%",
+            porcentaje: 58,
+            color: "yellow",
+            necesitaFertilizante: false,
+          },
+        ],
+      },
+      {
+        id: "7",
+        nombre: "Lote 7 - La Loma",
+        subtitulo: "Lote Sur / Tipo 3 parcelas",
+        parametros: [
+          {
+            nombre: "Nitrógeno",
+            valor: "pH 7,8",
+            porcentaje: 6,
+            color: "green",
+            necesitaFertilizante: false,
+          },
+          {
+            nombre: "Fósforo",
+            valor: "Medio 22%",
+            porcentaje: 22,
+            color: "orange",
+            necesitaFertilizante: false,
+          },
+          {
+            nombre: "Potasio",
+            valor: "72%",
+            porcentaje: 72,
+            color: "yellow",
+            necesitaFertilizante: false,
+          },
+        ],
+      },
+      {
+        id: "4",
+        nombre: "Lote 4 - El Bajo",
+        subtitulo: "Lote Norte / Tipo 2 parcelas",
+        parametros: [
+          {
+            nombre: "Nitrógeno",
+            valor: "pH 6,9",
+            porcentaje: 10,
+            color: "green",
+            necesitaFertilizante: false,
+          },
+          {
+            nombre: "Fósforo",
+            valor: "Bajo 18%",
+            porcentaje: 18,
+            color: "orange",
+            necesitaFertilizante: true,
+          },
+          {
+            nombre: "Potasio",
+            valor: "45%",
+            porcentaje: 45,
+            color: "yellow",
+            necesitaFertilizante: false,
+          },
+        ],
+      },
+    ];
 
-    return NextResponse.json(analisis, { status: 201 });
+    const resultadosLaboratorio = [
+      {
+        id: "1",
+        fecha: "2024-12-16",
+        lote: "Lote Norte",
+        phEst: "0-20",
+        fosforo: "P ppm A",
+        nTotal: 45,
+        ph: 6.5,
+        estado: "Alto",
+      },
+      {
+        id: "2",
+        fecha: "2024-10-14",
+        lote: "Lote Sur",
+        phEst: "0-20",
+        fosforo: "19 ppm",
+        nTotal: 60,
+        ph: 6.2,
+        estado: "Apta",
+      },
+      {
+        id: "3",
+        fecha: "2024-10-12",
+        lote: "Lote Este",
+        phEst: "0-20",
+        fosforo: "29 ppm",
+        nTotal: 75,
+        ph: 6.6,
+        estado: "Óptimo",
+      },
+      {
+        id: "4",
+        fecha: "2024-10-10",
+        lote: "Lote Oeste",
+        phEst: "20-40",
+        fosforo: "10 ppm A",
+        nTotal: 50,
+        ph: 6.8,
+        estado: "Apta",
+      },
+    ];
+
+    const evolucionHistorica = [
+      { año: "2020", nitrogeno: 10, optimo: 20 },
+      { año: "2021", nitrogeno: 12, optimo: 22 },
+      { año: "2022", nitrogeno: 11, optimo: 21 },
+      { año: "2023", nitrogeno: 14, optimo: 24 },
+      { año: "2024", nitrogeno: 15, optimo: 25 },
+    ];
+
+    return NextResponse.json({
+      cardsLotes,
+      resultadosLaboratorio,
+      evolucionHistorica,
+    });
   } catch (error) {
-    console.error("Error al crear análisis:", error);
+    console.error("Error:", error);
     return NextResponse.json(
-      { error: "Error al crear análisis de suelo" },
+      { error: "Error al obtener datos de análisis de suelo" },
       { status: 500 }
     );
   }
