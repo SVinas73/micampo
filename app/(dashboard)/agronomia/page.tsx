@@ -488,7 +488,7 @@ export default function AgronomiaPage() {
   const totalMarcadores = 1
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50 p-6 space-y-6 max-w-[1920px] mx-auto">
       {/* HEADER - Exacto al Figma */}
       <div className="flex items-center justify-between">
         <div>
@@ -496,10 +496,31 @@ export default function AgronomiaPage() {
           <p className="text-sm text-gray-600 mt-1">Campo Digital</p>
         </div>
         <div className="flex gap-3">
-          <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
-            Cargar Imagen de Lote
-          </Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white px-6 shadow-sm">Reportar Plaga</Button>
+          {/* Botones para DETECCIÓN DE ENFERMEDADES */}
+          {activeTab === "deteccion" && (
+            <>
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
+                Cargar Imagen de Lote
+              </Button>
+              <Button className="bg-orange-500 hover:bg-orange-600 text-white px-6 shadow-sm">
+                Reportar Plaga
+              </Button>
+            </>
+          )}
+
+          {/* Botones para PLANIFICADOR - Sub-tab PLANES */}
+          {activeTab === "planificador" && activeSubTab === "planes" && (
+            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
+              Nuevo Plan
+            </Button>
+          )}
+
+          {/* Botones para PLANIFICADOR - Sub-tab ANÁLISIS */}
+          {activeTab === "planificador" && activeSubTab === "analisis" && (
+            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
+              Nuevo Análisis
+            </Button>
+          )}
         </div>
       </div>
 
@@ -707,7 +728,7 @@ export default function AgronomiaPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-3xl font-bold ${mockDataDeteccion.metricas.alertasActivas > 0 ? "text-red-600" : "text-gray-900"}`}>
+                    <div className={`text-xl font-bold ${mockDataDeteccion.metricas.alertasActivas > 0 ? "text-red-600" : "text-gray-900"}`}>
                       {mockDataDeteccion.metricas.alertasActivas}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">críticas</p>
@@ -715,19 +736,22 @@ export default function AgronomiaPage() {
                 </Card>
 
                 {/* Card 2: Confianza IA - Con borde verde y sparkle */}
-                <Card className="bg-white border-2 border-emerald-400 hover:shadow-md transition-shadow relative">
-                  <Sparkles className="h-4 w-4 text-yellow-500 absolute top-3 right-3" />
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-gray-700">
-                      Confianza IA
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-gray-900">
-                      {mockDataDeteccion.metricas.confianzaIA}%
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">precisión</p>
-                  </CardContent>
+                
+                <Card className="relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[2px] rounded-lg hover:shadow-md transition-shadow">
+                  <div className="bg-white rounded-lg h-full flex flex-col">
+                    <Sparkles className="h-4 w-4 text-yellow-500 absolute top-6 right-3" />
+                    <CardHeader className="pb-8.5">
+                      <CardTitle className="text-sm font-medium text-gray-700 mt-6">
+                        Confianza IA
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {mockDataDeteccion.metricas.confianzaIA}%
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">precisión</p>
+                    </CardContent>
+                  </div>
                 </Card>
 
                 {/* Card 3: Vigor Promedio */}
@@ -780,12 +804,13 @@ export default function AgronomiaPage() {
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_450px] gap-4">
                 {/* Columna Izquierda: Alertas Activas */}
                 <div>
-                  <Card className="border-2 border-orange-400 bg-gradient-to-br from-yellow-50 to-orange-50 shadow-lg relative max-w-full">
-                    <Sparkles className="h-5 w-5 text-yellow-600 absolute top-4 right-4" />
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg font-bold text-gray-900">Alertas Activas</CardTitle>
-                    </CardHeader>
-                    <CardContent className="overflow-x-auto pb-3">
+                  <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg max-w-full">
+                    <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-6">
+                      <Sparkles className="h-5 w-5 text-yellow-600 absolute top-6 right-6 z-10" />
+                      <CardHeader className="pb-3 pt-0">
+                        <CardTitle className="text-lg font-normal text-gray-800">Alertas Activas</CardTitle>
+                      </CardHeader>
+                      <CardContent className="overflow-x-auto pb-3 pt-0">
                       <div className="space-y-2.5 min-w-max">
                         {alertasActivas.map((alerta) => (
                           <div key={alerta.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
@@ -894,21 +919,22 @@ export default function AgronomiaPage() {
                         ))}
                       </div>
                     </CardContent>
+                    </div>
                   </Card>
                 </div>
 
                 {/* Columna Derecha: Estrategia y Probabilidades */}
                 <div className="space-y-3 flex flex-col h-full">
                   {/* Estrategia de Control Sugerida */}
-                  <Card className="border-2 border-emerald-400 shadow-lg bg-white relative">
-                    <Sparkles className="h-4 w-4 text-yellow-500 absolute top-3 right-3 z-10" />
-                    <CardHeader className="pb-3 pt-4">
-                      <CardTitle className="text-base font-bold text-gray-900">
-                        Estrategia de Control Sugerida
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {/* Card interno con el producto */}
+                  <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg">
+                    <div className="bg-white rounded-lg p-6">
+                      <Sparkles className="h-4 w-4 text-yellow-500 absolute top-6 right-6 z-10" />
+                      <CardHeader className="pb-3 pt-0">
+                        <CardTitle className="text-base font-normal text-gray-800">
+                          Estrategia de Control Sugerida
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3 pt-0">
                       <div className="bg-white p-3 rounded-lg border border-gray-200">
                         <p className="text-xs text-gray-600 mb-2">Estrategia de Control Sugerida</p>
                         
@@ -970,15 +996,17 @@ export default function AgronomiaPage() {
                         </p>
                       </div>
                     </CardContent>
+                    </div>
                   </Card>
 
                   {/* Probabilidades */}
-                  <Card className="border-2 border-yellow-400 shadow-lg bg-white relative flex-1">
-                    <Sparkles className="h-4 w-4 text-yellow-500 absolute top-3 right-3 z-10" />
-                    <CardHeader className="pb-3 pt-4">
-                      <CardTitle className="text-base font-bold text-gray-900">Probabilidades</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 overflow-y-auto max-h-full">
+                  <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg flex-1">
+                    <div className="bg-white rounded-lg p-6 h-full flex flex-col">
+                      <Sparkles className="h-4 w-4 text-yellow-500 absolute top-6 right-6 z-10" />
+                      <CardHeader className="pb-3 pt-0">
+                        <CardTitle className="text-base font-normal text-gray-800">Probabilidades</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3 overflow-y-auto max-h-full pt-0 flex-1">
                       {/* Item 1 */}
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
@@ -1036,6 +1064,7 @@ export default function AgronomiaPage() {
                         </div>
                       </div>
                     </CardContent>
+                    </div>
                   </Card>
                 </div>
               </div>
@@ -1303,191 +1332,1122 @@ export default function AgronomiaPage() {
         </TabsContent>
 
         {/* TAB: PLANIFICADOR */}
-        <TabsContent value="planificador" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Planes Generados</CardTitle>
+        <TabsContent value="planificador" className="space-y-4 mt-6">
+          {/* Métricas Superiores - MISMO ESTILO QUE DETECCIÓN */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Card 1: Planes Generados */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Planes Generados
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">3</div>
+                <div className="text-2xl font-bold text-gray-900">3</div>
+                <p className="text-xs text-gray-500 mt-1">activos</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Planes Aprobados</CardTitle>
+            {/* Card 2: Planes Aprobados */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Planes Aprobados
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">2</div>
+                <div className="text-2xl font-bold text-gray-900">2</div>
+                <p className="text-xs text-gray-500 mt-1">confirmados</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Superficie Planificada</CardTitle>
+            {/* Card 3: Superficie Planificada */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Superficie Planificada
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">850 Ha</div>
+                <div className="text-2xl font-bold text-gray-900">850 Ha</div>
+                <p className="text-xs text-gray-500 mt-1">total</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Inversión Estimada</CardTitle>
+            {/* Card 4: Inversión Estimada */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Inversión Estimada
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">0</div>
+                <div className="text-2xl font-bold text-gray-900">0</div>
+                <p className="text-xs text-gray-500 mt-1">USD</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Próxima Siembra</CardTitle>
+            {/* Card 5: Próxima Siembra */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Próxima Siembra
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">3/12/25</div>
+                <div className="text-2xl font-bold text-gray-900">3/12/25</div>
+                <p className="text-xs text-gray-500 mt-1">fecha</p>
               </CardContent>
             </Card>
           </div>
 
-          <Tabs value={activeSubTab} onValueChange={handleSubTabChange}>
-            <TabsList className="bg-white">
-              <TabsTrigger value="planes">Planes de Siembra</TabsTrigger>
-              <TabsTrigger value="analisis">Análisis de Suelo</TabsTrigger>
+          {/* SUB-TABS: MISMO ESTILO QUE DETECCIÓN */}
+          <Tabs value={activeSubTab} onValueChange={handleSubTabChange} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="planes">
+                <Calendar className="h-4 w-4 mr-2" />
+                Planes de Siembra
+              </TabsTrigger>
+              <TabsTrigger value="analisis">
+                <Activity className="h-4 w-4 mr-2" />
+                Análisis de Suelo
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="planes">
-              <Card>
-                <CardContent className="py-8">
-                  <p className="text-gray-500 text-center">Planes de Siembra</p>
+            <TabsContent value="planes" className="space-y-6">
+              {/* Card: Planes Activos - HORIZONTAL */}
+              <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg">
+                <div className="bg-white rounded-lg p-6">
+                  <Sparkles className="h-5 w-5 text-yellow-500 absolute top-4 right-4 z-10" />
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-normal text-gray-800">Planes Activos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Grid HORIZONTAL de 3 columnas */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      {/* Plan 1: Maíz Tardío */}
+                      <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 space-y-3">
+                        {/* Header: Título + Monto en la MISMA LÍNEA */}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">🌽</span>
+                            <h3 className="font-bold text-sm text-gray-900">Maíz Tardío - Lotes Norte</h3>
+                          </div>
+                          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 text-[10px] font-bold px-2 py-0.5">
+                            💵$45,500 USD (Est.)
+                          </Badge>
+                        </div>
+
+                        {/* Info del plan */}
+                        <div className="space-y-1 text-[11px] text-gray-800">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Lotes: 4, 5, 6 (320 Has)</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Fecha Meta: 20-25 Oct</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Sprout className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Insumo: Híbrido DK-7210</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Activity className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Densidad: 70k pl/Ha</span>
+                          </div>
+                        </div>
+
+                        {/* Timeline */}
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-yellow-500 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Borrador</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-yellow-500 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-yellow-500 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Insumos</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-gray-300 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Asignación</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-gray-300 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Listo</span>
+                          </div>
+                        </div>
+
+                        {/* Botones */}
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          <Button variant="outline" size="sm" className="h-8 text-xs font-semibold">
+                            <Edit className="h-3 w-3 mr-1" />
+                            Editar
+                          </Button>
+                          <Button size="sm" className="h-8 text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-700 px-2">
+                            Generar Orden de Trabajo
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Plan 2: Soja Primera */}
+                      <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">🌱</span>
+                            <h3 className="font-bold text-sm text-gray-900">Soja Primera - Lotes Sur</h3>
+                          </div>
+                          <Badge className="bg-green-100 text-green-800 border-green-300 text-[10px] font-bold px-2 py-0.5">
+                            💵$62,000 USD (Est.)
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-1 text-[11px] text-gray-800">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Lotes: 8, 12, 15 (450 Has)</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Fecha Meta: 05-10 Nov</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Sprout className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Insumo: Semilla S7 5x1</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Activity className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Densidad: 280k pl/Ha</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Borrador</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-green-500 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Insumos</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-green-500 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Asignación</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-gray-300 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Listo</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          <Button variant="outline" size="sm" className="h-8 text-xs font-semibold">
+                            <Edit className="h-3 w-3 mr-1" />
+                            Editar
+                          </Button>
+                          <Button size="sm" className="h-8 text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-700 px-2">
+                            Generar Orden de Trabajo
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Plan 3: Girasol */}
+                      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">🌻</span>
+                            <h3 className="font-bold text-sm text-gray-900">Girasol - Lotes Oeste</h3>
+                          </div>
+                          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 text-[10px] font-bold px-2 py-0.5">
+                            💵$55,000 USD (Est.)
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-1 text-[11px] text-gray-800">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Lotes: 1, 3, 7 (280 Has)</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Fecha Meta: 15-20 Nov</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Sprout className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Insumo: Semilla P245</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Activity className="h-3 w-3 text-gray-600" />
+                            <span className="font-semibold">Densidad: 60k pl/Ha</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-yellow-500 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Borrador</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-gray-300 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Insumos</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-gray-300 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Asignación</span>
+                          </div>
+                          <div className="flex-1 h-0.5 bg-gray-300 mx-1" />
+                          <div className="flex flex-col items-center">
+                            <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center mb-1">
+                              <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                            </div>
+                            <span className="text-[9px] font-semibold text-gray-800">Listo</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2">
+                          <Button variant="outline" size="sm" className="h-8 text-xs font-semibold">
+                            <Edit className="h-3 w-3 mr-1" />
+                            Editar
+                          </Button>
+                          <Button size="sm" className="h-8 text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-700 px-2">
+                            Generar Orden de Trabajo
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </div>
+              </Card>
+
+              {/* Card: Planes Recomendados por IA */}
+              <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg">
+                <div className="bg-white rounded-lg p-6">
+                  <Sparkles className="h-5 w-5 text-yellow-500 absolute top-4 right-4 z-10" />
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-normal text-gray-800">Planes Recomendados por IA</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  
+                  {/* ========== SUGERENCIA 1 ========== */}
+                  <div className="bg-white border-2 border-purple-200 rounded-lg p-3 space-y-3">
+                    {/* Fila superior: Sparkles + Título + Badge */}
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                      <h4 className="font-bold text-s text-gray-900 flex-1 leading-tight">
+                        Sugerencia: Rotación a Maíz Tardío
+                      </h4>
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-[10px] font-bold px-1.5 py-0.5 whitespace-nowrap">
+                        Confianza IA: 92% (Alta)
+                      </Badge>
+                    </div>
+
+                    {/* LÍNEA DIVISORIA HORIZONTAL (entre título y contenido) */}
+                    <div className="border-t border-gray-300"></div>
+
+                    {/* Grid 2 columnas */}
+                    <div className="grid grid-cols-2 gap-2 text-[12px] relative">
+                      {/* LÍNEA DIVISORIA VERTICAL (entre columnas) */}
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300 -translate-x-1/2"></div>
+
+                      {/* Columna Izquierda */}
+                      <div className="space-y-2 pr-2">
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">📍 Lotes Afectados:</p>
+                          <p className="text-gray-700 leading-tight">Lotes 3, 7 | Superficie: 45.3 ha</p>
+                        </div>
+                        
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">💰 Proyección Económica:</p>
+                          <div className="space-y-0.5 text-gray-700">
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-green-600">✓</span>
+                              <span>+$8K estimado</span>
+                            </div>
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-green-600">✓</span>
+                              <span>Riesgo mercado considerado</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Columna Derecha */}
+                      <div className="space-y-2 pl-2">
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">🧠 El Razonamiento:</p>
+                          <div className="space-y-0.5 text-gray-700">
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-yellow-600">⚠</span>
+                              <span>Detectado: Compactación severa</span>
+                            </div>
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-green-600">✓</span>
+                              <span>Beneficio: Mejora estructura suelo</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botones */}
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] text-red-600 hover:bg-red-50 font-semibold">
+                        ✕ Descartar
+                      </Button>
+                      <Button size="sm" className="flex-1 h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 font-semibold">
+                        ✓ Convertir en Plan
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* ========== SUGERENCIA 2 ========== */}
+                  <div className="bg-white border-2 border-purple-200 rounded-lg p-3 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                      <h4 className="font-bold text-s text-gray-900 flex-1 leading-tight">
+                        Sugerencia: Cultivo de Cobertura
+                      </h4>
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-[10px] font-bold px-1.5 py-0.5 whitespace-nowrap">
+                        Confianza IA: 87% (Alta)
+                      </Badge>
+                    </div>
+
+                    <div className="border-t border-gray-300"></div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[12px] relative">
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300 -translate-x-1/2"></div>
+
+                      <div className="space-y-2 pr-2">
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">📍 Lotes Afectados:</p>
+                          <p className="text-gray-700 leading-tight">Lotes 2, 8 (Previo Soja 2da)</p>
+                        </div>
+                        
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">💰 Proyección Económica:</p>
+                          <div className="space-y-0.5 text-gray-700">
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-green-600">✓</span>
+                              <span>Ahorro: $30/Ha herbicidas</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pl-2">
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">🧠 El Razonamiento:</p>
+                          <div className="space-y-0.5 text-gray-700">
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-yellow-600">⚠</span>
+                              <span>Detectado: Riesgo erosión</span>
+                            </div>
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-green-600">✓</span>
+                              <span>Beneficio: Protección suelo</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] text-red-600 hover:bg-red-50 font-semibold">
+                        ✕ Descartar
+                      </Button>
+                      <Button size="sm" className="flex-1 h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 font-semibold">
+                        ✓ Convertir en Plan
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* ========== SUGERENCIA 3 ========== */}
+                  <div className="bg-white border-2 border-purple-200 rounded-lg p-3 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                      <h4 className="font-bold text-s text-gray-900 flex-1 leading-tight">
+                        Sugerencia: Nitrógeno Variable
+                      </h4>
+                      <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-[10px] font-bold px-1.5 py-0.5 whitespace-nowrap">
+                        Confianza IA: 65% (Media)
+                      </Badge>
+                    </div>
+
+                    <div className="border-t border-gray-300"></div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[12px] relative">
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300 -translate-x-1/2"></div>
+
+                      <div className="space-y-2 pr-2">
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">📍 Lotes Afectados:</p>
+                          <p className="text-gray-700 leading-tight">Lotes 2, 5, 9 | 85 ha</p>
+                        </div>
+                        
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">💰 Proyección Económica:</p>
+                          <div className="space-y-0.5 text-gray-700">
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-green-600">✓</span>
+                              <span>+5% rinde estimado</span>
+                            </div>
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-red-600">✗</span>
+                              <span>Inversión VRT: $150/ha</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">🌱 Impacto Ambiental:</p>
+                          <div className="space-y-0.5 text-gray-700">
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-green-600">✓</span>
+                              <span>Reduce sobre-aplicación</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pl-2">
+                        <div>
+                          <p className="font-bold text-gray-900 mb-0.5">🧠 El Razonamiento:</p>
+                          <div className="space-y-0.5 text-gray-700">
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-yellow-600">⚠</span>
+                              <span>Detectado: Variabilidad N en suelo</span>
+                            </div>
+                            <div className="flex items-start gap-0.5">
+                              <span className="text-green-600">✓</span>
+                              <span>Beneficio: Eficiencia insumos</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] text-red-600 hover:bg-red-50 font-semibold">
+                        ✕ Descartar
+                      </Button>
+                      <Button size="sm" className="flex-1 h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 font-semibold">
+                        ✓ Convertir en Plan
+                      </Button>
+                    </div>
+                  </div>
+
                 </CardContent>
+                </div>
               </Card>
             </TabsContent>
 
             <TabsContent value="analisis" className="space-y-6">
-              {analisisSueloData && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {analisisSueloData.cardsLotes.map((lote) => (
-                      <Card key={lote.id} className="border shadow-sm">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">{lote.nombre}</CardTitle>
-                          <CardDescription className="text-sm">{lote.subtitulo}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {lote.parametros.map((param, idx) => (
-                            <div key={idx}>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">{param.nombre}</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold">{param.valor}</span>
-                                  {param.necesitaFertilizante && (
-                                    <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 h-7 text-xs">
-                                      Fertilizar P
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                              <Progress value={param.porcentaje} className={`h-2 ${getProgressColor(param.color)}`} />
+              {/* ==================== CARD GRANDE: ANÁLISIS DEL SUELO ==================== */}
+              <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg">
+                <div className="bg-white rounded-lg p-6">
+                  <Sparkles className="h-5 w-5 text-yellow-500 absolute top-6 right-6 z-10" />
+                  <CardHeader className="pb-4 pt-0">
+                    <CardTitle className="text-lg font-normal text-gray-800">Análisis del Suelo</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0 overflow-x-auto">
+                    {/* Grid 2x2 para mostrar 4 lotes */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-[1200px]">
+                      {/* LOTE 1: Lote 4 - El Bajo */}
+                      <div className="bg-white rounded-lg p-3 shadow-[0_2px_0_0_rgba(0,0,0,0.1)]">
+                        {/* Encabezados */}
+                        <div className="grid grid-cols-[100px_1px_140px_1px_100px_1px_130px] gap-3 items-center mb-2 pb-2 bg-gray-50 -mx-3 -mt-3 px-3 pt-3 rounded-t-lg shadow-[0_2px_0_0_rgba(0,0,0,0.1)]">
+                          <p className="text-[10px] font-bold text-gray-800">Identity</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Macro Nutrients</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Soil Health</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Actions</p>
+                        </div>
+
+                        {/* Contenido */}
+                        <div className="grid grid-cols-[100px_1px_140px_1px_100px_1px_80px] gap-3 items-start">
+                          {/* Identity */}
+                          <div className="flex items-start gap-1">
+                            <span className="text-xl">🌽</span>
+                            <div>
+                              <p className="font-bold text-xs text-gray-900 leading-tight">Lote 4 - El Bajo</p>
+                              <p className="text-[9px] text-gray-600">Maíz Tardío • Hace 2 sem</p>
                             </div>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                          </div>
 
-                  <Card className="border shadow-sm">
-                    <CardHeader>
-                      <CardTitle>Últimos Resultados de Laboratorio</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Fecha</TableHead>
-                              <TableHead>Lote</TableHead>
-                              <TableHead>PH (est)</TableHead>
-                              <TableHead>Fósforo</TableHead>
-                              <TableHead>N (total)</TableHead>
-                              <TableHead>pH</TableHead>
-                              <TableHead>Estado</TableHead>
-                              <TableHead className="text-right">PDF</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {analisisSueloData.resultadosLaboratorio.map((resultado) => (
-                              <TableRow key={resultado.id}>
-                                <TableCell>{new Date(resultado.fecha).toLocaleDateString("es")}</TableCell>
-                                <TableCell>{resultado.lote}</TableCell>
-                                <TableCell>{resultado.phEst}</TableCell>
-                                <TableCell>{resultado.fosforo}</TableCell>
-                                <TableCell>{resultado.nTotal}</TableCell>
-                                <TableCell>{resultado.ph.toFixed(1)}</TableCell>
-                                <TableCell>
-                                  <Badge className={getBadgeStyles(resultado.estado)}>{resultado.estado}</Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Download className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
 
-                  <Card className="border shadow-sm">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>Evolución Histórica</CardTitle>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            Tipo
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            Lote
-                          </Button>
+                          {/* Macro Nutrients */}
+                          <div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">N</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full" style={{ width: "60%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">60%</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">P</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 rounded-full" style={{ width: "20%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-red-600 w-8 text-right flex items-center justify-end gap-0.5">
+                                  20%
+                                  <AlertTriangle className="h-2.5 w-2.5" />
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">K</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 rounded-full" style={{ width: "90%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">90%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Soil Health */}
+                          <div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-700">pH</span>
+                                <Badge className="bg-green-100 text-green-700 border-green-300 text-[9px] font-bold px-1.5 py-0">
+                                  6.2 🟢
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-700">MO</span>
+                                <span className="text-[10px] font-semibold text-gray-900">2.8% 🍂</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Actions */}
+                          <div>
+                            <div className="flex gap-1">
+                              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-transparent">
+                                <Map className="h-3 w-3" />
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-transparent">
+                                <Download className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" className="h-6 text-[9px] bg-emerald-600 hover:bg-emerald-700 px-3 w-[100px]">
+                                <Edit className="h-2.5 w-2.5 mr-0.5" />
+                                Receta
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={analisisSueloData.evolucionHistorica}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                            <XAxis dataKey="año" stroke="#6b7280" />
-                            <YAxis stroke="#6b7280" domain={[0, 30]} />
-                            <Tooltip />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="nitrogeno"
-                              stroke="#3b82f6"
-                              strokeWidth={2}
-                              name="Nitrógeno Crítico"
-                              dot={{ fill: "#3b82f6", r: 4 }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="optimo"
-                              stroke="#10b981"
-                              strokeWidth={2}
-                              strokeDasharray="5 5"
-                              name="Óptimo Crítico PH (past)"
-                              dot={{ fill: "#10b981", r: 4 }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
+
+                      {/* LOTE 2: Lote 12 - Norte */}
+                      <div className="bg-white rounded-lg p-3 shadow-[0_2px_0_0_rgba(0,0,0,0.1)]">
+                        {/* Encabezados */}
+                        <div className="grid grid-cols-[100px_1px_140px_1px_100px_1px_130px] gap-3 items-center mb-2 pb-2 bg-gray-50 -mx-3 -mt-3 px-3 pt-3 rounded-t-lg shadow-[0_2px_0_0_rgba(0,0,0,0.1)]">
+                          <p className="text-[10px] font-bold text-gray-800">Identity</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Macro Nutrients</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Soil Health</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Actions</p>
+                        </div>
+
+                        {/* Contenido */}
+                        <div className="grid grid-cols-[100px_1px_140px_1px_100px_1px_80px] gap-3 items-start">
+                          {/* Identity */}
+                          <div className="flex items-start gap-1">
+                            <span className="text-xl">🌾</span>
+                            <div>
+                              <p className="font-bold text-xs text-gray-900 leading-tight">Lote 12 - Norte</p>
+                              <p className="text-[9px] text-gray-600">Trigo • Hace 3 días</p>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Macro Nutrients */}
+                          <div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">N</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 rounded-full" style={{ width: "95%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">95%</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">P</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full" style={{ width: "15%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-yellow-700 w-8 text-right flex items-center justify-end gap-0.5">
+                                  15%
+                                  <AlertTriangle className="h-2.5 w-2.5" />
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">K</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full" style={{ width: "60%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">60%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Soil Health */}
+                          <div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-700">pH</span>
+                                <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-[9px] font-bold px-1.5 py-0">
+                                  5.2 🟡
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-700">MO</span>
+                                <span className="text-[10px] font-semibold text-gray-900">1.9% 🍂</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Actions */}
+                          <div>
+                            <div className="flex gap-1">
+                              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-transparent">
+                                <Map className="h-3 w-3" />
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-transparent">
+                                <Download className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" className="h-6 text-[9px] bg-emerald-600 hover:bg-emerald-700 px-3 w-[100px]">
+                                <Edit className="h-2.5 w-2.5 mr-0.5" />
+                                Receta
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
+
+                      {/* LOTE 3: Lote 7 - La Loma */}
+                      <div className="bg-white rounded-lg p-3 shadow-[0_2px_0_0_rgba(0,0,0,0.1)]">
+                        {/* Encabezados */}
+                        <div className="grid grid-cols-[100px_1px_140px_1px_100px_1px_130px] gap-3 items-center mb-2 pb-2 bg-gray-50 -mx-3 -mt-3 px-3 pt-3 rounded-t-lg shadow-[0_2px_0_0_rgba(0,0,0,0.1)]">
+                          <p className="text-[10px] font-bold text-gray-800">Identity</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Macro Nutrients</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Soil Health</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Actions</p>
+                        </div>
+
+                        {/* Contenido */}
+                        <div className="grid grid-cols-[100px_1px_140px_1px_100px_1px_80px] gap-3 items-start">
+                          {/* Identity */}
+                          <div className="flex items-start gap-1">
+                            <span className="text-xl">🌿</span>
+                            <div>
+                              <p className="font-bold text-xs text-gray-900 leading-tight">Lote 7 - La Loma</p>
+                              <p className="text-[9px] text-gray-600">Soja • Hace 1 mes</p>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Macro Nutrients */}
+                          <div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">N</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 rounded-full" style={{ width: "30%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-red-600 w-8 text-right flex items-center justify-end gap-0.5">
+                                  30%
+                                  <AlertTriangle className="h-2.5 w-2.5" />
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">P</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 rounded-full" style={{ width: "85%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">85%</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">K</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full" style={{ width: "55%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">55%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Soil Health */}
+                          <div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-700">pH</span>
+                                <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-[9px] font-bold px-1.5 py-0">
+                                  5.8 🟡
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-700">MO</span>
+                                <span className="text-[10px] font-semibold text-gray-900">3.2% 🍂</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Actions */}
+                          <div>
+                            <div className="flex gap-1">
+                              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-transparent">
+                                <Map className="h-3 w-3" />
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-transparent">
+                                <Download className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" className="h-6 text-[9px] bg-emerald-600 hover:bg-emerald-700 px-3 w-[100px]">
+                                <Edit className="h-2.5 w-2.5 mr-0.5" />
+                                Receta
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* LOTE 4: Lote 4 - El Bajo (v2) */}
+                      <div className="bg-white rounded-lg p-3 shadow-[0_2px_0_0_rgba(0,0,0,0.1)]">
+                        {/* Encabezados */}
+                        <div className="grid grid-cols-[100px_1px_140px_1px_100px_1px_130px] gap-3 items-center mb-2 pb-2 bg-gray-50 -mx-3 -mt-3 px-3 pt-3 rounded-t-lg shadow-[0_2px_0_0_rgba(0,0,0,0.1)]">
+                          <p className="text-[10px] font-bold text-gray-800">Identity</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Macro Nutrients</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Soil Health</p>
+                          <div></div>
+                          <p className="text-[10px] font-bold text-gray-800">Actions</p>
+                        </div>
+
+                        {/* Contenido */}
+                        <div className="grid grid-cols-[100px_1px_140px_1px_100px_1px_80px] gap-3 items-start">
+                          {/* Identity */}
+                          <div className="flex items-start gap-1">
+                            <span className="text-xl">🌽</span>
+                            <div>
+                              <p className="font-bold text-xs text-gray-900 leading-tight">Lote 4 - El Bajo</p>
+                              <p className="text-[9px] text-gray-600">Maíz • Hace 3 sem</p>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Macro Nutrients */}
+                          <div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">N</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full" style={{ width: "60%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">60%</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">P</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full" style={{ width: "20%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">20%</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-medium text-gray-700 w-2">K</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full" style={{ width: "60%" }}></div>
+                                </div>
+                                <span className="text-[10px] font-semibold text-gray-800 w-8 text-right">60%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Soil Health */}
+                          <div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-700">pH</span>
+                                <Badge className="bg-green-100 text-green-700 border-green-300 text-[9px] font-bold px-1.5 py-0">
+                                  6.2 🟢
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-700">MO</span>
+                                <span className="text-[10px] font-semibold text-gray-900">1.6% 🍂</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Actions */}
+                          <div>
+                            <div className="flex gap-1">
+                              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-transparent">
+                                <Map className="h-3 w-3" />
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-transparent">
+                                <Download className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" className="h-6 text-[9px] bg-emerald-600 hover:bg-emerald-700 px-3 w-[100px]">
+                                <Edit className="h-2.5 w-2.5 mr-0.5" />
+                                Receta
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </div>
+              </Card>
+
+              {/* Grid 2 columnas: Laboratorio (2/3) + Evolución (1/3) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+              {/* ==================== CARD: ÚLTIMOS RESULTADOS DE LABORATORIO ==================== */}
+              <Card className="border shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold text-gray-800">
+                    Últimos Resultados de Laboratorio
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border max-h-64 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Lote</TableHead>
+                          <TableHead>Prof. (cm)</TableHead>
+                          <TableHead>P (ppm)</TableHead>
+                          <TableHead>N (kg/ha)</TableHead>
+                          <TableHead>pH</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead className="text-right">PDF</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium">15/10/2024</TableCell>
+                          <TableCell>Lote Norte</TableCell>
+                          <TableCell>0-20</TableCell>
+                          <TableCell className="text-red-600 font-semibold">
+                            <div className="flex items-center gap-1">
+                              8 ppm
+                              <AlertTriangle className="h-3 w-3" />
+                            </div>
+                          </TableCell>
+                          <TableCell>47</TableCell>
+                          <TableCell className="text-red-600 font-semibold">
+                            <div className="flex items-center gap-1">
+                              5.5
+                              <AlertTriangle className="h-3 w-3" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-red-100 text-red-700 border-red-300 text-[10px] font-bold">
+                              Crítico
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+
+                        <TableRow>
+                          <TableCell className="font-medium">14/10/2024</TableCell>
+                          <TableCell>Lote Sur</TableCell>
+                          <TableCell>0-20</TableCell>
+                          <TableCell>18 ppm</TableCell>
+                          <TableCell>60</TableCell>
+                          <TableCell>6.2</TableCell>
+                          <TableCell>
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-[10px] font-bold">
+                              Alerta
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+
+                        <TableRow>
+                          <TableCell className="font-medium">12/10/2024</TableCell>
+                          <TableCell>Lote Este</TableCell>
+                          <TableCell>0-20</TableCell>
+                          <TableCell>25 ppm</TableCell>
+                          <TableCell>75</TableCell>
+                          <TableCell>6.8</TableCell>
+                          <TableCell>
+                            <Badge className="bg-green-100 text-green-700 border-green-300 text-[10px] font-bold">
+                              Óptimo
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+
+                        <TableRow>
+                          <TableCell className="font-medium">10/10/2024</TableCell>
+                          <TableCell>Lote Oeste</TableCell>
+                          <TableCell>20-40</TableCell>
+                          <TableCell className="text-red-600 font-semibold">
+                            <div className="flex items-center gap-1">
+                              12 ppm
+                              <AlertTriangle className="h-3 w-3" />
+                            </div>
+                          </TableCell>
+                          <TableCell>50</TableCell>
+                          <TableCell>6.0</TableCell>
+                          <TableCell>
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-[10px] font-bold">
+                              Alerta
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ==================== CARD: EVOLUCIÓN HISTÓRICA ==================== */}
+              <Card className="border shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-semibold text-gray-800">Evolución Histórica:</CardTitle>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        Tipo
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        Lote
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={[
+                          { año: "2020", nitrogeno: 24, optimo: 18 },
+                          { año: "2021", nitrogeno: 22, optimo: 18 },
+                          { año: "2022", nitrogeno: 20, optimo: 18 },
+                          { año: "2023", nitrogeno: 19, optimo: 18 },
+                          { año: "2024", nitrogeno: 17, optimo: 18 },
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="año" stroke="#6b7280" />
+                        <YAxis stroke="#6b7280" domain={[0, 40]} />
+                        <Tooltip />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="nitrogeno"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          name="Nitrógeno"
+                          dot={{ fill: "#3b82f6", r: 4 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="optimo"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          name="Umbral Crítico (15 ppm)"
+                          dot={{ fill: "#10b981", r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </TabsContent>
