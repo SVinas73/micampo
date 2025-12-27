@@ -521,6 +521,18 @@ export default function AgronomiaPage() {
               Nuevo Análisis
             </Button>
           )}
+
+          {/* Botones para CULTIVOS */}
+          {activeTab === "cultivos" && (
+            <>
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
+                Nueva Siembra
+              </Button>
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
+                Nueva Cosecha
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -805,7 +817,7 @@ export default function AgronomiaPage() {
                 {/* Columna Izquierda: Alertas Activas */}
                 <div>
                   <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg max-w-full">
-                    <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-6">
+                    <div className="bg-white rounded-lg p-6">
                       <Sparkles className="h-5 w-5 text-yellow-600 absolute top-6 right-6 z-10" />
                       <CardHeader className="pb-3 pt-0">
                         <CardTitle className="text-lg font-normal text-gray-800">Alertas Activas</CardTitle>
@@ -935,17 +947,16 @@ export default function AgronomiaPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3 pt-0">
-                      <div className="bg-white p-3 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-2">Estrategia de Control Sugerida</p>
-                        
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className="flex-shrink-0">
-                            <img 
-                              src="/pote.jpg" 
-                              alt="Fungicida"
-                              className="h-20 w-20 object-contain"
-                            />
-                          </div>
+                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                          
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="flex-shrink-0">
+                              <img 
+                                src="/pote.jpg" 
+                                alt="Fungicida"
+                                className="h-24 w-24 object-contain"
+                              />
+                            </div>
                           <div className="flex-1">
                             <p className="font-bold text-sm text-gray-900 mb-2">
                               {mockDataDeteccion.estrategiaSugerida.producto}
@@ -1073,18 +1084,296 @@ export default function AgronomiaPage() {
             {/* TAB: ANÁLISIS IA */}
             {/* ============================================ */}
             <TabsContent value="analisis" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Análisis con Inteligencia Artificial</CardTitle>
-                  <CardDescription>Predicciones y recomendaciones basadas en IA</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-500">Contenido de Análisis IA (a desarrollar)</p>
-                </CardContent>
-              </Card>
+              {/* Métricas Superiores - MISMO ESTILO QUE INFORMACIÓN */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* Card 1: Alertas Activas */}
+                <Card className="bg-white border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-700">
+                      Alertas Activas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-xl font-bold ${mockDataDeteccion.metricas.alertasActivas > 0 ? "text-red-600" : "text-gray-900"}`}>
+                      {mockDataDeteccion.metricas.alertasActivas}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">críticas</p>
+                  </CardContent>
+                </Card>
+
+                {/* Card 2: Confianza IA - Con borde verde y sparkle */}
+                <Card className="relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[2px] rounded-lg hover:shadow-md transition-shadow">
+                  <div className="bg-white rounded-lg h-full flex flex-col">
+                    <Sparkles className="h-4 w-4 text-yellow-500 absolute top-6 right-3" />
+                    <CardHeader className="pb-8.5">
+                      <CardTitle className="text-sm font-medium text-gray-700 mt-6">
+                        Confianza IA
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {mockDataDeteccion.metricas.confianzaIA}%
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">precisión</p>
+                    </CardContent>
+                  </div>
+                </Card>
+
+                {/* Card 3: Vigor Promedio */}
+                <Card className="bg-white border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-700">
+                      Vigor Promedio (NDVI)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {mockDataDeteccion.metricas.vigorPromedio.toFixed(2)}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{mockDataDeteccion.metricas.vigorEstado}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Card 4: Riesgo Económico */}
+                <Card className="bg-white border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-700">
+                      Riesgo Económico
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">
+                      ${mockDataDeteccion.metricas.riesgoEconomico.toLocaleString()}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">USD estimado</p>
+                  </CardContent>
+                </Card>
+
+                {/* Card 5: Monitoreo Semanal */}
+                <Card className="bg-white border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-gray-700">
+                      Monitoreo Semanal
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {mockDataDeteccion.metricas.monitoreoSemanal}%
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">cobertura</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Grid 2 columnas: Imagen + Resultados */}
+              <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-4 items-start">
+                
+                {/* ========== CARD IZQUIERDA: DETECCIÓN ========== */}
+                <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg">
+                  <div className="bg-white rounded-lg h-full">
+                    <CardHeader className="pb-3 flex flex-row items-center justify-between px-4 pt-4">
+                      <CardTitle className="text-lg font-normal text-gray-800">Detección</CardTitle>
+                      <Button 
+                        size="sm" 
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-4 mr-2"
+                        onClick={() => document.getElementById('file-upload-ia')?.click()}
+                      >
+                        Cargar Imagen
+                      </Button>
+                      <input
+                        id="file-upload-ia"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            console.log('Imagen cargada:', file.name);
+                          }
+                        }}
+                      />
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-3 px-4 pb-3">
+                      {/* Imagen de detección CON ÍCONO DE CÁMARA - SIN EMOJI NI CUADRADOS */}
+                      <div 
+                        className="relative w-full aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden group cursor-pointer"
+                        onClick={() => document.getElementById('file-upload-ia')?.click()}
+                      >
+                        {/* Overlay con ícono de cámara */}
+                        <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                          <div className="opacity-30 group-hover:opacity-60 transition-opacity">
+                            <Camera className="h-16 w-16 text-gray-400" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botones de acciones */}
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+                          Cajas
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+                          Mapa Calor
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+                          Alto Contraste
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </div>
+                </Card>
+
+                {/* ========== CARD DERECHA: RESULTADOS + RECOMENDACIÓN ========== */}
+                <div className="space-y-4 flex flex-col">
+                  
+                  {/* CARD: Resultados del Análisis - MÁS GRANDE HACIA ABAJO */}
+                  <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg" style={{ flex: '5' }}>
+                    <div className="bg-white rounded-lg p-6 h-full">
+                      <Sparkles className="h-5 w-5 text-yellow-500 absolute top-6 right-6 z-10" />
+                      <CardHeader className="pb-4 pt-0">
+                        <CardTitle className="text-lg font-normal text-gray-800">Resultados del Análisis:</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        {/* Grid 2 columnas: Círculo + Detalles CON LÍNEA DIVISORIA */}
+                        <div className="grid grid-cols-[260px_1px_1fr] gap-6 items-center">
+                          
+                          {/* Círculo de confianza - MÁS GRANDE */}
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="relative w-[240px] h-[240px]">
+                              {/* Círculo SVG */}
+                              <svg className="w-full h-full transform -rotate-90">
+                                <circle
+                                  cx="120"
+                                  cy="120"
+                                  r="95"
+                                  fill="none"
+                                  stroke="#e5e7eb"
+                                  strokeWidth="16"
+                                />
+                                <circle
+                                  cx="120"
+                                  cy="120"
+                                  r="95"
+                                  fill="none"
+                                  stroke="#10b981"
+                                  strokeWidth="16"
+                                  strokeDasharray={`${(96 / 100) * 597} 597`}
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <p className="text-6xl font-bold text-gray-900">96%</p>
+                                <p className="text-base text-gray-600 mt-2">Confianza Global</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* LÍNEA DIVISORIA VERTICAL */}
+                          <div className="h-full w-px bg-gray-300"></div>
+
+                          {/* Detalles del análisis - CORRIDO A LA DERECHA */}
+                          <div className="flex flex-col justify-center space-y-3 pl-4">
+                            <div>
+                              <h3 className="text-xl font-bold text-gray-900 mb-2">Roya Común (Puccinia sorghi)</h3>
+                              <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs font-bold px-2 py-1 flex items-center gap-1 w-fit">
+                                <span className="inline-block w-2 h-2 rounded-full bg-orange-500"></span>
+                                Severidad Media
+                              </Badge>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-block w-2 h-2 bg-orange-500"></span>
+                                <span className="text-sm text-gray-700">Lesión A (Foco Principal) - 98%</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-block w-2 h-2 bg-orange-500"></span>
+                                <span className="text-sm text-gray-700">Lesión B (Esporulación) - 92%</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-block w-2 h-2 bg-orange-500"></span>
+                                <span className="text-sm text-gray-700">Lesión C (Inicial) - 85%</span>
+                              </div>
+                            </div>
+
+                            <Button variant="link" className="text-gray-500 text-sm p-0 h-auto font-normal justify-start">
+                              Ver 5 detecciones más...
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </div>
+                  </Card>
+
+                  {/* CARD: Recomendación - MÁS PEQUEÑA */}
+                  <Card className="shadow-lg relative bg-gradient-to-r from-yellow-400 via-green-400 to-green-500 p-[3px] rounded-lg" style={{ flex: '6' }}>
+                    <div className="bg-white rounded-lg px-6 pt-3 pb-2 h-full">
+                      <Sparkles className="h-5 w-5 text-yellow-500 absolute top-4 right-6 z-10" />
+                      <CardHeader className="pb-0 pt-0 px-0">
+                        <CardTitle className="text-lg font-normal text-gray-800">Recomendación</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0 pb-0 px-0">
+                        {/* Estrategia de control */}
+                        <div className="bg-white border border-gray-200 rounded-lg p-2 mb-2">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="flex-shrink-0">
+                              <img 
+                                src="/pote.jpg" 
+                                alt="Fungicida"
+                                className="h-20 w-20 object-contain"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs text-gray-700 mb-2">Estrategia de Control Sugerida</p>
+                              <h4 className="font-bold text-sm text-gray-900 mb-1">
+                                Fungicida (Triazol + Estrob.)
+                              </h4>
+                              <p className="text-xs text-gray-600">Tratamiento Prioritario para Roya</p>
+                            </div>
+                          </div>
+
+                          {/* Grid 3 columnas: Info */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="text-center">
+                              <div className="bg-white p-2 rounded border border-gray-200 flex flex-col items-center gap-1">
+                                <Droplets className="h-4 w-4 text-blue-500" />
+                                <p className="text-sm font-bold text-gray-900">400 cc/Ha</p>
+                              </div>
+                              <p className="text-[10px] text-gray-600 mt-1">Dosis</p>
+                            </div>
+                            
+                            <div className="text-center">
+                              <div className="bg-white p-2 rounded border border-gray-200 flex flex-col items-center gap-1">
+                                <CloudSun className="h-4 w-4 text-orange-500" />
+                                <p className="text-sm font-bold text-gray-900">Próx. 4hs</p>
+                              </div>
+                              <p className="text-[10px] text-gray-600 mt-1">Ventana Óptima</p>
+                            </div>
+                            
+                            <div className="text-center">
+                              <div className="bg-white p-2 rounded border border-gray-200 flex flex-col items-center gap-1">
+                                <Banknote className="h-4 w-4 text-green-600" />
+                                <p className="text-sm font-bold text-gray-900">$28/Ha</p>
+                              </div>
+                              <p className="text-[10px] text-gray-600 mt-1">Costo Estimado</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Análisis IA */}
+                        <div className="bg-gray-100 p-2 rounded border border-gray-300">
+                          <p className="text-xs text-gray-700 leading-relaxed">
+                            <span className="font-bold">Análisis IA:</span> Efectiva contra la roya en etapas de campo. La combinación Triazol + Estrobilurina (Triaz + Estrob.) combina protección curativa, preventiva y antisporulante.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </div>
+                  </Card>
+                </div>
+              </div>
             </TabsContent>
-          </Tabs>
-        </TabsContent>
+            </Tabs>
+            </TabsContent>
 
         {/* TAB: LOTES */}
         <TabsContent value="lotes" className="space-y-6 mt-6">
@@ -2461,14 +2750,370 @@ export default function AgronomiaPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="cultivos">
-          <Card>
-            <CardContent className="py-8">
-              <p className="text-gray-500 text-center">Tab Cultivos</p>
-            </CardContent>
-          </Card>
+        {/* TAB: CULTIVOS */}
+        {/* TAB: CULTIVOS */}
+        <TabsContent value="cultivos" className="space-y-4 mt-6">
+          {/* Métricas Superiores - MISMO ESTILO QUE DETECCIÓN/PLANIFICADOR */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Card 1: Superficie Sembrada */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Superficie Sembrada
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">235 Ha</div>
+                <p className="text-xs text-gray-500 mt-1">total</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 2: Cosecha Total */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Cosecha Total
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">2.300 Tn</div>
+                <p className="text-xs text-gray-500 mt-1">estimado</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 3: Próxima Cosecha */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Próxima Cosecha
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">Lote 5</div>
+                <p className="text-xs text-gray-500 mt-1">fecha estimada</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 4: Lotes Listos */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Lotes Listos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">3</div>
+                <p className="text-xs text-gray-500 mt-1">para cosechar</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 5: Lotes Vacíos */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Lotes Vacíos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">5</div>
+                <p className="text-xs text-gray-500 mt-1">sin cultivo</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Grid 2 columnas: Estados de Cultivos + Resumen */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_380px] gap-4">
+            
+            
+            {/* CARD IZQUIERDA: Estados de los Cultivos - MÁS ANCHO */}
+            <Card className="border shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardTitle className="text-lg font-normal text-gray-800">Estados de los Cultivos</CardTitle>
+                <Button variant="outline" size="sm" className="h-8">
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  Filtrar
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                
+                {/* LOTE 4 - Maíz - MÁS ANGOSTO Y MÁS LARGO */}
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-[4px_4px_0_0_rgba(0,0,0,0.1)]">
+                  {/* Encabezado con fondo verde oscuro */}
+                  <div className="bg-blue-700 text-white px-6 py-1 flex items-center justify-between">
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🌽</span>
+                      <h3 className="font-medium text-sm">LOTE 4 (Maíz)</h3>
+                      
+                    </div>
+                    <p className="text-xs font-normal">120 Has | Activo</p>
+                  </div>
+
+                  {/* Contenido blanco - PADDING REDUCIDO */}
+                  <div className="px-6 py-1.5">
+                    {/* Grid 3 columnas CON LÍNEAS DIVISORIAS */}
+                    <div className="grid grid-cols-[1fr_1px_1fr_1px_1fr] gap-4 text-xs items-start">
+                      {/* Siembra */}
+                      <div>
+                        <p className="font-semibold text-gray-800 mb-1.5 flex items-center gap-1">
+                          <span className="text-base">🌱</span>
+                          SIEMBRA (15/Oct)
+                        </p>
+                        <div className="space-y-0.5 text-gray-800">
+                          <p>Fecha: 15/Oct/2024</p>
+                          <p>Semilla: Maíz AX-882</p>
+                          <p>Densidad: 70k pl/ha (Largo 98%)</p>
+                          <p>Inversión: $14.4k</p>
+                        </div>
+                      </div>
+
+                      {/* Divisor */}
+                      <div className="h-full w-px bg-gray-300"></div>
+
+                      {/* Proceso */}
+                      <div>
+                        <p className="font-semibold text-gray-800 mb-1.5 flex items-center gap-1">
+                          <span className="text-base">🚜</span>
+                          PROCESO (V6)
+                        </p>
+                        <div className="space-y-1 text-gray-800">
+                          {/* Progress bar con indicador */}
+                          <div className="relative mb-1.5">
+                            <Progress value={75} className="h-2 [&>div]:bg-green-500" />
+                            <div 
+                              className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-green-700 rounded-full border-2 border-white" 
+                              style={{ left: '75%', marginLeft: '-4px' }}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                            <p>V6 - Vegetativo</p>
+                            <p className="flex items-center gap-1">
+                              <span className="text-green-600">✓</span>
+                              Ult: Fertilización (5d)
+                            </p>
+                            <p>140mm | 450 GDD</p>
+                            <p className="flex items-center gap-1">
+                              <span>🔔</span>
+                              Prox: Monitoreo (Mañana)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Divisor */}
+                      <div className="h-full w-px bg-gray-300"></div>
+
+                      {/* Cosecha */}
+                      <div>
+                        <p className="font-semibold text-gray-800 mb-1.5 flex items-center gap-1">
+                          <span className="text-base">🌾</span>
+                          COSECHA (Est.)
+                        </p>
+                        <div className="space-y-0.5 text-gray-800">
+                          <p className="flex items-center gap-1">
+                            Estado: <span>⏳</span> Pendiente (90 días)
+                          </p>
+                          <p>Fecha Est.: 15/Mar</p>
+                          <p>Rinde (IA): 8.5 Tn/ha +</p>
+                          <p>Destino: Silo Bolsa #4</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* LOTE 5 - Soja - MÁS ANGOSTO Y MÁS LARGO */}
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-[4px_4px_0_0_rgba(0,0,0,0.1)]">
+                  {/* Encabezado con fondo azul */}
+                  <div className="bg-green-700 text-white px-6 py-1 flex items-center justify-between">
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🌱</span>
+                      <h3 className="font-medium text-sm">LOTE 5 (Soja)</h3>
+                    </div>
+                    <p className="text-xs font-normal">85 Has | Activo</p>
+                  </div>
+
+                  {/* Contenido blanco - PADDING REDUCIDO */}
+                  <div className="px-6 py-2.5">
+                    {/* Grid 3 columnas CON LÍNEAS DIVISORIAS */}
+                    <div className="grid grid-cols-[1fr_1px_1fr_1px_1fr] gap-4 text-xs items-start">
+                      {/* Siembra */}
+                      <div>
+                        <p className="font-semibold text-gray-800 mb-1.5 flex items-center gap-1">
+                          <span className="text-base">🌱</span>
+                          SIEMBRA (01/Nov)
+                        </p>
+                        <div className="space-y-0.5 text-gray-800">
+                          <p>Fecha: 01/Nov/2024</p>
+                          <p>Semilla: Soja DM-S50</p>
+                          <p>Densidad: 38k pl/ha (Largo 95%)</p>
+                          <p>Inversión: $8.2k</p>
+                        </div>
+                      </div>
+
+                      {/* Divisor */}
+                      <div className="h-full w-px bg-gray-300"></div>
+
+                      {/* Proceso */}
+                      <div>
+                        <p className="font-semibold text-gray-800 mb-1.5 flex items-center gap-1">
+                          <span className="text-base">🚜</span>
+                          PROCESO (V3)
+                        </p>
+                        <div className="space-y-1 text-gray-800">
+                          {/* Progress bar con indicador */}
+                          <div className="relative mb-1.5">
+                            <Progress value={40} className="h-2 [&>div]:bg-blue-500" />
+                            <div 
+                              className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-700 rounded-full border-2 border-white" 
+                              style={{ left: '40%', marginLeft: '-4px' }}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                            <p>V3 - Vegetativo</p>
+                            <p className="flex items-center gap-1">
+                              <span className="text-green-600">✓</span>
+                              Ult: Aplicación Herbicida (2d)
+                            </p>
+                            <p>80mm | 250 GDD</p>
+                            <p className="flex items-center gap-1">
+                              <span>🔔</span>
+                              Prox: Riego (Pasado Mañana)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Divisor */}
+                      <div className="h-full w-px bg-gray-300"></div>
+
+                      {/* Cosecha */}
+                      <div>
+                        <p className="font-semibold text-gray-800 mb-1.5 flex items-center gap-1">
+                          <span className="text-base">🌾</span>
+                          COSECHA (Est.)
+                        </p>
+                        <div className="space-y-0.5 text-gray-800">
+                          <p className="flex items-center gap-1">
+                            Estado: <span>⏳</span> Pendiente (120 días)
+                          </p>
+                          <p>Fecha Est.: 20/Mar</p>
+                          <p>Rinde (IA): 3.2 Tn/ha +</p>
+                          <p>Destino: Puerto</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </CardContent>
+            </Card>
+
+            {/* CARD DERECHA: Resumen */}
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-normal text-gray-800">Resumen:</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                
+                {/* Gráfico de torta */}
+                <div className="flex items-center justify-center h-64 relative">
+                  {/* SVG Donut Chart */}
+                  <svg className="w-56 h-56 transform -rotate-90">
+                    {/* Círculo de fondo */}
+                    <circle
+                      cx="112"
+                      cy="112"
+                      r="90"
+                      fill="none"
+                      stroke="#e5e7eb"
+                      strokeWidth="40"
+                    />
+                    
+                    {/* Maíz - Verde (51% = 120 Ha) - Empieza en 0 */}
+                    <circle
+                      cx="112"
+                      cy="112"
+                      r="90"
+                      fill="none"
+                      stroke="#22c55e"
+                      strokeWidth="40"
+                      strokeDasharray={`${(0.51) * 565.5} 565.5`}
+                      strokeDashoffset="0"
+                      strokeLinecap="round"
+                    />
+                    
+                    {/* Soja - Azul (36% = 85 Ha) - Empieza después del verde */}
+                    <circle
+                      cx="112"
+                      cy="112"
+                      r="90"
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="40"
+                      strokeDasharray={`${(0.36) * 565.5} 565.5`}
+                      strokeDashoffset={`${-(0.51) * 565.5}`}
+                      strokeLinecap="round"
+                    />
+                    
+                    {/* Sorgo - Naranja (13% = 30 Ha) - Empieza después del azul */}
+                    <circle
+                      cx="112"
+                      cy="112"
+                      r="90"
+                      fill="none"
+                      stroke="#f97316"
+                      strokeWidth="40"
+                      strokeDasharray={`${(0.13) * 565.5} 565.5`}
+                      strokeDashoffset={`${-(0.51 + 0.36) * 565.5}`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+
+                  {/* Texto central */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <p className="text-5xl font-bold text-gray-900">235</p>
+                    <p className="text-sm text-gray-600 mt-1">Ha Totales</p>
+                  </div>
+                </div>
+
+                {/* Leyenda */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                      <span className="text-sm text-gray-700">Maíz</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">120 Ha (51%)</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+                      <span className="text-sm text-gray-700">Soja</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">85 Ha (36%)</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                      <span className="text-sm text-gray-700">Sorgo</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">30 Ha (13%)</span>
+                  </div>
+                </div>
+
+              </CardContent>
+            </Card>
+
+          </div>
         </TabsContent>
-      </Tabs>
+        </Tabs>
+        
 
       {/* Dialog Crear Lote */}
       <Dialog open={loteDialogOpen} onOpenChange={setLoteDialogOpen}>
