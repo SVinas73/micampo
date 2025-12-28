@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,Bar,BarChart } from "recharts"
 import {
   AlertTriangle,
   TrendingUp,
@@ -42,9 +42,20 @@ import {
   Calendar,
   Clock,
   Camera,
+  Eye,
   Banknote,
+  Wind,
+  Shield,
+  Box,
+  ShoppingCart,
+  Dna,
+  Upload,
   CloudSun,
+  Plus,
+  History,
+  ArrowRight,
   Pill,
+  Settings,
 } from "lucide-react"
 import dynamic from "next/dynamic"
 
@@ -122,6 +133,95 @@ interface AnalisisSueloData {
     optimo: number
   }>
 }
+
+
+// DATOS MOCK - LOTES
+const mockDataLotes = [
+  {
+    id: "1",
+    estancia: "ESTANCIA LA SOBRADA",
+    nombre: "Lote 4 - El Bajo",
+    pinColor: "red",
+    hectareas: 125,
+    cultivo: {
+      emoji: "🌽",
+      nombre: "Maíz Tardío",
+      estado: "Z31 - Vegetativo",
+      estadoColor: "bg-green-100 text-green-700 border-green-300",
+      genetica: "DK-7210",
+    },
+    finanzas: {
+      porcentaje: 65,
+      gastado: 260,
+      total: 400,
+      disponible: 140,
+    },
+    salud: {
+      ndvi: "Alto",
+      ndviIcon: "TrendingUp",
+      ndviColor: "text-green-600",
+      agua: 60,
+      visita: "Hace 2 días",
+    },
+    monitoreo: {
+      plaga: "Isoca Medidora",
+      imagenPlaga: "/oruga.png",
+      nivel: "Alta (15/m³)",
+      nivelColor: "text-red-600",
+      estado: "Pendiente",
+      estadoColor: "bg-yellow-100 text-yellow-700 border-yellow-300",
+      estadoIcono: "⚠",
+    },
+    proyeccion: {
+      rendimiento: 9.5,
+      comparacion: "+5%",
+      comparacionColor: "text-green-600",
+      fecha: "15/Mar",
+    },
+  },
+  {
+    id: "2",
+    estancia: "ESTANCIA EL REFUGIO",
+    nombre: "Lote 7 - La Loma",
+    pinColor: "orange",
+    hectareas: 90,
+    cultivo: {
+      emoji: "🌱",
+      nombre: "Soja de Primera",
+      estado: "R4 - Form. Vainas",
+      estadoColor: "bg-yellow-100 text-yellow-700 border-yellow-300",
+      genetica: "DM-40R",
+    },
+    finanzas: {
+      porcentaje: 85,
+      gastado: 200,
+      total: 235,
+      disponible: 35,
+    },
+    salud: {
+      ndvi: "Medio",
+      ndviIcon: "Activity",
+      ndviColor: "text-yellow-600",
+      agua: 45,
+      visita: "Hace 5 días",
+    },
+    monitoreo: {
+      plaga: "Chinche Verde",
+      imagenPlaga: "/chinche.png",
+      nivel: "Media (2/m²)",
+      nivelColor: "text-yellow-600",
+      estado: "Vigilancia",
+      estadoColor: "bg-yellow-100 text-yellow-700 border-yellow-300",
+      estadoIcono: "⚠",
+    },
+    proyeccion: {
+      rendimiento: 3.2,
+      comparacion: "-2%",
+      comparacionColor: "text-red-600",
+      fecha: "20/Abr",
+    },
+  },
+];
 
 // DATOS MOCK - DETECCIÓN (Exacto al Figma)
 const mockDataDeteccion = {
@@ -522,6 +622,13 @@ export default function AgronomiaPage() {
             </Button>
           )}
 
+          {/* Botones para LABORES */}
+          {activeTab === "labores" && (
+            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
+              Nueva Tarea
+            </Button>
+          )}
+
           {/* Botones para CULTIVOS */}
           {activeTab === "cultivos" && (
             <>
@@ -567,148 +674,306 @@ export default function AgronomiaPage() {
 
         {/* TAB: RESUMEN */}
         <TabsContent value="resumen" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Alertas Activas</CardTitle>
+          {/* Cards superiores - MISMO FORMATO QUE OTRAS PESTAÑAS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Card 1: Total Hectáreas */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Total Hectáreas:
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-2">
-                  <div className="text-4xl font-bold">{mockDataResumen.metricas.alertasActivas}</div>
-                  <TrendingUp className="h-5 w-5 text-red-500" />
+                <div className="text-2xl font-bold text-gray-900">1,000 Ha</div>
+                <p className="text-xs text-gray-500 mt-1">activas</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 2: Alertas Sanitarias */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Alertas Sanitarias
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600 flex items-center gap-2">
+                  1
+                  <AlertTriangle className="h-5 w-5" />
                 </div>
+                <p className="text-xs text-gray-500 mt-1">críticas</p>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-emerald-400 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Confianza IA</CardTitle>
+            {/* Card 3: Siembras Programadas */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Siembras Programadas
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">{mockDataResumen.metricas.confianzaIA}%</div>
+                <div className="text-2xl font-bold text-gray-900">2</div>
+                <p className="text-xs text-gray-500 mt-1">pendientes</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Vigor Promedio (NDVI)</CardTitle>
+            {/* Card 4: Labores Pendientes */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Labores Pendientes
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">
-                  {mockDataResumen.metricas.vigorPromedio.toFixed(2)}{" "}
-                  <span className="text-lg text-gray-600">({mockDataResumen.metricas.vigorEstado})</span>
-                </div>
+                <div className="text-2xl font-bold text-gray-900">3</div>
+                <p className="text-xs text-gray-500 mt-1">tareas</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Riesgo Económico</CardTitle>
+            {/* Card 5: Lotes sin Plantaciones */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Lotes sin Plantaciones
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold text-red-600">
-                  ${mockDataResumen.metricas.riesgoEconomico.toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Monitoreo Semanal</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold">{mockDataResumen.metricas.monitoreoSemanal}%</div>
+                <div className="text-2xl font-bold text-gray-900">7</div>
+                <p className="text-xs text-gray-500 mt-1">disponibles</p>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2 border-2 border-orange-300 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  Alertas Activas
-                </CardTitle>
+          {/* Gráfico de Tipos de Plantaciones - CON NÚMEROS VERTICALES PERO SIN LÍNEA */}
+          <Card className="border shadow-sm">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-lg font-normal text-gray-800">Tipos de Plantaciones</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-55">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { cultivo: "Sorgo", hectareas: 90 },
+                      { cultivo: "Alfalfa", hectareas: 45 },
+                      { cultivo: "Soja", hectareas: 30 },
+                      { cultivo: "Maíz", hectareas: 28 },
+                      { cultivo: "Trigo", hectareas: 85 },
+                      { cultivo: "Girasol", hectareas: 50 },
+                      { cultivo: "Trébol", hectareas: 25 },
+                      { cultivo: "Vicia", hectareas: 22 },
+                      { cultivo: "Seco", hectareas: 2 },
+                    ]}
+                    margin={{ top: 20, right: 10, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis 
+                      dataKey="cultivo" 
+                      stroke="#6b7280"
+                      axisLine={{ stroke: '#e5e7eb' }}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      stroke="#6b7280"
+                      axisLine={false}
+                      tickLine={false}
+                      domain={[0, 160]}
+                    />
+                    <Tooltip />
+                    <Bar dataKey="hectareas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Grid 2 columnas: Últimas Actividades + Focos de Atención */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* CARD IZQUIERDA: Últimas Actividades - SIN CAMBIOS */}
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-1">
+                <CardTitle className="text-lg font-normal text-gray-800">Últimas Actividades</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {mockDataResumen.alertasActivas.map((alerta) => (
-                    <div key={alerta.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50">
-                      <div className="w-20 h-20 bg-green-200 rounded flex-shrink-0">
-                        <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-1">
-                          <div>
-                            <p className="font-semibold text-sm">{alerta.loteNombre}</p>
-                            <p className="text-xs text-gray-600">{alerta.loteNumero}</p>
-                          </div>
-                          <Badge className={`${getEstadoColor(alerta.estado)} text-xs`}>{alerta.estado}</Badge>
-                        </div>
-                        <div className="space-y-1 text-xs">
-                          <div className="flex items-center gap-2">
-                            <Bug className="h-3 w-3 text-red-600" />
-                            <span className="font-medium">{alerta.alertaTipo}</span>
-                          </div>
-                          <p className="text-gray-600">{alerta.alertaDetalle}</p>
-                          <Button size="sm" variant="outline" className="mt-2 h-7 text-xs bg-transparent">
-                            {alerta.accionRecomendada}
-                          </Button>
-                        </div>
-                      </div>
+              <CardContent className="relative pl-6 pt-3">
+                
+                <div className="space-y-6 relative">
+                  {/* Actividad 1 */}
+                  <div className="flex items-start gap-3 relative">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 relative z-10">
+                      <span className="text-lg">👤</span>
                     </div>
-                  ))}
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900 leading-tight">
+                        <span className="font-semibold">Santiago</span> registró{" "}
+                        <span className="font-semibold">20mm de lluvia</span> en{" "}
+                        <span className="font-semibold">Lote 2</span> 🌧️
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">Hace 2 horas</p>
+                    </div>
+                    {/* Línea vertical hacia abajo */}
+                    <div className="absolute left-5 top-10 w-px h-6 bg-gray-300"></div>
+                  </div>
+
+                  {/* Actividad 2 */}
+                  <div className="flex items-start gap-3 relative">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 relative z-10">
+                      <span className="text-lg">👤</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900 leading-tight">
+                        <span className="font-semibold">Joaquín</span> finalizó{" "}
+                        <span className="font-semibold">Siembra</span> en{" "}
+                        <span className="font-semibold">Lote 1</span> 🚜
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">Hace 3 horas</p>
+                    </div>
+                    {/* Línea vertical hacia abajo */}
+                    <div className="absolute left-5 top-10 w-px h-6 bg-gray-300"></div>
+                  </div>
+
+                  {/* Actividad 3 */}
+                  <div className="flex items-start gap-3 relative">
+                    <div className="w-10 h-10 bg-grey-100 rounded-full flex items-center justify-center flex-shrink-0 relative z-10">
+                      <Settings className="h-5 w-5 text-grey-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900 leading-tight">
+                        Sistema detectó{" "}
+                        <span className="font-semibold">Alerta de Isoca</span> en{" "}
+                        <span className="font-semibold">Lote 3</span> 🐛
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">Ayer</p>
+                    </div>
+                    {/* Línea vertical hacia abajo */}
+                    <div className="absolute left-5 top-10 w-px h-6 bg-gray-300"></div>
+                  </div>
+
+                  {/* Actividad 4 */}
+                  <div className="flex items-start gap-3 relative">
+                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 relative z-10">
+                      <span className="text-lg">👤</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900 leading-tight">
+                        <span className="font-semibold">Santiago</span> cargó{" "}
+                        <span className="font-semibold">Foto de Cultivo</span> en{" "}
+                        <span className="font-semibold">Lote 4</span> 📷
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">Ayer</p>
+                    </div>
+                  </div>
                 </div>
+
               </CardContent>
             </Card>
 
-            <div className="space-y-4">
-              <Card className="border-2 border-emerald-400 shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <Sprout className="h-4 w-4 text-emerald-600" />
-                    Estrategia de Control Sugerida
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Droplets className="h-5 w-5 text-blue-500" />
-                    <div>
-                      <p className="font-semibold text-sm">{mockDataResumen.estrategiaSugerida.producto}</p>
-                      <p className="text-xs text-gray-600">Dosis: {mockDataResumen.estrategiaSugerida.dosis}</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-700">{mockDataResumen.estrategiaSugerida.aplicacion}</p>
-                  <div className="pt-2">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Efectividad esperada</span>
-                      <span className="font-bold">{mockDataResumen.estrategiaSugerida.efectividad}%</span>
-                    </div>
-                    <Progress
-                      value={mockDataResumen.estrategiaSugerida.efectividad}
-                      className="h-2 [&>div]:bg-emerald-500"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Probabilidades</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {mockDataResumen.probabilidades.map((prob, idx) => (
-                    <div key={idx}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-700">{prob.titulo}</span>
-                        <span className="font-bold">{prob.valor}%</span>
+            {/* CARD DERECHA: Focos de Atención - BOTONES CON BORDE Y SIN FONDO */}
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-0">
+                <CardTitle className="text-lg font-normal text-gray-800">Focos de Atención</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 pt-0">
+                
+                {/* Foco 1: Alerta Sanitaria */}
+                <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1">
+                      <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-white" />
                       </div>
-                      <Progress value={prob.valor} className="h-1.5 [&>div]:bg-red-500" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-gray-900 leading-tight">Alerta Sanitaria - Lote 1</h4>
+                        <p className="text-xs text-gray-700 leading-tight">Posible Roya detectada por satélite</p>
+                      </div>
                     </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
+                    <Button size="sm" variant="outline" className="h-8 text-xs border-red-600 text-red-600 hover:bg-red-50 px-3 flex-shrink-0 bg-transparent">
+                      <Map className="h-3.5 w-3.5 mr-1" />
+                      Ver en Mapa
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Foco 2: Riesgo Climático */}
+                <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1">
+                      <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Wind className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-gray-900 leading-tight">Riesgo Climático - Lote 2</h4>
+                        <p className="text-xs text-gray-700 leading-tight">Alerta de granizo para esta tarde</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-8 text-xs border-orange-600 text-orange-600 hover:bg-orange-50 px-3 flex-shrink-0 bg-transparent">
+                      <Shield className="h-3.5 w-3.5 mr-1" />
+                      Ver Opciones
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Foco 3: Atraso Siembra */}
+                <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1">
+                      <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Clock className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-gray-900 leading-tight">Atraso Siembra - Lote 3</h4>
+                        <p className="text-xs text-gray-700 leading-tight">2 días de retraso en planificado</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-8 text-xs border-yellow-600 text-yellow-700 hover:bg-yellow-50 px-3 flex-shrink-0 bg-transparent">
+                      <Calendar className="h-3.5 w-3.5 mr-1" />
+                      Reprogramar
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Foco 4: Stock Bajo */}
+                <div className="bg-gray-50 border-l-4 border-gray-500 rounded-lg p-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1">
+                      <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Box className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-gray-900 leading-tight">Stock Bajo - Fertilizante</h4>
+                        <p className="text-xs text-gray-700 leading-tight">Quedan menos de 400kg</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-8 text-xs border-gray-600 text-gray-700 hover:bg-gray-100 px-3 flex-shrink-0 bg-transparent">
+                      <ShoppingCart className="h-3.5 w-3.5 mr-1" />
+                      Solicitar Cotiz.
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Foco 5: Sacar foto al terreno */}
+                <div className="bg-gray-50 border-l-4 border-gray-400 rounded-lg p-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1">
+                      <div className="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Camera className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-gray-900 leading-tight">Sacar foto al terreno - Lote 2</h4>
+                        <p className="text-xs text-gray-700 leading-tight">Para validar emergencia del cultivo</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-8 text-xs border-gray-600 text-gray-700 hover:bg-gray-100 px-3 flex-shrink-0 bg-transparent">
+                      <Upload className="h-3.5 w-3.5 mr-1" />
+                      Cargar Fot.
+                    </Button>
+                  </div>
+                </div>
+
+              </CardContent>
+            </Card>
+
           </div>
         </TabsContent>
 
@@ -1377,249 +1642,417 @@ export default function AgronomiaPage() {
 
         {/* TAB: LOTES */}
         <TabsContent value="lotes" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Total de Campos</CardTitle>
+          {/* Cards superiores - MISMO FORMATO QUE OTRAS PESTAÑAS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Card 1: Total de Campos */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Total de Campos
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">{totalCampos}</div>
+                <div className="text-2xl font-bold text-gray-900">{totalCampos}</div>
+                <p className="text-xs text-gray-500 mt-1">campos</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Total de Lotes</CardTitle>
+            {/* Card 2: Total de Lotes */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Total de Lotes
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">{totalLotes}</div>
+                <div className="text-2xl font-bold text-gray-900">{totalLotes}</div>
+                <p className="text-xs text-gray-500 mt-1">lotes</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Hectáreas Totales</CardTitle>
+            {/* Card 3: Hectáreas Totales */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Hectáreas Totales
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">{hectareasTotales.toLocaleString()} Ha</div>
+                <div className="text-2xl font-bold text-gray-900">{hectareasTotales.toLocaleString()} Ha</div>
+                <p className="text-xs text-gray-500 mt-1">totales</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Lotes sin Asignar</CardTitle>
+            {/* Card 4: Lotes sin Asignar */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Lotes sin Asignar
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">{lotesSinAsignar}</div>
+                <div className="text-2xl font-bold text-gray-900">{lotesSinAsignar}</div>
+                <p className="text-xs text-gray-500 mt-1">sin cultivo</p>
               </CardContent>
             </Card>
 
-            <Card className="border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700">Marcadores</CardTitle>
+            {/* Card 5: Marcadores */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Marcadores
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold">{totalMarcadores}</div>
+                <div className="text-2xl font-bold text-gray-900">{totalMarcadores}</div>
+                <p className="text-xs text-gray-500 mt-1">activos</p>
               </CardContent>
             </Card>
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              variant={vistaActual === "mapa" ? "default" : "outline"}
-              onClick={() => setVistaActual("mapa")}
-              className={vistaActual === "mapa" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-            >
-              Vista Mapa
-            </Button>
-            <Button
-              variant={vistaActual === "lista" ? "default" : "outline"}
-              onClick={() => setVistaActual("lista")}
-              className={vistaActual === "lista" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-            >
-              Vista Lista
-            </Button>
-          </div>
+          {/* SUB-TABS: Vista Mapa y Vista Lista */}
+          <Tabs value={vistaActual} onValueChange={(value) => setVistaActual(value as "mapa" | "lista")} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="mapa">
+                <Map className="h-4 w-4 mr-2" />
+                Vista Mapa
+              </TabsTrigger>
+              <TabsTrigger value="lista">
+                <FileText className="h-4 w-4 mr-2" />
+                Vista Lista
+              </TabsTrigger>
+            </TabsList>
 
-          {vistaActual === "mapa" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <Card className="h-[600px]">
-                  <CardHeader>
-                    <CardTitle>Modo de Visualización</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-[calc(100%-80px)]">
-                    <MapaPrecision
-                      lotes={lotes}
-                      onLoteCreado={handleLoteCreado}
-                      onMarcadorCreado={() => {}}
-                      modoEdicion={true}
-                    />
-                  </CardContent>
-                </Card>
+            {/* TAB: VISTA MAPA */}
+            <TabsContent value="mapa" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <Card className="h-[600px]">
+                    <CardHeader>
+                      <CardTitle>Modo de Visualización</CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[calc(100%-80px)]">
+                      <MapaPrecision
+                        lotes={lotes}
+                        onLoteCreado={handleLoteCreado}
+                        onMarcadorCreado={() => {}}
+                        modoEdicion={true}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div>
+                  {loteSeleccionado ? (
+                    <Card className="border-2 border-emerald-400 shadow-sm">
+                      <CardHeader className="pb-3 bg-emerald-50">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg">Ficha Técnica del Lote</CardTitle>
+                            <CardDescription className="text-sm font-semibold text-emerald-700">
+                              {loteSeleccionado.nombre}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-4">
+                        <Tabs value={tabFicha} onValueChange={setTabFicha}>
+                          <TabsList className="grid w-full grid-cols-4 bg-gray-100">
+                            <TabsTrigger value="resumen">Resumen</TabsTrigger>
+                            <TabsTrigger value="historial">Historial</TabsTrigger>
+                            <TabsTrigger value="suelo">Suelo</TabsTrigger>
+                            <TabsTrigger value="labores">Labores</TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="resumen" className="space-y-4">
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium flex items-center gap-2">
+                                  <Activity className="h-4 w-4 text-emerald-600" />
+                                  NDVI
+                                </span>
+                                <span className="text-sm font-bold text-emerald-600">0.75</span>
+                              </div>
+                              <Progress value={75} className="h-2 [&>div]:bg-emerald-500" />
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium flex items-center gap-2">
+                                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                                  Área Ha
+                                </span>
+                                <span className="text-sm font-bold">{loteSeleccionado.hectareas} ha</span>
+                              </div>
+                              <Progress value={90} className="h-2 [&>div]:bg-blue-500" />
+                            </div>
+
+                            <div className="pt-3 border-t">
+                              <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-orange-600" />
+                                Clima Local (7 días)
+                              </p>
+                              <div className="text-sm font-bold">45mm</div>
+                              <p className="text-xs text-gray-500">Acumulados</p>
+                              <div className="flex items-end gap-1 h-16 mt-2">
+                                {[5, 8, 12, 3, 0, 10, 7].map((value, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex-1 bg-blue-400 rounded-t"
+                                    style={{ height: `${(value / 12) * 100}%` }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-3">
+                              <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+                                <FileText className="h-4 w-4 mr-2" />
+                                Nota
+                              </Button>
+                              <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+                                <Edit className="h-4 w-4 mr-2" />
+                                Editar
+                              </Button>
+                              <Button size="sm" className="flex-1 bg-emerald-500 hover:bg-emerald-600">
+                                Nueva Tarea
+                              </Button>
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="historial">
+                            <p className="text-sm text-gray-500 py-4">Historial del lote</p>
+                          </TabsContent>
+
+                          <TabsContent value="suelo">
+                            <p className="text-sm text-gray-500 py-4">Análisis de suelo</p>
+                          </TabsContent>
+
+                          <TabsContent value="labores">
+                            <p className="text-sm text-gray-500 py-4">Labores realizadas</p>
+                          </TabsContent>
+                        </Tabs>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Map className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                        <p className="text-gray-500 text-sm">Seleccioná un lote</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </div>
+            </TabsContent>
 
-              <div>
-                {loteSeleccionado ? (
-                  <Card className="border-2 border-emerald-400 shadow-sm">
-                    <CardHeader className="pb-3 bg-emerald-50">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-lg">Ficha Técnica del Lote</CardTitle>
-                          <CardDescription className="text-sm font-semibold text-emerald-700">
-                            {loteSeleccionado.nombre}
-                          </CardDescription>
+            {/* TAB: VISTA LISTA */}
+            <TabsContent value="lista" className="space-y-6">
+              <Card className="border shadow-sm">
+                <CardContent className="pt-0">
+                  {mockDataLotes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Map className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                      <p className="text-gray-600">No hay lotes creados</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      
+                      {/* ENCABEZADOS - SUBCARD */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-0.5">
+                        <div className="grid grid-cols-[153px_1px_153px_1px_121px_1px_132px_1px_122px_1px_102px_1px_auto] gap-4 items-center">
+                          
+                          <div className="px-4">
+                            <p className="text-xs font-semibold text-gray-700">Identidad</p>
+                          </div>
+                          
+                          {/* Divisor */}
+                          <div className="h-6 w-px bg-gray-300"></div>
+                          
+                          <div className="px-4">
+                            <p className="text-xs font-semibold text-gray-700">Cultivo</p>
+                          </div>
+                          
+                          {/* Divisor */}
+                          <div className="h-6 w-px bg-gray-300"></div>
+                          
+                          <div className="px-4">
+                            <p className="text-xs font-semibold text-gray-700">Finanzas</p>
+                          </div>
+                          
+                          {/* Divisor */}
+                          <div className="h-6 w-px bg-gray-300"></div>
+                          
+                          <div className="px-4">
+                            <p className="text-xs font-semibold text-gray-700">Salud</p>
+                          </div>
+                          
+                          {/* Divisor */}
+                          <div className="h-6 w-px bg-gray-300"></div>
+                          
+                          <div className="px-4">
+                            <p className="text-xs font-semibold text-gray-700">Monitoreo</p>
+                          </div>
+                          
+                          {/* Divisor */}
+                          <div className="h-6 w-px bg-gray-300"></div>
+                          
+                          <div className="px-4">
+                            <p className="text-xs font-semibold text-gray-700">Proyección</p>
+                          </div>
+                          
+                          {/* Divisor */}
+                          <div className="h-6 w-px bg-gray-300"></div>
+                          
+                          <div className="px-4">
+                            <p className="text-xs font-semibold text-gray-700">Acciones</p>
+                          </div>
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                      <Tabs value={tabFicha} onValueChange={setTabFicha}>
-                        <TabsList className="grid w-full grid-cols-4 bg-gray-100">
-                          <TabsTrigger value="resumen">Resumen</TabsTrigger>
-                          <TabsTrigger value="historial">Historial</TabsTrigger>
-                          <TabsTrigger value="suelo">Suelo</TabsTrigger>
-                          <TabsTrigger value="labores">Labores</TabsTrigger>
-                        </TabsList>
 
-                        <TabsContent value="resumen" className="space-y-4">
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium flex items-center gap-2">
-                                <Activity className="h-4 w-4 text-emerald-600" />
-                                NDVI
-                              </span>
-                              <span className="text-sm font-bold text-emerald-600">0.75</span>
+                      {/* LOTES - CON DIVISORES DE BORDE A BORDE */}
+                      {mockDataLotes.map((lote) => (
+                        <div key={lote.id} className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                          <div className="grid grid-cols-[160px_1px_160px_1px_130px_1px_140px_1px_130px_1px_110px_1px_1fr] gap-3 items-stretch min-h-[100px]">
+                            
+                            {/* IDENTIDAD */}
+                            <div className="px-4 py-2 flex flex-col justify-center">
+                              <p className="text-xs text-gray-500 mb-1">{lote.estancia}</p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <MapPin className={`h-4 w-4 flex-shrink-0 ${lote.pinColor === 'red' ? 'text-red-500' : 'text-orange-500'}`} />
+                                <h3 className="font-bold text-sm text-gray-900 leading-tight">{lote.nombre}</h3>
+                              </div>
+                              <p className="text-xs text-gray-700">{lote.hectareas} Hectáreas</p>
                             </div>
-                            <Progress value={75} className="h-2 [&>div]:bg-emerald-500" />
-                          </div>
 
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-blue-600" />
-                                Área Ha
-                              </span>
-                              <span className="text-sm font-bold">{loteSeleccionado.hectareas} ha</span>
+                            {/* Divisor COMPLETO */}
+                            <div className="w-px bg-gray-300"></div>
+
+                            {/* CULTIVO */}
+                            <div className="px-4 py-2 flex flex-col justify-center">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-base">{lote.cultivo.emoji}</span>
+                                  <span className="font-semibold text-sm leading-tight">{lote.cultivo.nombre}</span>
+                                </div>
+                                <Badge className={`${lote.cultivo.estadoColor} text-[10px] px-1.5 py-0.5 w-fit rounded-sm`}>
+                                  [{lote.cultivo.estado}]
+                                </Badge>
+                                <div className="flex items-center gap-1">
+                                  <Dna className="h-3 w-3 text-gray-600" />
+                                  <p className="text-xs text-gray-600 leading-tight">Genética: {lote.cultivo.genetica}</p>
+                                </div>
+                              </div>
                             </div>
-                            <Progress value={90} className="h-2 [&>div]:bg-blue-500" />
-                          </div>
 
-                          <div className="pt-3 border-t">
-                            <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                              <MapPin className="h-4 w-4 text-orange-600" />
-                              Clima Local (7 días)
-                            </p>
-                            <div className="text-sm font-bold">45mm</div>
-                            <p className="text-xs text-gray-500">Acumulados</p>
-                            <div className="flex items-end gap-1 h-16 mt-2">
-                              {[5, 8, 12, 3, 0, 10, 7].map((value, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex-1 bg-blue-400 rounded-t"
-                                  style={{ height: `${(value / 12) * 100}%` }}
-                                />
-                              ))}
+                            {/* Divisor COMPLETO */}
+                            <div className="w-px bg-gray-300"></div>
+
+                            {/* FINANZAS */}
+                            <div className="px-4 py-2 flex flex-col justify-center">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1">
+                                  <Progress value={lote.finanzas.porcentaje} className="h-[4px] flex-1 [&>div]:bg-blue-500" />
+                                  <span className="text-xs font-semibold">{lote.finanzas.porcentaje}%</span>
+                                </div>
+                                <p className="text-xs font-medium leading-tight">${lote.finanzas.gastado} / ${lote.finanzas.total} USD</p>
+                                <p className="text-xs text-emerald-600 font-semibold leading-tight">Disp: ${lote.finanzas.disponible}/Ha</p>
+                              </div>
+                            </div>
+
+                            {/* Divisor COMPLETO */}
+                            <div className="w-px bg-gray-300"></div>
+
+                            {/* SALUD */}
+                            <div className="px-4 py-2 flex flex-col justify-center">
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-1">
+                                  {lote.salud.ndviIcon === "TrendingUp" ? (
+                                    <TrendingUp className={`h-3 w-3 flex-shrink-0 ${lote.salud.ndviColor}`} />
+                                  ) : (
+                                    <Activity className={`h-3 w-3 flex-shrink-0 ${lote.salud.ndviColor}`} />
+                                  )}
+                                  <span className="text-xs font-semibold leading-tight">NDVI {lote.salud.ndvi}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Droplets className="h-3 w-3 flex-shrink-0 text-blue-500" />
+                                  <span className="text-xs leading-tight">Agua: {lote.salud.agua}%</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3 flex-shrink-0 text-gray-500" />
+                                  <span className="text-xs text-gray-600 leading-tight">Vista: {lote.salud.visita}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Divisor COMPLETO */}
+                            <div className="w-px bg-gray-300"></div>
+
+                            {/* MONITOREO */}
+                            <div className="px-4 py-2 flex flex-col justify-center">
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-1">
+                                  <img 
+                                    src={lote.monitoreo.imagenPlaga} 
+                                    alt={lote.monitoreo.plaga}
+                                    className="h-5 w-5 object-contain flex-shrink-0"
+                                  />
+                                  <span className="text-xs font-semibold leading-tight">{lote.monitoreo.plaga}</span>
+                                </div>
+                                <p className={`text-xs font-semibold leading-tight ${lote.monitoreo.nivelColor}`}>
+                                  {lote.monitoreo.nivel}
+                                </p>
+                                <Badge className={`${lote.monitoreo.estadoColor} text-[10px] px-1.5 py-0.5 w-fit rounded-sm`}>
+                                  {lote.monitoreo.estadoIcono} {lote.monitoreo.estado}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {/* Divisor COMPLETO */}
+                            <div className="w-px bg-gray-300"></div>
+
+                            {/* PROYECCIÓN */}
+                            <div className="px-4 py-2 flex flex-col justify-end">
+                              <div className="space-y-0.5">
+                                <p className="text-xl font-bold text-gray-900 leading-tight">{lote.proyeccion.rendimiento} Tn/Ha</p>
+                                <p className={`text-xs ${lote.proyeccion.comparacionColor} font-semibold leading-tight`}>
+                                  {lote.proyeccion.comparacion.startsWith("+") ? "↗" : "↘"} {lote.proyeccion.comparacion} vs Prom
+                                </p>
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3 text-gray-500" />
+                                  <p className="text-xs text-gray-600 leading-tight">Est: {lote.proyeccion.fecha}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Divisor COMPLETO */}
+                            <div className="w-px bg-gray-300"></div>
+
+                            {/* ACCIONES */}
+                            <div className="px-4 py-2 flex flex-col justify-center gap-1.5">
+                              <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700 text-xs w-full flex items-center justify-center gap-1">
+                                <Plus className="h-3.5 w-3.5" />
+                                Tarea
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 bg-transparent text-xs w-full flex items-center justify-center gap-1">
+                                <History className="h-3.5 w-3.5" />
+                                Historial
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 bg-transparent text-xs w-full flex items-center justify-center gap-1">
+                                <ArrowRight className="h-3.5 w-3.5" />
+                                Ver
+                              </Button>
                             </div>
                           </div>
-
-                          <div className="flex gap-2 pt-3">
-                            <Button size="sm" variant="outline" className="flex-1 bg-transparent">
-                              <FileText className="h-4 w-4 mr-2" />
-                              Nota
-                            </Button>
-                            <Button size="sm" variant="outline" className="flex-1 bg-transparent">
-                              <Edit className="h-4 w-4 mr-2" />
-                              Editar
-                            </Button>
-                            <Button size="sm" className="flex-1 bg-emerald-500 hover:bg-emerald-600">
-                              Nueva Tarea
-                            </Button>
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="historial">
-                          <p className="text-sm text-gray-500 py-4">Historial del lote</p>
-                        </TabsContent>
-
-                        <TabsContent value="suelo">
-                          <p className="text-sm text-gray-500 py-4">Análisis de suelo</p>
-                        </TabsContent>
-
-                        <TabsContent value="labores">
-                          <p className="text-sm text-gray-500 py-4">Labores realizadas</p>
-                        </TabsContent>
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <Map className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-                      <p className="text-gray-500 text-sm">Seleccioná un lote</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          )}
-
-          {vistaActual === "lista" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Listado de Lotes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {lotes.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Map className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600">No hay lotes creados</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {lotes.map((lote) => (
-                      <Card
-                        key={lote.id}
-                        className="hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => setLoteSeleccionado(lote)}
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-lg">{lote.nombre}</CardTitle>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {lote.hectareas} ha{lote.cultivo && ` • ${lote.cultivo}`}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                eliminarLote(lote.id)
-                              }}
-                              className="text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {lote.coordenadas && (
-                            <Badge variant="outline" className="text-xs">
-                              <Map className="h-3 w-3 mr-1" />
-                              Georreferenciado
-                            </Badge>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
-
         {/* TAB: PLANIFICADOR */}
         <TabsContent value="planificador" className="space-y-4 mt-6">
           {/* Métricas Superiores - MISMO ESTILO QUE DETECCIÓN */}
@@ -2741,13 +3174,350 @@ export default function AgronomiaPage() {
           </Tabs>
         </TabsContent>
 
-        {/* OTROS TABS */}
-        <TabsContent value="labores">
-          <Card>
-            <CardContent className="py-8">
-              <p className="text-gray-500 text-center">Tab Labores</p>
-            </CardContent>
-          </Card>
+        {/* TAB: LABORES */}
+        <TabsContent value="labores" className="space-y-4 mt-6">
+          {/* Métricas Superiores - MISMO ESTILO */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Card 1: Programados */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Programados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">20</div>
+                <p className="text-xs text-gray-500 mt-1">tareas</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 2: Pendientes */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Pendientes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">15</div>
+                <p className="text-xs text-gray-500 mt-1">sin completar</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 3: Atrasados */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Atrasados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600 flex items-center gap-2">
+                  5
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">urgentes</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 4: % Completadas */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  % Completadas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">3%</div>
+                <p className="text-xs text-gray-500 mt-1">del total</p>
+              </CardContent>
+            </Card>
+
+            {/* Card 5: Completadas este Mes */}
+            <Card className="bg-white border hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  Completadas este Mes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">32</div>
+                <p className="text-xs text-gray-500 mt-1">finalizadas</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Grid 2 columnas: Tareas + Calendario */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_360px] gap-6">
+            
+            {/* CARD IZQUIERDA: Tareas para Hoy y Labores Bloqueados */}
+            <div className="space-y-4">
+              {/* Tareas para Hoy */}
+              <Card className="border shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-normal text-gray-800">Tareas para Hoy</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  
+                  {/* Tarea 1: Pulverización */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-[4px_4px_0_0_rgba(0,0,0,0.1)]">
+                    <div className="flex items-center gap-3">
+                      {/* Ícono con imagen */}
+                      <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <img src="/pulverizador.png" alt="Pulverizador" className="w-16 h-12" />
+                      </div>
+
+                      {/* Columna 1: Título y lote */}
+                      <div className="flex flex-col min-w-[100px]">
+                        <h4 className="font-semibold text-sm text-gray-900">Pulverización</h4>
+                        <p className="text-xs text-gray-600">Lote 2 - Norte</p>
+                      </div>
+
+                      {/* Columna 2: Avatar y persona */}
+                      <div className="flex items-center gap-2 w-[160px]">
+                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-semibold text-gray-700">JP</span>
+                        </div>
+                        <div className="text-xs">
+                          <p className="font-medium text-gray-900 whitespace-nowrap">Juan Pérez</p>
+                          <p className="text-gray-600 whitespace-nowrap">Mosquito Metaflor</p>
+                        </div>
+                      </div>
+
+                      {/* Columna 3: Botón Iniciar (en lugar de hora) */}
+                      <div className="min-w-[70px] flex items-center">
+                        <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2">
+                          ▶ Iniciar
+                        </Button>
+                      </div>
+
+                      {/* Columna 4: Botones de acción */}
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2">
+                          ⏸ Pausar
+                        </Button>
+                        <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2">
+                          ✓ Finalizar
+                        </Button>
+                        <Button size="sm" className="h-7 bg-orange-500 hover:bg-orange-600 text-white text-xs px-2">
+                          ⚠️ Reportar
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 bg-transparent px-1.5">
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tarea 2: Siembra Maíz */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-[4px_4px_0_0_rgba(0,0,0,0.1)]">
+                    <div className="flex items-center gap-3">
+                      {/* Ícono con imagen */}
+                      <div className="w-12 h-12 bg-green-300 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <img src="/tractor.png" alt="Siembra" className="w-16 h-12" />
+                      </div>
+
+                      {/* Columna 1: Título y lote */}
+                      <div className="flex flex-col min-w-[100px]">
+                        <h4 className="font-semibold text-sm text-gray-900">Siembra Maíz</h4>
+                        <p className="text-xs text-gray-600">Lote 4 - El Bajo</p>
+                      </div>
+
+                      {/* Columna 2: Avatar y persona */}
+                      <div className="flex items-center gap-2 w-[160px]">
+                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-semibold text-gray-700">MG</span>
+                        </div>
+                        <div className="text-xs">
+                          <p className="font-medium text-gray-900 whitespace-nowrap">M. Gomez</p>
+                          <p className="text-gray-600 whitespace-nowrap">John Deere 6J</p>
+                        </div>
+                      </div>
+
+                      {/* Columna 3: Botón Iniciar */}
+                      <div className="min-w-[70px] flex items-center">
+                        <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2">
+                          ▶ Iniciar
+                        </Button>
+                      </div>
+
+                      {/* Columna 4: Botones de acción */}
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2">
+                          ⏸ Pausar
+                        </Button>
+                        <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2">
+                          ✓ Finalizar
+                        </Button>
+                        <Button size="sm" className="h-7 bg-orange-500 hover:bg-orange-600 text-white text-xs px-2">
+                          ⚠️ Reportar
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 bg-transparent px-1.5">
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                </CardContent>
+              </Card>
+
+              {/* Labores Bloqueados / Alertas */}
+              <Card className="border shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-normal text-gray-800">Labores Bloqueados / Alertas</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  
+                  {/* Labor 1: Pulverización */}
+                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-[4px_4px_0_0_rgba(0,0,0,0.1)]">
+                    {/* Ícono - SIN FONDO DE COLOR */}
+                    <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
+                      <img src="/pulverizador.png" alt="Pulverizador" className="w-12 h-12 object-contain" />
+                    </div>
+
+                    {/* Info - ANCHO FIJO */}
+                    <div className="w-[120px] flex-shrink-0">
+                      <h4 className="font-semibold text-sm text-gray-900">Pulverización</h4>
+                      <p className="text-xs text-gray-600">Lote 2 - Norte</p>
+                    </div>
+
+                    {/* Divisor */}
+                    <div className="h-12 w-px bg-gray-300 flex-shrink-0"></div>
+
+                    {/* Alerta - ANCHO FIJO */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-red-100 rounded-lg w-[200px] flex-shrink-0">
+                      <Wind className="h-4 w-4 text-red-600 flex-shrink-0" />
+                      <div className="text-xs">
+                        <p className="font-semibold text-red-700">Viento: 32 km/h</p>
+                        <p className="text-red-600">Riesgo de Deriva</p>
+                      </div>
+                    </div>
+
+                    {/* Divisor */}
+                    <div className="h-12 w-px bg-gray-300 flex-shrink-0"></div>
+
+
+                    {/* Botón */}
+                    <Button size="sm" variant="outline" className="h-8 bg-transparent flex-shrink-0 ml-auto">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      Reprogramar
+                    </Button>
+                  </div>
+
+                  {/* Labor 2: Siembra Maíz */}
+                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-[4px_4px_0_0_rgba(0,0,0,0.1)]">
+                    {/* Ícono - SIN FONDO DE COLOR */}
+                    <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
+                      <img src="/tractor.png" alt="Siembra" className="w-12 h-12 object-contain" />
+                    </div>
+
+                    {/* Info - ANCHO FIJO */}
+                    <div className="w-[120px] flex-shrink-0">
+                      <h4 className="font-semibold text-sm text-gray-900">Siembra Maíz</h4>
+                      <p className="text-xs text-gray-600">Lote 4 - El Bajo</p>
+                    </div>
+
+                    {/* Divisor */}
+                    <div className="h-12 w-px bg-gray-300 flex-shrink-0"></div>
+
+                    {/* Alerta - ANCHO FIJO */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-orange-100 rounded-lg w-[200px] flex-shrink-0">
+                      <svg className="h-4 w-4 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      <div className="text-xs">
+                        <p className="font-semibold text-orange-700">Sin Stock: Semilla</p>
+                        <p className="text-orange-600">Faltan 20 bolsas</p>
+                      </div>
+                    </div>
+
+                    {/* Divisor */}
+                    <div className="h-12 w-px bg-gray-300 flex-shrink-0"></div>
+
+                    {/* Botón */}
+                    <Button size="sm" variant="outline" className="h-8 bg-transparent flex-shrink-0 ml-auto">
+                      <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      Solicitar
+                    </Button>
+                  </div>
+
+                  {/* Labor 3: Cosecha Soja */}
+                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-[4px_4px_0_0_rgba(0,0,0,0.1)]">
+                    {/* Ícono - SIN FONDO DE COLOR */}
+                    <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
+                      <img src="/cosecha.png" alt="Cosecha" className="w-12 h-12 object-contain" />
+                    </div>
+
+                    {/* Info - ANCHO FIJO */}
+                    <div className="w-[120px] flex-shrink-0">
+                      <h4 className="font-semibold text-sm text-gray-900">Cosecha Soja</h4>
+                      <p className="text-xs text-gray-600">Lote 7 - Sur</p>
+                    </div>
+
+                    {/* Divisor */}
+                    <div className="h-12 w-px bg-gray-300 flex-shrink-0"></div>
+
+                    {/* Alerta - ANCHO FIJO */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-red-100 rounded-lg w-[200px] flex-shrink-0">
+                      <svg className="h-4 w-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <div className="text-xs">
+                        <p className="font-semibold text-red-700">Cosechadora Avariada</p>
+                        <p className="text-red-600">En taller mecánico</p>
+                      </div>
+                    </div>
+
+                    {/* Divisor */}
+                    <div className="h-12 w-px bg-gray-300 flex-shrink-0"></div>
+
+                    {/* Botón */}
+                    <Button size="sm" variant="outline" className="h-8 bg-transparent flex-shrink-0 ml-auto">
+                      → Ver Detalle
+                    </Button>
+                  </div>
+
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* CARD DERECHA: Calendario */}
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <CardTitle className="text-lg font-normal text-gray-800">Calendario</CardTitle>
+                <Button variant="outline" size="sm" className="h-8">
+                  Vista Mensual
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {/* Calendario vacío - placeholder */}
+                <div className="border rounded-lg p-4">
+                  <div className="grid grid-cols-7 gap-2 mb-2">
+                    <div className="text-center text-xs font-semibold text-gray-600">Lun</div>
+                    <div className="text-center text-xs font-semibold text-gray-600">Mar</div>
+                    <div className="text-center text-xs font-semibold text-gray-600">Mié</div>
+                    <div className="text-center text-xs font-semibold text-gray-600">Jue</div>
+                    <div className="text-center text-xs font-semibold text-gray-600">Vie</div>
+                    <div className="text-center text-xs font-semibold text-gray-600">Sáb</div>
+                    <div className="text-center text-xs font-semibold text-gray-600">Dom</div>
+                  </div>
+                  
+                  {/* Grid de días vacío */}
+                  <div className="grid grid-cols-7 gap-2">
+                    {Array.from({ length: 35 }, (_, i) => (
+                      <div key={i} className="aspect-square border rounded flex items-center justify-center text-sm text-gray-700 hover:bg-gray-50">
+                        {i + 1 <= 31 ? i + 1 : ''}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* TAB: CULTIVOS */}
