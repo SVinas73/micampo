@@ -51,6 +51,7 @@ import {
   Dna,
   Upload,
   CloudSun,
+  Leaf,
   Plus,
   History,
   ArrowRight,
@@ -417,6 +418,17 @@ export default function AgronomiaPage() {
   const [coordenadasTemporal, setCoordenadasTemporal] = useState<any>(null)
   const [hectareasTemporal, setHectareasTemporal] = useState<number>(0)
   const [mostrarInformacion, setMostrarInformacion] = useState(false)
+  const [reportarPlagaOpen, setReportarPlagaOpen] = useState(false)
+
+  const [plagaForm, setPlagaForm] = useState({
+    loteId: "",
+    loteNombre: "",
+    plagaNombre: "",
+    tipoPlaga: "Insecto", // Insecto, Hongo, Maleza
+    nivelDanio: 15,
+    imagen: null as string | null,
+    observaciones: "",
+  })
 
   const activeTab = searchParams.get("tab") || "deteccion"
   const activeSubTab = searchParams.get("subtab") || "analisis"
@@ -581,6 +593,49 @@ export default function AgronomiaPage() {
     }
   }
 
+  const handleReportarPlaga = () => {
+    // Crear nueva alerta
+    const nuevaAlerta: AlertaActiva = {
+      id: String(alertasActivas.length + 1),
+      loteNumero: plagaForm.loteId.split("-")[0] || "1",
+      loteNombre: plagaForm.loteNombre,
+      cultivo: plagaForm.plagaNombre,
+      imagen: plagaForm.imagen,
+      imageTitle: "Foto de Campo",
+      estadoLabel: "Estado: Detectado",
+      estadoColor: "bg-orange-100 text-orange-800 border-orange-300",
+      alerta: "Foto de Campo",
+      alertaBadge: plagaForm.tipoPlaga === "Insecto" ? "bg-red-100 text-red-700 border-red-300" : 
+                  plagaForm.tipoPlaga === "Hongo" ? "bg-orange-100 text-orange-700 border-orange-300" :
+                  "bg-yellow-100 text-yellow-700 border-yellow-300",
+      severidad: plagaForm.nivelDanio >= 30 ? "ALTA" : plagaForm.nivelDanio >= 15 ? "MEDIA" : "BAJA",
+      severidadPorcentaje: plagaForm.nivelDanio,
+      severidadColor: plagaForm.nivelDanio >= 30 ? "bg-red-500" : plagaForm.nivelDanio >= 15 ? "bg-orange-500" : "bg-yellow-500",
+      hectareasAfectadas: "Área detectada, hace minutos",
+      tiempo: "hace minutos",
+      riesgoPerdida: Math.round(plagaForm.nivelDanio * 100),
+      riesgoDescripcion: "Estimación inicial",
+      recomendacion: plagaForm.tipoPlaga === "Insecto" ? "Aplicar Insecticida" : 
+                    plagaForm.tipoPlaga === "Hongo" ? "Aplicar Fungicida" : "Monitoreo Intensivo",
+      recomendacionColor: "bg-emerald-50 border-emerald-300 text-emerald-700",
+    }
+
+    setAlertasActivas([nuevaAlerta, ...alertasActivas])
+    
+    setReportarPlagaOpen(false)
+    setPlagaForm({
+      loteId: "",
+      loteNombre: "",
+      plagaNombre: "",
+      tipoPlaga: "Insecto",
+      nivelDanio: 15,
+      imagen: null,
+      observaciones: "",
+    })
+    
+    alert("Alerta generada exitosamente")
+  }
+
   const totalCampos = 2
   const totalLotes = lotes.length || 120
   const hectareasTotales = lotes.reduce((sum, l) => sum + l.hectareas, 0) || 10521
@@ -602,7 +657,10 @@ export default function AgronomiaPage() {
               <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
                 Cargar Imagen de Lote
               </Button>
-              <Button className="bg-orange-500 hover:bg-orange-600 text-white px-6 shadow-sm">
+              <Button 
+                className="bg-orange-500 hover:bg-orange-600 text-white px-6 shadow-sm"
+                onClick={() => setReportarPlagaOpen(true)}
+              >
                 Reportar Plaga
               </Button>
             </>
@@ -3933,6 +3991,214 @@ export default function AgronomiaPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog Reportar Plaga */}
+      <Dialog open={reportarPlagaOpen} onOpenChange={setReportarPlagaOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-normal">Reportar Plaga o Enfermedad</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-6 py-2">
+            {/* COLUMNA IZQUIERDA */}
+            <div className="space-y-4">
+              {/* Ubicación - SUBCARD BLANCA CON TÍTULO ADENTRO */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <Label className="text-sm font-normal mb-3 block">Ubicación</Label>
+                <div className="bg-green-50 border-2 border-green-400 rounded-lg p-3 flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-grey-200 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-[12px] text-gray-600">Seleccionar Lote Afectado</p>
+                    <select
+                      className="w-full bg-transparent font-semibold text-sm text-gray-700 border-none p-0 focus:ring-0"
+                      value={plagaForm.loteId}
+                      onChange={(e) => {
+                        const lote = lotes.find(l => l.id === e.target.value)
+                        setPlagaForm({
+                          ...plagaForm,
+                          loteId: e.target.value,
+                          loteNombre: lote?.nombre || ""
+                        })
+                      }}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {lotes.map(lote => (
+                        <option key={lote.id} value={lote.id}>
+                          {lote.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Tick verde SOLO si hay lote seleccionado */}
+                  {plagaForm.loteId && (
+                    <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Identificación - SUBCARD BLANCA CON TÍTULO ADENTRO */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <Label className="text-sm font-normal mb-3 block">Identificación</Label>
+                
+                {/* Buscador */}
+                <div className="relative mb-3">
+                  <Input
+                    placeholder="Buscar Plaga o Enfermedad..."
+                    value={plagaForm.plagaNombre}
+                    onChange={(e) => setPlagaForm({ ...plagaForm, plagaNombre: e.target.value })}
+                    className="pl-9 h-10 text-sm bg-white"
+                  />
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+
+                {/* Botones de tipo */}
+                <div className="flex gap-2 mb-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={`flex-1 h-9 text-xs ${plagaForm.tipoPlaga === "Insecto" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"}`}
+                    onClick={() => setPlagaForm({ ...plagaForm, tipoPlaga: "Insecto" })}
+                  >
+                    <Bug className="h-4 w-4 mr-1" />
+                    Insecto
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={`flex-1 h-9 text-xs ${plagaForm.tipoPlaga === "Hongo" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"}`}
+                    onClick={() => setPlagaForm({ ...plagaForm, tipoPlaga: "Hongo" })}
+                  >
+                    <img src="/hongo.png" alt="Hongo" className="h-5 w-5 mr-1" />
+                    Hongo
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={`flex-1 h-9 text-xs ${plagaForm.tipoPlaga === "Maleza" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"}`}
+                    onClick={() => setPlagaForm({ ...plagaForm, tipoPlaga: "Maleza" })}
+                  >
+                    <Sprout className="h-4 w-4 mr-1" />
+                    Maleza
+                  </Button>
+                </div>
+
+                {/* Resultado sugerencia (solo si hay texto) */}
+                {plagaForm.plagaNombre && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm text-gray-900">{plagaForm.plagaNombre}</p>
+                      <p className="text-xs text-gray-500 italic">{plagaForm.plagaNombre}</p>
+                    </div>
+                    <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                  </div>
+                )}
+              </div>
+
+              {/* Nivel de Daño - SUBCARD BLANCA CON TÍTULO ADENTRO */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-sm font-normal">Nivel de Daño</Label>
+                  <span className="text-sm font-medium text-gray-700">Incidencia: <span className="font-semibold">{plagaForm.nivelDanio}%</span></span>
+                </div>
+                <div className="relative mb-2">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={plagaForm.nivelDanio}
+                    onChange={(e) => setPlagaForm({ ...plagaForm, nivelDanio: Number(e.target.value) })}
+                    className="w-full h-2 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 rounded-full appearance-none cursor-pointer
+                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
+                      [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 
+                      [&::-webkit-slider-thumb]:border-gray-400 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md
+                      [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
+                      [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gray-400 
+                      [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Bajo</span>
+                  <span>Alto</span>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMNA DERECHA - SUBCARD BLANCA CON TÍTULO ADENTRO */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-4">
+              {/* Upload Photo */}
+              <div className="flex-1">
+                <Label className="text-sm font-normal mb-3 block">Upload Photo</Label>
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors h-56 bg-white"
+                  onClick={() => document.getElementById('plaga-foto-upload')?.click()}
+                >
+                  {plagaForm.imagen ? (
+                    <img src={plagaForm.imagen} alt="Preview" className="max-h-full max-w-full rounded" />
+                  ) : (
+                    <>
+                      <Camera className="h-14 w-14 text-gray-400 mb-3" />
+                      <p className="text-sm font-medium text-gray-700">Arrastrar foto o Capturar</p>
+                      <p className="text-xs text-gray-500">o seleccionar archivo</p>
+                    </>
+                  )}
+                </div>
+                <input
+                  id="plaga-foto-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      const reader = new FileReader()
+                      reader.onloadend = () => {
+                        setPlagaForm({ ...plagaForm, imagen: reader.result as string })
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Observaciones */}
+              <div>
+                <Label className="text-sm font-normal mb-3 block">Observaciones / Notas de campo</Label>
+                <textarea
+                  placeholder="Escriba detalles adicionales aquí..."
+                  value={plagaForm.observaciones}
+                  onChange={(e) => setPlagaForm({ ...plagaForm, observaciones: e.target.value })}
+                  className="w-full h-28 px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Botones */}
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setReportarPlagaOpen(false)}
+              className="px-10 h-11 text-sm"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleReportarPlaga}
+              disabled={!plagaForm.loteId || !plagaForm.plagaNombre}
+              className="bg-orange-500 hover:bg-orange-600 px-10 h-11 text-sm"
+            >
+              Generar Alerta
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
