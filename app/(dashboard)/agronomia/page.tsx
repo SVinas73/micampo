@@ -430,6 +430,20 @@ export default function AgronomiaPage() {
     observaciones: "",
   })
 
+  const [nuevaSiembraOpen, setNuevaSiembraOpen] = useState(false)
+  const [siembraForm, setSiembraForm] = useState({
+    loteId: "",
+    loteNombre: "",
+    fecha: "",
+    cultivo: "",
+    variedad: "",
+    densidad: "",
+    inversion: "",
+    destino: "" as "Silo" | "Puerto" | "",
+    usarRecomendacionIA: true,
+    responsables: [] as string[],
+  })
+
   const activeTab = searchParams.get("tab") || "deteccion"
   const activeSubTab = searchParams.get("subtab") || "analisis"
 
@@ -668,7 +682,10 @@ export default function AgronomiaPage() {
 
           {/* Botones para PLANIFICADOR - Sub-tab PLANES */}
           {activeTab === "planificador" && activeSubTab === "planes" && (
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm">
+            <Button 
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm"
+              onClick={() => setNuevaSiembraOpen(true)}
+            >
               Nuevo Plan
             </Button>
           )}
@@ -4197,6 +4214,268 @@ export default function AgronomiaPage() {
               className="bg-orange-500 hover:bg-orange-600 px-10 h-11 text-sm"
             >
               Generar Alerta
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Nueva Siembra */}
+      <Dialog open={nuevaSiembraOpen} onOpenChange={setNuevaSiembraOpen}>
+        <DialogContent className="!max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+          {/* Header con línea divisora */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <DialogTitle className="text-2xl font-normal">Nueva Siembra</DialogTitle>
+          </div>
+
+          <div className="grid grid-cols-2 divide-x divide-gray-200">
+            {/* COLUMNA IZQUIERDA */}
+            <div className="divide-y divide-gray-200">
+              {/* BLOCK A: Ubicación y Fecha */}
+              <div className="px-6 py-4">
+                <p className="text-xs text-gray-400 mb-1">BLOCK A</p>
+                <h3 className="font-normal text-gray-900 text-lg mb-4">Ubicación y Fecha</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-normal text-black-200">Seleccionar Lote</Label>
+                    <select
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      value={siembraForm.loteId}
+                      onChange={(e) => {
+                        const lote = lotes.find(l => l.id === e.target.value)
+                        setSiembraForm({
+                          ...siembraForm,
+                          loteId: e.target.value,
+                          loteNombre: lote ? `${lote.nombre} (${lote.hectareas} Ha)` : ""
+                        })
+                      }}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {lotes.filter(l => !l.cultivo).map(lote => (
+                        <option key={lote.id} value={lote.id}>
+                          {lote.nombre} - Vacío ({lote.hectareas} Ha)
+                        </option>
+                      ))}
+                      <option value="lote1-mock">Lote 1 - Vacío (70 Ha)</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-normal text-black-200">Date picker</Label>
+                    <div className="relative">
+                      <Input
+                        type="date"
+                        value={siembraForm.fecha}
+                        onChange={(e) => setSiembraForm({ ...siembraForm, fecha: e.target.value })}
+                        className="h-10 pl-5"
+                      />
+                      
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* BLOCK C: Finanzas y Recursos */}
+              <div className="px-6 py-4">
+                <p className="text-xs text-gray-400 mb-1">BLOCK C</p>
+                <h3 className="font-normal text-gray-900 text-lg mb-4">Finanzas y Recursos</h3>
+                
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-normal text-black-200">Inversión Estimada ($)</Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        placeholder="Ej. 15000"
+                        value={siembraForm.inversion}
+                        onChange={(e) => setSiembraForm({ ...siembraForm, inversion: e.target.value })}
+                        className="h-10 pl-7"
+                      />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-normal text-black-200">Responsable</Label>
+                    <div className="flex -space-x-2">
+                      <div className="w-10 h-10 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold">JP</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-green-500 border-2 border-white flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold">MG</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-yellow-500 border-2 border-white flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold">RL</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">Equipo de Siembra</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMNA DERECHA */}
+            <div className="flex flex-col">
+              {/* BLOCK B: Selección de Cultivo */}
+              <div className="px-6 py-4 flex-1">
+                <p className="text-xs text-gray-400 mb-1">BLOCK B</p>
+                <h3 className="font-normal text-gray-900 text-lg mb-4">Selección de Cultivo</h3>
+                
+                {/* Buscador */}
+                <div className="relative mb-4">
+                  <Input
+                    placeholder="Buscar cultivo..."
+                    className="h-10 pl-9"
+                  />
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+
+                {/* Iconos de cultivos */}
+                <div className="flex items-center gap-3 mb-6">
+                  <button
+                    type="button"
+                    className="w-15 h-15 rounded-full flex items-center justify-center bg-white"
+                    onClick={() => setSiembraForm({ ...siembraForm, cultivo: "maiz" })}
+                  >
+                    <img src="/Choclo.png" alt="Maíz" className="w-12 h-12 object-contain" />
+                  </button>
+                  <button
+                    type="button"
+                    className="w-15 h-15 rounded-full flex items-center justify-center bg-white"
+                    onClick={() => setSiembraForm({ ...siembraForm, cultivo: "soja" })}
+                  >
+                    <img src="/Aji.png" alt="Soja" className="w-12 h-12 object-contain" />
+                  </button>
+                  <button
+                    type="button"
+                    className="w-15 h-15 rounded-full flex items-center justify-center bg-white"
+                    onClick={() => setSiembraForm({ ...siembraForm, cultivo: "trigo" })}
+                  >
+                    <img src="/Chimi.png" alt="Trigo" className="w-12 h-12 object-contain" />
+                  </button>
+                  <button
+                    type="button"
+                    className="w-15 h-15 rounded-full flex items-center justify-center bg-white"
+                    onClick={() => setSiembraForm({ ...siembraForm, cultivo: "girasol" })}
+                  >
+                    <img src="/Hojas.png" alt="Girasol" className="w-13 h-13 object-contain" />
+                  </button>
+                  <button
+                    type="button"
+                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-dashed border-green-400 bg-white hover:border-green-500 transition-all"
+                  >
+                    <Plus className="h-5 w-5 text-green-500" />
+                  </button>
+                </div>
+
+                {/* Variedad */}
+                <div className="space-y-1.5 mb-4">
+                  <Label className="text-xs font-normal text-black-200">Variedad</Label>
+                  <Input
+                    placeholder="Ej. DK7210"
+                    value={siembraForm.variedad}
+                    onChange={(e) => setSiembraForm({ ...siembraForm, variedad: e.target.value })}
+                    className="h-10"
+                  />
+                </div>
+
+                {/* Densidad */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal text-black-200">Densidad</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      placeholder="Ej. 75000"
+                      value={siembraForm.densidad}
+                      onChange={(e) => setSiembraForm({ ...siembraForm, densidad: e.target.value })}
+                      className="h-10 pr-16"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">Sem/Ha</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* BLOCK D: Planificación - ANCHO COMPLETO */}
+          <div className="border-t border-gray-200">
+            <div className="px-6 py-4">
+              <p className="text-xs text-gray-400 mb-1">BLOCK D</p>
+              <h3 className="font-normal text-gray-900 text-lg mb-4">Planificación</h3>
+              
+              <div className="flex items-center justify-between">
+                {/* Destino Planificado */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal text-black-200">Destino Planificado</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-9 p-0 rounded-full border-2 border-dashed border-green-400 bg-white hover:bg-green-50"
+                    >
+                      <Plus className="h-4 w-4 text-green-500" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className={`h-9 px-4 rounded-full ${siembraForm.destino === "Silo" ? "bg-green-600 text-white border-green-900" : "bg-white text-green-700 border-green-300"}`}
+                      onClick={() => setSiembraForm({ ...siembraForm, destino: "Silo" })}
+                    >
+                      [Silo]
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className={`h-9 px-4 rounded-full ${siembraForm.destino === "Puerto" ? "bg-green-600 text-white border-green-900" : "bg-white text-green-700 border-green-300"}`}
+                      onClick={() => setSiembraForm({ ...siembraForm, destino: "Puerto" })}
+                    >
+                      [Puerto]
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Toggle IA */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${siembraForm.usarRecomendacionIA ? "bg-green-500" : "bg-gray-300"}`}
+                    onClick={() => setSiembraForm({ ...siembraForm, usarRecomendacionIA: !siembraForm.usarRecomendacionIA })}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${siembraForm.usarRecomendacionIA ? "translate-x-6" : "translate-x-1"}`}
+                    />
+                  </button>
+                  <span className="text-sm text-gray-700">Usar Recomendación IA para Insumos?</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Botones */}
+          <div className="flex justify-center gap-4 px-6 py-4 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setNuevaSiembraOpen(false)}
+              className="px-12 h-11 text-sm bg-gray-100 hover:bg-gray-200 border-0 rounded-full"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                console.log("Guardando siembra:", siembraForm)
+                setNuevaSiembraOpen(false)
+                alert("Plan de siembra guardado como borrador")
+              }}
+              className="bg-green-700 hover:bg-green-600 px-12 h-11 text-sm rounded-full"
+            >
+              Guardar Borrador
             </Button>
           </div>
         </DialogContent>
