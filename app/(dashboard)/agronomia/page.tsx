@@ -444,6 +444,22 @@ export default function AgronomiaPage() {
     responsables: [] as string[],
   })
 
+  const [nuevaCosechaOpen, setNuevaCosechaOpen] = useState(false)
+  const [cosechaForm, setCosechaForm] = useState({
+    loteId: "",
+    loteNombre: "",
+    cultivo: "",
+    rendimiento: "",
+    humedad: "",
+    impurezas: "",
+    tipoMaquinaria: "Propia" as "Propia" | "Contratista",
+    costoLabor: "",
+    destino: "" as "Silo" | "Puerto" | "",
+    nroRemito: "",
+    chofer: "",
+    cerrarLote: false,
+  })
+
   const activeTab = searchParams.get("tab") || "deteccion"
   const activeSubTab = searchParams.get("subtab") || "analisis"
 
@@ -682,12 +698,20 @@ export default function AgronomiaPage() {
 
           {/* Botones para PLANIFICADOR - Sub-tab PLANES */}
           {activeTab === "planificador" && activeSubTab === "planes" && (
-            <Button 
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm"
-              onClick={() => setNuevaSiembraOpen(true)}
-            >
-              Nuevo Plan
-            </Button>
+            <>
+              <Button 
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm"
+                onClick={() => setNuevaSiembraOpen(true)}
+              >
+                Plan de Siembra
+              </Button>
+              <Button 
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 shadow-sm"
+                onClick={() => setNuevaCosechaOpen(true)}
+              >
+                Nueva Cosecha
+              </Button>
+            </>
           )}
 
           {/* Botones para PLANIFICADOR - Sub-tab ANÁLISIS */}
@@ -4336,7 +4360,7 @@ export default function AgronomiaPage() {
                 <div className="flex items-center gap-3 mb-6">
                   <button
                     type="button"
-                    className="w-15 h-15 rounded-full flex items-center justify-center bg-white"
+                    className="w-16 h-16 rounded-full flex items-center justify-center bg-white"
                     onClick={() => setSiembraForm({ ...siembraForm, cultivo: "maiz" })}
                   >
                     <img src="/Choclo.png" alt="Maíz" className="w-12 h-12 object-contain" />
@@ -4476,6 +4500,246 @@ export default function AgronomiaPage() {
               className="bg-green-700 hover:bg-green-600 px-12 h-11 text-sm rounded-full"
             >
               Guardar Borrador
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Nueva Cosecha */}
+      <Dialog open={nuevaCosechaOpen} onOpenChange={setNuevaCosechaOpen}>
+        <DialogContent 
+          className="max-h-[90vh] overflow-y-auto p-0"
+          style={{ maxWidth: '500px', width: '500px' }}
+        >
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <DialogTitle className="text-2xl font-normal">Nueva Cosecha</DialogTitle>
+          </div>
+
+          <div className="divide-y divide-gray-200">
+            {/* BLOCK A: Seleccionar Cultivo */}
+            <div className="px-6 py-4">
+              <p className="text-xs text-gray-400 mb-1">BLOCK A</p>
+              <h3 className="font-normal text-gray-900 text-lg mb-4">Seleccionar Cultivo</h3>
+              
+              <div className="grid grid-cols-2 gap-3">
+                {/* Lote 4 - Maíz */}
+                <button
+                  type="button"
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${cosechaForm.loteId === "lote4" ? "border-green-700 bg-green-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  onClick={() => setCosechaForm({ ...cosechaForm, loteId: "lote4", cultivo: "Maíz" })}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-gray-900">Lote 4 - Maíz</span>
+                    {cosechaForm.loteId === "lote4" && (
+                      <div className="w-6 h-6 rounded-full bg-green-700 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600">Estado: Listo para cosecha</p>
+                  <p className="text-xs text-gray-600">Madurez: 100%</p>
+                  <p className="text-xs text-gray-600">Humedad: 14%</p>
+                </button>
+
+                {/* Lote 2 - Soja */}
+                <button
+                  type="button"
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${cosechaForm.loteId === "lote2" ? "border-green-700 bg-green-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  onClick={() => setCosechaForm({ ...cosechaForm, loteId: "lote2", cultivo: "Soja" })}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-gray-900">Lote 2 - Soja</span>
+                    {cosechaForm.loteId === "lote2" && (
+                      <div className="w-6 h-6 rounded-full bg-green-700 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600">Estado: En crecimiento</p>
+                  <p className="text-xs text-gray-600">Madurez: 85%</p>
+                  <p className="text-xs text-gray-600">Humedad: 18%</p>
+                </button>
+              </div>
+            </div>
+
+            {/* BLOCK B: Rendimiento y Calidad */}
+            <div className="px-6 py-4">
+              <p className="text-xs text-gray-400 mb-1">BLOCK B</p>
+              <h3 className="font-normal text-gray-900 text-lg mb-4">Rendimiento y Calidad</h3>
+              
+              <div className="grid grid-cols-3 gap-3 mb-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal text-black-200">Rendimiento (Tn)</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      placeholder="Ej. 450"
+                      value={cosechaForm.rendimiento}
+                      onChange={(e) => setCosechaForm({ ...cosechaForm, rendimiento: e.target.value })}
+                      className="h-10 pr-10"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">Tn</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal text-black-200">Humedad %</Label>
+                  <Input
+                    type="number"
+                    placeholder="Ej. 14"
+                    value={cosechaForm.humedad}
+                    onChange={(e) => setCosechaForm({ ...cosechaForm, humedad: e.target.value })}
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-normal text-black-200">Impurezas/Merma %</Label>
+                  <Input
+                    type="number"
+                    placeholder="Ej. 2"
+                    value={cosechaForm.impurezas}
+                    onChange={(e) => setCosechaForm({ ...cosechaForm, impurezas: e.target.value })}
+                    className="h-10"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">Peso Neto Est: 29.4 Tn</p>
+            </div>
+
+            {/* BLOCK C: Costos de Labor */}
+            <div className="px-6 py-3">
+              <p className="text-xs text-gray-400 mb-1">BLOCK C</p>
+              <h3 className="font-normal text-gray-900 text-lg mb-3">Costos de Labor</h3>
+              
+              <div className="flex items-center gap-4">
+                {/* Toggle Maquinaria Propia / Contratista */}
+                <div className="inline-flex rounded-full border border-gray-300 p-1 bg-gray-100">
+                  <button
+                    type="button"
+                    className={`px-4 py-1.5 text-sm rounded-full transition-all ${cosechaForm.tipoMaquinaria === "Propia" ? "bg-green-700 text-white" : "bg-transparent text-gray-600"}`}
+                    onClick={() => setCosechaForm({ ...cosechaForm, tipoMaquinaria: "Propia" })}
+                  >
+                    [ Maquinaria Propia ]
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-4 py-1.5 text-sm rounded-full transition-all ${cosechaForm.tipoMaquinaria === "Contratista" ? "bg-green-700 text-white" : "bg-transparent text-gray-600"}`}
+                    onClick={() => setCosechaForm({ ...cosechaForm, tipoMaquinaria: "Contratista" })}
+                  >
+                    [ Contratista ]
+                  </button>
+                </div>
+                
+                <div className="space-y-1.5 flex-1">
+                  <Label className="text-xs font-normal text-black-200">Costo Labor (USD/Ha)</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      placeholder="Ej. 65"
+                      value={cosechaForm.costoLabor}
+                      onChange={(e) => setCosechaForm({ ...cosechaForm, costoLabor: e.target.value })}
+                      className="h-10 pl-7"
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* BLOCK D: Destino & Transporte */}
+            <div className="px-6 py-4">
+              <p className="text-xs text-gray-400 mb-1">BLOCK D</p>
+              <h3 className="font-normal text-gray-900 text-lg mb-4">Destino & Transporte</h3>
+              
+              <div className="flex gap-3 mb-4">
+                {/* Añadir Destino - Cuadro grande */}
+                <button
+                  type="button"
+                  className="w-20 h-24 rounded-lg border-2 border-dashed border-green-400 bg-white hover:bg-green-50 flex flex-col items-center justify-center gap-1 transition-all"
+                >
+                  <Plus className="h-6 w-6 text-green-500" />
+                  <span className="text-xs text-green-600 text-center leading-tight">Añadir<br/>Destino</span>
+                </button>
+
+                {/* Columna derecha: Silo/Puerto + Nro Remito */}
+                <div className="flex-1 flex flex-col justify-between h-24">
+                  {/* Silo y Puerto */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className={`h-8 px-4 rounded-full ${cosechaForm.destino === "Silo" ? "bg-green-700 text-white border-green-700" : "bg-white text-gray-700 border-gray-300"}`}
+                      onClick={() => setCosechaForm({ ...cosechaForm, destino: "Silo" })}
+                    >
+                      [Silo]
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className={`h-8 px-4 rounded-full ${cosechaForm.destino === "Puerto" ? "bg-green-700 text-white border-green-700" : "bg-white text-gray-700 border-gray-300"}`}
+                      onClick={() => setCosechaForm({ ...cosechaForm, destino: "Puerto" })}
+                    >
+                      [Puerto]
+                    </Button>
+                  </div>
+
+                  {/* Nro Remito / Chofer */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-normal text-black-200">Nro. Remito / Chofer</Label>
+                    <Input
+                      placeholder="Ej. 12345 / Juan Pérez"
+                      value={cosechaForm.nroRemito}
+                      onChange={(e) => setCosechaForm({ ...cosechaForm, nroRemito: e.target.value })}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Checkbox Cerrar Lote */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={`w-5 h-5 rounded flex items-center justify-center transition-all ${cosechaForm.cerrarLote ? "bg-green-700" : "bg-white border-2 border-gray-300"}`}
+                  onClick={() => setCosechaForm({ ...cosechaForm, cerrarLote: !cosechaForm.cerrarLote })}
+                >
+                  {cosechaForm.cerrarLote && (
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-sm text-gray-700">Cerrar Lote (Finalizar Ciclo)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Botones */}
+          <div className="flex justify-center gap-4 px-6 py-4 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setNuevaCosechaOpen(false)}
+              className="px-12 h-11 text-sm bg-gray-100 hover:bg-gray-200 border-0 rounded-full"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                console.log("Registrando cosecha:", cosechaForm)
+                setNuevaCosechaOpen(false)
+                alert("Cosecha registrada exitosamente")
+              }}
+              className="bg-green-700 hover:bg-green-600 px-12 h-11 text-sm rounded-full"
+            >
+              Registrar Cosecha
             </Button>
           </div>
         </DialogContent>
