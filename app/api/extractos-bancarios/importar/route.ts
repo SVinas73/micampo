@@ -49,9 +49,9 @@ export async function POST(request: Request) {
         // Verificar duplicados
         const existente = await prisma.extractoBancario.findFirst({
           where: {
-            cuentaBancariaId,
+            cuentaId: cuentaBancariaId,
             fecha: fechaDate,
-            concepto: concepto.trim(),
+            descripcion: concepto.trim(),
             debito: debitoNum,
             credito: creditoNum,
           },
@@ -65,9 +65,9 @@ export async function POST(request: Request) {
         // Crear movimiento
         const movimiento = await prisma.extractoBancario.create({
           data: {
-            cuentaBancariaId,
+            cuentaId: cuentaBancariaId,
             fecha: fechaDate,
-            concepto: concepto.trim(),
+            descripcion: concepto.trim(),
             debito: debitoNum,
             credito: creditoNum,
             saldo: saldoNum,
@@ -75,7 +75,8 @@ export async function POST(request: Request) {
           },
         });
 
-        movimientos.push(movimiento);
+        // Mantener compatibilidad: exponer también "concepto"
+        movimientos.push({ ...movimiento, concepto: movimiento.descripcion });
         importados++;
       } catch (error) {
         console.error("Error procesando línea:", line, error);

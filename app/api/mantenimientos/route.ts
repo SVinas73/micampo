@@ -16,9 +16,11 @@ export async function GET(request: Request) {
         userId: session.user.id,
       },
       include: {
-        maquina: {
+        maquinaria: {
           select: {
-            nombre: true,
+            marca: true,
+            modelo: true,
+            tipo: true,
           },
         },
       },
@@ -27,7 +29,15 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json(mantenimientos);
+    // Compatibilidad con el shape anterior (maquina.nombre)
+    const result = mantenimientos.map((m) => ({
+      ...m,
+      maquina: m.maquinaria
+        ? { nombre: `${m.maquinaria.marca} ${m.maquinaria.modelo}`, tipo: m.maquinaria.tipo }
+        : null,
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error al obtener mantenimientos:", error);
     return NextResponse.json(
@@ -60,14 +70,16 @@ export async function POST(request: Request) {
         descripcion,
         fecha: new Date(fecha),
         costo: costo ? parseFloat(costo) : null,
-        horasActuales: horasActuales ? parseFloat(horasActuales) : null,
-        maquinaId,
+        horasMotor: horasActuales ? parseFloat(horasActuales) : null,
+        maquinariaId: maquinaId,
         userId: session.user.id,
       },
       include: {
-        maquina: {
+        maquinaria: {
           select: {
-            nombre: true,
+            marca: true,
+            modelo: true,
+            tipo: true,
           },
         },
       },
@@ -75,13 +87,24 @@ export async function POST(request: Request) {
 
     // Actualizar horas de la máquina si se proporcionaron
     if (horasActuales) {
-      await prisma.maquina.update({
+      await prisma.maquinaria.update({
         where: { id: maquinaId },
-        data: { horasActuales: parseFloat(horasActuales) },
+        data: { horasMotor: parseFloat(horasActuales) },
       });
     }
 
-    return NextResponse.json(mantenimiento, { status: 201 });
+    return NextResponse.json(
+      {
+        ...mantenimiento,
+        maquina: mantenimiento.maquinaria
+          ? {
+              nombre: `${mantenimiento.maquinaria.marca} ${mantenimiento.maquinaria.modelo}`,
+              tipo: mantenimiento.maquinaria.tipo,
+            }
+          : null,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error al crear mantenimiento:", error);
     return NextResponse.json(

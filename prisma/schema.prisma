@@ -243,8 +243,7 @@ model Cosecha {
   precioVenta      Float?
   siembraId        String
   siembra          Siembra           @relation(fields: [siembraId], references: [id], onDelete: Cascade)
-  mapasRendimiento MapaRendimiento[] // ← NUEVO
-  siembraId        String
+  mapasRendimiento MapaRendimiento[]
   loteId           String
   lote             Lote              @relation(fields: [loteId], references: [id], onDelete: Cascade)
   userId           String

@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     // ============================================
     // 2. ALERTAS ACTIVAS (críticas y altas)
     // ============================================
-    let alertasActivas = await prisma.alertaPredictiva.count({
+    const alertasActivas = await prisma.alertaPredictiva.count({
       where: {
         userId,
         estado: "Activa",
@@ -124,6 +124,9 @@ export async function GET(req: Request) {
     let pronostico = [];
     try {
       const climaRes = await fetch(climaUrl);
+      if (!climaRes.ok) {
+        throw new Error(`Error al consultar clima: ${climaRes.status}`);
+      }
       const climaData = await climaRes.json();
 
       if (climaData.daily) {

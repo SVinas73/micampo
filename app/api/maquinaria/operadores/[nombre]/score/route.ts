@@ -6,8 +6,9 @@ import { prisma } from "@/lib/prisma";
 // GET /api/maquinaria/operadores/[nombre]/score - Obtener score del operador
 export async function GET(
   request: Request,
-  { params }: { params: { nombre: string } }
+  context: { params: Promise<{ nombre: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {

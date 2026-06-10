@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { codigo: string } }
-) {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const codigo = searchParams.get("codigo");
+
+    if (!codigo) {
+      return NextResponse.json(
+        { error: "El parámetro codigo es requerido" },
+        { status: 400 }
+      );
+    }
+
     const registro = await prisma.registroTrazabilidad.findUnique({
-      where: { codigoQR: params.codigo },
+      where: { codigoQR: codigo },
       include: {
         etapas: {
           orderBy: {

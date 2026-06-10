@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   LayoutDashboard,
   DollarSign,
@@ -49,7 +49,7 @@ const menuItems = [
       { icon: MapPin, label: "Gestión de Lotes", href: "/agronomia?tab=lotes" },
       { icon: CloudRain, label: "Clima", href: "/clima" },
       { icon: Droplets, label: "Calculadora de Dosis", href: "/herramientas-agricolas?tab=calculadora" },
-      { icon: Droplets, label: "Plan de Riego", href: "/agronomia/plan-riego", badge: "🔒" },
+      { icon: Droplets, label: "Plan de Riego", href: "/plagas-riego" },
     ]
   },
   { icon: BookOpen, label: "Cuaderno de Campo", href: "/cuaderno-campo" },
@@ -78,6 +78,18 @@ const menuItems = [
 ];
 
 export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </Suspense>
+  );
+}
+
+function DashboardLayoutInner({
   children,
 }: {
   children: React.ReactNode;

@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     let totalLitros = 0;
     let totalKilos = 0;
     let totalHectareas = 0;
-    let totalAplicaciones = recetas.length;
+    const totalAplicaciones = recetas.length;
 
     // Contadores por tipo
     let herbicidas = 0;

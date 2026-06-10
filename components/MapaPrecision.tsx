@@ -173,15 +173,6 @@ export default function MapaPrecision({
           }, 500);
         }
       });
-
-      // Mensajes de ayuda mejorados
-      map.on(L.Draw.Event.DRAWSTART, () => {
-        console.log("Comenzá a dibujar. Click para cerrar el polígono en el primer punto.");
-      });
-
-      map.on(L.Draw.Event.DRAWSTOP, () => {
-        console.log("Dibujo cancelado");
-      });
     }
 
     // Cargar lotes existentes

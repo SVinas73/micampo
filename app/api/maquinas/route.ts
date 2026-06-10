@@ -11,9 +11,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const maquinas = await prisma.maquina.findMany({
+    const maquinas = await prisma.maquinaria.findMany({
       where: {
-        userId: session.user.id,
+        establecimiento: {
+          userId: session.user.id,
+        },
       },
       include: {
         mantenimientos: {
@@ -23,7 +25,7 @@ export async function GET(request: Request) {
         _count: {
           select: {
             mantenimientos: true,
-            registrosHoras: true,
+            usosMaquinaria: true,
           },
         },
       },
@@ -32,7 +34,19 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json(maquinas);
+    // Mantener compatibilidad con el shape anterior (nombre, anio, horasActuales)
+    const result = maquinas.map((m) => ({
+      ...m,
+      nombre: `${m.marca} ${m.modelo}`,
+      anio: m.anioFabricacion,
+      horasActuales: m.horasMotor,
+      _count: {
+        mantenimientos: m._count.mantenimientos,
+        registrosHoras: m._count.usosMaquinaria,
+      },
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error al obtener maquinas:", error);
     return NextResponse.json(
@@ -59,19 +73,41 @@ export async function POST(request: Request) {
       );
     }
 
-    const maquina = await prisma.maquina.create({
+    // Maquinaria requiere un establecimiento: usar el primero del usuario o crearlo
+    let establecimiento = await prisma.establecimiento.findFirst({
+      where: { userId: session.user.id },
+    });
+
+    if (!establecimiento) {
+      establecimiento = await prisma.establecimiento.create({
+        data: {
+          nombre: "Establecimiento Principal",
+          userId: session.user.id,
+        },
+      });
+    }
+
+    const maquina = await prisma.maquinaria.create({
       data: {
-        nombre,
+        codigo: `MAQ-${Date.now()}`,
         tipo,
-        marca: marca || null,
-        modelo: modelo || null,
-        anio: anio ? parseInt(anio) : null,
-        horasActuales: horasActuales ? parseFloat(horasActuales) : 0,
-        userId: session.user.id,
+        marca: marca || nombre,
+        modelo: modelo || "",
+        anioFabricacion: anio ? parseInt(anio) : null,
+        horasMotor: horasActuales ? parseFloat(horasActuales) : 0,
+        establecimientoId: establecimiento.id,
       },
     });
 
-    return NextResponse.json(maquina, { status: 201 });
+    return NextResponse.json(
+      {
+        ...maquina,
+        nombre: `${maquina.marca} ${maquina.modelo}`,
+        anio: maquina.anioFabricacion,
+        horasActuales: maquina.horasMotor,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error al crear maquina:", error);
     return NextResponse.json(

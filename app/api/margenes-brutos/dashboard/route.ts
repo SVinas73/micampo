@@ -29,11 +29,11 @@ export async function GET(request: Request) {
 
     const ingresosMes = transaccionesMes
       .filter((t) => t.tipo === "Ingreso")
-      .reduce((sum, t) => sum + t.monto, 0);
+      .reduce((sum, t) => sum + Number(t.monto), 0);
 
     const gastosMes = transaccionesMes
       .filter((t) => t.tipo === "Gasto")
-      .reduce((sum, t) => sum + t.monto, 0);
+      .reduce((sum, t) => sum + Number(t.monto), 0);
 
     const margenMes = ingresosMes - gastosMes;
 
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
 
     const costosPorCategoria = transaccionesGastos.reduce((acc, t) => {
       const cat = t.categoria || "Sin Categoría";
-      acc[cat] = (acc[cat] || 0) + t.monto;
+      acc[cat] = (acc[cat] || 0) + Number(t.monto);
       return acc;
     }, {} as Record<string, number>);
 

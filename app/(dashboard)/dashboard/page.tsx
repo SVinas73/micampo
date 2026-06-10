@@ -200,7 +200,7 @@ export default function DashboardPage() {
   const handleRegistrarLluvia = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/clima/registros-pluviometricos", {
+      const response = await fetch("/api/registro-pluviometrico", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -234,7 +234,7 @@ export default function DashboardPage() {
   const handleRegistrarSiembra = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/agronomia/siembras", {
+      const response = await fetch("/api/siembras", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -270,7 +270,7 @@ export default function DashboardPage() {
   const handleCargarGasto = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/finanzas/transacciones", {
+      const response = await fetch("/api/transacciones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -308,7 +308,7 @@ export default function DashboardPage() {
   const handleEntradaStock = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/logistica/stock-insumos", {
+      const response = await fetch("/api/stock-insumos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -345,26 +345,22 @@ export default function DashboardPage() {
     }
   };
 
-  // ✅ CORREGIDO: Usa FormData para subir archivo
   const handleCargarImagen = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const formData = new FormData();
-      formData.append("loteId", imagenForm.loteId);
-      formData.append("tipo", imagenForm.tipo);
-      formData.append("titulo", imagenForm.titulo);
-      formData.append("descripcion", imagenForm.descripcion || "");
-      formData.append("latitud", "0"); // Placeholder
-      formData.append("longitud", "0"); // Placeholder
-
-      if (imagenForm.archivo) {
-        formData.append("imagen", imagenForm.archivo);
-      }
-
-      const response = await fetch("/api/agronomia/marcadores", {
+      const response = await fetch("/api/marcadores-geo", {
         method: "POST",
-        // NO incluir Content-Type, FormData lo pone automáticamente
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          loteId: imagenForm.loteId,
+          tipo: imagenForm.tipo,
+          titulo: imagenForm.titulo,
+          descripcion: imagenForm.descripcion || null,
+          // La ruta exige coordenadas; se registra sin geolocalizar
+          latitud: "0",
+          longitud: "0",
+          imagenes: imagenForm.archivo ? imagenForm.archivo.name : null,
+        }),
       });
 
       if (response.ok) {
@@ -390,7 +386,7 @@ export default function DashboardPage() {
   const handleRegistrarParto = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/ganaderia/eventos-reproductivos", {
+      const response = await fetch("/api/eventos-reproductivos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -426,7 +422,7 @@ export default function DashboardPage() {
   const handleCargarAnimal = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/ganaderia/animales", {
+      const response = await fetch("/api/animales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -472,7 +468,7 @@ export default function DashboardPage() {
   const handleMovimientoGanado = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("/api/ganaderia/movimientos-animales", {
+      const response = await fetch("/api/movimientos-animales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -513,7 +509,7 @@ export default function DashboardPage() {
       const litrosTarde = parseFloat(produccionForm.litrosTarde) || 0;
       const litrosTotales = litrosManana + litrosTarde;
 
-      const response = await fetch("/api/ganaderia/produccion-lechera", {
+      const response = await fetch("/api/produccion-lechera", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -6,8 +6,9 @@ import { prisma } from "@/lib/prisma";
 // GET /api/maquinaria/[id]/eficiencia - Obtener análisis de eficiencia
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -80,8 +81,9 @@ export async function GET(
 // POST /api/maquinaria/[id]/eficiencia - Registrar datos de eficiencia
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {

@@ -40,6 +40,10 @@ export async function GET(request: Request) {
       `${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=es`
     );
 
+    if (!currentResponse.ok) {
+      throw new Error("Error al obtener clima actual");
+    }
+
     const currentData = await currentResponse.json();
 
     // Procesar datos para agricultura

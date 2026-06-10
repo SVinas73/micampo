@@ -491,7 +491,7 @@ export default function AgronomiaPage() {
   const fetchAnalisisSuelo = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/agronomia/analisis-suelo")
+      const response = await fetch("/api/analisis-suelo")
       if (response.ok) {
         const data = await response.json()
         setAnalisisSueloData(data)
@@ -1549,12 +1549,7 @@ export default function AgronomiaPage() {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            console.log('Imagen cargada:', file.name);
-                          }
-                        }}
+                        onChange={() => {}}
                       />
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3 px-4 pb-3">
@@ -4493,9 +4488,8 @@ export default function AgronomiaPage() {
             <Button
               type="button"
               onClick={() => {
-                console.log("Guardando siembra:", siembraForm)
                 setNuevaSiembraOpen(false)
-                alert("Plan de siembra guardado como borrador")
+                alert("Funcionalidad en desarrollo: el plan de siembra aún no se guarda")
               }}
               className="bg-green-700 hover:bg-green-600 px-12 h-11 text-sm rounded-full"
             >
@@ -4733,9 +4727,8 @@ export default function AgronomiaPage() {
             <Button
               type="button"
               onClick={() => {
-                console.log("Registrando cosecha:", cosechaForm)
                 setNuevaCosechaOpen(false)
-                alert("Cosecha registrada exitosamente")
+                alert("Funcionalidad en desarrollo: la cosecha aún no se guarda")
               }}
               className="bg-green-700 hover:bg-green-600 px-12 h-11 text-sm rounded-full"
             >

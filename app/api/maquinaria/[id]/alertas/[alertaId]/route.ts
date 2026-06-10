@@ -6,8 +6,9 @@ import { prisma } from "@/lib/prisma";
 // PATCH /api/maquinaria/[id]/alertas/[alertaId] - Resolver/Actualizar alerta
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; alertaId: string } }
+  context: { params: Promise<{ id: string; alertaId: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -38,8 +39,9 @@ export async function PATCH(
 // DELETE /api/maquinaria/[id]/alertas/[alertaId] - Eliminar alerta
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; alertaId: string } }
+  context: { params: Promise<{ id: string; alertaId: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {

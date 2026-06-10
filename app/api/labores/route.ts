@@ -22,9 +22,11 @@ export async function GET(request: Request) {
             hectareas: true,
           },
         },
-        maquina: {
+        maquinaria: {
           select: {
-            nombre: true,
+            marca: true,
+            modelo: true,
+            tipo: true,
           },
         },
         aplicacionesProductos: true,
@@ -34,7 +36,15 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json(labores);
+    // Compatibilidad con el shape anterior (maquina.nombre)
+    const result = labores.map((l) => ({
+      ...l,
+      maquina: l.maquinaria
+        ? { nombre: `${l.maquinaria.marca} ${l.maquinaria.modelo}`, tipo: l.maquinaria.tipo }
+        : null,
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error al obtener labores:", error);
     return NextResponse.json(
@@ -83,7 +93,7 @@ export async function POST(request: Request) {
         observaciones: observaciones || null,
         operarios: operarios || null,
         horasTrabajadas: horasTrabajadas ? parseFloat(horasTrabajadas) : null,
-        maquinaId: maquinaId || null,
+        maquinariaId: maquinaId || null,
         userId: session.user.id,
       },
     });
@@ -162,16 +172,31 @@ export async function POST(request: Request) {
             nombre: true,
           },
         },
-        maquina: {
+        maquinaria: {
           select: {
-            nombre: true,
+            marca: true,
+            modelo: true,
+            tipo: true,
           },
         },
         aplicacionesProductos: true,
       },
     });
 
-    return NextResponse.json(laborCompleta, { status: 201 });
+    return NextResponse.json(
+      laborCompleta
+        ? {
+            ...laborCompleta,
+            maquina: laborCompleta.maquinaria
+              ? {
+                  nombre: `${laborCompleta.maquinaria.marca} ${laborCompleta.maquinaria.modelo}`,
+                  tipo: laborCompleta.maquinaria.tipo,
+                }
+              : null,
+          }
+        : laborCompleta,
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error al crear labor:", error);
     return NextResponse.json(

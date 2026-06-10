@@ -124,7 +124,7 @@ export async function POST(request: Request) {
 
     // Análisis IA simple
     const alertas = [];
-    let analisisIA: any = {
+    const analisisIA: any = {
       tendencia: "Normal",
       recomendaciones: [],
     };

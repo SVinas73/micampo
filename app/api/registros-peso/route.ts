@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { fecha, peso, animalId } = await request.json();
+    const { fecha, peso, animalId, tipoMedicion } = await request.json();
 
     if (!fecha || !peso || !animalId) {
       return NextResponse.json(
@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       data: {
         fecha: new Date(fecha),
         peso: parseFloat(peso),
+        tipoMedicion: tipoMedicion || "Intermedio",
         animalId,
         userId: session.user.id,
       },

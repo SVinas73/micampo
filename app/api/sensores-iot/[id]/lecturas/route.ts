@@ -38,11 +38,9 @@ export async function POST(
     const lectura = await prisma.lecturaSensor.create({
       data: {
         sensorId: params.id,
+        sensorIoTId: params.id,
         valor: parseFloat(valor),
-        unidad: sensor.unidad || "",
-        calidad: calidad || null,
-        bateria: bateria ? parseFloat(bateria) : null,
-        senal: senal ? parseFloat(senal) : null,  // ← Cambio 2: senal
+        estado: calidad || "Normal",
         userId: session.user.id,
       },
     });

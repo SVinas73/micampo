@@ -21,9 +21,10 @@ export async function GET(request: Request) {
     const transferencias = await prisma.transferencia.findMany({
       where,
       include: {
-        detalles: {
-          include: {
-            _count: true,
+        detalles: true,
+        _count: {
+          select: {
+            detalles: true,
           },
         },
         transporteInfo: true,
