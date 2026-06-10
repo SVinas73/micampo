@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
       if (loteOrigen && loteDestino) {
         // Calcular UA (Unidad Animal = 450 kg)
-        const pesoAnimal = pesoMovimiento ? parseFloat(pesoMovimiento) : animal.peso || 450;
+        const pesoAnimal = pesoMovimiento ? parseFloat(pesoMovimiento) : 450;
         const ua = pesoAnimal / 450;
 
         // Carga origen (UA/ha)

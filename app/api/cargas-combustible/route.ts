@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
     const where: any = { userId: session.user.id };
     if (tanqueId) where.tanqueId = tanqueId;
-    if (maquinaId) where.maquinaId = maquinaId;
+    if (maquinaId) where.maquinariaId = maquinaId;
 
     const cargas = await prisma.cargaCombustible.findMany({
       where,
@@ -24,15 +24,23 @@ export async function GET(request: Request) {
         tanque: {
           select: { nombre: true, tipoCombustible: true },
         },
-        maquina: {
-          select: { nombre: true, tipo: true },
+        maquinaria: {
+          select: { marca: true, modelo: true, tipo: true },
         },
       },
       orderBy: { fecha: "desc" },
       take: 100,
     });
 
-    return NextResponse.json(cargas);
+    // Compatibilidad con el shape anterior (maquina.nombre)
+    const result = cargas.map((c) => ({
+      ...c,
+      maquina: c.maquinaria
+        ? { nombre: `${c.maquinaria.marca} ${c.maquinaria.modelo}`, tipo: c.maquinaria.tipo }
+        : null,
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error:", error);
     return NextResponse.json({ error: "Error al obtener cargas" }, { status: 500 });
@@ -71,7 +79,7 @@ export async function POST(request: Request) {
     if (data.tipoCarga === "CargaMaquina" && data.maquinaId && data.horometroActual) {
       const ultimaCarga = await prisma.cargaCombustible.findFirst({
         where: {
-          maquinaId: data.maquinaId,
+          maquinariaId: data.maquinaId,
           tipoCarga: "CargaMaquina",
         },
         orderBy: { fecha: "desc" },

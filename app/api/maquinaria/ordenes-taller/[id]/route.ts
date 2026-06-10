@@ -6,8 +6,9 @@ import { prisma } from "@/lib/prisma";
 // GET /api/maquinaria/ordenes-taller/[id] - Ver detalle
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -37,8 +38,9 @@ export async function GET(
 // PATCH /api/maquinaria/ordenes-taller/[id] - Actualizar orden
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -92,8 +94,9 @@ export async function PATCH(
 // DELETE /api/maquinaria/ordenes-taller/[id] - Eliminar orden
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {

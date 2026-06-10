@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       prisma.animal.findMany({ where: { userId: session.user.id } }),
       prisma.cosecha.findMany({ 
         where: { userId: session.user.id },
-        orderBy: { fecha: "desc" },
+        orderBy: { fechaCosecha: "desc" },
         take: 20,
       }),
       prisma.eventoSanitario.findMany({
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         estado: a.estado,
       })),
       cosechasRecientes: cosechas.map(c => ({
-        fecha: c.fecha,
+        fecha: c.fechaCosecha,
         rendimiento: c.rendimiento,
         precioVenta: c.precioVenta,
       })),

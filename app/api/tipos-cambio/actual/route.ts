@@ -26,6 +26,9 @@ export async function GET(request: Request) {
       // Si no existe, intentar obtener de API externa (ejemplo)
       try {
         const response = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`);
+        if (!response.ok) {
+          throw new Error(`Error al consultar tipo de cambio: ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.rates && data.rates[moneda]) {

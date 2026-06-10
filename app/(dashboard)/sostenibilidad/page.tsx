@@ -326,7 +326,7 @@ export default function SostenibilidadPage() {
       ] = await Promise.all([
         fetch(`/api/sostenibilidad/huella-carbono?establecimientoId=${establecimientoId}`),
         fetch(`/api/sostenibilidad/recetas?establecimientoId=${establecimientoId}`),
-        fetch(`/api/sostenibilidad/reportes-agroquimicos?establecimientoId=${establecimientoId}`),
+        fetch(`/api/sostenibilidad/reportes-agroquimico?establecimientoId=${establecimientoId}`),
         fetch(`/api/sostenibilidad/certificaciones?establecimientoId=${establecimientoId}`),
         fetch(`/api/sostenibilidad/eudr?establecimientoId=${establecimientoId}`),
         fetch(`/api/sostenibilidad/dashboard?establecimientoId=${establecimientoId}`),
@@ -591,7 +591,7 @@ export default function SostenibilidadPage() {
     setActionLoading(true);
 
     try {
-      const res = await fetch("/api/sostenibilidad/reportes-agroquimicos", {
+      const res = await fetch("/api/sostenibilidad/reportes-agroquimico", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -628,7 +628,7 @@ export default function SostenibilidadPage() {
 
     try {
       const res = await fetch(
-        `/api/sostenibilidad/reportes-agroquimicos/${reporteId}/enviar`,
+        `/api/sostenibilidad/reportes-agroquimico/${reporteId}/enviar`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

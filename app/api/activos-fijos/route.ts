@@ -21,8 +21,8 @@ export async function GET(request: Request) {
     const activos = await prisma.activoFijo.findMany({
       where,
       include: {
-        maquina: {
-          select: { nombre: true, tipo: true },
+        maquinaria: {
+          select: { marca: true, modelo: true, tipo: true },
         },
         registrosDepreciacion: {
           orderBy: { periodo: "desc" },
@@ -32,7 +32,15 @@ export async function GET(request: Request) {
       orderBy: { fechaAdquisicion: "desc" },
     });
 
-    return NextResponse.json(activos);
+    // Compatibilidad con el shape anterior (maquina.nombre)
+    const result = activos.map((a) => ({
+      ...a,
+      maquina: a.maquinaria
+        ? { nombre: `${a.maquinaria.marca} ${a.maquinaria.modelo}`, tipo: a.maquinaria.tipo }
+        : null,
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error:", error);
     return NextResponse.json({ error: "Error al obtener activos" }, { status: 500 });
@@ -73,7 +81,7 @@ export async function POST(request: Request) {
         depreciacionAcumulada: 0,
         valorActual: data.valorAdquisicion,
         estado: data.estado || "Activo",
-        maquinaId: data.maquinaId,
+        maquinariaId: data.maquinaId || data.maquinariaId || null,
         observaciones: data.observaciones,
         userId: session.user.id,
       },

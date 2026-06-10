@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
 
@@ -14,18 +15,21 @@ export async function DELETE(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const maquina = await prisma.maquina.findUnique({
-      where: { id: params.id },
+    const maquina = await prisma.maquinaria.findFirst({
+      where: {
+        id: params.id,
+        establecimiento: { userId: session.user.id },
+      },
     });
 
-    if (!maquina || maquina.userId !== session.user.id) {
+    if (!maquina) {
       return NextResponse.json(
         { error: "Maquina no encontrada" },
         { status: 404 }
       );
     }
 
-    await prisma.maquina.delete({
+    await prisma.maquinaria.delete({
       where: { id: params.id },
     });
 

@@ -32,8 +32,12 @@ export async function GET(request: Request) {
         },
         cosecha: {
           select: {
-            cultivo: true,
-            cantidadTotal: true,
+            rendimiento: true,
+            siembra: {
+              select: {
+                cultivo: true,
+              },
+            },
           },
         },
       },
@@ -42,7 +46,18 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json(mapas);
+    // Mantener compatibilidad con el shape anterior (cosecha.cultivo / cosecha.cantidadTotal)
+    const mapasCompat = mapas.map((m) => ({
+      ...m,
+      cosecha: m.cosecha
+        ? {
+            cultivo: m.cosecha.siembra?.cultivo ?? null,
+            cantidadTotal: m.cosecha.rendimiento,
+          }
+        : null,
+    }));
+
+    return NextResponse.json(mapasCompat);
   } catch (error) {
     console.error("Error al obtener mapas de rendimiento:", error);
     return NextResponse.json(
@@ -110,7 +125,7 @@ export async function POST(request: Request) {
           : coeficienteVariacion > 10
           ? "Variabilidad moderada. Revisar manejo diferenciado."
           : "Baja variabilidad. Manejo uniforme adecuado.",
-      causasProbables: [],
+      causasProbables: [] as string[],
     };
 
     if (zonaAlta > 30) {

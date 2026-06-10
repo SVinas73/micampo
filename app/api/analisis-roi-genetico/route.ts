@@ -83,19 +83,16 @@ export async function POST(request: Request) {
     const reproductor = await prisma.animal.findUnique({
       where: { id: reproductorId },
       include: {
-        registroGenetico: {
+        registroGenetico: true,
+        hijosComoPadre: {
           include: {
-            hijosComoPadre: {
+            animal: {
               include: {
-                animal: {
-                  include: {
-                    registrosPeso: {
-                      orderBy: {
-                        fecha: "desc",
-                      },
-                      take: 1,
-                    },
+                registrosPeso: {
+                  orderBy: {
+                    fecha: "desc",
                   },
+                  take: 1,
                 },
               },
             },
@@ -134,8 +131,8 @@ export async function POST(request: Request) {
     let gananciaPromedioDiaria = null;
     let tasaSobrevivencia = null;
 
-    if (reproductor.registroGenetico?.hijosComoPadre) {
-      const descendientes = reproductor.registroGenetico.hijosComoPadre;
+    if (reproductor.hijosComoPadre) {
+      const descendientes = reproductor.hijosComoPadre;
       
       if (descendientes.length > 0) {
         // Calcular peso promedio
@@ -160,7 +157,7 @@ export async function POST(request: Request) {
           .filter((g) => g !== null);
 
         if (ganancias.length > 0) {
-          gananciaPromediaDiaria =
+          gananciaPromedioDiaria =
             ganancias.reduce((sum, g) => sum + (g || 0), 0) / ganancias.length;
         }
 
@@ -257,13 +254,13 @@ export async function POST(request: Request) {
         numeroDescendientes: parseInt(numeroDescendientes),
         numeroVendidos: parseInt(numeroVendidos),
         ingresoVentas: parseFloat(ingresoVentas || 0),
-        valorAgregadoGenética: valorAgregadoGenética ? parseFloat(valorAgregadoGenética) : null,
+        valorAgregadoGenetica: valorAgregadoGenética ? parseFloat(valorAgregadoGenética) : null,
         ingresoTotal,
         beneficioNeto,
         roi,
         roiAnualizado,
         pesoPromedioDescendientes,
-        gananciaPromediaDiaria,
+        gananciaPromedioDiaria,
         tasaSobrevivencia,
         superiorPromedio,
         analisisIA: JSON.stringify(analisisIA),

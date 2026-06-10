@@ -6,8 +6,9 @@ import { prisma } from "@/lib/prisma";
 // POST /api/maquinaria/ordenes-taller/[id]/mano-obra - Agregar mano de obra
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {

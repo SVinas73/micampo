@@ -30,12 +30,17 @@ export async function POST(request: Request) {
       where: { id: loteId },
       include: {
         siembras: {
-          orderBy: { fecha: "desc" },
+          orderBy: { fechaSiembra: "desc" },
           take: 10,
         },
         cosechas: {
-          orderBy: { fecha: "desc" },
+          orderBy: { fechaCosecha: "desc" },
           take: 10,
+          include: {
+            siembra: {
+              select: { cultivo: true },
+            },
+          },
         },
         analisisSuelo: {
           orderBy: { fechaAnalisis: "desc" },
@@ -54,7 +59,7 @@ export async function POST(request: Request) {
     // Obtener clima histórico (si existe)
     const alertasClima = await prisma.alertaClimatica.findMany({
       where: { userId: session.user.id },
-      orderBy: { fecha: "desc" },
+      orderBy: { fechaInicio: "desc" },
       take: 30,
     });
 
@@ -67,12 +72,12 @@ export async function POST(request: Request) {
       },
       siembrasHistoricas: lote.siembras.map(s => ({
         cultivo: s.cultivo,
-        fecha: s.fecha,
+        fecha: s.fechaSiembra,
         hectareas: s.hectareas,
       })),
       cosechasHistoricas: lote.cosechas.map(c => ({
-        cultivo: c.cultivo,
-        fecha: c.fecha,
+        cultivo: c.siembra?.cultivo ?? null,
+        fecha: c.fechaCosecha,
         rendimiento: c.rendimiento,
         precioVenta: c.precioVenta,
       })),
@@ -85,7 +90,7 @@ export async function POST(request: Request) {
         potasio: a.potasio,
       })),
       climaReciente: alertasClima.slice(0, 10).map(a => ({
-        fecha: a.fecha,
+        fecha: a.fechaInicio,
         tipo: a.tipo,
         descripcion: a.descripcion,
       })),

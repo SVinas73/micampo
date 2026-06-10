@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { animalId: string } }
+  context: { params: Promise<{ animalId: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
 
@@ -60,8 +61,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { animalId: string } }
+  context: { params: Promise<{ animalId: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
 

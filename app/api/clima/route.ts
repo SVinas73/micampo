@@ -17,8 +17,6 @@ export async function GET(request: Request) {
     // Usar Open-Meteo API (gratuita, sin API key)
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=auto&forecast_days=7`;
 
-    console.log("Consultando clima:", url);
-
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
@@ -32,7 +30,6 @@ export async function GET(request: Request) {
     }
 
     const data = await response.json();
-    console.log("Datos recibidos:", data);
 
     return NextResponse.json(data);
   } catch (error) {
