@@ -1,1678 +1,924 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Droplets,
-  Cloud,
-  CloudRain,
-  Sun,
-  Wind,
-  Edit,
-  RefreshCw,
-  Sprout,
-  Package,
-  DollarSign,
-  Wrench,
-  CheckSquare,
-  PawPrint,
-  Baby,
-  Camera,
-  TrendingUp,
-} from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import Link from "next/link";
+import { Icon, KPI, Badge, Modal, Field, Alerta, useToast } from "@/components/mc";
 
-// ============================================
-// TYPES
-// ============================================
+/* ============ KPIs disponibles (Figma) ============ */
+type KpiCfg = {
+  label: string;
+  value: string;
+  delta: string;
+  trend: "up" | "down" | "warn";
+  icon: string;
+  accent?: boolean;
+  warn?: boolean;
+};
 
-interface DashboardData {
-  metricas: {
-    litrosDiariosPromedio: number;
-    alertasActivas: number;
-    tratamientosActivos: number;
-    produccionMesActual: number;
-    balanceMesActual: number;
-  };
-  pronostico: Array<{
-    fecha: string;
-    dia: string;
-    tempMax: number;
-    tempMin: number;
-    probabilidadLluvia: number;
-    viento: number;
-    direccionViento: string;
-    condicion: string;
-  }>;
-  graficoFinanciero: {
-    balancePromedio: number;
-    porcentajeIngresos: number;
-    porcentajeGastos: number;
-    datos: Array<{
-      mes: string;
-      ingresos: number;
-      gastos: number;
-    }>;
-  };
-  tareasProgramadas: Array<{
-    fecha: string;
-    titulo: string;
-    tipo: string;
-  }>;
-}
+const ALL_KPIS_BASE: Record<string, KpiCfg> = {
+  hectareas: { label: "Hectáreas productivas", value: "558 Ha", delta: "+3.2% vs campaña ant.", trend: "up", icon: "map", accent: true },
+  cabezas: { label: "Cabezas de ganado", value: "1,284", delta: "+24 últ. 30d", trend: "up", icon: "cow" },
+  ingresosMes: { label: "Ingresos del mes", value: "$8.6M", delta: "+12% vs mes ant.", trend: "up", icon: "dollar" },
+  labores: { label: "Labores pendientes", value: "17", delta: "3 atrasadas", trend: "warn", icon: "wrench", warn: true },
+  litros: { label: "Litros prom. diario", value: "4,820 L", delta: "+180L vs ayer", trend: "up", icon: "droplet" },
+  margen: { label: "Margen bruto est.", value: "$2.8M", delta: "+0.4M ajuste", trend: "up", icon: "activity" },
+  prenez: { label: "Preñez rodeo", value: "78%", delta: "Tacto parcial", trend: "up", icon: "heart" },
+  agua: { label: "Reserva agua útil", value: "62%", delta: "-4 pts vs ayer", trend: "down", icon: "droplet" },
+  ingresosProy: { label: "Ingresos proy. campaña", value: "$48.2M", delta: "+18% est.", trend: "up", icon: "dollar" },
+  hectareasSemb: { label: "Hectáreas sembradas", value: "426 Ha", delta: "76% del campo", trend: "up", icon: "sprout" },
+  alertas: { label: "Alertas activas", value: "5", delta: "2 críticas", trend: "warn", icon: "alert" },
+  rinde: { label: "Rinde promedio est.", value: "6.6 t/Ha", delta: "+0.4 vs ant.", trend: "up", icon: "activity" },
+};
 
-// ============================================
-// COMPONENTE PRINCIPAL
-// ============================================
+const DEFAULT_KPI_ORDER = ["hectareas", "cabezas", "ingresosMes", "labores", "litros"];
 
-export default function DashboardPage() {
+/* ============ Acciones rápidas (Figma, 18) ============ */
+const QUICK_ACTS: { id: string; icon: string; label: string; href?: string }[] = [
+  { id: "lluvia", icon: "droplet", label: "Cargar lluvia", href: "/clima?modal=lluvia" },
+  { id: "pesada", icon: "scale", label: "Pesada", href: "/animales?tab=Peso" },
+  { id: "dosis", icon: "flask", label: "Calcular dosis", href: "/calculadora-dosis?tab=Nuevo Cálculo" },
+  { id: "sanidad", icon: "syringe", label: "Sanidad", href: "/animales?tab=Sanidad" },
+  { id: "siembra", icon: "sprout", label: "Nueva siembra", href: "/campo-digital?tab=Cultivos&modal=siembra" },
+  { id: "tropa", icon: "truck", label: "Mov. tropa", href: "/mov-tropas?modal=nuevo" },
+  { id: "labor", icon: "wrench", label: "Nueva labor" },
+  { id: "lote", icon: "map", label: "Nuevo lote", href: "/campo-digital?tab=Lotes&modal=nuevo" },
+  { id: "animal", icon: "cow", label: "Nuevo animal", href: "/animales?modal=nuevo" },
+  { id: "racion", icon: "leaf", label: "Nueva ración", href: "/animales?tab=Nutrición" },
+  { id: "gasto", icon: "dollar", label: "Registrar gasto", href: "/finanzas" },
+  { id: "plaga", icon: "upload", label: "Reportar plaga", href: "/campo-digital?tab=Detección de Enfermedades (IA)&modal=reportar" },
+  { id: "alerta", icon: "alert", label: "Registrar alerta", href: "/clima?modal=alerta" },
+  { id: "suelo", icon: "book", label: "Análisis de suelo", href: "/campo-digital?tab=Cultivos&sub=Análisis de Suelo" },
+  { id: "insumos", icon: "building", label: "Ingreso insumos", href: "/logistica-inventario" },
+  { id: "notif", icon: "bell", label: "Notificación" },
+  { id: "cerrar", icon: "check", label: "Cerrar labor", href: "/campo-digital?tab=Labores" },
+  { id: "agenda", icon: "calendar", label: "Ver agenda", href: "/calendario" },
+];
+
+type LaborApi = {
+  id: string;
+  tipo: string;
+  fecha: string;
+  estado?: string;
+  lote?: { nombre: string };
+};
+
+const GANTT_COLORS: Record<string, { color: string; icon: string }> = {
+  Siembra: { color: "#4f9d52", icon: "sprout" },
+  Pulverización: { color: "#e7892b", icon: "flask" },
+  Riego: { color: "#3aa6d9", icon: "droplet" },
+  Cosecha: { color: "#d9a538", icon: "wrench" },
+  Fertilización: { color: "#8a6d3b", icon: "leaf" },
+  Labranza: { color: "#7d6a55", icon: "wrench" },
+  Sanidad: { color: "#c14a3a", icon: "syringe" },
+};
+
+export default function InicioPage() {
+  const router = useRouter();
   const { data: session } = useSession();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const toast = useToast();
 
-  // Estados para diálogos
-  const [lluviaDialogOpen, setLluviaDialogOpen] = useState(false);
-  const [siembraDialogOpen, setSiembraDialogOpen] = useState(false);
-  const [gastoDialogOpen, setGastoDialogOpen] = useState(false);
-  const [stockDialogOpen, setStockDialogOpen] = useState(false);
-  const [imagenDialogOpen, setImagenDialogOpen] = useState(false);
-  const [partoDialogOpen, setPartoDialogOpen] = useState(false);
-  const [animalDialogOpen, setAnimalDialogOpen] = useState(false);
-  const [movimientoDialogOpen, setMovimientoDialogOpen] = useState(false);
-  const [produccionDialogOpen, setProduccionDialogOpen] = useState(false);
+  const [editKpis, setEditKpis] = useState(false);
+  const [kpiOrder, setKpiOrder] = useState<string[]>(DEFAULT_KPI_ORDER);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState<string | false>(false);
+  const [kpiValues, setKpiValues] = useState<Record<string, Partial<KpiCfg>>>({});
+  const [bellOpen, setBellOpen] = useState(false);
+  const [laborModal, setLaborModal] = useState(false);
+  const [lotes, setLotes] = useState<{ id: string; nombre: string }[]>([]);
+  const [laborForm, setLaborForm] = useState({ tipo: "Pulverización", loteId: "", fecha: new Date().toISOString().slice(0, 10) });
+  const [ganttLabores, setGanttLabores] = useState<LaborApi[]>([]);
+  const [balance, setBalance] = useState<{ meses: string[]; ingresos: number[]; gastos: number[] } | null>(null);
+  const [editActs, setEditActs] = useState(false);
+  const [hiddenActs, setHiddenActs] = useState<string[]>([]);
 
-  // Estados para formularios
-  const [lluviaForm, setLluviaForm] = useState({
-    fecha: new Date().toISOString().split("T")[0],
-    milimetros: "",
-    loteId: "",
-  });
-
-  const [siembraForm, setSiembraForm] = useState({
-    loteId: "",
-    cultivo: "",
-    variedad: "",
-    hectareas: "",
-    fecha: new Date().toISOString().split("T")[0],
-  });
-
-  const [gastoForm, setGastoForm] = useState({
-    categoria: "",
-    descripcion: "",
-    monto: "",
-    metodoPago: "",
-    fecha: new Date().toISOString().split("T")[0],
-  });
-
-  const [stockForm, setStockForm] = useState({
-    codigo: "", // ← AGREGADO
-    producto: "",
-    categoria: "",
-    cantidad: "",
-    unidad: "kg",
-    proveedor: "",
-    precioUnitario: "",
-  });
-
-  const [imagenForm, setImagenForm] = useState({
-    loteId: "",
-    tipo: "Observación",
-    titulo: "",
-    descripcion: "",
-    archivo: null as File | null,
-  });
-
-  const [partoForm, setPartoForm] = useState({
-    animalId: "",
-    fecha: new Date().toISOString().split("T")[0],
-    numCrias: "1",
-    condicionParto: "Normal",
-    observaciones: "",
-  });
-
-  const [animalForm, setAnimalForm] = useState({
-    caravana: "",
-    tipo: "Vacuno",
-    raza: "",
-    sexo: "Hembra",
-    fechaNacimiento: "",
-    pesoNacimiento: "",
-    madre: "",
-    padre: "",
-  });
-
-  const [movimientoForm, setMovimientoForm] = useState({
-    animalId: "",
-    tipoMovimiento: "Traslado",
-    origenNombre: "",
-    destinoNombre: "",
-    motivo: "",
-    fecha: new Date().toISOString().split("T")[0],
-  });
-
-  const [produccionForm, setProduccionForm] = useState({
-    animalId: "",
-    fecha: new Date().toISOString().split("T")[0],
-    litrosManana: "",
-    litrosTarde: "",
-    observaciones: "",
-  });
-
+  /* ---- carga inicial ---- */
   useEffect(() => {
-    fetchDashboardData();
+    try {
+      const saved = localStorage.getItem("micampo:kpis");
+      if (saved) setKpiOrder(JSON.parse(saved));
+      const acts = localStorage.getItem("micampo:quickacts");
+      if (acts) setHiddenActs(JSON.parse(acts));
+    } catch {}
+
+    fetch("/api/dashboard/inicio")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.metricas) return;
+        const v: Record<string, Partial<KpiCfg>> = {};
+        if (d.metricas.litrosDiariosPromedio) v.litros = { value: `${d.metricas.litrosDiariosPromedio.toLocaleString("es-AR")} L` };
+        if (d.metricas.balanceMesActual) v.ingresosMes = { value: `$${Math.round(d.metricas.balanceMesActual).toLocaleString("es-AR")}` };
+        if (typeof d.metricas.alertasActivas === "number" && d.metricas.alertasActivas > 0)
+          v.alertas = { value: String(d.metricas.alertasActivas) };
+        setKpiValues(v);
+      })
+      .catch(() => {});
+
+    fetch("/api/lotes")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!Array.isArray(d)) return;
+        setLotes(d.map((l: { id: string; nombre: string }) => ({ id: l.id, nombre: l.nombre })));
+        if (d.length > 0) {
+          const totalHa = d.reduce((s: number, l: { hectareas?: number }) => s + (l.hectareas || 0), 0);
+          setKpiValues((prev) => ({ ...prev, hectareas: { value: `${Math.round(totalHa).toLocaleString("es-AR")} Ha`, delta: `${d.length} lotes` } }));
+        }
+      })
+      .catch(() => {});
+
+    fetch("/api/animales")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (Array.isArray(d) && d.length > 0)
+          setKpiValues((prev) => ({ ...prev, cabezas: { value: d.length.toLocaleString("es-AR"), delta: "rodeo registrado" } }));
+      })
+      .catch(() => {});
+
+    fetch("/api/labores")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!Array.isArray(d) || d.length === 0) return;
+        setGanttLabores(d);
+        const pendientes = d.filter((l: LaborApi) => l.estado && !["Completada"].includes(l.estado)).length;
+        const atrasadas = d.filter((l: LaborApi) => l.estado === "Atrasada").length;
+        if (pendientes > 0)
+          setKpiValues((prev) => ({ ...prev, labores: { value: String(pendientes), delta: `${atrasadas} atrasadas` } }));
+      })
+      .catch(() => {});
+
+    fetch("/api/transacciones")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!Array.isArray(d) || d.length === 0) return;
+        const now = new Date();
+        const meses: string[] = [];
+        const ingresos: number[] = [];
+        const gastos: number[] = [];
+        for (let i = 5; i >= 0; i--) {
+          const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          meses.push(m.toLocaleString("es", { month: "short" }).replace(".", ""));
+          const enMes = d.filter((t: { fecha: string }) => {
+            const f = new Date(t.fecha);
+            return f.getFullYear() === m.getFullYear() && f.getMonth() === m.getMonth();
+          });
+          ingresos.push(enMes.filter((t: { tipo: string }) => t.tipo === "ingreso").reduce((s: number, t: { monto: number | string }) => s + Number(t.monto), 0) / 1e6);
+          gastos.push(enMes.filter((t: { tipo: string }) => t.tipo !== "ingreso").reduce((s: number, t: { monto: number | string }) => s + Number(t.monto), 0) / 1e6);
+        }
+        if (ingresos.some((v) => v > 0) || gastos.some((v) => v > 0)) setBalance({ meses, ingresos, gastos });
+      })
+      .catch(() => {});
   }, []);
 
-  const fetchDashboardData = async () => {
+  const ALL_KPIS = useMemo(() => {
+    const merged: Record<string, KpiCfg> = {};
+    for (const k of Object.keys(ALL_KPIS_BASE)) merged[k] = { ...ALL_KPIS_BASE[k], ...(kpiValues[k] || {}) };
+    return merged;
+  }, [kpiValues]);
+
+  const persistKpis = (order: string[]) => {
+    setKpiOrder(order);
     try {
-      setLoading(true);
-      const response = await fetch("/api/dashboard/inicio");
-      if (response.ok) {
-        const dashboardData = await response.json();
-        setData(dashboardData);
-      }
-    } catch (error) {
-      console.error("Error al cargar dashboard:", error);
-    } finally {
-      setLoading(false);
-    }
+      localStorage.setItem("micampo:kpis", JSON.stringify(order));
+    } catch {}
   };
 
-  // ============================================
-  // HANDLERS CORREGIDOS
-  // ============================================
+  const onDrop = (idx: number) => {
+    if (draggedIdx === null || draggedIdx === idx) return;
+    const next = [...kpiOrder];
+    const [m] = next.splice(draggedIdx, 1);
+    next.splice(idx, 0, m);
+    persistKpis(next);
+    setDraggedIdx(null);
+  };
 
-  const handleRegistrarLluvia = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const swapKpi = (oldKey: string, newKey: string) => {
+    persistKpis(kpiOrder.map((k) => (k === oldKey ? newKey : k)));
+    setPickerOpen(false);
+  };
+
+  /* ---- Gantt events (reales o demo del Figma) ---- */
+  const ganttEvents = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const reales = ganttLabores
+      .map((l) => {
+        const f = new Date(l.fecha);
+        f.setHours(0, 0, 0, 0);
+        const diff = Math.round((f.getTime() - today.getTime()) / 86400000);
+        if (diff < 0 || diff > 6) return null;
+        const cfg = GANTT_COLORS[l.tipo] || { color: "#5E8F78", icon: "wrench" };
+        return { titulo: `${l.tipo}${l.lote?.nombre ? ` ${l.lote.nombre}` : ""}`, inicio: diff, dur: 1, ...cfg };
+      })
+      .filter(Boolean) as { titulo: string; inicio: number; dur: number; color: string; icon: string }[];
+    if (reales.length > 0) return reales;
+    return [
+      { titulo: "Siembra Lote 3", inicio: 0, dur: 2, color: "#4f9d52", icon: "sprout" },
+      { titulo: "Pulverización N1", inicio: 0, dur: 1, color: "#e7892b", icon: "flask" },
+      { titulo: "Retira Conaprole", inicio: 1, dur: 1, color: "#2c7ad9", icon: "truck" },
+      { titulo: "Riego Sector A", inicio: 2, dur: 4, color: "#3aa6d9", icon: "droplet" },
+      { titulo: "Vacunación Aftosa", inicio: 3, dur: 1, color: "#c14a3a", icon: "syringe" },
+      { titulo: "Cosecha Maíz E1", inicio: 5, dur: 2, color: "#d9a538", icon: "wrench" },
+    ];
+  }, [ganttLabores]);
+
+  const crearLabor = async () => {
+    if (!laborForm.loteId && lotes.length === 0) {
+      toast.show("Creá un lote primero en Campo Digital", "err");
+      return;
+    }
     try {
-      const response = await fetch("/api/registro-pluviometrico", {
+      const res = await fetch("/api/labores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fecha: new Date(lluviaForm.fecha),
-          milimetros: parseFloat(lluviaForm.milimetros),
-          loteId: lluviaForm.loteId || null,
-          metodo: "Manual",
+          tipo: laborForm.tipo,
+          fecha: laborForm.fecha,
+          loteId: laborForm.loteId || lotes[0]?.id,
+          descripcion: laborForm.tipo,
+          superficieTrabajada: 0,
         }),
       });
-
-      if (response.ok) {
-        alert("✅ Lluvia registrada exitosamente");
-        setLluviaDialogOpen(false);
-        setLluviaForm({
-          fecha: new Date().toISOString().split("T")[0],
-          milimetros: "",
-          loteId: "",
-        });
-        fetchDashboardData();
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al registrar lluvia");
+      if (!res.ok) throw new Error();
+      toast.show("Labor creada correctamente");
+      setLaborModal(false);
+    } catch {
+      toast.show("No se pudo crear la labor", "err");
     }
   };
 
-  // ✅ CORREGIDO: Solo registra siembras (cosecha requiere siembraId)
-  const handleRegistrarSiembra = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const descargarReporte = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("MiCampo — Reporte Semanal", 14, 20);
+    doc.setFontSize(11);
+    doc.text(`Generado: ${new Date().toLocaleDateString("es-AR")}`, 14, 28);
+    let y = 40;
+    doc.setFontSize(13);
+    doc.text("Indicadores principales", 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    kpiOrder.forEach((k) => {
+      const c = ALL_KPIS[k];
+      doc.text(`- ${c.label}: ${c.value} (${c.delta})`, 16, y);
+      y += 6;
+    });
+    y += 6;
+    doc.setFontSize(13);
+    doc.text("Agenda de la semana", 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    if (ganttEvents.length === 0) doc.text("Sin labores programadas esta semana.", 16, y);
+    ganttEvents.slice(0, 12).forEach((e) => {
+      doc.text(`- ${e.titulo}`, 16, y);
+      y += 6;
+    });
+    doc.save("micampo-reporte-semanal.pdf");
+    toast.show("Reporte semanal descargado");
+  };
+
+  const toggleAct = (id: string) => {
+    const next = hiddenActs.includes(id) ? hiddenActs.filter((a) => a !== id) : [...hiddenActs, id];
+    setHiddenActs(next);
     try {
-      const response = await fetch("/api/siembras", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          loteId: siembraForm.loteId,
-          cultivo: siembraForm.cultivo,
-          variedad: siembraForm.variedad || null,
-          hectareas: parseFloat(siembraForm.hectareas),
-          fechaSiembra: new Date(siembraForm.fecha),
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Siembra registrada exitosamente");
-        setSiembraDialogOpen(false);
-        setSiembraForm({
-          loteId: "",
-          cultivo: "",
-          variedad: "",
-          hectareas: "",
-          fecha: new Date().toISOString().split("T")[0],
-        });
-        fetchDashboardData();
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al registrar siembra");
-    }
+      localStorage.setItem("micampo:quickacts", JSON.stringify(next));
+    } catch {}
   };
 
-  const handleCargarGasto = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("/api/transacciones", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: "gasto",
-          categoria: gastoForm.categoria,
-          descripcion: gastoForm.descripcion,
-          monto: parseFloat(gastoForm.monto),
-          metodoPago: gastoForm.metodoPago || null,
-          fecha: new Date(gastoForm.fecha),
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Gasto registrado exitosamente");
-        setGastoDialogOpen(false);
-        setGastoForm({
-          categoria: "",
-          descripcion: "",
-          monto: "",
-          metodoPago: "",
-          fecha: new Date().toISOString().split("T")[0],
-        });
-        fetchDashboardData();
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al registrar gasto");
-    }
-  };
-
-  // ✅ CORREGIDO: Incluye campo código
-  const handleEntradaStock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("/api/stock-insumos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          codigo: stockForm.codigo, // ← AGREGADO
-          nombre: stockForm.producto,
-          categoria: stockForm.categoria,
-          stockActual: parseFloat(stockForm.cantidad),
-          unidadMedida: stockForm.unidad,
-          precioUnitario: stockForm.precioUnitario
-            ? parseFloat(stockForm.precioUnitario)
-            : null,
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Stock registrado exitosamente");
-        setStockDialogOpen(false);
-        setStockForm({
-          codigo: "", // ← RESET
-          producto: "",
-          categoria: "",
-          cantidad: "",
-          unidad: "kg",
-          proveedor: "",
-          precioUnitario: "",
-        });
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al registrar stock");
-    }
-  };
-
-  const handleCargarImagen = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("/api/marcadores-geo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          loteId: imagenForm.loteId,
-          tipo: imagenForm.tipo,
-          titulo: imagenForm.titulo,
-          descripcion: imagenForm.descripcion || null,
-          // La ruta exige coordenadas; se registra sin geolocalizar
-          latitud: "0",
-          longitud: "0",
-          imagenes: imagenForm.archivo ? imagenForm.archivo.name : null,
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Imagen cargada exitosamente");
-        setImagenDialogOpen(false);
-        setImagenForm({
-          loteId: "",
-          tipo: "Observación",
-          titulo: "",
-          descripcion: "",
-          archivo: null,
-        });
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al cargar imagen");
-    }
-  };
-
-  const handleRegistrarParto = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("/api/eventos-reproductivos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: "Parto",
-          animalId: partoForm.animalId,
-          fecha: new Date(partoForm.fecha),
-          numCrias: parseInt(partoForm.numCrias),
-          condicionParto: partoForm.condicionParto,
-          observaciones: partoForm.observaciones || null,
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Parto registrado exitosamente");
-        setPartoDialogOpen(false);
-        setPartoForm({
-          animalId: "",
-          fecha: new Date().toISOString().split("T")[0],
-          numCrias: "1",
-          condicionParto: "Normal",
-          observaciones: "",
-        });
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al registrar parto");
-    }
-  };
-
-  const handleCargarAnimal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("/api/animales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          caravana: animalForm.caravana,
-          tipo: animalForm.tipo,
-          raza: animalForm.raza || null,
-          sexo: animalForm.sexo,
-          fechaNacimiento: animalForm.fechaNacimiento
-            ? new Date(animalForm.fechaNacimiento)
-            : null,
-          pesoNacimiento: animalForm.pesoNacimiento
-            ? parseFloat(animalForm.pesoNacimiento)
-            : null,
-          madre: animalForm.madre || null,
-          padre: animalForm.padre || null,
-          estado: "Activo",
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Animal registrado exitosamente");
-        setAnimalDialogOpen(false);
-        setAnimalForm({
-          caravana: "",
-          tipo: "Vacuno",
-          raza: "",
-          sexo: "Hembra",
-          fechaNacimiento: "",
-          pesoNacimiento: "",
-          madre: "",
-          padre: "",
-        });
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al registrar animal");
-    }
-  };
-
-  const handleMovimientoGanado = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const response = await fetch("/api/movimientos-animales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          animalId: movimientoForm.animalId,
-          tipoMovimiento: movimientoForm.tipoMovimiento,
-          fecha: new Date(movimientoForm.fecha),
-          origenNombre: movimientoForm.origenNombre,
-          destinoNombre: movimientoForm.destinoNombre,
-          motivo: movimientoForm.motivo,
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Movimiento registrado exitosamente");
-        setMovimientoDialogOpen(false);
-        setMovimientoForm({
-          animalId: "",
-          tipoMovimiento: "Traslado",
-          origenNombre: "",
-          destinoNombre: "",
-          motivo: "",
-          fecha: new Date().toISOString().split("T")[0],
-        });
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al registrar movimiento");
-    }
-  };
-
-  const handleProduccionLechera = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const litrosManana = parseFloat(produccionForm.litrosManana) || 0;
-      const litrosTarde = parseFloat(produccionForm.litrosTarde) || 0;
-      const litrosTotales = litrosManana + litrosTarde;
-
-      const response = await fetch("/api/produccion-lechera", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          animalId: produccionForm.animalId,
-          fecha: new Date(produccionForm.fecha),
-          litrosManana,
-          litrosTarde,
-          litrosTotales,
-          observaciones: produccionForm.observaciones || null,
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Producción lechera registrada exitosamente");
-        setProduccionDialogOpen(false);
-        setProduccionForm({
-          animalId: "",
-          fecha: new Date().toISOString().split("T")[0],
-          litrosManana: "",
-          litrosTarde: "",
-          observaciones: "",
-        });
-        fetchDashboardData();
-      } else {
-        const error = await response.json();
-        alert(`❌ Error: ${error.error || "No se pudo registrar"}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("❌ Error al registrar producción");
-    }
-  };
-
-  // ============================================
-  // HELPERS
-  // ============================================
-
-  const formatNumber = (num: number) => {
-    return num.toLocaleString("es-ES");
-  };
-
-  const getClimaIcon = (condicion: string) => {
-    switch (condicion) {
-      case "lluvia":
-        return <CloudRain className="h-8 w-8 text-blue-500" />;
-      case "nublado":
-        return <Cloud className="h-8 w-8 text-gray-500" />;
-      default:
-        return <Sun className="h-8 w-8 text-yellow-500" />;
-    }
-  };
-
-  const getTareaIcon = (tipo: string) => {
-    if (tipo === "urgente") {
-      return "🔥";
-    }
-    return "🌱";
-  };
-
-  // ============================================
-  // RENDER LOADING
-  // ============================================
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-500">Error al cargar el dashboard</p>
-      </div>
-    );
-  }
-
-  // ============================================
-  // RENDER PRINCIPAL
-  // ============================================
+  const nombre = session?.user?.name?.split(" ")[0] || "productor";
+  const hoyTxt = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <div className="space-y-6">
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
+    <div className="col gap-20">
+      {toast.node}
+      <div className="mc-topbar">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Inicio</h1>
-          <p className="text-gray-600 mt-1">
-            Este es tu centro de comando para gestionar tu campo
-          </p>
-        </div>
-        <Button variant="outline" size="icon">
-          <Edit className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* MÉTRICAS PRINCIPALES - 5 CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="bg-white border hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-700">
-              Litros Diarios Promedio
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              {data.metricas.litrosDiariosPromedio.toFixed(2)}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">lts</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-700">
-              Alertas Activas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-2xl font-bold ${
-                data.metricas.alertasActivas > 0 ? "text-red-600" : "text-gray-900"
-              }`}
-            >
-              {data.metricas.alertasActivas}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">críticas</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-700">
-              Tratamientos Activos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              {data.metricas.tratamientosActivos}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">últimos 30 días</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-700">
-              Producción mes Actual
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              {formatNumber(data.metricas.produccionMesActual)}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">lts</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-700">
-              Balance mes Actual
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-2xl font-bold ${
-                data.metricas.balanceMesActual >= 0 ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              U$S {formatNumber(Math.abs(data.metricas.balanceMesActual))}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {data.metricas.balanceMesActual >= 0 ? "positivo" : "negativo"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* PRONÓSTICO METEOROLÓGICO */}
-      <Card className="bg-white border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Cloud className="h-5 w-5 text-blue-600" />
-            Pronóstico Meteorológico (7 días)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            {data.pronostico.map((dia, index) => {
-              const tareaDelDia = data.tareasProgramadas.find((t) => {
-                const fechaTarea = new Date(t.fecha).toDateString();
-                const fechaDia = new Date(dia.fecha).toDateString();
-                return fechaTarea === fechaDia;
-              });
-
-              return (
-                <Card
-                  key={index}
-                  className="bg-gradient-to-br from-blue-50 to-white border border-blue-100"
-                >
-                  <CardContent className="p-3 space-y-2">
-                    <div className="text-center">
-                      <p className="text-sm font-semibold text-gray-900">{dia.dia}</p>
-                    </div>
-                    <div className="flex justify-center">{getClimaIcon(dia.condicion)}</div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600">
-                          {dia.tempMax}° / {dia.tempMin}°
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-center gap-1 text-xs">
-                      <Droplets className="h-3 w-3 text-cyan-600" />
-                      <span className="font-semibold">{dia.probabilidadLluvia}%</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-1 text-xs">
-                      <Wind className="h-3 w-3 text-gray-600" />
-                      <span className="font-semibold">
-                        {dia.viento} km/h &gt; {dia.direccionViento}
-                      </span>
-                    </div>
-                    {tareaDelDia && (
-                      <div
-                        className={`mt-2 p-2 rounded text-xs font-medium text-center ${
-                          tareaDelDia.tipo === "urgente"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
-                      >
-                        {getTareaIcon(tareaDelDia.tipo)} {tareaDelDia.titulo}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="mc-crumbs">
+            <span>MiCampo</span>
+            <span className="sep">/</span>
+            <strong>Inicio</strong>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* LAYOUT 2 COLUMNAS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* GRÁFICO FINANCIERO */}
-        <Card className="bg-white border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xl">
-              ${Math.floor(data.graficoFinanciero.balancePromedio / 1000)}k Balance Mensual
-              Promedio
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Ingreso {data.graficoFinanciero.porcentajeIngresos > 0 ? "+" : ""}
-              {data.graficoFinanciero.porcentajeIngresos}% Gastos{" "}
-              {data.graficoFinanciero.porcentajeGastos > 0 ? "+" : ""}
-              {data.graficoFinanciero.porcentajeGastos}%
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.graficoFinanciero.datos}>
-                  <defs>
-                    <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
-                    </linearGradient>
-                    <linearGradient id="colorGastos" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="mes" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Legend
-                    verticalAlign="top"
-                    align="right"
-                    wrapperStyle={{ paddingBottom: "20px" }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="ingresos"
-                    stackId="1"
-                    stroke="#059669"
-                    strokeWidth={3}
-                    fill="url(#colorIngresos)"
-                    name="Ingresos"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="gastos"
-                    stackId="2"
-                    stroke="#dc2626"
-                    strokeWidth={3}
-                    fill="url(#colorGastos)"
-                    name="Gastos"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ACCIONES RÁPIDAS */}
-        <Card className="bg-white border p-1">
-          
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-3">
-              {/* FILA 1 */}
-              <Link href="/dashboard/agronomia?tab=labores" className="w-full">
-                <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-5 px-2 text-xs justify-center">
-                  <CheckSquare className="h-4 w-4 mr-1 flex-shrink-0" />
-                  <span className="truncate">Nueva Tarea</span>
-                </Button>
-              </Link>
-              <Button
-                onClick={() => alert("Funcionalidad de editar botones próximamente")}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-5 px-2 text-xs justify-center"
-              >
-                <Edit className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Editar Botones</span>
-              </Button>
-
-              {/* FILA 2 */}
-              <Button
-                onClick={() => setLluviaDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <CloudRain className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Registrar Lluvia</span>
-              </Button>
-              <Button
-                onClick={() => setSiembraDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <Sprout className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Registrar Siembra/Cosecha</span>
-              </Button>
-
-              {/* FILA 3 */}
-              <Button
-                onClick={() => setGastoDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <DollarSign className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Cargar Gasto</span>
-              </Button>
-              <Button
-                onClick={() => setStockDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <Package className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Entrada Stock/Insumos</span>
-              </Button>
-
-              {/* FILA 4 */}
-              <Button
-                onClick={() => setImagenDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <Camera className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Cargar Imagen de Lote</span>
-              </Button>
-              <Button
-                onClick={() => setPartoDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <Baby className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Registrar Parto</span>
-              </Button>
-
-              {/* FILA 5 */}
-              <Button
-                onClick={() => setAnimalDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <PawPrint className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Cargar Animal</span>
-              </Button>
-              <Button
-                onClick={() => setMovimientoDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <TrendingUp className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Movimiento de Ganado</span>
-              </Button>
-
-              {/* FILA 6 */}
-              <Button
-                onClick={() => setProduccionDialogOpen(true)}
-                variant="outline"
-                className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-              >
-                <Droplets className="h-4 w-4 mr-1 flex-shrink-0" />
-                <span className="truncate">Registrar Produc. Lechera</span>
-              </Button>
-              <Link href="/dashboard/maquinaria" className="w-full">
-                <Button
-                  variant="outline"
-                  className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-medium py-5 px-2 text-xs justify-center"
-                >
-                  <Wrench className="h-4 w-4 mr-1 flex-shrink-0" />
-                  <span className="truncate">Registrar Mantenimiento</span>
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+          <h1 className="mc-title">Buen día, {nombre}.</h1>
+          <div className="mc-subtitle">Hoy es {hoyTxt}. Este es tu centro de comando para gestionar tu campo.</div>
+        </div>
       </div>
 
-      {/* ============================================ */}
-      {/* DIALOGS */}
-      {/* ============================================ */}
-
-      {/* Dialog: Registrar Lluvia */}
-      <Dialog open={lluviaDialogOpen} onOpenChange={setLluviaDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleRegistrarLluvia}>
-            <DialogHeader>
-              <DialogTitle>Registrar Lluvia</DialogTitle>
-              <DialogDescription>Registrá la precipitación caída</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Fecha *</Label>
-                <Input
-                  type="date"
-                  value={lluviaForm.fecha}
-                  onChange={(e) => setLluviaForm({ ...lluviaForm, fecha: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Milímetros *</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="10.5"
-                  value={lluviaForm.milimetros}
-                  onChange={(e) => setLluviaForm({ ...lluviaForm, milimetros: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Lote (opcional)</Label>
-                <Input
-                  placeholder="ID del lote"
-                  value={lluviaForm.loteId}
-                  onChange={(e) => setLluviaForm({ ...lluviaForm, loteId: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setLluviaDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Guardar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Registrar Siembra (CORREGIDO - solo siembra) */}
-      <Dialog open={siembraDialogOpen} onOpenChange={setSiembraDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <form onSubmit={handleRegistrarSiembra}>
-            <DialogHeader>
-              <DialogTitle>Registrar Siembra</DialogTitle>
-              <DialogDescription>
-                Para registrar cosecha, ir al módulo de Agronomía
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Lote ID *</Label>
-                <Input
-                  placeholder="ID del lote"
-                  value={siembraForm.loteId}
-                  onChange={(e) => setSiembraForm({ ...siembraForm, loteId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Cultivo *</Label>
-                <Input
-                  placeholder="Soja, Maíz, Trigo..."
-                  value={siembraForm.cultivo}
-                  onChange={(e) => setSiembraForm({ ...siembraForm, cultivo: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Variedad</Label>
-                <Input
-                  placeholder="Variedad del cultivo"
-                  value={siembraForm.variedad}
-                  onChange={(e) => setSiembraForm({ ...siembraForm, variedad: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Hectáreas *</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="50"
-                  value={siembraForm.hectareas}
-                  onChange={(e) => setSiembraForm({ ...siembraForm, hectareas: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha de Siembra *</Label>
-                <Input
-                  type="date"
-                  value={siembraForm.fecha}
-                  onChange={(e) => setSiembraForm({ ...siembraForm, fecha: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setSiembraDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Guardar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Cargar Gasto */}
-      <Dialog open={gastoDialogOpen} onOpenChange={setGastoDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleCargarGasto}>
-            <DialogHeader>
-              <DialogTitle>Cargar Gasto</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Categoría *</Label>
-                <select
-                  className="w-full border rounded-md p-2"
-                  value={gastoForm.categoria}
-                  onChange={(e) => setGastoForm({ ...gastoForm, categoria: e.target.value })}
-                  required
-                >
-                  <option value="">Seleccionar</option>
-                  <option value="Insumos">Insumos</option>
-                  <option value="Combustible">Combustible</option>
-                  <option value="Mantenimiento">Mantenimiento</option>
-                  <option value="Personal">Personal</option>
-                  <option value="Servicios">Servicios</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Descripción *</Label>
-                <Input
-                  placeholder="Fertilizante, Gasoil..."
-                  value={gastoForm.descripcion}
-                  onChange={(e) => setGastoForm({ ...gastoForm, descripcion: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Monto (USD) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="100.00"
-                  value={gastoForm.monto}
-                  onChange={(e) => setGastoForm({ ...gastoForm, monto: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Método de Pago</Label>
-                <select
-                  className="w-full border rounded-md p-2"
-                  value={gastoForm.metodoPago}
-                  onChange={(e) => setGastoForm({ ...gastoForm, metodoPago: e.target.value })}
-                >
-                  <option value="">Seleccionar</option>
-                  <option value="Efectivo">Efectivo</option>
-                  <option value="Transferencia">Transferencia</option>
-                  <option value="Cheque">Cheque</option>
-                  <option value="Tarjeta">Tarjeta</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha *</Label>
-                <Input
-                  type="date"
-                  value={gastoForm.fecha}
-                  onChange={(e) => setGastoForm({ ...gastoForm, fecha: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setGastoDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Guardar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Entrada Stock (CORREGIDO - con campo código) */}
-      <Dialog open={stockDialogOpen} onOpenChange={setStockDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleEntradaStock}>
-            <DialogHeader>
-              <DialogTitle>Entrada de Stock/Insumos</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Código *</Label>
-                <Input
-                  placeholder="SKU o código único"
-                  value={stockForm.codigo}
-                  onChange={(e) => setStockForm({ ...stockForm, codigo: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Producto *</Label>
-                <Input
-                  placeholder="Nombre del producto"
-                  value={stockForm.producto}
-                  onChange={(e) => setStockForm({ ...stockForm, producto: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Categoría *</Label>
-                <select
-                  className="w-full border rounded-md p-2"
-                  value={stockForm.categoria}
-                  onChange={(e) => setStockForm({ ...stockForm, categoria: e.target.value })}
-                  required
-                >
-                  <option value="">Seleccionar</option>
-                  <option value="Semilla">Semilla</option>
-                  <option value="Fertilizante">Fertilizante</option>
-                  <option value="Fitosanitario">Fitosanitario</option>
-                  <option value="Repuesto">Repuesto</option>
-                  <option value="Combustible">Combustible</option>
-                  <option value="Alimento">Alimento Animal</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Cantidad *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="100"
-                    value={stockForm.cantidad}
-                    onChange={(e) => setStockForm({ ...stockForm, cantidad: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Unidad *</Label>
-                  <select
-                    className="w-full border rounded-md p-2"
-                    value={stockForm.unidad}
-                    onChange={(e) => setStockForm({ ...stockForm, unidad: e.target.value })}
-                  >
-                    <option value="kg">kg</option>
-                    <option value="L">Litros</option>
-                    <option value="ton">Toneladas</option>
-                    <option value="unidades">Unidades</option>
-                    <option value="bolsas">Bolsas</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Proveedor</Label>
-                <Input
-                  placeholder="Nombre del proveedor"
-                  value={stockForm.proveedor}
-                  onChange={(e) => setStockForm({ ...stockForm, proveedor: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Precio Unitario (USD)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="10.50"
-                  value={stockForm.precioUnitario}
-                  onChange={(e) => setStockForm({ ...stockForm, precioUnitario: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setStockDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Guardar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Cargar Imagen (CORREGIDO - con FormData) */}
-      <Dialog open={imagenDialogOpen} onOpenChange={setImagenDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleCargarImagen}>
-            <DialogHeader>
-              <DialogTitle>Cargar Imagen de Lote</DialogTitle>
-              <DialogDescription>Subí una foto del lote para referencia</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Lote ID *</Label>
-                <Input
-                  placeholder="ID del lote"
-                  value={imagenForm.loteId}
-                  onChange={(e) => setImagenForm({ ...imagenForm, loteId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo *</Label>
-                <select
-                  className="w-full border rounded-md p-2"
-                  value={imagenForm.tipo}
-                  onChange={(e) => setImagenForm({ ...imagenForm, tipo: e.target.value })}
-                >
-                  <option value="Observación">Observación</option>
-                  <option value="Problema">Problema</option>
-                  <option value="Foto">Foto</option>
-                  <option value="Muestra">Muestra</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Título *</Label>
-                <Input
-                  placeholder="Descripción breve"
-                  value={imagenForm.titulo}
-                  onChange={(e) => setImagenForm({ ...imagenForm, titulo: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Descripción</Label>
-                <Textarea
-                  placeholder="Detalles adicionales..."
-                  value={imagenForm.descripcion}
-                  onChange={(e) => setImagenForm({ ...imagenForm, descripcion: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Imagen *</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) =>
-                    setImagenForm({ ...imagenForm, archivo: e.target.files?.[0] || null })
-                  }
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setImagenDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Subir Imagen
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Registrar Parto */}
-      <Dialog open={partoDialogOpen} onOpenChange={setPartoDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleRegistrarParto}>
-            <DialogHeader>
-              <DialogTitle>Registrar Parto</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Animal ID (Madre) *</Label>
-                <Input
-                  placeholder="ID del animal"
-                  value={partoForm.animalId}
-                  onChange={(e) => setPartoForm({ ...partoForm, animalId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha *</Label>
-                <Input
-                  type="date"
-                  value={partoForm.fecha}
-                  onChange={(e) => setPartoForm({ ...partoForm, fecha: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Número de Crías *</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={partoForm.numCrias}
-                  onChange={(e) => setPartoForm({ ...partoForm, numCrias: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Condición del Parto *</Label>
-                <select
-                  className="w-full border rounded-md p-2"
-                  value={partoForm.condicionParto}
-                  onChange={(e) => setPartoForm({ ...partoForm, condicionParto: e.target.value })}
-                >
-                  <option value="Normal">Normal</option>
-                  <option value="Asistido">Asistido</option>
-                  <option value="Cesárea">Cesárea</option>
-                  <option value="Complicado">Complicado</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Observaciones</Label>
-                <Textarea
-                  placeholder="Detalles adicionales..."
-                  value={partoForm.observaciones}
-                  onChange={(e) => setPartoForm({ ...partoForm, observaciones: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setPartoDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Guardar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Cargar Animal */}
-      <Dialog open={animalDialogOpen} onOpenChange={setAnimalDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <form onSubmit={handleCargarAnimal}>
-            <DialogHeader>
-              <DialogTitle>Cargar Nuevo Animal</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Caravana *</Label>
-                <Input
-                  placeholder="Número de caravana"
-                  value={animalForm.caravana}
-                  onChange={(e) => setAnimalForm({ ...animalForm, caravana: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tipo *</Label>
-                  <select
-                    className="w-full border rounded-md p-2"
-                    value={animalForm.tipo}
-                    onChange={(e) => setAnimalForm({ ...animalForm, tipo: e.target.value })}
-                  >
-                    <option value="Vacuno">Vacuno</option>
-                    <option value="Ovino">Ovino</option>
-                    <option value="Equino">Equino</option>
-                    <option value="Porcino">Porcino</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Sexo *</Label>
-                  <select
-                    className="w-full border rounded-md p-2"
-                    value={animalForm.sexo}
-                    onChange={(e) => setAnimalForm({ ...animalForm, sexo: e.target.value })}
-                  >
-                    <option value="Hembra">Hembra</option>
-                    <option value="Macho">Macho</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Raza</Label>
-                <Input
-                  placeholder="Holando, Angus..."
-                  value={animalForm.raza}
-                  onChange={(e) => setAnimalForm({ ...animalForm, raza: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Fecha Nacimiento</Label>
-                  <Input
-                    type="date"
-                    value={animalForm.fechaNacimiento}
-                    onChange={(e) =>
-                      setAnimalForm({ ...animalForm, fechaNacimiento: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Peso Nac. (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    placeholder="35"
-                    value={animalForm.pesoNacimiento}
-                    onChange={(e) =>
-                      setAnimalForm({ ...animalForm, pesoNacimiento: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Madre (Caravana)</Label>
-                  <Input
-                    placeholder="Caravana madre"
-                    value={animalForm.madre}
-                    onChange={(e) => setAnimalForm({ ...animalForm, madre: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Padre (Caravana)</Label>
-                  <Input
-                    placeholder="Caravana padre"
-                    value={animalForm.padre}
-                    onChange={(e) => setAnimalForm({ ...animalForm, padre: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAnimalDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Guardar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Movimiento de Ganado */}
-      <Dialog open={movimientoDialogOpen} onOpenChange={setMovimientoDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleMovimientoGanado}>
-            <DialogHeader>
-              <DialogTitle>Movimiento de Ganado</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Animal ID *</Label>
-                <Input
-                  placeholder="ID del animal"
-                  value={movimientoForm.animalId}
-                  onChange={(e) => setMovimientoForm({ ...movimientoForm, animalId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de Movimiento *</Label>
-                <select
-                  className="w-full border rounded-md p-2"
-                  value={movimientoForm.tipoMovimiento}
-                  onChange={(e) =>
-                    setMovimientoForm({ ...movimientoForm, tipoMovimiento: e.target.value })
-                  }
-                >
-                  <option value="Traslado">Traslado</option>
-                  <option value="Venta">Venta</option>
-                  <option value="Ingreso">Ingreso</option>
-                  <option value="Egreso">Egreso</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Origen *</Label>
-                <Input
-                  placeholder="Lote 1, Corral 2..."
-                  value={movimientoForm.origenNombre}
-                  onChange={(e) =>
-                    setMovimientoForm({ ...movimientoForm, origenNombre: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Destino *</Label>
-                <Input
-                  placeholder="Lote 3, Feria..."
-                  value={movimientoForm.destinoNombre}
-                  onChange={(e) =>
-                    setMovimientoForm({ ...movimientoForm, destinoNombre: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Motivo *</Label>
-                <Input
-                  placeholder="Rotación, Venta, Cuarentena..."
-                  value={movimientoForm.motivo}
-                  onChange={(e) => setMovimientoForm({ ...movimientoForm, motivo: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha *</Label>
-                <Input
-                  type="date"
-                  value={movimientoForm.fecha}
-                  onChange={(e) => setMovimientoForm({ ...movimientoForm, fecha: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setMovimientoDialogOpen(false)}
+      {/* KPIs editables */}
+      <div>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+          <div className="row gap-8">
+            <span className="mc-card__eyebrow">Indicadores principales</span>
+            {editKpis && <Badge tone="blue">Modo edición · arrastrá para reordenar · click en ✎ para cambiar</Badge>}
+          </div>
+          <button className={`mc-btn mc-btn--sm ${editKpis ? "mc-btn--primary" : "mc-btn--ghost"}`} onClick={() => setEditKpis(!editKpis)}>
+            <Icon name={editKpis ? "check" : "edit"} size={13} />
+            {editKpis ? "Listo" : "Editar KPIs"}
+          </button>
+        </div>
+        <div className="grid g-cols-5">
+          {kpiOrder.map((k, idx) => {
+            const cfg = ALL_KPIS[k];
+            return (
+              <div
+                key={k}
+                draggable={editKpis}
+                onDragStart={() => setDraggedIdx(idx)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => onDrop(idx)}
+                style={{ cursor: editKpis ? "grab" : "default", opacity: draggedIdx === idx ? 0.5 : 1, position: "relative" }}
               >
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Guardar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+                <KPI {...cfg}>
+                  {editKpis && (
+                    <button
+                      className="mc-kpi__edit"
+                      style={{ opacity: 1, cursor: "pointer", border: "none", background: "var(--mc-green-600)", color: "white" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPickerOpen(k);
+                      }}
+                    >
+                      <Icon name="edit" size={11} />
+                    </button>
+                  )}
+                </KPI>
+                {pickerOpen === k && (
+                  <KpiPicker all={ALL_KPIS} current={k} used={kpiOrder} onPick={(nk) => swapKpi(k, nk)} onClose={() => setPickerOpen(false)} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-      {/* Dialog: Producción Lechera */}
-      <Dialog open={produccionDialogOpen} onOpenChange={setProduccionDialogOpen}>
-        <DialogContent>
-          <form onSubmit={handleProduccionLechera}>
-            <DialogHeader>
-              <DialogTitle>Registrar Producción Lechera</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Animal ID *</Label>
-                <Input
-                  placeholder="ID del animal"
-                  value={produccionForm.animalId}
-                  onChange={(e) => setProduccionForm({ ...produccionForm, animalId: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha *</Label>
-                <Input
-                  type="date"
-                  value={produccionForm.fecha}
-                  onChange={(e) => setProduccionForm({ ...produccionForm, fecha: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Litros Mañana</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    placeholder="10.5"
-                    value={produccionForm.litrosManana}
-                    onChange={(e) =>
-                      setProduccionForm({ ...produccionForm, litrosManana: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Litros Tarde</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    placeholder="9.8"
-                    value={produccionForm.litrosTarde}
-                    onChange={(e) =>
-                      setProduccionForm({ ...produccionForm, litrosTarde: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Total:</Label>
-                <p className="text-lg font-bold">
-                  {(
-                    (parseFloat(produccionForm.litrosManana) || 0) +
-                    (parseFloat(produccionForm.litrosTarde) || 0)
-                  ).toFixed(1)}{" "}
-                  litros
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Observaciones</Label>
-                <Textarea
-                  placeholder="Calidad, estado del animal..."
-                  value={produccionForm.observaciones}
-                  onChange={(e) =>
-                    setProduccionForm({ ...produccionForm, observaciones: e.target.value })
-                  }
-                  rows={2}
-                />
+      {/* Acciones principales */}
+      <div className="row" style={{ justifyContent: "flex-end", gap: 8, position: "relative" }}>
+        <button className="mc-icon-btn" onClick={() => setBellOpen(!bellOpen)}>
+          <Icon name="bell" size={16} />
+        </button>
+        {bellOpen && (
+          <>
+            <div onClick={() => setBellOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
+            <div
+              style={{
+                position: "absolute", top: "100%", right: 0, marginTop: 6, width: 340, zIndex: 51,
+                background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 12,
+                boxShadow: "var(--sh-lg)", padding: 12,
+              }}
+            >
+              <div className="mc-card__title" style={{ marginBottom: 10 }}>Notificaciones</div>
+              <div className="col gap-8">
+                <Alerta nivel="red" title="Plaga detectada" body="Chinches verdes en Lote Norte 1 · superó umbral" />
+                <Alerta nivel="orange" title="Ventana de pulverización cerrada" body="Viento >20km/h las próximas 12hs" />
+                <Alerta nivel="blue" title="Cosecha lista" body="Maíz Lote Este 1 · humedad 14.5%" />
               </div>
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setProduccionDialogOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Guardar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </>
+        )}
+        <button className="mc-btn mc-btn--secondary" onClick={descargarReporte}>
+          <Icon name="download" size={15} />
+          Reporte semanal
+        </button>
+        <button className="mc-btn mc-btn--primary" onClick={() => setLaborModal(true)}>
+          <Icon name="plus" size={15} />
+          Nueva labor
+        </button>
+      </div>
+
+      {/* Clima 7d + Gantt | Balance mensual */}
+      <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)", gap: 14 }}>
+        <ClimaConGantt events={ganttEvents} onVerCalendario={() => router.push("/calendario")} />
+        <BalanceMensual data={balance} />
+      </div>
+
+      {/* Actividad / Alertas */}
+      <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 14 }}>
+        <UltimasActividades onVerTodo={() => router.push("/campo-digital?tab=Labores")} />
+
+        <div className="mc-card">
+          <div className="mc-card__head">
+            <div className="mc-card__title">Alertas activas</div>
+            <span className="mc-badge mc-badge--red">
+              <span className="mc-badge__dot"></span>5 activas
+            </span>
+          </div>
+          <div className="col gap-8">
+            <Alerta nivel="red" title="Plaga detectada" body="Chinches verdes en Lote Norte 1 · superó umbral" />
+            <Alerta nivel="orange" title="Ventana de pulverización cerrada" body="Viento >20km/h las próximas 12hs" />
+            <Alerta nivel="amber" title="Stock bajo" body="Urea · quedan 4 días de consumo" />
+            <Alerta nivel="blue" title="Cosecha lista" body="Maíz Lote Este 1 · humedad 14.5%" />
+            <Alerta nivel="amber" title="Animales sin pesar" body="Tropa C · 38 días sin registro" />
+          </div>
+        </div>
+      </div>
+
+      {/* Atajos */}
+      <div className="mc-card">
+        <div className="mc-card__head">
+          <div className="mc-card__title">Acciones rápidas</div>
+          <button className={`mc-btn mc-btn--sm ${editActs ? "mc-btn--primary" : "mc-btn--ghost"}`} onClick={() => setEditActs(!editActs)}>
+            {editActs ? "Listo" : "Personalizar"}
+          </button>
+        </div>
+        <div className="grid g-cols-6 gap-8" style={{ rowGap: 10 }}>
+          {QUICK_ACTS.filter((a) => editActs || !hiddenActs.includes(a.id)).map((a) => (
+            <button
+              key={a.id}
+              className="mc-card mc-quick"
+              style={{
+                padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "flex-start",
+                gap: 8, cursor: "pointer", transition: "0.15s", position: "relative",
+                opacity: editActs && hiddenActs.includes(a.id) ? 0.4 : 1,
+              }}
+              onClick={() => {
+                if (editActs) {
+                  toggleAct(a.id);
+                  return;
+                }
+                if (a.id === "labor") setLaborModal(true);
+                else if (a.id === "notif") setBellOpen(true);
+                else if (a.href) router.push(a.href);
+              }}
+            >
+              {editActs && (
+                <span style={{ position: "absolute", top: 6, right: 6, color: hiddenActs.includes(a.id) ? "var(--mc-text-3)" : "var(--mc-green-600)" }}>
+                  <Icon name={hiddenActs.includes(a.id) ? "x" : "check"} size={12} />
+                </span>
+              )}
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--mc-green-50)", color: "var(--mc-green-700)", display: "grid", placeItems: "center" }}>
+                <Icon name={a.icon} size={15} />
+              </div>
+              <div className="text-sm font-semi" style={{ color: "var(--mc-ink)", fontSize: 12.5 }}>
+                {a.label}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Modal Nueva Labor */}
+      <Modal
+        open={laborModal}
+        onClose={() => setLaborModal(false)}
+        title="Nueva labor"
+        subtitle="Creá una labor rápida; podés completar los detalles en Campo Digital."
+        footer={
+          <>
+            <button className="mc-btn mc-btn--ghost" onClick={() => setLaborModal(false)}>
+              Cancelar
+            </button>
+            <button className="mc-btn mc-btn--primary" onClick={crearLabor}>
+              <Icon name="check" size={14} /> Crear labor
+            </button>
+          </>
+        }
+      >
+        <Field label="Tipo de labor">
+          <select className="mc-select" value={laborForm.tipo} onChange={(e) => setLaborForm({ ...laborForm, tipo: e.target.value })}>
+            {["Pulverización", "Siembra", "Cosecha", "Fertilización", "Riego", "Labranza"].map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Lote">
+          <select className="mc-select" value={laborForm.loteId} onChange={(e) => setLaborForm({ ...laborForm, loteId: e.target.value })}>
+            <option value="">{lotes.length ? "Seleccionar lote..." : "Sin lotes (creá uno en Campo Digital)"}</option>
+            {lotes.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nombre}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Fecha">
+          <input type="date" className="mc-input" value={laborForm.fecha} onChange={(e) => setLaborForm({ ...laborForm, fecha: e.target.value })} />
+        </Field>
+      </Modal>
+    </div>
+  );
+}
+
+/* ============ KpiPicker (Figma) ============ */
+function KpiPicker({
+  all,
+  current,
+  used,
+  onPick,
+  onClose,
+}: {
+  all: Record<string, KpiCfg>;
+  current: string;
+  used: string[];
+  onPick: (k: string) => void;
+  onClose: () => void;
+}) {
+  const keys = Object.keys(all).filter((k) => k === current || !used.includes(k));
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
+      <div
+        style={{
+          position: "absolute", top: "100%", left: 0, right: 0, marginTop: 6,
+          background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 12,
+          boxShadow: "var(--sh-md)", padding: 6, zIndex: 51, maxHeight: 280, overflowY: "auto",
+        }}
+      >
+        <div className="text-xs text-muted" style={{ padding: "6px 10px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
+          Reemplazar por
+        </div>
+        {keys.map((k) => (
+          <button
+            key={k}
+            onClick={() => onPick(k)}
+            style={{
+              width: "100%", padding: "8px 10px", display: "flex", alignItems: "center", gap: 10,
+              border: "none", background: k === current ? "var(--mc-green-50)" : "transparent",
+              color: "var(--mc-ink)", borderRadius: 6, cursor: "pointer", textAlign: "left",
+            }}
+          >
+            <span style={{ width: 24, height: 24, borderRadius: 6, background: "var(--mc-green-50)", color: "var(--mc-green-700)", display: "grid", placeItems: "center" }}>
+              <Icon name={all[k].icon} size={12} />
+            </span>
+            <span style={{ flex: 1, fontSize: 13 }}>{all[k].label}</span>
+            {k === current && <Icon name="check" size={13} style={{ color: "var(--mc-green-700)" }} />}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* ============ CLIMA + GANTT 7 DÍAS (Figma) ============ */
+function ClimaConGantt({
+  events,
+  onVerCalendario,
+}: {
+  events: { titulo: string; inicio: number; dur: number; color: string; icon: string }[];
+  onVerCalendario: () => void;
+}) {
+  const today = new Date();
+  const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const weatherData = [
+    { ic: "⛅", max: 22, min: 14, mm: 0, wind: "12 km/h ↘ SE" },
+    { ic: "☀️", max: 24, min: 15, mm: 0, wind: "15 km/h → E" },
+    { ic: "🌧️", max: 20, min: 12, mm: 25, wind: "18 km/h ↙ SO" },
+    { ic: "🌦️", max: 21, min: 13, mm: 15, wind: "10 km/h ↓ S" },
+    { ic: "⛅", max: 23, min: 14, mm: 0, wind: "8 km/h ↗ NE" },
+    { ic: "☀️", max: 26, min: 16, mm: 0, wind: "12 km/h ↑ N" },
+    { ic: "🌦️", max: 22, min: 13, mm: 8, wind: "20 km/h ↙ SO" },
+  ];
+  const days = weatherData.map((w, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    return { name: dayNames[d.getDay()], num: d.getDate(), isToday: i === 0, ...w };
+  });
+
+  const rows: (typeof events)[] = [];
+  events.forEach((e) => {
+    let placed = false;
+    for (const r of rows) {
+      if (!r.some((x) => !(e.inicio + e.dur <= x.inicio || x.inicio + x.dur <= e.inicio))) {
+        r.push(e);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) rows.push([e]);
+  });
+
+  const tempLow = 10,
+    tempHigh = 30;
+  const tY = (t: number) => 60 * (1 - (t - tempLow) / (tempHigh - tempLow)) + 6;
+  const hoyHeader = today.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
+  const horaHeader = today.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ background: "linear-gradient(135deg, #2d5f4a 0%, #4a7c64 100%)", color: "white", padding: "18px 22px 20px" }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 10, opacity: 0.78, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>
+            Don Ramón · {hoyHeader} · {horaHeader}
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.85, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>
+            Parcialmente nublado
+          </div>
+        </div>
+        <div className="row" style={{ alignItems: "stretch", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 18, borderRight: "1px solid rgba(255,255,255,0.22)" }}>
+            <span style={{ fontFamily: "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif", fontSize: 38, lineHeight: 1 }}>⛅</span>
+            <div className="col">
+              <span style={{ fontFamily: "var(--ff-display)", fontSize: 56, lineHeight: 0.92, fontWeight: 600 }}>22°</span>
+              <span style={{ fontSize: 11, opacity: 0.78, letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600, marginTop: 2 }}>Ahora</span>
+            </div>
+          </div>
+          <div
+            style={{
+              flex: 1, display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+              background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, overflow: "hidden",
+            }}
+          >
+            <InfoCell
+              icon="thermometer"
+              big={
+                <span>
+                  <span style={{ color: "#ffd28a" }}>24°</span>
+                  <span style={{ opacity: 0.62, margin: "0 6px", fontSize: 13, fontFamily: "var(--ff-mono)", fontWeight: 500 }}>°C</span>
+                  <span style={{ color: "#9ad8ff" }}>14°</span>
+                </span>
+              }
+              sub="Sens. 21°"
+            />
+            <InfoCell icon="droplet" big="68%" sub="Rocío 16°" />
+            <InfoCell icon="wind" big="12 km/h" sub="↘ SE · Ráf. 18" />
+            <InfoCell icon="activity" big="ΔT 5.2" sub="✓ Apto pulver." highlight />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ position: "relative", borderBottom: "1px solid var(--mc-line)", background: "var(--mc-surface)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+          {days.map((d, i) => (
+            <div
+              key={i}
+              style={{
+                padding: "10px 4px 10px", textAlign: "center",
+                borderRight: i < 6 ? "1px solid var(--mc-line)" : "none",
+                background: d.isToday ? "var(--mc-green-50)" : "transparent",
+                position: "relative", minHeight: 168,
+              }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 700, color: d.isToday ? "var(--mc-green-700)" : "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{d.name}</div>
+              <div style={{ fontSize: 10, color: d.isToday ? "var(--mc-green-700)" : "var(--mc-text-2)", fontWeight: 600, marginTop: 1 }}>{d.num}</div>
+              <div style={{ fontSize: 30, lineHeight: 1, marginTop: 6, fontFamily: "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif" }}>{d.ic}</div>
+              <div style={{ height: 80 }} />
+              {d.mm > 0 ? (
+                <div style={{ fontSize: 11, color: "var(--mc-blue)", fontWeight: 700, fontFamily: "var(--ff-mono)" }}>💧 {d.mm}mm</div>
+              ) : (
+                <div style={{ height: 17 }} />
+              )}
+              <div style={{ fontSize: 9, color: "var(--mc-text-3)", marginTop: 2, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px" }}>{d.wind}</div>
+            </div>
+          ))}
+        </div>
+        <svg style={{ position: "absolute", top: 70, left: 0, width: "100%", height: 80, pointerEvents: "none" }} viewBox="0 0 700 80" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="ic-max-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#e7892b" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#e7892b" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="ic-min-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3aa6d9" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#3aa6d9" stopOpacity="0" />
+            </linearGradient>
+            <filter id="ic-dot-shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodOpacity="0.35" />
+            </filter>
+          </defs>
+          <polygon points={`50,80 ${days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")} 650,80`} fill="url(#ic-max-area)" />
+          <polygon points={`50,80 ${days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} 650,80`} fill="url(#ic-min-area)" />
+          <polyline fill="none" stroke="#e7892b" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" points={days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")} />
+          <polyline fill="none" stroke="#3aa6d9" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" points={days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} />
+          {days.map((d, i) => {
+            const x = i * 100 + 50;
+            return (
+              <g key={i}>
+                <circle cx={x} cy={tY(d.max)} r="5" fill="#e7892b" stroke="white" strokeWidth="1.8" filter="url(#ic-dot-shadow)" />
+                <circle cx={x} cy={tY(d.min)} r="4.5" fill="#3aa6d9" stroke="white" strokeWidth="1.6" filter="url(#ic-dot-shadow)" />
+              </g>
+            );
+          })}
+        </svg>
+        <div style={{ position: "absolute", top: 70, left: 0, width: "100%", height: 80, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", pointerEvents: "none" }}>
+          {days.map((d, i) => (
+            <div key={i} style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: `${tY(d.max) - 18}px`, fontFamily: "var(--ff-mono)", fontSize: 12, fontWeight: 800, color: "var(--mc-ink)", whiteSpace: "nowrap" }}>{d.max}°</span>
+              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: `${tY(d.min) + 8}px`, fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 700, color: "var(--mc-text-2)", whiteSpace: "nowrap" }}>{d.min}°</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: "10px 14px 14px" }}>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Agenda de la semana</div>
+          <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ padding: "2px 8px", fontSize: 11 }} onClick={onVerCalendario}>
+            Ver calendario <Icon name="chevRight" size={11} />
+          </button>
+        </div>
+        <div style={{ position: "relative" }}>
+          <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", pointerEvents: "none", zIndex: 0 }}>
+            {days.map((d, i) => (
+              <div key={i} style={{ borderRight: i < 6 ? "1px dashed rgba(0,0,0,0.06)" : "none", background: d.isToday ? "rgba(79,157,82,0.06)" : "transparent" }} />
+            ))}
+          </div>
+          <div style={{ position: "relative", zIndex: 1 }}>
+            {rows.map((row, ri) => (
+              <div key={ri} style={{ position: "relative", height: 26, marginBottom: ri < rows.length - 1 ? 5 : 0 }}>
+                {row.map((e, ei) => {
+                  const isMulti = e.dur > 1;
+                  const leftPct = isMulti ? ((e.inicio + 0.5) / 7) * 100 : (e.inicio / 7) * 100;
+                  const widthPct = isMulti ? ((e.dur - 1) / 7) * 100 : (1 / 7) * 100;
+                  const left = `calc(${leftPct}% + ${isMulti ? 0 : 4}px)`;
+                  const width = `calc(${widthPct}% - ${isMulti ? 0 : 8}px)`;
+                  return (
+                    <div
+                      key={ei}
+                      style={{
+                        position: "absolute", left, width, top: 0, bottom: 0, background: e.color, borderRadius: 999,
+                        display: "flex", alignItems: "center", gap: 6, padding: "0 11px", fontSize: 11, color: "white",
+                        fontWeight: 600, overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer",
+                        boxShadow: `0 1px 4px ${e.color}55, inset 0 1px 0 rgba(255,255,255,0.18)`,
+                      }}
+                      onClick={onVerCalendario}
+                    >
+                      <Icon name={e.icon} size={10} />
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{e.titulo}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            {rows.length === 0 && <div className="text-sm text-muted" style={{ padding: "8px 0" }}>Sin labores programadas esta semana.</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoCell({ icon, big, sub, highlight }: { icon: string; big: React.ReactNode; sub: string; highlight?: boolean }) {
+  return (
+    <div
+      style={{
+        padding: "12px 14px", borderRight: "1px solid rgba(255,255,255,0.12)",
+        background: highlight ? "rgba(255,255,255,0.10)" : "transparent",
+        display: "flex", alignItems: "center", gap: 10,
+      }}
+    >
+      <div style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(255,255,255,0.20)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name={icon} size={15} />
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>{big}</div>
+        <div style={{ fontSize: 10.5, opacity: 0.78, marginTop: 3, whiteSpace: "nowrap" }}>{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ============ BALANCE MENSUAL (Figma) ============ */
+function BalanceMensual({ data }: { data: { meses: string[]; ingresos: number[]; gastos: number[] } | null }) {
+  const months = data?.meses || ["Nov", "Dic", "Ene", "Feb", "Mar", "Abr"];
+  const ingresos = data?.ingresos || [4.2, 5.8, 6.4, 7.1, 7.6, 8.6];
+  const gastos = data?.gastos || [3.1, 3.4, 4.0, 4.2, 5.1, 5.8];
+  const max = Math.max(10, Math.ceil(Math.max(...ingresos, ...gastos)));
+  const W = 360,
+    H = 170,
+    padL = 36,
+    padR = 12,
+    padT = 12,
+    padB = 24;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const n = months.length;
+
+  const pts = (arr: number[]) => arr.map((v, i) => ({ x: padL + (i / (n - 1)) * innerW, y: padT + innerH * (1 - v / max) }));
+
+  const curvePath = (points: { x: number; y: number }[]) => {
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const p0 = points[Math.max(0, i - 2)];
+      const p1 = points[i - 1];
+      const p2 = points[i];
+      const p3 = points[Math.min(points.length - 1, i + 1)];
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`;
+    }
+    return d;
+  };
+
+  const areaPath = (points: { x: number; y: number }[]) =>
+    curvePath(points) + ` L ${points[points.length - 1].x} ${padT + innerH} L ${points[0].x} ${padT + innerH} Z`;
+
+  const ingPts = pts(ingresos);
+  const gasPts = pts(gastos);
+  const lastIng = ingresos[n - 1];
+  const lastGas = gastos[n - 1];
+  const prevIng = ingresos[n - 2] || 1;
+  const prevGas = gastos[n - 2] || 1;
+
+  return (
+    <div className="mc-card" style={{ display: "flex", flexDirection: "column" }}>
+      <div className="mc-card__head" style={{ alignItems: "flex-start" }}>
+        <div>
+          <div className="mc-card__eyebrow">Últimos 6 meses</div>
+          <div className="mc-card__title mt-4">Balance mensual</div>
+        </div>
+      </div>
+
+      <div className="row gap-10" style={{ marginBottom: 10 }}>
+        <div style={{ flex: 1, padding: "8px 10px", borderRadius: 9, background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)" }}>
+          <div className="row gap-4" style={{ fontSize: 10, color: "var(--mc-green-700)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--mc-green-500)", flexShrink: 0 }}></span>Ingresos
+          </div>
+          <div style={{ fontFamily: "var(--ff-display)", fontSize: 20, color: "var(--mc-green-700)", marginTop: 2 }}>${lastIng.toFixed(1)}M</div>
+          <div className="text-xs" style={{ color: "var(--mc-green-700)", opacity: 0.75 }}>
+            {prevIng > 0 ? `${lastIng >= prevIng ? "+" : ""}${Math.round(((lastIng - prevIng) / prevIng) * 100)}% vs mes ant.` : "—"}
+          </div>
+        </div>
+        <div style={{ flex: 1, padding: "8px 10px", borderRadius: 9, background: "#f1f5f9", border: "1px solid #cbd5e1" }}>
+          <div className="row gap-4" style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#475569", flexShrink: 0 }}></span>Gastos
+          </div>
+          <div style={{ fontFamily: "var(--ff-display)", fontSize: 20, color: "#334155", marginTop: 2 }}>${lastGas.toFixed(1)}M</div>
+          <div className="text-xs" style={{ color: "#475569", opacity: 0.75 }}>
+            {prevGas > 0 ? `${lastGas >= prevGas ? "+" : ""}${Math.round(((lastGas - prevGas) / prevGas) * 100)}% vs mes ant.` : "—"}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ flex: 1 }}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+          <defs>
+            <linearGradient id="bal-ing" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#4f9d52" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#4f9d52" stopOpacity="0.02" />
+            </linearGradient>
+            <linearGradient id="bal-gas" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#e7892b" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#e7892b" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
+            const y = padT + innerH * (1 - p);
+            return (
+              <g key={i}>
+                <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--mc-line)" strokeDasharray={i === 0 ? "0" : "2,3"} />
+                <text x={padL - 4} y={y + 3} fontSize="9" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">
+                  ${(max * p).toFixed(0)}M
+                </text>
+              </g>
+            );
+          })}
+          <path d={areaPath(ingPts)} fill="url(#bal-ing)" />
+          <path d={areaPath(gasPts)} fill="url(#bal-gas)" />
+          <path d={curvePath(ingPts)} fill="none" stroke="#4f9d52" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={curvePath(gasPts)} fill="none" stroke="#e7892b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {ingPts.map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={i === n - 1 ? 5 : 3} fill="#4f9d52" />
+          ))}
+          {gasPts.map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={i === n - 1 ? 5 : 3} fill="#e7892b" />
+          ))}
+          {ingPts.map((p, i) => (
+            <text key={i} x={p.x} y={H - 7} fontSize="10" fontFamily="var(--ff-ui)" fill={i === n - 1 ? "var(--mc-ink)" : "var(--mc-text-2)"} fontWeight={i === n - 1 ? 700 : 500} textAnchor="middle">
+              {months[i]}
+            </text>
+          ))}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ============ ÚLTIMAS ACTIVIDADES (Figma) ============ */
+function UltimasActividades({ onVerTodo }: { onVerTodo: () => void }) {
+  const activs = [
+    { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", emoji: "🌧️", time: "Hace 2 horas" },
+    { tipo: "user", inicial: "J", color: "#d9a538", quien: "Joaquin", verb: "finalizó", obj: "Siembra", lote: "Lote 1", emoji: "🚜", time: "Hace 5 horas" },
+    { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", emoji: "🐛", time: "Ayer" },
+    { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de Cultivo", lote: "Lote 4", emoji: "📷", time: "Ayer" },
+    { tipo: "user", inicial: "M", color: "#e7892b", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", emoji: "💧", time: "Hace 2 días" },
+    { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "completó", obj: "Análisis IA de NDVI", lote: "Todos", emoji: "📊", time: "Hace 2 días" },
+  ];
+  return (
+    <div className="mc-card">
+      <div className="mc-card__head">
+        <div className="mc-card__title">Últimas Actividades</div>
+        <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVerTodo}>
+          Ver todo <Icon name="chevRight" size={13} />
+        </button>
+      </div>
+      <div className="mc-actividades">
+        {activs.map((a, i) => (
+          <div key={i} className="mc-act-row">
+            <div className="mc-act-row__avatar" style={{ background: a.color }}>
+              {a.tipo === "system" ? <Icon name="bolt" size={14} /> : a.inicial}
+            </div>
+            <div className="mc-act-row__content">
+              <div className="mc-act-row__text">
+                <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb}{" "}
+                <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en{" "}
+                <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span>
+                <span style={{ marginLeft: 6 }}>{a.emoji}</span>
+              </div>
+            </div>
+            <div className="mc-act-row__time">{a.time}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -73,9 +73,12 @@ export async function POST(request: Request) {
       horasTrabajadas,
       maquinaId,
       productos, // Array de productos aplicados
+      estado,
+      prioridad,
+      motivoBloqueo,
     } = await request.json();
 
-    if (!tipo || !fecha || !loteId || !superficieTrabajada || !descripcion) {
+    if (!tipo || !fecha || !loteId) {
       return NextResponse.json(
         { error: "Campos requeridos faltantes" },
         { status: 400 }
@@ -88,9 +91,12 @@ export async function POST(request: Request) {
         tipo,
         fecha: new Date(fecha),
         loteId,
-        superficieTrabajada: parseFloat(superficieTrabajada),
-        descripcion,
+        superficieTrabajada: superficieTrabajada ? parseFloat(superficieTrabajada) : 0,
+        descripcion: descripcion || tipo,
         observaciones: observaciones || null,
+        estado: estado || "Programada",
+        prioridad: prioridad || "Normal",
+        motivoBloqueo: motivoBloqueo || null,
         operarios: operarios || null,
         horasTrabajadas: horasTrabajadas ? parseFloat(horasTrabajadas) : null,
         maquinariaId: maquinaId || null,

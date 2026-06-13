@@ -456,6 +456,9 @@ model Labor {
   superficieTrabajada Float // Hectáreas
   descripcion         String
   observaciones       String?
+  estado              String   @default("Programada") // Programada, Hoy, En curso, Pausada, Bloqueada, Atrasada, Completada
+  prioridad           String   @default("Normal") // Normal, Urgente
+  motivoBloqueo       String?
 
   // Personal
   operarios       String? // Nombres separados por coma
