@@ -1,14 +1,19 @@
 # Fondos temáticos por módulo
 
-Colocá aquí las 5 imágenes de fondo, con EXACTAMENTE estos nombres (todas .jpg):
+Colocá aquí las imágenes de fondo, con EXACTAMENTE estos nombres (todas .jpg):
 
-| Archivo                        | Imagen                          | Módulos donde se muestra                                              |
-|--------------------------------|---------------------------------|----------------------------------------------------------------------|
-| `personal.jpg`                 | manos en la tierra (gente)      | Personal                                                             |
-| `finanzas.jpg`                 | monedas con plantas             | Finanzas, Costos, Conciliación, Comercialización, Arrendamientos    |
-| `agronomia.jpg`                | tractor en el maizal            | Campo Digital, Calculadora de Dosis, Clima, Plan de Riego           |
-| `ganaderia.jpg`                | vacas en la pastura             | Animales, Mov. de Tropas, Prod. Lechera, Genética, Trazabilidad     |
-| `general.jpg`                  | campo de cultivo (hileras)      | Inicio, Logística, Maquinaria, Sostenibilidad, Calendario           |
+| Archivo                | Imagen                       | Módulos donde se muestra                                          |
+|------------------------|------------------------------|------------------------------------------------------------------|
+| `agricultura.jpg`      | tractor en el maizal         | Campo Digital, Calculadora de Dosis, Clima, Plan de Riego        |
+| `ganaderia.jpg`        | vacas en la pastura          | Animales, Mov. de Tropas, Prod. Lechera, Genética, Trazabilidad  |
+| `maquinaria.jpg`       | maquinaria                   | Maquinaria y MTM                                                  |
+| `finanzas.jpg`         | monedas con plantas          | Finanzas, Costos, Conciliación, Comercialización, Arrendamientos |
+| `gente.jpg`            | manos en la tierra (gente)   | Personal                                                         |
+| `sostenibilidad.jpg`   | sostenibilidad               | Sostenibilidad                                                   |
+| `logistica.jpg`        | logística                    | Logística e Inventario                                           |
+
+Inicio y Calendario no llevan imagen temática (lienzo normal); si querés
+agregarles una, mandá el archivo y se suma al mapeo.
 
 El mapeo ruta → imagen vive en `app/(dashboard)/layout.tsx` (función `moduloDeRuta`)
 y los estilos en `app/globals.css` (selectores `.mc-main[data-modulo="..."]`).

@@ -516,11 +516,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background-attachment: fixed, fixed;
   background-repeat: no-repeat, no-repeat;
 }
-.mc-main[data-modulo="general"]    { --mc-modulo-img: url("/modulos/general.jpg"); }
-.mc-main[data-modulo="agronomia"]  { --mc-modulo-img: url("/modulos/agronomia.jpg"); }
-.mc-main[data-modulo="ganaderia"]  { --mc-modulo-img: url("/modulos/ganaderia.jpg"); }
-.mc-main[data-modulo="finanzas"]   { --mc-modulo-img: url("/modulos/finanzas.jpg"); }
-.mc-main[data-modulo="personal"]   { --mc-modulo-img: url("/modulos/personal.jpg"); }
+.mc-main[data-modulo="agricultura"]    { --mc-modulo-img: url("/modulos/agricultura.jpg"); }
+.mc-main[data-modulo="ganaderia"]      { --mc-modulo-img: url("/modulos/ganaderia.jpg"); }
+.mc-main[data-modulo="maquinaria"]     { --mc-modulo-img: url("/modulos/maquinaria.jpg"); }
+.mc-main[data-modulo="finanzas"]       { --mc-modulo-img: url("/modulos/finanzas.jpg"); }
+.mc-main[data-modulo="gente"]          { --mc-modulo-img: url("/modulos/gente.jpg"); }
+.mc-main[data-modulo="sostenibilidad"] { --mc-modulo-img: url("/modulos/sostenibilidad.jpg"); }
+.mc-main[data-modulo="logistica"]      { --mc-modulo-img: url("/modulos/logistica.jpg"); }
 
 /* ---------- Topbar / page header ---------- */
 .mc-topbar {

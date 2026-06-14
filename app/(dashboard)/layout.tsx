@@ -97,14 +97,14 @@ const SEARCH_INDEX: { label: string; href: string; group: string }[] = [
 // de fondo (independientemente del submódulo/pestaña en la que se trabaje).
 function moduloDeRuta(pathname: string): string {
   const p = pathname.split("?")[0];
-  // Agronomía / Campo Digital → tractor / choclo
+  // Agricultura / Agronomía / Campo Digital → tractor en el maizal
   if (
     p.startsWith("/campo-digital") ||
     p.startsWith("/calculadora-dosis") ||
     p.startsWith("/clima") ||
     p.startsWith("/plan-riego")
   )
-    return "agronomia";
+    return "agricultura";
   // Ganadería → vacas
   if (
     p.startsWith("/animales") ||
@@ -123,9 +123,15 @@ function moduloDeRuta(pathname: string): string {
     p.startsWith("/arrendamientos")
   )
     return "finanzas";
+  // Maquinaria → maquinaria propia
+  if (p.startsWith("/maquinaria")) return "maquinaria";
+  // Logística e Inventario → logística propia
+  if (p.startsWith("/logistica-inventario")) return "logistica";
+  // Sostenibilidad → sostenibilidad propia
+  if (p.startsWith("/sostenibilidad")) return "sostenibilidad";
   // Personal → gente / manos
-  if (p.startsWith("/personal")) return "personal";
-  // Resto (Inicio, Logística, Maquinaria, Sostenibilidad, Calendario) → campo general
+  if (p.startsWith("/personal")) return "gente";
+  // Resto (Inicio, Calendario): sin imagen temática (lienzo normal)
   return "general";
 }
 
