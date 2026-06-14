@@ -199,9 +199,9 @@
   --sh-lg: 0 12px 32px -8px rgba(26,31,28,0.12), 0 4px 8px rgba(26,31,28,0.04);
 
   /* Typography */
-  --ff-display: var(--font-serif), "Instrument Serif", "Times New Roman", serif;
-  --ff-ui:      var(--font-inter), "Inter", -apple-system, system-ui, sans-serif;
-  --ff-mono:    var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+  --ff-display: "Instrument Serif", "Times New Roman", serif;
+  --ff-ui:      "Inter", -apple-system, system-ui, sans-serif;
+  --ff-mono:    "JetBrains Mono", ui-monospace, monospace;
 
   /* Densidad */
   --density: 1;
@@ -220,16 +220,16 @@
 }
 
 :root[data-font="grotesk"] {
-  --ff-display: var(--font-grotesk), system-ui, sans-serif;
-  --ff-ui: var(--font-inter), system-ui, sans-serif;
+  --ff-display: "Space Grotesk", system-ui, sans-serif;
+  --ff-ui: "Inter", system-ui, sans-serif;
 }
 :root[data-font="editorial"] {
-  --ff-display: var(--font-serif), serif;
-  --ff-ui: var(--font-inter), system-ui, sans-serif;
+  --ff-display: "Instrument Serif", serif;
+  --ff-ui: "Inter", system-ui, sans-serif;
 }
 :root[data-font="modern"] {
-  --ff-display: var(--font-grotesk), system-ui, sans-serif;
-  --ff-ui: var(--font-grotesk), system-ui, sans-serif;
+  --ff-display: "Space Grotesk", system-ui, sans-serif;
+  --ff-ui: "Space Grotesk", system-ui, sans-serif;
 }
 
 /* Dark mode */
