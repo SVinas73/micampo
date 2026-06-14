@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MiCampo — Rediseño</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif&family=Fraunces:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="styles.css"/>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="Icons.jsx"></script>
+<script type="text/babel" src="Data.jsx"></script>
+<script type="text/babel" src="Shell.jsx"></script>
+<script type="text/babel" src="Inicio.jsx"></script>
+<script type="text/babel" src="CampoDigital.jsx"></script>
+<script type="text/babel" src="Agronomia.jsx"></script>
+<script type="text/babel" src="Ganaderia.jsx"></script>
+
+<script type="text/babel">
+/* ============ TWEAKS ============ */
+const DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "light",
+  "palette": "natural",
+  "font": "modern",
+  "density": "compact",
+  "sidebarStyle": "default"
+}/*EDITMODE-END*/;
+
+function applyTweaks(t) {
+  const r = document.documentElement;
+  r.setAttribute("data-theme", t.theme);
+  r.setAttribute("data-palette", t.palette);
+  r.setAttribute("data-font", t.font);
+  r.setAttribute("data-density", t.density);
+  r.setAttribute("data-sidebar", t.sidebarStyle);
+}
+
+function Tweaks({ tweaks, setTweaks, open, onClose }) {
+  if (!open) return null;
+  const update = (k, v) => {
+    const next = { ...tweaks, [k]: v };
+    setTweaks(next);
+    applyTweaks(next);
+    try { window.parent.postMessage({ type: "__edit_mode_set_keys", edits: { [k]: v } }, "*"); } catch (e) {}
+  };
+
+  const Row = ({ label, options, value, k }) => (
+    <div className="mc-tweaks__row">
+      <div className="mc-tweaks__label">{label}</div>
+      <div className="mc-tweaks__opts">
+        {options.map(o => (
+          <button key={o.v} className={`mc-tweaks__opt ${value === o.v ? "is-on" : ""}`} onClick={() => update(k, o.v)}>{o.l}</button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="mc-tweaks">
+      <div className="mc-tweaks__head">
+        <div className="mc-tweaks__title">Tweaks</div>
+        <button className="mc-icon-btn" style={{ width: 28, height: 28, border: "none" }} onClick={onClose}><Icon name="x" size={14}/></button>
+      </div>
+      <div className="mc-tweaks__body">
+        <Row label="Modo" k="theme" value={tweaks.theme} options={[
+          { l: "Claro", v: "light" }, { l: "Oscuro", v: "dark" }
+        ]}/>
+        <Row label="Paleta" k="palette" value={tweaks.palette} options={[
+          { l: "Natural", v: "natural" },
+          { l: "Terracotta", v: "terracotta" },
+          { l: "Bosque", v: "forest" },
+        ]}/>
+        <Row label="Tipografía" k="font" value={tweaks.font} options={[
+          { l: "Editorial (Serif)", v: "editorial" },
+          { l: "Grotesk", v: "grotesk" },
+          { l: "Moderno", v: "modern" },
+        ]}/>
+        <Row label="Densidad" k="density" value={tweaks.density} options={[
+          { l: "Cómoda", v: "comfortable" },
+          { l: "Compacta", v: "compact" },
+        ]}/>
+      </div>
+    </div>
+  );
+}
+
+/* ============ APP ============ */
+function App() {
+  const { useState, useEffect } = React;
+  const [route, setRoute] = useState(() => {
+    try { return localStorage.getItem("micampo:route") || "inicio"; } catch(e) { return "inicio"; }
+  });
+  const [tweaks, setTweaks] = useState(DEFAULTS);
+  const [tweaksOpen, setTweaksOpen] = useState(false);
+
+  useEffect(() => { applyTweaks(tweaks); }, []);
+  useEffect(() => {
+    try { localStorage.setItem("micampo:route", route); } catch(e) {}
+  }, [route]);
+
+  // Edit mode wiring
+  useEffect(() => {
+    const handler = (ev) => {
+      if (!ev.data) return;
+      if (ev.data.type === "__activate_edit_mode") setTweaksOpen(true);
+      if (ev.data.type === "__deactivate_edit_mode") setTweaksOpen(false);
+    };
+    window.addEventListener("message", handler);
+    try { window.parent.postMessage({ type: "__edit_mode_available" }, "*"); } catch(e) {}
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  let Page = Inicio;
+  if (route === "inicio") Page = Inicio;
+  else if (route === "campo-digital") Page = CampoDigital;
+  else if (route === "calculadora") Page = Calculadora;
+  else if (route === "clima") Page = Clima;
+  else if (route === "plan-riego") Page = PlanRiego;
+  else if (route === "animales") Page = Animales;
+  else if (route === "mov-tropas") Page = MovTropas;
+
+  return (
+    <div className="mc-app">
+      <Sidebar active={route} onNav={setRoute}/>
+      <main className="mc-main">
+        <Page/>
+      </main>
+      <Tweaks tweaks={tweaks} setTweaks={setTweaks} open={tweaksOpen} onClose={() => setTweaksOpen(false)}/>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>

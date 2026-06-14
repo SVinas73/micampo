@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Poppins } from 'next/font/google'
 import "./globals.css";
 import { Providers } from "./providers";
 
-const poppins = Poppins({ 
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700']
-})
-
 export const metadata: Metadata = {
   title: "MiCampo - Gestión Agropecuaria",
-  description: "Plataforma integral para la gestión de tu campo",
+  description: "El sistema nervioso central del agro moderno",
 };
 
 export default function RootLayout({
@@ -19,8 +13,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
-      <body className={poppins.className}>
+    <html
+      lang="es"
+      data-theme="light"
+      data-palette="natural"
+      data-font="modern"
+      data-density="compact"
+    >
+      <head>
+        {/* Fuentes cargadas vía <link> (runtime, sin dependencia de red en build) — fiel al prototipo Figma */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>
