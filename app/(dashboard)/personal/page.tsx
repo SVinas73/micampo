@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon, KPI, Badge, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
+import { demo } from "@/lib/demo";
 
 /* ============ Tipos ============ */
 type Empleado = {
@@ -82,11 +83,11 @@ export default function PersonalPage() {
   const toast = useToast();
   const [tab, setTab] = useState("Equipo");
 
-  const [empleados, setEmpleados] = useState<Empleado[]>(DEMO_EMPLEADOS);
-  const [tareas, setTareas] = useState<Tarea[]>(DEMO_TAREAS);
-  const [pagos, setPagos] = useState<Pago[]>(DEMO_PAGOS);
-  const [contratistas, setContratistas] = useState<Contratista[]>(DEMO_CONTRATISTAS);
-  const [horasMes, setHorasMes] = useState(648);
+  const [empleados, setEmpleados] = useState<Empleado[]>(demo(DEMO_EMPLEADOS, []));
+  const [tareas, setTareas] = useState<Tarea[]>(demo(DEMO_TAREAS, []));
+  const [pagos, setPagos] = useState<Pago[]>(demo(DEMO_PAGOS, []));
+  const [contratistas, setContratistas] = useState<Contratista[]>(demo(DEMO_CONTRATISTAS, []));
+  const [horasMes, setHorasMes] = useState(demo(648, 0));
 
   const [modalEmp, setModalEmp] = useState(false);
   const [empForm, setEmpForm] = useState({ nombre: "", apellido: "", puesto: "", telefono: "", salario: "" });

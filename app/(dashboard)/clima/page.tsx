@@ -13,6 +13,7 @@ import {
   type LluviaResult,
   type AlertaResult,
 } from "@/components/clima/ClimaModales";
+import { demo } from "@/lib/demo";
 
 const TABS = ["Inicio", "Alertas", "Registro de Lluvias"];
 
@@ -54,9 +55,9 @@ function ClimaInner() {
   const [showAlerta, setShowAlerta] = useState(searchParams.get("modal") === "alerta");
   const [detalle, setDetalle] = useState<DayForecast | null>(null);
 
-  const [lotes, setLotes] = useState<LoteOpt[]>(DEMO_LOTES);
-  const [lluvias, setLluvias] = useState<LluviaRow[]>(DEMO_LLUVIAS);
-  const [alertas, setAlertas] = useState<AlertaRow[]>(DEMO_ALERTAS);
+  const [lotes, setLotes] = useState<LoteOpt[]>(demo(DEMO_LOTES, []));
+  const [lluvias, setLluvias] = useState<LluviaRow[]>(demo(DEMO_LLUVIAS, []));
+  const [alertas, setAlertas] = useState<AlertaRow[]>(demo(DEMO_ALERTAS, []));
   const [editLluvia, setEditLluvia] = useState<LluviaRow | null>(null);
 
   useEffect(() => {
@@ -256,10 +257,10 @@ function ClimaInner() {
       <Tabs tabs={TABS} active={tab} onChange={setTab} warnTabs={["Alertas"]} />
 
       <div className="grid g-cols-5">
-        <KPI label="Temperatura" value="28.6 °C" delta="Sensación 30°" trend="up" icon="thermometer" accent />
-        <KPI label="Viento" value="18 km/h" delta="NE · ráfagas 25" trend="up" icon="wind" />
-        <KPI label="Delta T" value="5" delta="✓ Apto pulverizar" trend="up" icon="activity" />
-        <KPI label="Lluvias últ. 7 días" value="40 mm" delta="vs prom 28 mm" trend="up" icon="droplet" />
+        <KPI label="Temperatura" value={demo("28.6 °C", "—")} delta={demo("Sensación 30°", "—")} trend="up" icon="thermometer" accent />
+        <KPI label="Viento" value={demo("18 km/h", "—")} delta={demo("NE · ráfagas 25", "—")} trend="up" icon="wind" />
+        <KPI label="Delta T" value={demo("5", "—")} delta={demo("✓ Apto pulverizar", "—")} trend="up" icon="activity" />
+        <KPI label="Lluvias últ. 7 días" value={demo("40 mm", "—")} delta={demo("vs prom 28 mm", "—")} trend="up" icon="droplet" />
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
 
@@ -332,7 +333,7 @@ function ClimaInicio({ onVerDetalle }: { onVerDetalle: (d: DayForecast) => void 
             </div>
           </div>
         </div>
-        <ForecastChart days={FORECAST_DAYS} onVerDetalle={onVerDetalle} />
+        <ForecastChart days={demo(FORECAST_DAYS, [])} onVerDetalle={onVerDetalle} />
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 1.3fr", gap: 14 }}>
@@ -481,19 +482,19 @@ function ClimaLluvias({
 }) {
   const [scope, setScope] = useState<"30d" | "mensual" | "anual">("mensual");
 
-  const dataMonth = [85, 110, 130, 95, 60, 25, 15, 35, 55, 95, 120, 140];
-  const histMonth = [90, 105, 118, 88, 72, 32, 18, 38, 62, 88, 115, 135];
-  const data30 = [4, 0, 0, 12, 8, 0, 0, 20, 32, 0, 0, 0, 4, 0, 0, 0, 8, 12, 0, 0, 5, 18, 0, 0, 6, 0, 0, 14, 0, 22];
-  const hist30 = [3, 2, 0, 9, 6, 0, 0, 18, 25, 0, 0, 0, 3, 0, 0, 0, 7, 10, 0, 0, 4, 15, 0, 0, 5, 0, 0, 11, 0, 18];
-  const dataYear = [612, 720, 685, 850, 740, 680];
-  const histYear = [590, 680, 710, 790, 760, 700];
+  const dataMonth = demo([85, 110, 130, 95, 60, 25, 15, 35, 55, 95, 120, 140], [] as number[]);
+  const histMonth = demo([90, 105, 118, 88, 72, 32, 18, 38, 62, 88, 115, 135], [] as number[]);
+  const data30 = demo([4, 0, 0, 12, 8, 0, 0, 20, 32, 0, 0, 0, 4, 0, 0, 0, 8, 12, 0, 0, 5, 18, 0, 0, 6, 0, 0, 14, 0, 22], [] as number[]);
+  const hist30 = demo([3, 2, 0, 9, 6, 0, 0, 18, 25, 0, 0, 0, 3, 0, 0, 0, 7, 10, 0, 0, 4, 15, 0, 0, 5, 0, 0, 11, 0, 18], [] as number[]);
+  const dataYear = demo([612, 720, 685, 850, 740, 680], [] as number[]);
+  const histYear = demo([590, 680, 710, 790, 760, 700], [] as number[]);
   const monthLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const yearLabels = ["2020", "2021", "2022", "2023", "2024", "2025"];
 
   const dataset = scope === "30d" ? data30 : scope === "mensual" ? dataMonth : dataYear;
   const histset = scope === "30d" ? hist30 : scope === "mensual" ? histMonth : histYear;
   const labels = scope === "30d" ? null : scope === "mensual" ? monthLabels : yearLabels;
-  const max = Math.max(...dataset, ...histset);
+  const max = Math.max(...dataset, ...histset, 1);
 
   return (
     <>
@@ -503,8 +504,8 @@ function ClimaLluvias({
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-blue-bg)", display: "grid", placeItems: "center", color: "var(--mc-blue)", flexShrink: 0, fontSize: 24 }}>💧</div>
             <div>
               <div className="text-xs text-muted">Acumulado del año</div>
-              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-blue)", fontWeight: 700, lineHeight: 1.1 }}>850 mm</div>
-              <div className="text-xs mt-4" style={{ color: "var(--mc-green-700)", fontWeight: 600 }}>+15% vs año pasado</div>
+              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-blue)", fontWeight: 700, lineHeight: 1.1 }}>{demo("850 mm", "—")}</div>
+              <div className="text-xs mt-4" style={{ color: "var(--mc-green-700)", fontWeight: 600 }}>{demo("+15% vs año pasado", "—")}</div>
             </div>
           </div>
         </div>
@@ -513,8 +514,8 @@ function ClimaLluvias({
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-blue-bg)", display: "grid", placeItems: "center", color: "var(--mc-blue)", flexShrink: 0, fontSize: 24 }}>📅</div>
             <div>
               <div className="text-xs text-muted">Promedio mensual</div>
-              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", fontWeight: 700, lineHeight: 1.1 }}>45 mm</div>
-              <div className="text-xs mt-4 text-muted">Faltan 20 mm para promedio</div>
+              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", fontWeight: 700, lineHeight: 1.1 }}>{demo("45 mm", "—")}</div>
+              <div className="text-xs mt-4 text-muted">{demo("Faltan 20 mm para promedio", "—")}</div>
             </div>
           </div>
         </div>
@@ -523,8 +524,8 @@ function ClimaLluvias({
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-red-bg)", display: "grid", placeItems: "center", color: "var(--mc-red)", flexShrink: 0, fontSize: 24 }}>⏱</div>
             <div>
               <div className="text-xs text-muted">Días sin lluvia</div>
-              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-red)", fontWeight: 700, lineHeight: 1.1 }}>8 Días</div>
-              <div className="text-xs mt-4" style={{ color: "var(--mc-red)", fontWeight: 600 }}>Suelo perdiendo humedad</div>
+              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-red)", fontWeight: 700, lineHeight: 1.1 }}>{demo("8 Días", "—")}</div>
+              <div className="text-xs mt-4" style={{ color: "var(--mc-red)", fontWeight: 600 }}>{demo("Suelo perdiendo humedad", "—")}</div>
             </div>
           </div>
         </div>

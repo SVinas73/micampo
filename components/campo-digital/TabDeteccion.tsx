@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, useToast } from "@/components/mc";
+import { demo } from "@/lib/demo";
 import { useSetHeaderActions } from "./ActionsContext";
 import { ReportarPlagaModal } from "./deteccion-ReportarModal";
 
@@ -50,7 +51,7 @@ export default function TabDeteccion() {
   const [sub, setSub] = useState("Información");
   const [reportarOpen, setReportarOpen] = useState(searchParams.get("modal") === "reportar");
   const [lotes, setLotes] = useState<{ id?: string; nombre: string; cultivo?: string }[]>([]);
-  const [alertas, setAlertas] = useState<AlertaInfo[]>(ALERTAS_DEMO);
+  const [alertas, setAlertas] = useState<AlertaInfo[]>(demo(ALERTAS_DEMO, []));
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -147,11 +148,11 @@ export default function TabDeteccion() {
       {reportarOpen && <ReportarPlagaModal lotes={lotes} onClose={() => setReportarOpen(false)} onConfirm={generarAlerta} />}
 
       <div className="grid g-cols-5">
-        <KPI label="Alertas Activas" value={String(alertas.length)} delta="2 críticas" trend="warn" icon="alert" warn />
-        <KPI label="Confianza IA" value="96%" delta="Alta precisión" trend="up" icon="target" accent ia />
-        <KPI label="Vigor Promedio (NDVI)" value="0.78" delta="(Alto)" trend="up" icon="leaf" />
-        <KPI label="Riesgo Economico" value="$1.250" delta="USD/Ha potencial" trend="warn" icon="dollar" />
-        <KPI label="Monitoreo Semanal" value="85%" delta="17/20 lotes" trend="up" icon="check" />
+        <KPI label="Alertas Activas" value={String(alertas.length)} delta={demo("2 críticas", "—")} trend="warn" icon="alert" warn />
+        <KPI label="Confianza IA" value={demo("96%", "—")} delta={demo("Alta precisión", "—")} trend="up" icon="target" accent ia />
+        <KPI label="Vigor Promedio (NDVI)" value={demo("0.78", "—")} delta={demo("(Alto)", "—")} trend="up" icon="leaf" />
+        <KPI label="Riesgo Economico" value={demo("$1.250", "—")} delta={demo("USD/Ha potencial", "—")} trend="warn" icon="dollar" />
+        <KPI label="Monitoreo Semanal" value={demo("85%", "—")} delta={demo("17/20 lotes", "—")} trend="up" icon="check" />
       </div>
 
       <SubTabs tabs={["Información", "Análisis (IA)"]} active={sub} onChange={setSub} />
@@ -278,11 +279,11 @@ function EstrategiaControl() {
 }
 
 function Probabilidades() {
-  const probs = [
+  const probs = demo([
     { rank: 1, nombre: "Roya Común", cientifico: "Puccinia sorghi", pct: 88, color: "#d13a3a", colorLight: "#e85f5f", tinte: "rgba(209,58,58,0.08)", tendencia: "up", deltaText: "+12% vs ayer", lotes: ["Lote 4", "Lote 7"] },
     { rank: 2, nombre: "Tizón del Maíz", cientifico: "Exserohilum turcicum", pct: 42, color: "#d9a538", colorLight: "#e8b859", tinte: "rgba(217,165,56,0.08)", tendencia: "flat", deltaText: "Estable", lotes: ["Lote 2"] },
     { rank: 3, nombre: "Cercospora", cientifico: "Mancha Gris", pct: 15, color: "#4f9d52", colorLight: "#6db870", tinte: "rgba(79,157,82,0.08)", tendencia: "down", deltaText: "Bajando", lotes: ["Lote 5 (Sector Norte)"] },
-  ];
+  ], [] as { rank: number; nombre: string; cientifico: string; pct: number; color: string; colorLight: string; tinte: string; tendencia: string; deltaText: string; lotes: string[] }[]);
   return (
     <div className="mc-card ia-card">
       <div className="mc-card__head">

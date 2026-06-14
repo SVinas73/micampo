@@ -496,6 +496,32 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .mc-main--wide { padding: 24px 40px 40px; }
 
+/* ---------- Fondo temático por módulo ----------
+   Cada módulo lleva su imagen de fondo (independiente del submódulo).
+   Una capa de color del lienzo (--mc-bg-overlay) se superpone con alta
+   opacidad para que la imagen quede como textura sutil y TODA la interfaz
+   —títulos, tablas, KPIs, formularios— siga siendo perfectamente legible. */
+:root {
+  --mc-bg-overlay: rgba(246, 245, 240, 0.90);
+}
+:root[data-theme="dark"] {
+  --mc-bg-overlay: rgba(17, 20, 15, 0.92);
+}
+.mc-main[data-modulo] {
+  background-image:
+    linear-gradient(var(--mc-bg-overlay), var(--mc-bg-overlay)),
+    var(--mc-modulo-img, none);
+  background-size: cover, cover;
+  background-position: center, center;
+  background-attachment: fixed, fixed;
+  background-repeat: no-repeat, no-repeat;
+}
+.mc-main[data-modulo="general"]    { --mc-modulo-img: url("/modulos/general.jpg"); }
+.mc-main[data-modulo="agronomia"]  { --mc-modulo-img: url("/modulos/agronomia.jpg"); }
+.mc-main[data-modulo="ganaderia"]  { --mc-modulo-img: url("/modulos/ganaderia.jpg"); }
+.mc-main[data-modulo="finanzas"]   { --mc-modulo-img: url("/modulos/finanzas.jpg"); }
+.mc-main[data-modulo="personal"]   { --mc-modulo-img: url("/modulos/personal.jpg"); }
+
 /* ---------- Topbar / page header ---------- */
 .mc-topbar {
   display: flex;

@@ -5,6 +5,7 @@ import { Icon, KPI, useToast, PageHeader, SubTabs } from "@/components/mc";
 import BalanceHidrico, { type PuntoBalance, type SugerenciaIA } from "@/components/plan-riego/BalanceHidrico";
 import AguaUlt30Dias, { type EventoAgua } from "@/components/plan-riego/AguaUlt30Dias";
 import RegistrarRiegoModal, { type RegistroRiego } from "@/components/plan-riego/RegistrarRiegoModal";
+import { demo } from "@/lib/demo";
 
 /* ============ Datos demo (Figma) ============ */
 const BALANCE_DEMO: PuntoBalance[] = [
@@ -43,13 +44,13 @@ function PlanRiegoInner() {
   const [sub, setSub] = useState("Inicio");
   const [riegoOpen, setRiegoOpen] = useState(false);
 
-  const [balance, setBalance] = useState<PuntoBalance[]>(BALANCE_DEMO);
-  const [sugerencias, setSugerencias] = useState<SugerenciaIA[]>(SUGERENCIAS_DEMO);
+  const [balance, setBalance] = useState<PuntoBalance[]>(demo(BALANCE_DEMO, []));
+  const [sugerencias, setSugerencias] = useState<SugerenciaIA[]>(demo(SUGERENCIAS_DEMO, []));
   const [estrategia, setEstrategia] = useState(75);
-  const [costoEvento, setCostoEvento] = useState(450);
+  const [costoEvento, setCostoEvento] = useState(demo(450, 0));
   const [cargando, setCargando] = useState(false);
 
-  const [eventos, setEventos] = useState<EventoAgua[]>(EVENTOS_DEMO);
+  const [eventos, setEventos] = useState<EventoAgua[]>(demo(EVENTOS_DEMO, []));
   const [planRiegoId, setPlanRiegoId] = useState<string | null>(null);
   const [loteId, setLoteId] = useState<string | null>(null);
 
@@ -187,11 +188,11 @@ function PlanRiegoInner() {
       />
 
       <div className="grid g-cols-5">
-        <KPI label="Estado Hídrico" value={<span style={{ color: "var(--mc-green-700)" }}>Bien Hidratado</span>} delta="✓ Lotes en confort" trend="up" icon="droplet" accent />
-        <KPI label="Agua Útil (Tanque)" value="45%" delta="120 mm disponibles" trend="up" icon="activity" />
-        <KPI label="Consumo Diario (ETo)" value="6 mm/día" delta="Maíz V6 · K=1.1" trend="up" icon="thermometer" />
-        <KPI label="Próximo Riego IA" value="24/09 5:00" delta="+15 mm sugeridos" trend="up" icon="calendar" ia />
-        <KPI label="Costo Proyectado" value="$12/mm" delta="Energía + insumo" trend="up" icon="dollar" />
+        <KPI label="Estado Hídrico" value={demo<React.ReactNode>(<span style={{ color: "var(--mc-green-700)" }}>Bien Hidratado</span>, "—")} delta={demo("✓ Lotes en confort", "—")} trend="up" icon="droplet" accent />
+        <KPI label="Agua Útil (Tanque)" value={demo("45%", "—")} delta={demo("120 mm disponibles", "—")} trend="up" icon="activity" />
+        <KPI label="Consumo Diario (ETo)" value={demo("6 mm/día", "—")} delta={demo("Maíz V6 · K=1.1", "—")} trend="up" icon="thermometer" />
+        <KPI label="Próximo Riego IA" value={demo("24/09 5:00", "—")} delta={demo("+15 mm sugeridos", "—")} trend="up" icon="calendar" ia />
+        <KPI label="Costo Proyectado" value={demo("$12/mm", "—")} delta={demo("Energía + insumo", "—")} trend="up" icon="dollar" />
       </div>
 
       <SubTabs tabs={["Inicio"]} active={sub} onChange={setSub} />

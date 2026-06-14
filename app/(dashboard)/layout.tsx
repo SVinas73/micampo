@@ -93,6 +93,42 @@ const SEARCH_INDEX: { label: string; href: string; group: string }[] = [
   { label: "Calendario", href: "/calendario", group: "Operaciones" },
 ];
 
+// Fondo temático por módulo: cada ruta pertenece a un módulo y hereda su imagen
+// de fondo (independientemente del submódulo/pestaña en la que se trabaje).
+function moduloDeRuta(pathname: string): string {
+  const p = pathname.split("?")[0];
+  // Agronomía / Campo Digital → tractor / choclo
+  if (
+    p.startsWith("/campo-digital") ||
+    p.startsWith("/calculadora-dosis") ||
+    p.startsWith("/clima") ||
+    p.startsWith("/plan-riego")
+  )
+    return "agronomia";
+  // Ganadería → vacas
+  if (
+    p.startsWith("/animales") ||
+    p.startsWith("/mov-tropas") ||
+    p.startsWith("/produccion-lechera") ||
+    p.startsWith("/ganaderia-avanzada") ||
+    p.startsWith("/trazabilidad")
+  )
+    return "ganaderia";
+  // Finanzas → monedas / plantas
+  if (
+    p.startsWith("/finanzas") ||
+    p.startsWith("/costos") ||
+    p.startsWith("/conciliacion-bancaria") ||
+    p.startsWith("/comercializacion") ||
+    p.startsWith("/arrendamientos")
+  )
+    return "finanzas";
+  // Personal → gente / manos
+  if (p.startsWith("/personal")) return "personal";
+  // Resto (Inicio, Logística, Maquinaria, Sostenibilidad, Calendario) → campo general
+  return "general";
+}
+
 function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState("");
   const router = useRouter();
@@ -413,7 +449,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="mc-main">{children}</main>
+      <main className="mc-main" data-modulo={moduloDeRuta(pathname)}>{children}</main>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)} />
