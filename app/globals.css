@@ -498,18 +498,27 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* ---------- Fondo temático por módulo ----------
    Cada módulo lleva su imagen de fondo (independiente del submódulo).
-   Una capa de color del lienzo (--mc-bg-overlay) se superpone con alta
-   opacidad para que la imagen quede como textura sutil y TODA la interfaz
-   —títulos, tablas, KPIs, formularios— siga siendo perfectamente legible. */
+   La imagen se ve CLARAMENTE en el cuerpo de la pantalla; las tarjetas
+   (mc-card / mc-kpi / mc-table) son opacas, así que el contenido siempre
+   es legible. Una franja superior con más velo protege el título de la
+   página (que va directo sobre el lienzo) para que se lea sin problema. */
 :root {
-  --mc-bg-overlay: rgba(246, 245, 240, 0.90);
+  --mc-ovl-strong: rgba(246, 245, 240, 0.86);
+  --mc-ovl-soft:   rgba(246, 245, 240, 0.50);
 }
 :root[data-theme="dark"] {
-  --mc-bg-overlay: rgba(17, 20, 15, 0.92);
+  --mc-ovl-strong: rgba(17, 20, 15, 0.88);
+  --mc-ovl-soft:   rgba(17, 20, 15, 0.62);
 }
 .mc-main[data-modulo] {
   background-image:
-    linear-gradient(var(--mc-bg-overlay), var(--mc-bg-overlay)),
+    linear-gradient(
+      to bottom,
+      var(--mc-ovl-strong) 0,
+      var(--mc-ovl-strong) 96px,
+      var(--mc-ovl-soft) 320px,
+      var(--mc-ovl-soft) 100%
+    ),
     var(--mc-modulo-img, none);
   background-size: cover, cover;
   background-position: center, center;
