@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Icon } from "@/components/mc";
+import { demo } from "@/lib/demo";
 
 /* ========== MODAL Reportar Plaga o Enfermedad (Figma) ========== */
 const SUGERENCIAS = ["Roya Común (Puccinia)", "Pulgón Verde", "Oruga Cogollera (Spodoptera)", "Mancha Marrón", "Esclerotinia", "Fusarium", "Mildiu", "Carbón"];
@@ -15,7 +16,7 @@ export function ReportarPlagaModal({
   onClose: () => void;
   onConfirm: (data: { loteId?: string; plaga: string; tipo: string; incidencia: number; observaciones: string }) => Promise<void> | void;
 }) {
-  const lista = lotes.length > 0 ? lotes : [{ id: undefined, nombre: "Lote 4 - Maíz (V6)", cultivo: "Maíz" }];
+  const lista = lotes.length > 0 ? lotes : demo([{ id: undefined, nombre: "Lote 4 - Maíz (V6)", cultivo: "Maíz" }], [] as { id?: string; nombre: string; cultivo?: string }[]);
   const [loteIdx, setLoteIdx] = useState(0);
   const [categoria, setCategoria] = useState<"Insecto" | "Hongo" | "Maleza">("Insecto");
   const [busqueda, setBusqueda] = useState("");

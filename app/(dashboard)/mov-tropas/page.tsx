@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, Badge, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
+import { demo } from "@/lib/demo";
 
 type Mov = {
   f: string;
@@ -36,7 +37,7 @@ function MovTropasInner() {
   const searchParams = useSearchParams();
   const toast = useToast();
   const [tab, setTab] = useState("Resumen");
-  const [movs, setMovs] = useState<Mov[]>(DEMO_MOVS);
+  const [movs, setMovs] = useState<Mov[]>(demo(DEMO_MOVS, []));
   const [modal, setModal] = useState(searchParams.get("modal") === "nuevo");
   const [form, setForm] = useState({
     fecha: new Date().toISOString().slice(0, 10),
@@ -199,10 +200,10 @@ function MovResumen({ movs }: { movs: Mov[] }) {
   return (
     <>
       <div className="grid g-cols-4">
-        <KPI label="Movs. este mes" value={String(movs.length)} delta="+3 vs mes pasado" trend="up" icon="route" accent />
-        <KPI label="Cabezas movidas" value={totalCab.toLocaleString("es-AR")} delta="5 destinos" trend="up" icon="truck" />
+        <KPI label="Movs. este mes" value={String(movs.length)} delta={demo("+3 vs mes pasado", "—")} trend="up" icon="route" accent />
+        <KPI label="Cabezas movidas" value={totalCab.toLocaleString("es-AR")} delta={demo("5 destinos", "—")} trend="up" icon="truck" />
         <KPI label="DT-e emitidos" value={String(movs.length - pendientes)} delta={`${pendientes} pendiente firma`} trend="warn" icon="edit" />
-        <KPI label="Km recorridos" value="1,240" delta="Transporte propio" trend="up" icon="map" />
+        <KPI label="Km recorridos" value={demo("1,240", "0")} delta={demo("Transporte propio", "—")} trend="up" icon="map" />
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1.4fr 1fr", gap: 14 }}>

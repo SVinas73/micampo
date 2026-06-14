@@ -13,6 +13,7 @@ import {
   TIPO_A_CATEGORIA,
 } from "@/components/calculadora/types";
 import { PRESETS, HISTORIAL_DEMO, CONFIG_VACIA } from "@/components/calculadora/presets";
+import { demo } from "@/lib/demo";
 import {
   caldoTotal,
   cargas,
@@ -49,7 +50,7 @@ function CalculadoraInner() {
 
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [config, setConfig] = useState<ConfigCalculo>({ ...CONFIG_VACIA, productos: [] });
-  const [historial, setHistorial] = useState<HistRow[]>(HISTORIAL_DEMO);
+  const [historial, setHistorial] = useState<HistRow[]>(demo(HISTORIAL_DEMO, []));
 
   // sincroniza el tab con el query param (atajos del dashboard)
   useEffect(() => {
@@ -164,11 +165,11 @@ function TabInicio({ onAbrir, onPreset, onNuevo }: { onAbrir: (tipo: string) => 
   return (
     <>
       <div className="grid g-cols-5">
-        <KPI label="Cálculos este mes" value="42" delta="+12 vs mes pasado" trend="up" icon="flask" accent />
-        <KPI label="Insumos dosificados" value="8,240 L" delta="glifosato + 2,4-D" trend="up" icon="droplet" />
-        <KPI label="Costo estimado" value="$1.2M" delta="Campaña actual" trend="up" icon="dollar" />
-        <KPI label="Ahorro vs ficha técnica" value="7.3%" delta="Por ajuste de dosis" trend="up" icon="target" />
-        <KPI label="Producto más usado" value="Glifosato 48%" delta="18 cálculos · 3.060 L" trend="up" icon="leaf" />
+        <KPI label="Cálculos este mes" value={demo("42", "0")} delta={demo("+12 vs mes pasado", "—")} trend="up" icon="flask" accent />
+        <KPI label="Insumos dosificados" value={demo("8,240 L", "—")} delta={demo("glifosato + 2,4-D", "—")} trend="up" icon="droplet" />
+        <KPI label="Costo estimado" value={demo("$1.2M", "—")} delta={demo("Campaña actual", "—")} trend="up" icon="dollar" />
+        <KPI label="Ahorro vs ficha técnica" value={demo("7.3%", "—")} delta={demo("Por ajuste de dosis", "—")} trend="up" icon="target" />
+        <KPI label="Producto más usado" value={demo("Glifosato 48%", "—")} delta={demo("18 cálculos · 3.060 L", "—")} trend="up" icon="leaf" />
       </div>
       <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
         <button className="mc-btn mc-btn--secondary" onClick={onPreset}>

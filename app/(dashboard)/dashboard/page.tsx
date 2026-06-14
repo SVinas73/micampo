@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Icon, Badge, Modal, Field, Alerta, useToast } from "@/components/mc";
+import { demo } from "@/lib/demo";
 
 /* ============ KPIs disponibles ============ */
 type KpiCfg = {
@@ -17,18 +18,18 @@ type KpiCfg = {
 };
 
 const ALL_KPIS_BASE: Record<string, KpiCfg> = {
-  hectareas: { label: "Hectáreas productivas", value: "558 Ha", delta: "+3.2% vs campaña ant.", trend: "up", icon: "map", accent: true },
-  cabezas: { label: "Cabezas de ganado", value: "1,284", delta: "+24 últ. 30d", trend: "up", icon: "cow" },
-  ingresosMes: { label: "Ingresos del mes", value: "$8.6M", delta: "+12% vs mes ant.", trend: "up", icon: "dollar" },
-  labores: { label: "Labores pendientes", value: "17", delta: "3 atrasadas", trend: "warn", icon: "wrench", warn: true },
-  litros: { label: "Litros prom. diario", value: "4,820 L", delta: "+180L vs ayer", trend: "up", icon: "droplet" },
-  margen: { label: "Margen bruto est.", value: "$2.8M", delta: "+0.4M ajuste", trend: "up", icon: "activity" },
-  prenez: { label: "Preñez rodeo", value: "78%", delta: "Tacto parcial", trend: "up", icon: "heart" },
-  agua: { label: "Reserva agua útil", value: "62%", delta: "-4 pts vs ayer", trend: "down", icon: "droplet" },
-  ingresosProy: { label: "Ingresos proy. campaña", value: "$48.2M", delta: "+18% est.", trend: "up", icon: "dollar" },
-  hectareasSemb: { label: "Hectáreas sembradas", value: "426 Ha", delta: "76% del campo", trend: "up", icon: "sprout" },
-  alertas: { label: "Alertas activas", value: "5", delta: "2 críticas", trend: "warn", icon: "alert" },
-  rinde: { label: "Rinde promedio est.", value: "6.6 t/Ha", delta: "+0.4 vs ant.", trend: "up", icon: "activity" },
+  hectareas: { label: "Hectáreas productivas", value: demo("558 Ha", "—"), delta: demo("+3.2% vs campaña ant.", "—"), trend: "up", icon: "map", accent: true },
+  cabezas: { label: "Cabezas de ganado", value: demo("1,284", "0"), delta: demo("+24 últ. 30d", "—"), trend: "up", icon: "cow" },
+  ingresosMes: { label: "Ingresos del mes", value: demo("$8.6M", "—"), delta: demo("+12% vs mes ant.", "—"), trend: "up", icon: "dollar" },
+  labores: { label: "Labores pendientes", value: demo("17", "0"), delta: demo("3 atrasadas", "—"), trend: "warn", icon: "wrench", warn: true },
+  litros: { label: "Litros prom. diario", value: demo("4,820 L", "—"), delta: demo("+180L vs ayer", "—"), trend: "up", icon: "droplet" },
+  margen: { label: "Margen bruto est.", value: demo("$2.8M", "—"), delta: demo("+0.4M ajuste", "—"), trend: "up", icon: "activity" },
+  prenez: { label: "Preñez rodeo", value: demo("78%", "—"), delta: demo("Tacto parcial", "—"), trend: "up", icon: "heart" },
+  agua: { label: "Reserva agua útil", value: demo("62%", "—"), delta: demo("-4 pts vs ayer", "—"), trend: "down", icon: "droplet" },
+  ingresosProy: { label: "Ingresos proy. campaña", value: demo("$48.2M", "—"), delta: demo("+18% est.", "—"), trend: "up", icon: "dollar" },
+  hectareasSemb: { label: "Hectáreas sembradas", value: demo("426 Ha", "—"), delta: demo("76% del campo", "—"), trend: "up", icon: "sprout" },
+  alertas: { label: "Alertas activas", value: demo("5", "0"), delta: demo("2 críticas", "—"), trend: "warn", icon: "alert" },
+  rinde: { label: "Rinde promedio est.", value: demo("6.6 t/Ha", "—"), delta: demo("+0.4 vs ant.", "—"), trend: "up", icon: "activity" },
 };
 
 const DEFAULT_KPI_ORDER = ["hectareas", "cabezas", "ingresosMes", "labores"];
@@ -213,12 +214,12 @@ export default function InicioPage() {
         estado: l.estado || "Programada",
       }));
     if (reales.length > 0) return reales;
-    return [
+    return demo([
       { tipo: "Riego programado", lote: "Lote 4 - El Bajo", fecha: "21 jun · 08:00", estado: "Próxima" },
       { tipo: "Fertilización", lote: "Norte 1", fecha: "22 jun · 09:30", estado: "Próxima" },
       { tipo: "Monitoreo de plagas", lote: "Este 1", fecha: "23 jun · 10:00", estado: "Próxima" },
       { tipo: "Pesada mensual", lote: "Tropa A", fecha: "25 jun · 07:00", estado: "Próxima" },
-    ];
+    ], [] as { tipo: string; lote: string; fecha: string; estado: string }[]);
   }, [labores]);
 
   const ganttEvents = useMemo(() => proximasTareas.map((t) => t.tipo), [proximasTareas]);
@@ -320,9 +321,14 @@ export default function InicioPage() {
                   <div className="mc-pop">
                     <div className="mc-card__title" style={{ marginBottom: 10 }}>Notificaciones</div>
                     <div className="col gap-8">
-                      <Alerta nivel="red" title="Plaga detectada" body="Chinches verdes en Lote Norte 1 · superó umbral" />
-                      <Alerta nivel="orange" title="Ventana de pulverización cerrada" body="Viento >20km/h las próximas 12hs" />
-                      <Alerta nivel="blue" title="Cosecha lista" body="Maíz Lote Este 1 · humedad 14.5%" />
+                      {demo(
+                        <>
+                          <Alerta nivel="red" title="Plaga detectada" body="Chinches verdes en Lote Norte 1 · superó umbral" />
+                          <Alerta nivel="orange" title="Ventana de pulverización cerrada" body="Viento >20km/h las próximas 12hs" />
+                          <Alerta nivel="blue" title="Cosecha lista" body="Maíz Lote Este 1 · humedad 14.5%" />
+                        </>,
+                        <div className="text-sm text-muted">Sin notificaciones.</div>
+                      )}
                     </div>
                   </div>
                 </>
@@ -407,13 +413,18 @@ export default function InicioPage() {
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Alertas activas</div>
-            <span className="mc-badge mc-badge--red"><span className="mc-badge__dot"></span>5 activas</span>
+            <span className="mc-badge mc-badge--red"><span className="mc-badge__dot"></span>{demo("5", "0")} activas</span>
           </div>
           <div className="col gap-8">
-            <Alerta nivel="red" title="Plaga detectada" body="Chinches verdes en Lote Norte 1 · superó umbral" />
-            <Alerta nivel="orange" title="Ventana de pulverización cerrada" body="Viento >20km/h las próximas 12hs" />
-            <Alerta nivel="amber" title="Stock bajo" body="Urea · quedan 4 días de consumo" />
-            <Alerta nivel="blue" title="Cosecha lista" body="Maíz Lote Este 1 · humedad 14.5%" />
+            {demo(
+              <>
+                <Alerta nivel="red" title="Plaga detectada" body="Chinches verdes en Lote Norte 1 · superó umbral" />
+                <Alerta nivel="orange" title="Ventana de pulverización cerrada" body="Viento >20km/h las próximas 12hs" />
+                <Alerta nivel="amber" title="Stock bajo" body="Urea · quedan 4 días de consumo" />
+                <Alerta nivel="blue" title="Cosecha lista" body="Maíz Lote Este 1 · humedad 14.5%" />
+              </>,
+              <div className="text-sm text-muted">Sin alertas activas.</div>
+            )}
           </div>
         </div>
       </div>
@@ -684,13 +695,13 @@ function ResumenSuelo({ onVer }: { onVer: () => void }) {
 
 /* ============ DISTRIBUCIÓN DE CULTIVOS (donut) ============ */
 function DistribucionCultivos({ cultivos, onVer }: { cultivos: { nombre: string; ha: number; color: string }[] | null; onVer: () => void }) {
-  const data = cultivos && cultivos.length ? cultivos : [
+  const data = cultivos && cultivos.length ? cultivos : demo([
     { nombre: "Maíz", ha: 45.2, color: "#d9a538" },
     { nombre: "Soja", ha: 32.8, color: "#4f9d52" },
     { nombre: "Trigo", ha: 25.6, color: "#a88032" },
     { nombre: "Cebada", ha: 12.5, color: "#9ecf8c" },
     { nombre: "Otros", ha: 9.5, color: "#cbd5c5" },
-  ];
+  ], [] as { nombre: string; ha: number; color: string }[]);
   const total = data.reduce((s, c) => s + c.ha, 0);
   const r = 64, cx = 84, cy = 84, sw = 20, gap = 3;
   let cum = 0;
@@ -769,8 +780,8 @@ function ProximasTareas({ tareas, onVer, onNueva }: { tareas: { tipo: string; lo
 function Tendencia({ balance }: { balance: { meses: string[]; ingresos: number[]; gastos: number[] } | null }) {
   const usaBalance = !!balance;
   const labels = balance?.meses || ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-  const serieA = balance?.ingresos || [72, 68, 64, 62, 52, 58, 62];
-  const serieB = balance?.gastos || [55, 58, 52, 50, 48, 51, 55];
+  const serieA = balance?.ingresos || demo([72, 68, 64, 62, 52, 58, 62], [0, 0, 0, 0, 0, 0, 0]);
+  const serieB = balance?.gastos || demo([55, 58, 52, 50, 48, 51, 55], [0, 0, 0, 0, 0, 0, 0]);
   const titulo = usaBalance ? "Balance mensual" : "Tendencia de humedad del suelo";
   const sub = usaBalance ? "Ingresos vs. gastos (M$)" : "Actual vs. pronóstico (%)";
   const W = 520, H = 200, padL = 34, padR = 14, padT = 16, padB = 28;
@@ -815,14 +826,14 @@ function Tendencia({ balance }: { balance: { meses: string[]; ingresos: number[]
 
 /* ============ ÚLTIMAS ACTIVIDADES ============ */
 function UltimasActividades({ onVerTodo }: { onVerTodo: () => void }) {
-  const activs = [
+  const activs = demo([
     { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", emoji: "🌧️", time: "Hace 2 horas" },
     { tipo: "user", inicial: "J", color: "#d9a538", quien: "Joaquin", verb: "finalizó", obj: "Siembra", lote: "Lote 1", emoji: "🚜", time: "Hace 5 horas" },
     { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", emoji: "🐛", time: "Ayer" },
     { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de Cultivo", lote: "Lote 4", emoji: "📷", time: "Ayer" },
     { tipo: "user", inicial: "M", color: "#e7892b", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", emoji: "💧", time: "Hace 2 días" },
     { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "completó", obj: "Análisis IA de NDVI", lote: "Todos", emoji: "📊", time: "Hace 2 días" },
-  ];
+  ], [] as { tipo: string; inicial: string; color: string; quien: string; verb: string; obj: string; lote: string; emoji: string; time: string }[]);
   return (
     <div className="mc-card">
       <div className="mc-card__head">

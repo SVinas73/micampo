@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, Modal, Field, useToast } from "@/components/mc";
+import { demo } from "@/lib/demo";
 import { useSetHeaderActions } from "./ActionsContext";
 import { NuevaSiembraModal, NuevaCosechaModal, type SiembraData, type CosechaData } from "./cultivos-Modales";
 
@@ -56,11 +57,11 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [siembraOpen, setSiembraOpen] = useState(searchParams.get("modal") === "siembra");
   const [cosechaOpen, setCosechaOpen] = useState(false);
   const [analisisOpen, setAnalisisOpen] = useState(false);
-  const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number }[]>([
+  const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number }[]>(demo([
     { nombre: "Lote 1 - Vacío", ha: 70 },
     { nombre: "Lote 4 - El Bajo", ha: 120 },
     { nombre: "Lote 5 - Sur", ha: 85 },
-  ]);
+  ], []));
 
   useEffect(() => {
     fetch("/api/lotes")
@@ -144,10 +145,10 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
       {siembraOpen && <NuevaSiembraModal lotes={lotes} onClose={() => setSiembraOpen(false)} onConfirm={guardarSiembra} />}
       {cosechaOpen && (
         <NuevaCosechaModal
-          cultivosListos={[
+          cultivosListos={demo([
             { loteId: lotes[1]?.id, lote: "Lote 4", cultivo: "Maíz", estado: "Listo para cosecha", madurez: 100, humedad: 14 },
             { loteId: lotes[2]?.id, lote: "Lote 2", cultivo: "Soja", estado: "En crecimiento", madurez: 85, humedad: 18 },
-          ]}
+          ], [] as { loteId?: string; lote: string; cultivo: string; estado: string; madurez: number; humedad: number }[])}
           onClose={() => setCosechaOpen(false)}
           onConfirm={guardarCosecha}
         />
@@ -156,29 +157,29 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
 
       {sub === "Estados" && (
         <div className="grid g-cols-5">
-          <KPI label="Superficie Sembrada" value="235 Ha" delta="84% del campo" trend="up" icon="sprout" accent />
-          <KPI label="Cosecha Total" value="2.300 Tn" delta="+14% vs anterior" trend="up" icon="wrench" />
-          <KPI label="Próxima Cosecha" value="Lote 5" delta="06 oct · Soja" trend="up" icon="calendar" />
-          <KPI label="Lotes Listos" value="3" delta="Para sembrar" trend="up" icon="check" />
-          <KPI label="Lotes Vacíos" value="5" delta="Sin asignar" trend="warn" icon="alert" />
+          <KPI label="Superficie Sembrada" value={demo("235 Ha", "—")} delta={demo("84% del campo", "—")} trend="up" icon="sprout" accent />
+          <KPI label="Cosecha Total" value={demo("2.300 Tn", "—")} delta={demo("+14% vs anterior", "—")} trend="up" icon="wrench" />
+          <KPI label="Próxima Cosecha" value={demo("Lote 5", "—")} delta={demo("06 oct · Soja", "—")} trend="up" icon="calendar" />
+          <KPI label="Lotes Listos" value={demo("3", "0")} delta={demo("Para sembrar", "—")} trend="up" icon="check" />
+          <KPI label="Lotes Vacíos" value={demo("5", "0")} delta={demo("Sin asignar", "—")} trend="warn" icon="alert" />
         </div>
       )}
       {sub === "Planificador de Siembra (IA)" && (
         <div className="grid g-cols-5">
-          <KPI label="Planes Generados" value="3" delta="2 esta semana" trend="up" icon="sprout" accent />
-          <KPI label="Planes Aprobados" value="2" delta="67% conversión" trend="up" icon="check" />
-          <KPI label="Superficie Planificada" value="850 Ha" delta="Campaña 25/26" trend="up" icon="map" />
-          <KPI label="Inversión Estimada" value="$162.500 USD" delta="0 ejecutado" trend="up" icon="dollar" />
-          <KPI label="Próxima Siembra" value="03/12/25" delta="Maíz Tardío" trend="up" icon="calendar" />
+          <KPI label="Planes Generados" value={demo("3", "0")} delta={demo("2 esta semana", "—")} trend="up" icon="sprout" accent />
+          <KPI label="Planes Aprobados" value={demo("2", "0")} delta={demo("67% conversión", "—")} trend="up" icon="check" />
+          <KPI label="Superficie Planificada" value={demo("850 Ha", "—")} delta={demo("Campaña 25/26", "—")} trend="up" icon="map" />
+          <KPI label="Inversión Estimada" value={demo("$162.500 USD", "—")} delta={demo("0 ejecutado", "—")} trend="up" icon="dollar" />
+          <KPI label="Próxima Siembra" value={demo("03/12/25", "—")} delta={demo("Maíz Tardío", "—")} trend="up" icon="calendar" />
         </div>
       )}
       {sub === "Análisis de Suelo" && (
         <div className="grid g-cols-5">
-          <KPI label="Análisis del Año" value="14" delta="+3 este mes" trend="up" icon="leaf" accent />
-          <KPI label="Lotes Críticos" value="2" delta="P bajo · Norte/Oeste" trend="warn" icon="alert" warn />
-          <KPI label="Lotes Óptimos" value="9" delta="64% del total" trend="up" icon="check" />
-          <KPI label="pH Promedio" value="6.4" delta="Rango óptimo" trend="up" icon="activity" />
-          <KPI label="MO Promedio" value="2.6%" delta="-0.1 vs 23/24" trend="down" icon="sprout" />
+          <KPI label="Análisis del Año" value={demo("14", "0")} delta={demo("+3 este mes", "—")} trend="up" icon="leaf" accent />
+          <KPI label="Lotes Críticos" value={demo("2", "0")} delta={demo("P bajo · Norte/Oeste", "—")} trend="warn" icon="alert" warn />
+          <KPI label="Lotes Óptimos" value={demo("9", "0")} delta={demo("64% del total", "—")} trend="up" icon="check" />
+          <KPI label="pH Promedio" value={demo("6.4", "—")} delta={demo("Rango óptimo", "—")} trend="up" icon="activity" />
+          <KPI label="MO Promedio" value={demo("2.6%", "—")} delta={demo("-0.1 vs 23/24", "—")} trend="down" icon="sprout" />
         </div>
       )}
 
@@ -195,10 +196,10 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
 function CultivosEstados({ onNuevaTarea }: { onNuevaTarea: (lote: string) => void }) {
   const [filtro, setFiltro] = useState(false);
   const [soloActivos, setSoloActivos] = useState(false);
-  const lotesEstados = [
+  const lotesEstados = demo([
     { id: "LOTE 4", cultivo: "Maíz", color: "#4f9d52", bg: "#f1faf2", siembra: "An 9/3/2025", semilla: "DK-7210", densidad: "300 kpa", inversion: "$30.000", estadio: "V6 - Vegetativo", agua: "140 mm", gdd: "450 GDD", fertilizacion: "Últ. Fertilización", monitoreo: "Próx. Monitoreo", cosechaFecha: "Est. 03/6/2026", rinde: "8.5 Tn/Ha ↑", destino: "—", progress: 40, has: 120 },
     { id: "LOTE 5", cultivo: "Soja", color: "#3aa6d9", bg: "#f0f7fc", siembra: "Junio", semilla: "SY 5x1", densidad: "200 kpa", inversion: "$25.000", estadio: "V6 - Vegetativo", agua: "140 mm", gdd: "450 GDD", fertilizacion: "Últ. Fertilización", monitoreo: "Próx. Monitoreo", cosechaFecha: "Est. 06/10/2026", rinde: "3.2 Tn/Ha →", destino: "—", progress: 28, has: 85 },
-  ];
+  ], [] as { id: string; cultivo: string; color: string; bg: string; siembra: string; semilla: string; densidad: string; inversion: string; estadio: string; agua: string; gdd: string; fertilizacion: string; monitoreo: string; cosechaFecha: string; rinde: string; destino: string; progress: number; has: number }[]);
   return (
     <div className="grid" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
       <div className="mc-card">
@@ -424,8 +425,8 @@ function CultivosPlanificador({
   lotes: { id?: string; nombre: string; ha: number }[];
   onEditar: () => void;
 }) {
-  const [activos, setActivos] = useState<PlanActivo[]>(PLANES_ACTIVOS_DEMO);
-  const [recomendados, setRecomendados] = useState<PlanIA[]>(PLANES_IA_DEMO);
+  const [activos, setActivos] = useState<PlanActivo[]>(demo(PLANES_ACTIVOS_DEMO, []));
+  const [recomendados, setRecomendados] = useState<PlanIA[]>(demo(PLANES_IA_DEMO, []));
   const [generando, setGenerando] = useState(false);
 
   useEffect(() => {
@@ -669,12 +670,12 @@ function CultivosPlanificador({
 type AnalisisRow = { lote: string; cultivo: string; n: number; p: number; k: number; ph: number; mo: string; phStatus: string; moStatus: string };
 
 function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }) {
-  const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>([
+  const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>(demo([
     { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 40, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
     { lote: "Lote 12 - Norte", cultivo: "Trigo Ciclo Corto · Hace 3 días", n: 95, p: 75, k: 60, ph: 5.2, mo: "1.9%", phStatus: "warn", moStatus: "warn" },
     { lote: "Lote 7 - La Loma", cultivo: "Soja de Primera · Hace 1 mes", n: 30, p: 85, k: 55, ph: 5.8, mo: "3.2%", phStatus: "warn", moStatus: "ok" },
     { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 20, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
-  ]);
+  ], [] as AnalisisRow[]));
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
   const [evolFiltro, setEvolFiltro] = useState<"Tipo" | "Lote">("Tipo");
 
@@ -700,12 +701,12 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
       .catch(() => {});
   }, []);
 
-  const labResults = [
+  const labResults = demo([
     { fecha: "15/10/2025", lote: "Lote Norte", prof: "0-20", p: "8 ppm", pWarn: true, n: 45, ph: "5.5", phWarn: true, estado: "Crítico", estadoColor: "red" },
     { fecha: "14/10/2025", lote: "Lote Sur", prof: "0-20", p: "18 ppm", pWarn: false, n: 60, ph: "6.2", phWarn: false, estado: "Alerta", estadoColor: "amber" },
     { fecha: "12/10/2025", lote: "Lote Este", prof: "0-20", p: "25 ppm", pWarn: false, n: 75, ph: "6.8", phWarn: false, estado: "Óptimo", estadoColor: "green" },
     { fecha: "10/10/2025", lote: "Lote Oeste", prof: "20-40", p: "12 ppm", pWarn: true, n: 50, ph: "6.0", phWarn: false, estado: "Alerta", estadoColor: "amber" },
-  ];
+  ], [] as { fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]);
 
   const descargarPDF = async (titulo: string, lineas: string[]) => {
     const { default: jsPDF } = await import("jspdf");

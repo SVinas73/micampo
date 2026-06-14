@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon, KPI, Badge, Modal, Field, Prog, FeedRow, useToast, PageHeader, Tabs } from "@/components/mc";
+import { demo } from "@/lib/demo";
 
 /* ============ Datos demo (Figma) ============ */
 type AnimalRow = {
@@ -46,7 +47,7 @@ function AnimalesInner() {
 
   const initialTab = TABS.includes(searchParams.get("tab") || "") ? (searchParams.get("tab") as string) : "Resumen";
   const [tab, setTab] = useState(initialTab);
-  const [animales, setAnimales] = useState<AnimalRow[]>(DEMO_ANIMALES);
+  const [animales, setAnimales] = useState<AnimalRow[]>(demo(DEMO_ANIMALES, []));
   const [totalReal, setTotalReal] = useState<number | null>(null);
   const [altaOpen, setAltaOpen] = useState(searchParams.get("modal") === "nuevo");
   const [altaForm, setAltaForm] = useState({
@@ -133,7 +134,7 @@ function AnimalesInner() {
     toast.show("Ganado exportado a CSV");
   };
 
-  const total = totalReal ?? 1284;
+  const total = totalReal ?? demo(1284, 0);
 
   return (
     <div className="col gap-20">
@@ -244,10 +245,10 @@ function AnimResumen({ total, onVerSanidad }: { total: number; onVerSanidad: () 
   return (
     <>
       <div className="grid g-cols-4">
-        <KPI label="Cabezas totales" value={total.toLocaleString("es-AR")} delta="+24 últimos 30d" trend="up" icon="cow" accent />
-        <KPI label="Peso promedio" value="412 kg" delta="+8 kg vs mes ant." trend="up" icon="scale" />
-        <KPI label="Preñez general" value="78%" delta="Tacto parcial" trend="up" icon="heart" />
-        <KPI label="Sanidad pendiente" value="32" delta="Vacunación aftosa" trend="warn" icon="syringe" warn />
+        <KPI label="Cabezas totales" value={total.toLocaleString("es-AR")} delta={demo("+24 últimos 30d", "—")} trend="up" icon="cow" accent />
+        <KPI label="Peso promedio" value={demo("412 kg", "—")} delta={demo("+8 kg vs mes ant.", "—")} trend="up" icon="scale" />
+        <KPI label="Preñez general" value={demo("78%", "—")} delta={demo("Tacto parcial", "—")} trend="up" icon="heart" />
+        <KPI label="Sanidad pendiente" value={demo("32", "0")} delta={demo("Vacunación aftosa", "—")} trend="warn" icon="syringe" warn />
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
@@ -255,12 +256,12 @@ function AnimResumen({ total, onVerSanidad }: { total: number; onVerSanidad: () 
         <div className="mc-card">
           <div className="mc-card__head"><div className="mc-card__title">Tropas activas</div></div>
           <div className="col gap-8">
-            {[
+            {demo([
               { tropa: "Tropa A", cat: "Cría", n: 412, ubi: "Potrero 3 – La Esperanza", color: "var(--mc-green-600)" },
               { tropa: "Tropa B", cat: "Engorde", n: 325, ubi: "Potrero 7 – Don Ramón", color: "var(--mc-orange-600)" },
               { tropa: "Tropa C", cat: "Destete", n: 284, ubi: "Potrero 2 – La Esperanza", color: "var(--mc-amber)" },
               { tropa: "Tropa D", cat: "Toros", n: 32, ubi: "Potrero 1 – Don Ramón", color: "var(--mc-green-800)" },
-            ].map((t) => (
+            ], [] as { tropa: string; cat: string; n: number; ubi: string; color: string }[]).map((t) => (
               <div key={t.tropa} style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10, display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: t.color + "22", color: t.color, display: "grid", placeItems: "center", fontFamily: "var(--ff-display)", fontSize: 20 }}>
                   {t.tropa.slice(-1)}
@@ -314,10 +315,15 @@ function AnimResumen({ total, onVerSanidad }: { total: number; onVerSanidad: () 
             <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVerSanidad}>Ver todos</button>
           </div>
           <div className="mc-feed">
-            <FeedRow ic="syringe" tone="red" title="Vacunación aftosa 2ª dosis" meta="Tropa A · 148 animales" time="Hoy" />
-            <FeedRow ic="heart" tone="orange" title="Tacto preñez" meta="Tropa A · 186 vaquillonas" time="25 abr" />
-            <FeedRow ic="scale" tone="" title="Pesada mensual" meta="Todo el rodeo" time="30 abr" />
-            <FeedRow ic="syringe" tone="blue" title="Desparasitación" meta="Tropa C · terneros" time="03 may" />
+            {demo(
+              <>
+                <FeedRow ic="syringe" tone="red" title="Vacunación aftosa 2ª dosis" meta="Tropa A · 148 animales" time="Hoy" />
+                <FeedRow ic="heart" tone="orange" title="Tacto preñez" meta="Tropa A · 186 vaquillonas" time="25 abr" />
+                <FeedRow ic="scale" tone="" title="Pesada mensual" meta="Todo el rodeo" time="30 abr" />
+                <FeedRow ic="syringe" tone="blue" title="Desparasitación" meta="Tropa C · terneros" time="03 may" />
+              </>,
+              <div className="text-sm text-muted">Sin eventos sanitarios programados.</div>
+            )}
           </div>
         </div>
       </div>
@@ -327,21 +333,22 @@ function AnimResumen({ total, onVerSanidad }: { total: number; onVerSanidad: () 
 
 function ComposicionRodeo() {
   const [modo, setModo] = useState<"cat" | "tropa">("cat");
-  const porCategoria = [
+  const vacio = [] as { cat: string; n: number; pct: number; color: string }[];
+  const porCategoria = demo([
     { cat: "Vacas", n: 412, pct: 32, color: "var(--mc-green-600)" },
     { cat: "Vaquillonas", n: 186, pct: 14, color: "var(--mc-green-500)" },
     { cat: "Novillos", n: 325, pct: 25, color: "var(--mc-orange-500)" },
     { cat: "Terneros", n: 284, pct: 22, color: "var(--mc-amber)" },
     { cat: "Toros", n: 32, pct: 3, color: "var(--mc-green-800)" },
     { cat: "Rechazo", n: 45, pct: 4, color: "var(--mc-text-3)" },
-  ];
-  const porTropa = [
+  ], vacio);
+  const porTropa = demo([
     { cat: "Tropa A", n: 412, pct: 32, color: "var(--mc-green-600)" },
     { cat: "Tropa B", n: 325, pct: 25, color: "var(--mc-orange-600)" },
     { cat: "Tropa C", n: 284, pct: 22, color: "var(--mc-amber)" },
     { cat: "Tropa D", n: 32, pct: 3, color: "var(--mc-green-800)" },
     { cat: "Sin tropa", n: 231, pct: 18, color: "var(--mc-text-3)" },
-  ];
+  ], vacio);
   const data = modo === "cat" ? porCategoria : porTropa;
   return (
     <div className="mc-card">
@@ -694,12 +701,12 @@ function AnimPeso({ animales, toast }: { animales: AnimalRow[]; toast: ReturnTyp
 
 /* ============ TAB NUTRICIÓN (Figma) ============ */
 function AnimNutricion({ toast }: { toast: ReturnType<typeof useToast> }) {
-  const [raciones, setRaciones] = useState([
+  const [raciones, setRaciones] = useState(demo([
     { tropa: "Tropa A · Cría", ing: "Pastura + suplemento", kg: "10.5 kg MS/cab", costo: "$132/cab" },
     { tropa: "Tropa B · Engorde", ing: "Silaje maíz + grano", kg: "14.2 kg MS/cab", costo: "$198/cab" },
     { tropa: "Tropa C · Destete", ing: "Pastura + núcleo proteico", kg: "6.8 kg MS/cab", costo: "$95/cab" },
     { tropa: "Tropa D · Toros", ing: "Pastura + heno", kg: "12.0 kg MS/cab", costo: "$156/cab" },
-  ]);
+  ], [] as { tropa: string; ing: string; kg: string; costo: string }[]));
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ tropa: "Tropa A", ing: "", kg: "", costo: "" });
 
@@ -726,10 +733,10 @@ function AnimNutricion({ toast }: { toast: ReturnType<typeof useToast> }) {
     <div className="col gap-16">
       {/* KPIs */}
       <div className="grid g-cols-4 gap-16">
-        <KPI label="Raciones activas" value={String(raciones.length)} delta="4 tropas alimentadas" trend="up" icon="leaf" accent />
-        <KPI label="Consumo diario" value="12.4 t MS" delta="Pradera + silaje" trend="up" icon="truck" />
-        <KPI label="Costo alimentación / día" value="$184,500" delta="$144/cabeza" trend="up" icon="dollar" />
-        <KPI label="GDP promedio" value="0.92 kg/d" delta="+0.08 vs mes pasado" trend="up" icon="arrowUp" />
+        <KPI label="Raciones activas" value={String(raciones.length)} delta={demo("4 tropas alimentadas", "—")} trend="up" icon="leaf" accent />
+        <KPI label="Consumo diario" value={demo("12.4 t MS", "—")} delta={demo("Pradera + silaje", "—")} trend="up" icon="truck" />
+        <KPI label="Costo alimentación / día" value={demo("$184,500", "—")} delta={demo("$144/cabeza", "—")} trend="up" icon="dollar" />
+        <KPI label="GDP promedio" value={demo("0.92 kg/d", "—")} delta={demo("+0.08 vs mes pasado", "—")} trend="up" icon="arrowUp" />
       </div>
 
       <div className="grid g-cols-2 gap-16">
@@ -760,13 +767,13 @@ function AnimNutricion({ toast }: { toast: ReturnType<typeof useToast> }) {
         <div className="mc-card">
           <div className="mc-card__head"><div className="mc-card__title">Stock de insumos</div></div>
           <div className="col gap-8">
-            {[
+            {demo([
               { insumo: "Silaje de maíz", stock: 78, max: 120, unidad: "tn" },
               { insumo: "Grano maíz", stock: 22, max: 40, unidad: "tn" },
               { insumo: "Núcleo proteico", stock: 4.2, max: 10, unidad: "tn" },
               { insumo: "Sal mineralizada", stock: 1.1, max: 3, unidad: "tn" },
               { insumo: "Heno alfalfa", stock: 15, max: 40, unidad: "rollos" },
-            ].map((s, i) => {
+            ], [] as { insumo: string; stock: number; max: number; unidad: string }[]).map((s, i) => {
               const pct = (s.stock / s.max) * 100;
               return (
                 <div key={i}>
@@ -844,11 +851,11 @@ function AnimRepro({ animales, toast }: { animales: AnimalRow[]; toast: ReturnTy
   return (
     <div className="col gap-16">
       <div className="grid g-cols-5 gap-16">
-        <KPI label="Vientres servicio" value="412" delta="Tropa A + Vaquillonas" trend="up" icon="heart" accent />
-        <KPI label="Preñez confirmada" value="78%" delta="Tacto 60 días" trend="up" icon="check" />
-        <KPI label="Partos últimos 30d" value="42" delta="2 distócicos" trend="up" icon="cow" />
-        <KPI label="Terneros vivos" value="284" delta="Mortalidad 2.1%" trend="up" icon="egg" />
-        <KPI label="Días al parto (prom.)" value="45 días" delta="Pico calving oct/nov" trend="warn" icon="calendar" />
+        <KPI label="Vientres servicio" value={demo("412", "0")} delta={demo("Tropa A + Vaquillonas", "—")} trend="up" icon="heart" accent />
+        <KPI label="Preñez confirmada" value={demo("78%", "—")} delta={demo("Tacto 60 días", "—")} trend="up" icon="check" />
+        <KPI label="Partos últimos 30d" value={demo("42", "0")} delta={demo("2 distócicos", "—")} trend="up" icon="cow" />
+        <KPI label="Terneros vivos" value={demo("284", "0")} delta={demo("Mortalidad 2.1%", "—")} trend="up" icon="egg" />
+        <KPI label="Días al parto (prom.)" value={demo("45 días", "—")} delta={demo("Pico calving oct/nov", "—")} trend="warn" icon="calendar" />
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -939,13 +946,13 @@ function AnimSanidad({
   toast: ReturnType<typeof useToast>;
   onVerCalendario: () => void;
 }) {
-  const [plan, setPlan] = useState([
+  const [plan, setPlan] = useState(demo([
     { ev: "Vacuna aftosa", prod: "Bioaftogen", cat: "Todo el rodeo", dosis: "5 ml SC", fecha: "18/04/2026", n: "148", estado: "Hoy", tone: "red" },
     { ev: "Desparasitación", prod: "Ivermectina 3.15%", cat: "Terneros", dosis: "1ml/50kg", fecha: "03/05/2026", n: "284", estado: "Programada", tone: "amber" },
     { ev: "Vacuna reproductiva", prod: "Reprogen", cat: "Vacas + vaquillonas", dosis: "2 ml SC", fecha: "15/05/2026", n: "598", estado: "Programada", tone: "amber" },
     { ev: "Anti-clostridial", prod: "Bioclostrigen", cat: "Terneros destetados", dosis: "5 ml SC", fecha: "02/04/2026", n: "284", estado: "Completada", tone: "green" },
     { ev: "Mineralización", prod: "Selenio + Yodo", cat: "Vaquillonas", dosis: "2 ml IM", fecha: "28/03/2026", n: "186", estado: "Completada", tone: "green" },
-  ]);
+  ], [] as { ev: string; prod: string; cat: string; dosis: string; fecha: string; n: string; estado: string; tone: string }[]));
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ ev: "", prod: "", cat: "Todo el rodeo", dosis: "", fecha: new Date().toISOString().slice(0, 10), caravana: "" });
 
@@ -977,10 +984,10 @@ function AnimSanidad({
   return (
     <div className="col gap-16">
       <div className="grid g-cols-4">
-        <KPI label="Pendientes" value="32" delta="Vacuna aftosa + desparasit." trend="warn" icon="syringe" warn />
-        <KPI label="Aplicadas últ. 30d" value="248" delta="Cobertura 91%" trend="up" icon="check" accent />
-        <KPI label="En tratamiento" value="4" delta="3 Tropa A · 1 Tropa B" trend="warn" icon="heart" />
-        <KPI label="Mortalidad anual" value="1.8%" delta="Por debajo del objetivo" trend="up" icon="activity" />
+        <KPI label="Pendientes" value={demo("32", "0")} delta={demo("Vacuna aftosa + desparasit.", "—")} trend="warn" icon="syringe" warn />
+        <KPI label="Aplicadas últ. 30d" value={demo("248", "0")} delta={demo("Cobertura 91%", "—")} trend="up" icon="check" accent />
+        <KPI label="En tratamiento" value={demo("4", "0")} delta={demo("3 Tropa A · 1 Tropa B", "—")} trend="warn" icon="heart" />
+        <KPI label="Mortalidad anual" value={demo("1.8%", "—")} delta={demo("Por debajo del objetivo", "—")} trend="up" icon="activity" />
       </div>
 
       <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -1075,7 +1082,7 @@ function AnimSanidad({
 /* ============ TAB TIMELINE (Figma) ============ */
 function AnimTimeline() {
   const [filtro, setFiltro] = useState("Todo");
-  const events = [
+  const events = demo([
     { fecha: "18/04/2026", hora: "09:30", tipo: "Sanidad", titulo: "Vacunación aftosa aplicada", meta: "Tropa A · 148 animales · Dr. M. López", tone: "green" },
     { fecha: "15/04/2026", hora: "14:00", tipo: "Peso", titulo: "Pesada mensual Tropa B", meta: "325 animales · peso prom. 510 kg (+18)", tone: "" },
     { fecha: "12/04/2026", hora: "08:00", tipo: "Nutrición", titulo: "Cambio de ración Tropa C", meta: "De suplemento a grano maíz + núcleo", tone: "amber" },
@@ -1084,7 +1091,7 @@ function AnimTimeline() {
     { fecha: "05/04/2026", hora: "09:00", tipo: "Sanidad", titulo: "Tratamiento antibiótico", meta: "3 animales · Tropa A · neumonía leve", tone: "red" },
     { fecha: "02/04/2026", hora: "07:45", tipo: "Parto", titulo: "Parto normal", meta: "Vaca 0088 · ternero macho 38 kg", tone: "green" },
     { fecha: "28/03/2026", hora: "—", tipo: "Ingreso", titulo: "Ingreso de 24 vaquillonas", meta: "Compra Remate Liniers", tone: "" },
-  ];
+  ], [] as { fecha: string; hora: string; tipo: string; titulo: string; meta: string; tone: string }[]);
   const map: Record<string, string[]> = {
     Todo: [],
     Sanidad: ["Sanidad"],

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon, KPI, Modal, Field, useToast } from "@/components/mc";
+import { demo } from "@/lib/demo";
 import { useSetHeaderActions } from "./ActionsContext";
 import { NuevaOrdenLaborModal, type OrdenLabor } from "./labores-Wizard";
 
@@ -69,12 +70,12 @@ const TIPO_ICON: Record<string, { icon: string; color: string }> = {
 /* ========== TAB LABORES (Figma CDLabores) ========== */
 export default function TabLabores() {
   const toast = useToast();
-  const [labores, setLabores] = useState<LaborUI[]>(DEMO_LABORES);
-  const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number; tag?: string }[]>([
+  const [labores, setLabores] = useState<LaborUI[]>(demo(DEMO_LABORES, []));
+  const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number; tag?: string }[]>(demo([
     { nombre: "Lote 4 - La Loma", ha: 75, tag: "Rastrojo de Maiz" },
     { nombre: "Lote 5 - El Bajo", ha: 50, tag: "Barbecho Químico" },
     { nombre: "Lote 8 - Norte", ha: 110, tag: "Cultivo en Pie" },
-  ]);
+  ], []));
   const [view, setView] = useState<"kanban" | "tabla" | "calendario">("kanban");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [calDate, setCalDate] = useState(() => new Date());
@@ -86,7 +87,7 @@ export default function TabLabores() {
   const [verDetalle, setVerDetalle] = useState<LaborUI | { titulo: string; lote: string; detalle: string } | null>(null);
   const [filtroOpen, setFiltroOpen] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState("Todos");
-  const [cronos, setCronos] = useState<Record<string, number>>({ d1: 6330 });
+  const [cronos, setCronos] = useState<Record<string, number>>(demo<Record<string, number>>({ d1: 6330 }, {}));
 
   /* Cronómetro de tareas en curso */
   useEffect(() => {
@@ -347,7 +348,7 @@ export default function TabLabores() {
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Labores Bloqueados / Alertas</div>
-            <span className="mc-badge mc-badge--red">{BLOQUEADAS_DEMO.length + labores.filter((l) => l.motivoBloqueo).length}</span>
+            <span className="mc-badge mc-badge--red">{demo(BLOQUEADAS_DEMO, []).length + labores.filter((l) => l.motivoBloqueo).length}</span>
           </div>
           <div className="col gap-10">
             {[
@@ -355,7 +356,7 @@ export default function TabLabores() {
                 icon: TIPO_ICON[l.tipo]?.icon || "wrench", iconColor: TIPO_ICON[l.tipo]?.color || "#475569",
                 titulo: l.tarea, lote: l.lote, alertaIcon: "alert", alertaTitulo: l.motivoBloqueo as string, alertaSub: "Reportado por el equipo", accion: "Reprogramar", labor: l as LaborUI | undefined,
               })),
-              ...BLOQUEADAS_DEMO.map((b) => ({ ...b, labor: undefined as LaborUI | undefined })),
+              ...demo(BLOQUEADAS_DEMO, []).map((b) => ({ ...b, labor: undefined as LaborUI | undefined })),
             ].map((b, i) => (
               <div key={i} style={{ padding: 10, border: "1px solid var(--mc-line)", borderRadius: 10, display: "flex", gap: 10, alignItems: "center" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 8, background: b.iconColor, color: "white", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
