@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { IABadge } from "@/components/mc";
+import { Icon, IABadge } from "@/components/mc";
 
 export type LoteOpt = { id?: string; nombre: string; ha: number };
 
@@ -91,7 +91,7 @@ function ModalShell({
               {eyebrow}
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 26 }}>{emoji}</span> {title}
+              <span style={{ display: "grid", placeItems: "center" }}><Icon name={emoji} size={26} /></span> {title}
             </div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>{subtitle}</div>
           </div>
@@ -111,7 +111,7 @@ function ModalShell({
               flexShrink: 0,
             }}
           >
-            ✕
+            <Icon name="x" size={16} />
           </button>
         </div>
 
@@ -139,7 +139,7 @@ function Section({
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
+        <span style={{ fontSize: 14, display: "grid", placeItems: "center" }}><Icon name={icon} size={14} /></span>
         <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: ".06em" }}>{title}</span>
         <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
         {right}
@@ -262,12 +262,12 @@ export type LluviaResult = {
 };
 
 const COND_LLUVIA = [
-  { key: "Granizo", color: "#c93434", icon: "🧊" },
-  { key: "Viento Fuerte", color: "#e7892b", icon: "💨" },
-  { key: "Actividad Eléctrica", color: "#7c3aed", icon: "⚡" },
-  { key: "Torrencial / Lavado", color: "#2c82c9", icon: "🌊" },
-  { key: "Lluvia Mansa (Efectiva)", color: "#4f9d52", icon: "🌦️" },
-  { key: "Caminos Intransitables", color: "#92400e", icon: "🛻" },
+  { key: "Granizo", color: "#c93434", icon: "droplet" },
+  { key: "Viento Fuerte", color: "#e7892b", icon: "wind" },
+  { key: "Actividad Eléctrica", color: "#7c3aed", icon: "bolt" },
+  { key: "Torrencial / Lavado", color: "#2c82c9", icon: "droplet" },
+  { key: "Lluvia Mansa (Efectiva)", color: "#4f9d52", icon: "cloud" },
+  { key: "Caminos Intransitables", color: "#92400e", icon: "truck" },
 ];
 
 export function RegistrarLluviaModal({
@@ -328,7 +328,7 @@ export function RegistrarLluviaModal({
     <ModalShell
       headBg="linear-gradient(135deg,#2c82c9 0%,#1a5fa0 100%)"
       eyebrow="Agricultura · Clima · Registro"
-      emoji="💧"
+      emoji="droplet"
       title="Registrar Evento Pluviométrico"
       subtitle="Cargá la cantidad de lluvia, ubicación y condiciones del evento."
       onClose={onClose}
@@ -336,12 +336,12 @@ export function RegistrarLluviaModal({
         <>
           <button className="mc-btn mc-btn--secondary" onClick={onClose}>Cancelar</button>
           <button className="mc-btn mc-btn--blue mc-btn--block" style={{ flex: 1, maxWidth: 240 }} onClick={guardar}>
-            <span style={{ fontSize: 14 }}>💧</span> Guardar Registro
+            <Icon name="droplet" size={14} /> Guardar Registro
           </button>
         </>
       }
     >
-      <Section title="Cantidad de Agua" icon="💧">
+      <Section title="Cantidad de Agua" icon="droplet">
         <div style={{ display: "flex", alignItems: "stretch", gap: 14 }}>
           <div
             style={{
@@ -408,11 +408,11 @@ export function RegistrarLluviaModal({
         </div>
       </Section>
 
-      <Section title="Ubicación" icon="📍" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{sel.size} seleccionados</span>}>
+      <Section title="Ubicación" icon="map" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{sel.size} seleccionados</span>}>
         <LoteSelector lotes={lotes} selected={sel} onToggle={toggleLote} onToggleAll={toggleAll} accent="#2c82c9" />
       </Section>
 
-      <Section title="Condiciones del Evento" icon="🌩️">
+      <Section title="Condiciones del Evento" icon="bolt">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {COND_LLUVIA.map((c) => {
             const on = conds.has(c.key);
@@ -435,7 +435,7 @@ export function RegistrarLluviaModal({
                   textAlign: "left",
                 }}
               >
-                <span style={{ fontSize: 16 }}>{c.icon}</span>
+                <span style={{ fontSize: 16, display: "grid", placeItems: "center" }}><Icon name={c.icon} size={16} /></span>
                 {c.key}
               </button>
             );
@@ -458,12 +458,12 @@ export type AlertaResult = {
 };
 
 const TIPOS_ALERTA = [
-  { key: "Granizo", icon: "🧊" },
-  { key: "Viento / Voladura", icon: "💨" },
-  { key: "Helada", icon: "❄️" },
-  { key: "Inundación / Anegamiento", icon: "🌊" },
-  { key: "Descarga Eléctrica", icon: "⚡" },
-  { key: "Foco de Incendio", icon: "🔥" },
+  { key: "Granizo", icon: "droplet" },
+  { key: "Viento / Voladura", icon: "wind" },
+  { key: "Helada", icon: "droplet" },
+  { key: "Inundación / Anegamiento", icon: "droplet" },
+  { key: "Descarga Eléctrica", icon: "bolt" },
+  { key: "Foco de Incendio", icon: "bolt" },
 ];
 
 export function ReportarAlertaModal({
@@ -521,7 +521,7 @@ export function ReportarAlertaModal({
     <ModalShell
       headBg="linear-gradient(135deg,#e7892b 0%,#b45309 100%)"
       eyebrow="Agricultura · Clima · Alertas"
-      emoji="⚠️"
+      emoji="alert"
       title="Reportar Evento Climático"
       subtitle="Documentá un evento climático adverso y los lotes afectados."
       onClose={onClose}
@@ -529,12 +529,12 @@ export function ReportarAlertaModal({
         <>
           <button className="mc-btn mc-btn--secondary" onClick={onClose}>Cancelar</button>
           <button className="mc-btn" style={{ background: "#e7892b", color: "white", flex: 1, maxWidth: 240, justifyContent: "center" }} onClick={guardar}>
-            <span style={{ fontSize: 14 }}>⚠️</span> Guardar Alerta
+            <Icon name="alert" size={14} /> Guardar Alerta
           </button>
         </>
       }
     >
-      <Section title="Severidad" icon="🎚️">
+      <Section title="Severidad" icon="scale">
         <div style={{ display: "flex", gap: 8 }}>
           {SEVERIDADES.map((s) => {
             const on = severidad === s.key;
@@ -561,7 +561,7 @@ export function ReportarAlertaModal({
         </div>
       </Section>
 
-      <Section title="Tipo de Evento" icon="🌪️">
+      <Section title="Tipo de Evento" icon="wind">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {TIPOS_ALERTA.map((t) => {
             const on = tipo === t.key;
@@ -585,7 +585,7 @@ export function ReportarAlertaModal({
                   textAlign: "center",
                 }}
               >
-                <span style={{ fontSize: 24 }}>{t.icon}</span>
+                <span style={{ fontSize: 24, display: "grid", placeItems: "center" }}><Icon name={t.icon} size={24} /></span>
                 {t.key}
               </button>
             );
@@ -593,11 +593,11 @@ export function ReportarAlertaModal({
         </div>
       </Section>
 
-      <Section title="Lotes Afectados" icon="🌾" right={<span style={{ fontSize: 11, color: "#e7892b", fontWeight: 600 }}>{sel.size} seleccionados</span>}>
+      <Section title="Lotes Afectados" icon="wheat" right={<span style={{ fontSize: 11, color: "#e7892b", fontWeight: 600 }}>{sel.size} seleccionados</span>}>
         <LoteSelector lotes={lotes} selected={sel} onToggle={toggleLote} onToggleAll={toggleAll} accent="#e7892b" />
       </Section>
 
-      <Section title="Fecha y Hora del Inicio" icon="🕐">
+      <Section title="Fecha y Hora del Inicio" icon="clock">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
           <div>
             <label style={lbl}>Fecha</label>

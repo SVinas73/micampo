@@ -153,7 +153,7 @@ export default function BalanceHidrico({
         {/* Banda zona roja 0-30% */}
         <rect x={padL} y={yPct(30)} width={innerW} height={yPct(0) - yPct(30)} fill="var(--mc-red)" opacity="0.07" />
         <text x={padL + 10} y={yPct(15)} fontSize="11" fontFamily="var(--ff-ui)" fill="var(--mc-red)" fontWeight="700" letterSpacing="0.04em">
-          ⚠ ZONA ROJA · PUNTO DE MARCHITEZ (PELIGRO)
+          ZONA ROJA · PUNTO DE MARCHITEZ (PELIGRO)
         </text>
 
         {/* Bloques azules IA con tooltip */}
@@ -165,7 +165,7 @@ export default function BalanceHidrico({
           const barH = barBot - barTop;
           return (
             <g key={i}>
-              <title>💧 IA Sugiere: Riego {s.label} (Evita estrés severo)</title>
+              <title>IA Sugiere: Riego {s.label} (Evita estrés severo)</title>
               <rect x={x - barW / 2} y={barTop} width={barW} height={barH} fill="url(#bhIABarFill)" stroke="#2c82c9" strokeWidth="2" rx={3} />
               <line x1={x - barW / 2} y1={barTop} x2={x + barW / 2} y2={barTop} stroke="#2c82c9" strokeWidth="3" />
               <g transform={`translate(${x - 38}, ${barTop - 36})`}>
@@ -207,7 +207,7 @@ export default function BalanceHidrico({
             {cargando && <span className="text-xs text-muted">· recalculando…</span>}
           </div>
           <div className="row gap-10" style={{ alignItems: "center" }}>
-            <span className="text-xs text-muted" style={{ whiteSpace: "nowrap" }}>💧 Ahorrar Agua</span>
+            <span className="text-xs text-muted" style={{ whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="droplet" size={12} /> Ahorrar Agua</span>
             <div style={{ flex: 1, position: "relative" }}>
               <input
                 type="range"
@@ -225,7 +225,7 @@ export default function BalanceHidrico({
                 <span className="text-xs text-muted">100%</span>
               </div>
             </div>
-            <span className="text-xs text-muted" style={{ whiteSpace: "nowrap" }}>🌾 Maximizar Rinde</span>
+            <span className="text-xs text-muted" style={{ whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="wheat" size={12} /> Maximizar Rinde</span>
           </div>
         </div>
         <div className="text-right" style={{ borderLeft: "1px solid var(--mc-line)", paddingLeft: 14, minWidth: 130 }}>

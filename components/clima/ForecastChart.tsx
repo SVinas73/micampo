@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Icon } from "@/components/mc";
 
 export type DayForecast = {
   d: string;
@@ -29,9 +30,9 @@ export function ForecastChart({
   const VBX = N * 100;
 
   const spray: Record<DayForecast["vent"], { color: string; label: string; icon: string; bg: string }> = {
-    ok: { color: "#4f9d52", label: "APTO", icon: "✓", bg: "rgba(79,157,82,0.12)" },
-    warn: { color: "#d9a538", label: "MARG.", icon: "⚠", bg: "rgba(217,165,56,0.12)" },
-    bad: { color: "#d13a3a", label: "NO APTO", icon: "✗", bg: "rgba(209,58,58,0.12)" },
+    ok: { color: "#4f9d52", label: "APTO", icon: "check", bg: "rgba(79,157,82,0.12)" },
+    warn: { color: "#d9a538", label: "MARG.", icon: "alert", bg: "rgba(217,165,56,0.12)" },
+    bad: { color: "#d13a3a", label: "NO APTO", icon: "x", bg: "rgba(209,58,58,0.12)" },
   };
 
   return (
@@ -73,10 +74,11 @@ export function ForecastChart({
                   fontSize: 32,
                   lineHeight: 1,
                   marginTop: 6,
-                  fontFamily: "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif",
+                  display: "grid",
+                  placeItems: "center",
                 }}
               >
-                {d.ic}
+                <Icon name={d.ic} size={30} />
               </div>
               <div style={{ flex: 1, minHeight: 174 }} />
               <div
@@ -104,7 +106,7 @@ export function ForecastChart({
                     lineHeight: 1,
                   }}
                 >
-                  {sp.icon}
+                  <Icon name={sp.icon} size={11} />
                 </span>
                 <span style={{ fontSize: 10, fontWeight: 800, color: sp.color, letterSpacing: "0.04em" }}>
                   {sp.label}

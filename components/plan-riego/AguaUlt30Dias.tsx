@@ -51,8 +51,8 @@ export default function AguaUlt30Dias({ eventos, totalMm }: { eventos: EventoAgu
                 </div>
                 <div className="text-xs text-muted">{e.fecha}</div>
                 {e.status && (
-                  <div className="text-xs mt-2" style={{ color: e.status === "ejecutado" ? "var(--mc-green-700)" : "var(--mc-text-3)", fontWeight: 500 }}>
-                    {e.status === "ejecutado" ? "✓ Ejecutado" : e.status}
+                  <div className="text-xs mt-2" style={{ color: e.status === "ejecutado" ? "var(--mc-green-700)" : "var(--mc-text-3)", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {e.status === "ejecutado" ? <><Icon name="check" size={12} /> Ejecutado</> : e.status}
                   </div>
                 )}
               </div>

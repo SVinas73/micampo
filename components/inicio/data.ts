@@ -40,13 +40,13 @@ export interface WeatherDay {
 
 // Fallback del Figma
 export const FALLBACK_WEATHER: WeatherDay[] = [
-  { ic: "⛅", max: 22, min: 14, mm: 0, wind: "12 km/h ↘ SE" },
-  { ic: "☀️", max: 24, min: 15, mm: 0, wind: "15 km/h → E" },
-  { ic: "🌧️", max: 20, min: 12, mm: 25, wind: "18 km/h ↙ SO" },
-  { ic: "🌦️", max: 21, min: 13, mm: 15, wind: "10 km/h ↓ S" },
-  { ic: "⛅", max: 23, min: 14, mm: 0, wind: "8 km/h ↗ NE" },
-  { ic: "☀️", max: 26, min: 16, mm: 0, wind: "12 km/h ↑ N" },
-  { ic: "🌦️", max: 22, min: 13, mm: 8, wind: "20 km/h ↙ SO" },
+  { ic: "cloud", max: 22, min: 14, mm: 0, wind: "12 km/h ↘ SE" },
+  { ic: "sun", max: 24, min: 15, mm: 0, wind: "15 km/h → E" },
+  { ic: "droplet", max: 20, min: 12, mm: 25, wind: "18 km/h ↙ SO" },
+  { ic: "cloud", max: 21, min: 13, mm: 15, wind: "10 km/h ↓ S" },
+  { ic: "cloud", max: 23, min: 14, mm: 0, wind: "8 km/h ↗ NE" },
+  { ic: "sun", max: 26, min: 16, mm: 0, wind: "12 km/h ↑ N" },
+  { ic: "cloud", max: 22, min: 13, mm: 8, wind: "20 km/h ↙ SO" },
 ];
 
 export interface GanttEvent {
@@ -98,8 +98,8 @@ export const FALLBACK_BALANCE = {
 };
 
 export function weatherIcon(condicion: string, mm: number): string {
-  if (mm > 10 || condicion === "lluvia") return "🌧️";
-  if (mm > 0) return "🌦️";
-  if (condicion === "nublado") return "⛅";
-  return "☀️";
+  if (mm > 10 || condicion === "lluvia") return "droplet";
+  if (mm > 0) return "cloud";
+  if (condicion === "nublado") return "cloud";
+  return "sun";
 }
