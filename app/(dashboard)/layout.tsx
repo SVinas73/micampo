@@ -131,7 +131,9 @@ function moduloDeRuta(pathname: string): string {
   if (p.startsWith("/sostenibilidad")) return "sostenibilidad";
   // Personal → gente / manos
   if (p.startsWith("/personal")) return "gente";
-  // Resto (Inicio, Calendario): sin imagen temática (lienzo normal)
+  // Inicio (dashboard) → vista aérea del campo
+  if (p === "/dashboard") return "inicio";
+  // Resto (Calendario): sin imagen temática (lienzo normal)
   return "general";
 }
 
