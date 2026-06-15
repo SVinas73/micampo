@@ -143,16 +143,16 @@
    MiCampo — Design System (Figma port)
    ============================================ */
 :root {
-  /* Primary palette — evolved from original greens/orange */
-  --mc-green-50:  #edfbf2;
-  --mc-green-100: #d4f4e0;
-  --mc-green-200: #a8e8c0;
-  --mc-green-400: #3cc97a;
-  --mc-green-500: #13a84a;
-  --mc-green-600: #00A738;
-  --mc-green-700: #087a2e;
-  --mc-green-800: #0a5a24;
-  --mc-green-900: #0a3d1a;
+  /* Primary palette — verde oliva agrícola (apagado, no fluorescente) */
+  --mc-green-50:  #f4f6ed;
+  --mc-green-100: #e5ebd1;
+  --mc-green-200: #cbd8a4;
+  --mc-green-400: #9aac5b;
+  --mc-green-500: #7d9140;
+  --mc-green-600: #647734;  /* marca — verde oliva */
+  --mc-green-700: #4f5e29;
+  --mc-green-800: #3d4920;
+  --mc-green-900: #2b3516;
 
   /* Slate scale (formerly orange — repurposed system-wide to free orange for IA branding only) */
   --mc-orange-50:  #f8fafc;
@@ -176,6 +176,16 @@
   --mc-surface:   #ffffff;
   --mc-surface-2: #faf9f4;
   --mc-surface-3: #f1efe7;
+
+  /* Glass (glassmorphism) — vidrio esmerilado claro */
+  --mc-glass:        rgba(255, 255, 255, 0.74);
+  --mc-glass-2:      rgba(255, 255, 255, 0.55);
+  --mc-glass-3:      rgba(255, 255, 255, 0.40);
+  --mc-glass-line:   rgba(255, 255, 255, 0.65);
+  --mc-glass-line-2: rgba(26, 31, 28, 0.06);
+  --mc-glass-blur:   16px;
+  --mc-glass-sh:       inset 0 1px 0 rgba(255,255,255,0.7), 0 6px 24px -10px rgba(26,31,28,0.20);
+  --mc-glass-sh-hover: inset 0 1px 0 rgba(255,255,255,0.8), 0 14px 38px -12px rgba(26,31,28,0.28);
 
   /* Status */
   --mc-red:    #c93434;
@@ -248,8 +258,18 @@
   --mc-surface-2: #222720;
   --mc-surface-3: #2a2f27;
 
-  --mc-green-50:  #0e2517;
-  --mc-green-100: #134b28;
+  /* Glass — vidrio oliva oscuro (como la referencia) */
+  --mc-glass:        rgba(20, 28, 18, 0.72);
+  --mc-glass-2:      rgba(28, 36, 25, 0.58);
+  --mc-glass-3:      rgba(28, 36, 25, 0.42);
+  --mc-glass-line:   rgba(255, 255, 255, 0.09);
+  --mc-glass-line-2: rgba(255, 255, 255, 0.06);
+  --mc-glass-sh:       inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.40);
+  --mc-glass-sh-hover: inset 0 1px 0 rgba(255,255,255,0.07), 0 16px 44px rgba(0,0,0,0.52);
+
+  --mc-green-50:  #1e2611;
+  --mc-green-100: #2f3c1a;
+  --mc-green-700: #9bb35f;  /* oliva claro para deltas/acentos legibles en oscuro */
   --mc-orange-50: #1e293b;
   --mc-orange-100:#334155;
   --mc-red-bg:    #3a1818;
@@ -498,17 +518,17 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* ---------- Fondo temático por módulo ----------
    Cada módulo lleva su imagen de fondo (independiente del submódulo).
-   La imagen se ve CLARAMENTE en el cuerpo de la pantalla; las tarjetas
-   (mc-card / mc-kpi / mc-table) son opacas, así que el contenido siempre
-   es legible. Una franja superior con más velo protege el título de la
-   página (que va directo sobre el lienzo) para que se lea sin problema. */
+   Las tarjetas (mc-card / mc-kpi) son de vidrio esmerilado: la foto se ve
+   a través de ellas, creando el efecto glassmorphism. Un velo suave sobre
+   la foto mantiene el contraste, y una franja superior con más velo protege
+   el título de la página (que va directo sobre el lienzo). */
 :root {
-  --mc-ovl-strong: rgba(246, 245, 240, 0.86);
-  --mc-ovl-soft:   rgba(246, 245, 240, 0.50);
+  --mc-ovl-strong: rgba(246, 245, 240, 0.78);
+  --mc-ovl-soft:   rgba(246, 245, 240, 0.34);
 }
 :root[data-theme="dark"] {
-  --mc-ovl-strong: rgba(17, 20, 15, 0.88);
-  --mc-ovl-soft:   rgba(17, 20, 15, 0.62);
+  --mc-ovl-strong: rgba(17, 20, 15, 0.82);
+  --mc-ovl-soft:   rgba(17, 20, 15, 0.46);
 }
 .mc-main[data-modulo] {
   background-image:
@@ -527,6 +547,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background-attachment: fixed, fixed;
   background-repeat: no-repeat, no-repeat;
 }
+.mc-main[data-modulo="inicio"]         { --mc-modulo-img: url("/modulos/inicio.jpg"); }
 .mc-main[data-modulo="agricultura"]    { --mc-modulo-img: url("/modulos/agricultura.jpg"); }
 .mc-main[data-modulo="ganaderia"]      { --mc-modulo-img: url("/modulos/ganaderia.jpg"); }
 .mc-main[data-modulo="maquinaria"]     { --mc-modulo-img: url("/modulos/maquinaria.jpg"); }
@@ -582,10 +603,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .mc-tabs {
   display: flex;
   gap: 2px;
-  background: var(--mc-surface-3);
+  background: var(--mc-glass-2);
   padding: 4px;
   border-radius: var(--r-pill);
-  border: 1px solid var(--mc-line);
+  border: 1px solid var(--mc-glass-line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   width: fit-content;
   max-width: 100%;
   overflow-x: auto;
@@ -641,9 +664,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .mc-btn--primary {
   background: var(--mc-green-600);
   color: #fff;
-  box-shadow: var(--sh-sm), inset 0 -2px 0 rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px -3px rgba(79,94,41,0.55), inset 0 1px 0 rgba(255,255,255,0.16);
 }
-.mc-btn--primary:hover { background: var(--mc-green-700); }
+.mc-btn--primary:hover { background: var(--mc-green-500); box-shadow: 0 4px 14px -3px rgba(79,94,41,0.6), inset 0 1px 0 rgba(255,255,255,0.18); }
 
 .mc-btn--blue {
   background: #2c82c9;
@@ -668,18 +691,20 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* Outline / surface variants */
 .mc-btn--secondary {
-  background: var(--mc-surface);
+  background: var(--mc-glass-2);
   color: var(--mc-ink);
-  border-color: var(--mc-line-2);
+  border-color: var(--mc-glass-line);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--sh-sm);
 }
-.mc-btn--secondary:hover { background: var(--mc-surface-3); }
+.mc-btn--secondary:hover { background: var(--mc-glass); border-color: var(--mc-glass-line); }
 
 .mc-btn--ghost {
   background: transparent;
   color: var(--mc-text-2);
 }
-.mc-btn--ghost:hover { background: var(--mc-surface-3); color: var(--mc-ink); }
+.mc-btn--ghost:hover { background: var(--mc-glass-2); color: var(--mc-ink); }
 
 .mc-btn--danger {
   background: var(--mc-surface);
@@ -697,20 +722,27 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   display: grid; place-items: center;
   border-radius: var(--r-sm);
   color: var(--mc-text-2);
-  border: 1px solid var(--mc-line-2);
-  background: var(--mc-surface);
+  border: 1px solid var(--mc-glass-line);
+  background: var(--mc-glass-2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   transition: 0.15s;
 }
-.mc-icon-btn:hover { background: var(--mc-surface-3); color: var(--mc-ink); }
+.mc-icon-btn:hover { background: var(--mc-glass); color: var(--mc-ink); }
 
 /* ---------- Cards ---------- */
 .mc-card {
-  background: var(--mc-surface);
-  border: 1px solid var(--mc-line);
+  background: var(--mc-glass);
+  border: 1px solid var(--mc-glass-line);
   border-radius: var(--r-lg);
   padding: var(--pad-card);
+  backdrop-filter: blur(var(--mc-glass-blur)) saturate(1.1);
+  -webkit-backdrop-filter: blur(var(--mc-glass-blur)) saturate(1.1);
+  box-shadow: var(--mc-glass-sh);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.mc-card--elev { box-shadow: var(--sh-sm); }
+.mc-card--elev { box-shadow: var(--mc-glass-sh); }
+.mc-card--hover:hover { transform: translateY(-2px); box-shadow: var(--mc-glass-sh-hover); }
 .mc-card__head {
   display: flex;
   align-items: center;
@@ -740,13 +772,16 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   gap: 6px;
   padding: 18px 20px;
   border-radius: var(--r-lg);
-  background: var(--mc-surface);
-  border: 1px solid var(--mc-line);
+  background: var(--mc-glass);
+  border: 1px solid var(--mc-glass-line);
+  backdrop-filter: blur(var(--mc-glass-blur)) saturate(1.1);
+  -webkit-backdrop-filter: blur(var(--mc-glass-blur)) saturate(1.1);
+  box-shadow: var(--mc-glass-sh);
   position: relative;
   overflow: hidden;
-  transition: 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.mc-kpi:hover { border-color: var(--mc-line-2); transform: translateY(-1px); box-shadow: var(--sh-md); }
+.mc-kpi:hover { transform: translateY(-2px); box-shadow: var(--mc-glass-sh-hover); }
 .mc-kpi__label {
   font-size: 12px;
   color: var(--mc-text-2);
@@ -835,17 +870,17 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   letter-spacing: 0.06em;
   color: var(--mc-text-3);
   font-weight: 600;
-  border-bottom: 1px solid var(--mc-line);
-  background: var(--mc-surface-2);
+  border-bottom: 1px solid var(--mc-glass-line-2);
+  background: var(--mc-glass-2);
 }
 .mc-table tbody td {
   padding: var(--pad-cell);
-  border-bottom: 1px solid var(--mc-line);
+  border-bottom: 1px solid var(--mc-glass-line-2);
   color: var(--mc-text);
   vertical-align: middle;
 }
 .mc-table tbody tr:hover td {
-  background: var(--mc-surface-2);
+  background: var(--mc-glass-3);
 }
 .mc-table tbody tr:last-child td { border-bottom: none; }
 .mc-table .mc-cell--num {
@@ -1040,10 +1075,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 /* Segmented */
 .mc-seg {
   display: flex;
-  border: 1px solid var(--mc-line-2);
+  border: 1px solid var(--mc-glass-line);
   border-radius: var(--r-sm);
   overflow: hidden;
-  background: var(--mc-surface);
+  background: var(--mc-glass-2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 .mc-seg button {
   padding: 7px 12px;
