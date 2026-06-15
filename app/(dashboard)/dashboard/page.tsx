@@ -301,7 +301,7 @@ export default function InicioPage() {
         <div className="mc-hero__content">
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
             <div>
-              <h1 className="mc-hero__title">Buen día, {nombre} 👋</h1>
+              <h1 className="mc-hero__title">Buen día, {nombre}</h1>
               <p className="mc-hero__sub">Esto es lo que está pasando hoy en tu campo.</p>
             </div>
             <div className="row gap-8" style={{ position: "relative" }}>
@@ -338,7 +338,7 @@ export default function InicioPage() {
 
           {/* KPIs glass editables */}
           <div className="row" style={{ justifyContent: "flex-end", marginTop: 16, marginBottom: 8, gap: 8 }}>
-            {editKpis && <Badge tone="blue">Arrastrá para reordenar · ✎ para cambiar</Badge>}
+            {editKpis && <Badge tone="blue"><span className="inline-flex items-center gap-1">Arrastrá para reordenar · <Icon name="pen" size={12} /> para cambiar</span></Badge>}
             <button className="mc-hero__edit" onClick={() => setEditKpis(!editKpis)}>
               <Icon name={editKpis ? "check" : "edit"} size={13} />
               {editKpis ? "Listo" : "Editar KPIs"}
@@ -617,11 +617,11 @@ function SaludCampo({ onVer }: { onVer: () => void }) {
 /* ============ CLIMA HOY + pronóstico ============ */
 function ClimaHoy() {
   const dias = [
-    { d: "Dom", ic: "☀️", max: 21, min: 14 },
-    { d: "Lun", ic: "⛅", max: 22, min: 15 },
-    { d: "Mar", ic: "🌧️", max: 24, min: 16 },
-    { d: "Mié", ic: "🌦️", max: 23, min: 15 },
-    { d: "Jue", ic: "⛅", max: 25, min: 17 },
+    { d: "Dom", ic: "sun", max: 21, min: 14 },
+    { d: "Lun", ic: "cloud", max: 22, min: 15 },
+    { d: "Mar", ic: "droplet", max: 24, min: 16 },
+    { d: "Mié", ic: "cloud", max: 23, min: 15 },
+    { d: "Jue", ic: "cloud", max: 25, min: 17 },
   ];
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -629,10 +629,10 @@ function ClimaHoy() {
         <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <div className="font-semi" style={{ fontSize: 15 }}>Clima hoy</div>
-            <div className="text-xs" style={{ opacity: 0.85 }}>📍 Don Ramón · Parcialmente nublado</div>
+            <div className="text-xs row gap-4" style={{ opacity: 0.85, alignItems: "center" }}><Icon name="map" size={12} />Don Ramón · Parcialmente nublado</div>
             <div style={{ fontFamily: "var(--ff-display)", fontSize: 46, lineHeight: 1, marginTop: 10 }}>22°<span style={{ fontSize: 16 }}>C</span></div>
           </div>
-          <span style={{ fontSize: 44, fontFamily: "'Apple Color Emoji','Segoe UI Emoji',sans-serif" }}>⛅</span>
+          <Icon name="cloud" size={44} />
         </div>
         <div className="grid g-cols-3 gap-8" style={{ marginTop: 14 }}>
           {[{ l: "Humedad", v: "48%", ic: "droplet" }, { l: "Viento", v: "9 km/h", ic: "wind" }, { l: "Lluvia", v: "10%", ic: "cloud" }].map((m) => (
@@ -647,7 +647,7 @@ function ClimaHoy() {
         {dias.map((d) => (
           <div key={d.d} style={{ textAlign: "center", padding: "4px 0" }}>
             <div className="text-xs text-muted" style={{ fontWeight: 600 }}>{d.d}</div>
-            <div style={{ fontSize: 24, margin: "4px 0", fontFamily: "'Apple Color Emoji','Segoe UI Emoji',sans-serif" }}>{d.ic}</div>
+            <div style={{ margin: "4px 0" }}><Icon name={d.ic} size={24} /></div>
             <div className="font-mono" style={{ fontSize: 12 }}><span className="font-semi">{d.max}°</span> <span className="text-muted">{d.min}°</span></div>
           </div>
         ))}
@@ -827,12 +827,12 @@ function Tendencia({ balance }: { balance: { meses: string[]; ingresos: number[]
 /* ============ ÚLTIMAS ACTIVIDADES ============ */
 function UltimasActividades({ onVerTodo }: { onVerTodo: () => void }) {
   const activs = demo([
-    { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", emoji: "🌧️", time: "Hace 2 horas" },
-    { tipo: "user", inicial: "J", color: "#d9a538", quien: "Joaquin", verb: "finalizó", obj: "Siembra", lote: "Lote 1", emoji: "🚜", time: "Hace 5 horas" },
-    { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", emoji: "🐛", time: "Ayer" },
-    { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de Cultivo", lote: "Lote 4", emoji: "📷", time: "Ayer" },
-    { tipo: "user", inicial: "M", color: "#e7892b", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", emoji: "💧", time: "Hace 2 días" },
-    { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "completó", obj: "Análisis IA de NDVI", lote: "Todos", emoji: "📊", time: "Hace 2 días" },
+    { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", emoji: "droplet", time: "Hace 2 horas" },
+    { tipo: "user", inicial: "J", color: "#d9a538", quien: "Joaquin", verb: "finalizó", obj: "Siembra", lote: "Lote 1", emoji: "truck", time: "Hace 5 horas" },
+    { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", emoji: "bug", time: "Ayer" },
+    { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de Cultivo", lote: "Lote 4", emoji: "camera", time: "Ayer" },
+    { tipo: "user", inicial: "M", color: "#e7892b", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", emoji: "droplet", time: "Hace 2 días" },
+    { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "completó", obj: "Análisis IA de NDVI", lote: "Todos", emoji: "chart", time: "Hace 2 días" },
   ], [] as { tipo: string; inicial: string; color: string; quien: string; verb: string; obj: string; lote: string; emoji: string; time: string }[]);
   return (
     <div className="mc-card">
@@ -849,7 +849,7 @@ function UltimasActividades({ onVerTodo }: { onVerTodo: () => void }) {
                 <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb}{" "}
                 <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en{" "}
                 <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span>
-                <span style={{ marginLeft: 6 }}>{a.emoji}</span>
+                <span style={{ marginLeft: 6 }}><Icon name={a.emoji} size={13} /></span>
               </div>
             </div>
             <div className="mc-act-row__time">{a.time}</div>

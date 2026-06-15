@@ -25,16 +25,16 @@ const DEMO_LOTES: LoteOpt[] = [
 ];
 
 const FORECAST_DAYS: DayForecast[] = [
-  { d: "HOY 21", num: 21, ic: "☀️", max: 31, min: 19, mm: 0, vent: "ok" },
-  { d: "JUE 22", num: 22, ic: "⛅", max: 28, min: 17, mm: 0, vent: "warn" },
-  { d: "VIE 23", num: 23, ic: "🌧️", max: 22, min: 15, mm: 25, vent: "ok" },
-  { d: "SÁB 24", num: 24, ic: "🌦️", max: 19, min: 13, mm: 15, vent: "ok" },
-  { d: "DOM 25", num: 25, ic: "🌦️", max: 21, min: 14, mm: 5, vent: "warn" },
-  { d: "LUN 26", num: 26, ic: "🌧️", max: 25, min: 16, mm: 3, vent: "ok" },
-  { d: "MAR 27", num: 27, ic: "🌦️", max: 27, min: 17, mm: 10, vent: "warn" },
-  { d: "MIÉ 28", num: 28, ic: "⛅", max: 29, min: 18, mm: 0, vent: "bad" },
-  { d: "JUE 29", num: 29, ic: "☀️", max: 32, min: 20, mm: 0, vent: "bad" },
-  { d: "VIE 30", num: 30, ic: "🌧️", max: 30, min: 19, mm: 0, vent: "ok" },
+  { d: "HOY 21", num: 21, ic: "sun", max: 31, min: 19, mm: 0, vent: "ok" },
+  { d: "JUE 22", num: 22, ic: "cloud", max: 28, min: 17, mm: 0, vent: "warn" },
+  { d: "VIE 23", num: 23, ic: "droplet", max: 22, min: 15, mm: 25, vent: "ok" },
+  { d: "SÁB 24", num: 24, ic: "cloud", max: 19, min: 13, mm: 15, vent: "ok" },
+  { d: "DOM 25", num: 25, ic: "cloud", max: 21, min: 14, mm: 5, vent: "warn" },
+  { d: "LUN 26", num: 26, ic: "droplet", max: 25, min: 16, mm: 3, vent: "ok" },
+  { d: "MAR 27", num: 27, ic: "cloud", max: 27, min: 17, mm: 10, vent: "warn" },
+  { d: "MIÉ 28", num: 28, ic: "cloud", max: 29, min: 18, mm: 0, vent: "bad" },
+  { d: "JUE 29", num: 29, ic: "sun", max: 32, min: 20, mm: 0, vent: "bad" },
+  { d: "VIE 30", num: 30, ic: "droplet", max: 30, min: 19, mm: 0, vent: "ok" },
 ];
 
 export default function ClimaPage() {
@@ -259,7 +259,7 @@ function ClimaInner() {
       <div className="grid g-cols-5">
         <KPI label="Temperatura" value={demo("28.6 °C", "—")} delta={demo("Sensación 30°", "—")} trend="up" icon="thermometer" accent />
         <KPI label="Viento" value={demo("18 km/h", "—")} delta={demo("NE · ráfagas 25", "—")} trend="up" icon="wind" />
-        <KPI label="Delta T" value={demo("5", "—")} delta={demo("✓ Apto pulverizar", "—")} trend="up" icon="activity" />
+        <KPI label="Delta T" value={demo("5", "—")} delta={demo("Apto pulverizar", "—")} trend="up" icon="activity" />
         <KPI label="Lluvias últ. 7 días" value={demo("40 mm", "—")} delta={demo("vs prom 28 mm", "—")} trend="up" icon="droplet" />
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
@@ -280,7 +280,7 @@ function ClimaInner() {
       >
         {detalle && (
           <div className="col gap-12">
-            <div style={{ fontSize: 40, textAlign: "center" }}>{detalle.ic}</div>
+            <div style={{ textAlign: "center" }}><Icon name={detalle.ic} size={40} /></div>
             <div className="grid g-cols-2 gap-12">
               <Field label="Temperatura máxima"><input className="mc-input" value={`${detalle.max} °C`} readOnly /></Field>
               <Field label="Temperatura mínima"><input className="mc-input" value={`${detalle.min} °C`} readOnly /></Field>
@@ -288,7 +288,7 @@ function ClimaInner() {
               <Field label="Aptitud pulverización">
                 <input
                   className="mc-input"
-                  value={detalle.vent === "ok" ? "Apto ✓" : detalle.vent === "warn" ? "Marginal ⚠" : "No apto ✗"}
+                  value={detalle.vent === "ok" ? "Apto" : detalle.vent === "warn" ? "Marginal" : "No apto"}
                   readOnly
                 />
               </Field>
@@ -501,7 +501,7 @@ function ClimaLluvias({
       <div className="grid g-cols-3 gap-14">
         <div className="mc-card">
           <div className="row gap-14" style={{ alignItems: "center" }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-blue-bg)", display: "grid", placeItems: "center", color: "var(--mc-blue)", flexShrink: 0, fontSize: 24 }}>💧</div>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-blue-bg)", display: "grid", placeItems: "center", color: "var(--mc-blue)", flexShrink: 0 }}><Icon name="droplet" size={24} /></div>
             <div>
               <div className="text-xs text-muted">Acumulado del año</div>
               <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-blue)", fontWeight: 700, lineHeight: 1.1 }}>{demo("850 mm", "—")}</div>
@@ -511,7 +511,7 @@ function ClimaLluvias({
         </div>
         <div className="mc-card">
           <div className="row gap-14" style={{ alignItems: "center" }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-blue-bg)", display: "grid", placeItems: "center", color: "var(--mc-blue)", flexShrink: 0, fontSize: 24 }}>📅</div>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-blue-bg)", display: "grid", placeItems: "center", color: "var(--mc-blue)", flexShrink: 0 }}><Icon name="calendar" size={24} /></div>
             <div>
               <div className="text-xs text-muted">Promedio mensual</div>
               <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", fontWeight: 700, lineHeight: 1.1 }}>{demo("45 mm", "—")}</div>
@@ -521,7 +521,7 @@ function ClimaLluvias({
         </div>
         <div className="mc-card">
           <div className="row gap-14" style={{ alignItems: "center" }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-red-bg)", display: "grid", placeItems: "center", color: "var(--mc-red)", flexShrink: 0, fontSize: 24 }}>⏱</div>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-red-bg)", display: "grid", placeItems: "center", color: "var(--mc-red)", flexShrink: 0 }}><Icon name="clock" size={24} /></div>
             <div>
               <div className="text-xs text-muted">Días sin lluvia</div>
               <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-red)", fontWeight: 700, lineHeight: 1.1 }}>{demo("8 Días", "—")}</div>
