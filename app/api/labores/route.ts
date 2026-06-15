@@ -121,7 +121,7 @@ export async function POST(request: Request) {
           },
         });
 
-        // 🔥 REGISTRO ATÓMICO: Descontar stock automáticamente
+        // REGISTRO ATÓMICO: Descontar stock automáticamente
         if (prod.productoId && prod.ubicacionId) {
           const cantidadTotal = parseFloat(prod.dosis) * parseFloat(superficieTrabajada);
 

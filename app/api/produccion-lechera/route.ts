@@ -152,7 +152,7 @@ export async function POST(request: Request) {
 
     if (alertaCaida) {
       analisisIA.tendencia = "Caída significativa";
-      analisisIA.alertas.push("⚠️ Caída de producción >15%");
+      analisisIA.alertas.push("Caída de producción >15%");
       analisisIA.recomendaciones.push("Revisar estado de salud del animal");
       analisisIA.recomendaciones.push("Evaluar plan nutricional");
       analisisIA.recomendaciones.push("Descartar mastitis o enfermedades");
@@ -178,12 +178,12 @@ export async function POST(request: Request) {
 
     // Alertas de calidad
     if (rcs && parseInt(rcs) > 200000) {
-      analisisIA.alertas.push("⚠️ RCS elevado - riesgo de mastitis");
+      analisisIA.alertas.push("RCS elevado - riesgo de mastitis");
       analisisIA.recomendaciones.push("Realizar CMT (California Mastitis Test)");
     }
 
     if (ufc && parseInt(ufc) > 100000) {
-      analisisIA.alertas.push("⚠️ UFC elevado - calidad sanitaria comprometida");
+      analisisIA.alertas.push("UFC elevado - calidad sanitaria comprometida");
     }
 
     const registro = await prisma.produccionLechera.create({

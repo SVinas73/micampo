@@ -64,7 +64,7 @@ export async function POST(
     if (data.cuentaBancariaId) {
       await prisma.extractoBancario.create({
         data: {
-          cuentaId: data.cuentaBancariaId,  // ✅ CORREGIDO: "cuentaId" en lugar de "cuentaBancariaId"
+          cuentaId: data.cuentaBancariaId,  // CORREGIDO: "cuentaId" en lugar de "cuentaBancariaId"
           fecha: new Date(data.fecha),
           descripcion: `Pago ${cuenta.proveedor} - ${cuenta.concepto}`,
           debito: parseFloat(data.monto),

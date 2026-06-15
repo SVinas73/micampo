@@ -75,23 +75,23 @@ export async function GET(request: Request) {
       let aptoCosechar = true;
 
       if (vientoVelocidad > 25) {
-        alertas.push("⚠️ Viento alto: No recomendado pulverizar (deriva)");
+        alertas.push("Viento alto: No recomendado pulverizar (deriva)");
         aptoPulverizar = false;
       }
 
       if (precipitacion > 10) {
-        alertas.push("⚠️ Lluvia significativa: Suspender labores en el campo");
+        alertas.push("Lluvia significativa: Suspender labores en el campo");
         aptoPulverizar = false;
         aptoSembrar = false;
         aptoCosechar = false;
       }
 
       if (humedad > 85 && tempMax > 25) {
-        alertas.push("⚠️ Alta humedad y temperatura: Riesgo de enfermedades fúngicas");
+        alertas.push("Alta humedad y temperatura: Riesgo de enfermedades fúngicas");
       }
 
       if (tempMin < 5) {
-        alertas.push("⚠️ Alerta de helada: Proteger cultivos sensibles");
+        alertas.push("Alerta de helada: Proteger cultivos sensibles");
       }
 
       const pronostico = await prisma.pronosticoClimatico.create({
