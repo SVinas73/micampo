@@ -62,6 +62,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
+import { Icon } from "@/components/mc";
 
 // ============================================
 // TYPES
@@ -857,7 +858,7 @@ export default function SostenibilidadPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">🌍 Sostenibilidad y Cumplimiento</h1>
+          <h1 className="text-3xl font-bold inline-flex items-center gap-2"><Icon name="leaf" size={28} /> Sostenibilidad y Cumplimiento</h1>
           <p className="text-gray-600">
             Gestión de huella de carbono, certificaciones y compliance regulatorio
           </p>
@@ -1590,8 +1591,8 @@ export default function SostenibilidadPage() {
                     reporte.bandaIb > 0 ||
                     reporte.bandaII > 0) && (
                     <div className="border-t pt-3">
-                      <p className="text-xs font-medium mb-2 text-red-700">
-                        ⚠️ Clasificación Toxicológica:
+                      <p className="text-xs font-medium mb-2 text-red-700 inline-flex items-center gap-1">
+                        <Icon name="alert" size={12} /> Clasificación Toxicológica:
                       </p>
                       <div className="space-y-1 text-xs">
                         {reporte.bandaIa > 0 && (
@@ -1968,8 +1969,8 @@ export default function SostenibilidadPage() {
                         }`}
                       >
                         {declaracion.sinDeforestacion
-                          ? "✓ Declaración: SIN deforestación"
-                          : "⚠ Requiere verificación"}
+                          ? <span className="inline-flex items-center gap-1"><Icon name="check" size={13} /> Declaración: SIN deforestación</span>
+                          : <span className="inline-flex items-center gap-1"><Icon name="alert" size={13} /> Requiere verificación</span>}
                       </span>
                     </div>
                   </div>
@@ -2000,8 +2001,8 @@ export default function SostenibilidadPage() {
                           </div>
                         </div>
                         {declaracion.cambioDetectado && (
-                          <p className="text-red-600 text-xs mt-2 font-medium">
-                            ⚠ Cambio detectado - Requiere análisis
+                          <p className="text-red-600 text-xs mt-2 font-medium inline-flex items-center gap-1">
+                            <Icon name="alert" size={12} /> Cambio detectado - Requiere análisis
                           </p>
                         )}
                       </div>
@@ -2102,11 +2103,11 @@ export default function SostenibilidadPage() {
               <div className="bg-blue-50 p-3 rounded text-sm">
                 <p className="font-medium mb-2">El cálculo incluirá:</p>
                 <ul className="space-y-1 text-xs">
-                  <li>✓ Combustible de maquinaria (Alcance 1)</li>
-                  <li>✓ Fertilizantes aplicados (Alcance 1)</li>
-                  <li>✓ Agroquímicos (Alcance 1)</li>
-                  <li>✓ Emisiones de ganado - metano (Alcance 1)</li>
-                  <li>✓ Electricidad consumida (Alcance 2)</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Combustible de maquinaria (Alcance 1)</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Fertilizantes aplicados (Alcance 1)</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Agroquímicos (Alcance 1)</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Emisiones de ganado - metano (Alcance 1)</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Electricidad consumida (Alcance 2)</li>
                 </ul>
               </div>
             </div>
@@ -2620,11 +2621,11 @@ export default function SostenibilidadPage() {
               <div className="bg-blue-50 p-3 rounded text-sm">
                 <p className="font-medium mb-2">El reporte incluirá:</p>
                 <ul className="space-y-1 text-xs">
-                  <li>✓ Resumen cuantitativo de productos aplicados</li>
-                  <li>✓ Clasificación por tipo (herbicidas, insecticidas, etc.)</li>
-                  <li>✓ Clasificación por banda toxicológica</li>
-                  <li>✓ Hectáreas tratadas</li>
-                  <li>✓ Detalle de cada producto</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Resumen cuantitativo de productos aplicados</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Clasificación por tipo (herbicidas, insecticidas, etc.)</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Clasificación por banda toxicológica</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Hectáreas tratadas</li>
+                  <li className="flex items-center gap-1"><Icon name="check" size={12} /> Detalle de cada producto</li>
                 </ul>
               </div>
             </div>
@@ -2970,8 +2971,8 @@ export default function SostenibilidadPage() {
                       <span className="text-sm">
                         {lote.nombre} ({lote.hectareas} ha)
                         {lote.latitud && lote.longitud && (
-                          <span className="text-xs text-gray-500 ml-2">
-                            📍 {lote.latitud.toFixed(4)}, {lote.longitud.toFixed(4)}
+                          <span className="text-xs text-gray-500 ml-2 inline-flex items-center gap-1">
+                            <Icon name="map" size={12} /> {lote.latitud.toFixed(4)}, {lote.longitud.toFixed(4)}
                           </span>
                         )}
                       </span>

@@ -142,7 +142,7 @@ export async function POST(
           tipo: "Predictivo",
           categoria: tipoSensor,
           prioridad: "Crítica",
-          titulo: `⚠️ Sensor ${tipoSensor} en estado crítico`,
+          titulo: `Sensor ${tipoSensor} en estado crítico`,
           descripcion: `El sensor ${codigoSensor} (${ubicacion}) registró ${valorActual} ${unidad}, superando el umbral crítico de ${umbralCritico} ${unidad}`,
           sensorAlerta: true,
           estado: "Activa",

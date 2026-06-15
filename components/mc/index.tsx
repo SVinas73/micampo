@@ -457,7 +457,7 @@ export function WizardSteps({
                   {s}
                 </div>
                 {done && (
-                  <div style={{ fontSize: 10, color: "var(--mc-green-600)", fontWeight: 600 }}>✓ Completado</div>
+                  <div style={{ fontSize: 10, color: "var(--mc-green-600)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="check" size={10} /> Completado</div>
                 )}
               </div>
             </div>

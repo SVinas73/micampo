@@ -59,7 +59,7 @@ export async function POST(request: Request) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: mediaType,  // ✅ Ahora TypeScript está contento
+                media_type: mediaType,  // Ahora TypeScript está contento
                 data: base64,
               },
             },

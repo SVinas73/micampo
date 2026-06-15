@@ -53,6 +53,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { Icon } from "@/components/mc";
 
 type Comprobante = {
   id: string;
@@ -2845,8 +2846,8 @@ export default function FinanzasPage() {
 
             {ocrResult && (
               <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <p className="font-medium text-purple-900 mb-2">
-                  ✅ OCR Procesado (Confianza: {ocrResult.confianza || 0}%)
+                <p className="font-medium text-purple-900 mb-2 inline-flex items-center gap-1">
+                  <Icon name="check" size={14} /> OCR Procesado (Confianza: {ocrResult.confianza || 0}%)
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
@@ -3905,7 +3906,7 @@ export default function FinanzasPage() {
                   required
                 />
                 {selectedItem && parseFloat(pagoForm.monto || "0") > selectedItem.saldo && (
-                  <p className="text-xs text-red-600">⚠️ El monto excede el saldo pendiente</p>
+                  <p className="text-xs text-red-600 inline-flex items-center gap-1"><Icon name="alert" size={12} /> El monto excede el saldo pendiente</p>
                 )}
               </div>
 

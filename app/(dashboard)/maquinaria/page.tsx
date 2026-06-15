@@ -56,6 +56,7 @@ import {
   Target,
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Icon } from "@/components/mc";
 
 // ============================================
 // TYPES
@@ -1034,7 +1035,7 @@ export default function MaquinariaPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">🚜 Gestión de Maquinaria</h1>
+          <h1 className="text-3xl font-bold inline-flex items-center gap-2"><Icon name="truck" size={28} /> Gestión de Maquinaria</h1>
           <p className="text-gray-600">
             Sistema completo de gestión, mantenimiento y monitoreo
           </p>
@@ -1286,9 +1287,9 @@ export default function MaquinariaPage() {
                     >
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        <span>
+                        <span className="inline-flex items-center gap-1">
                           {maquinaria.necesitaMantenimiento
-                            ? "⚠️ Mantenimiento vencido"
+                            ? <><Icon name="alert" size={14} /> Mantenimiento vencido</>
                             : `${maquinaria.horasFaltantesMantenimiento.toFixed(
                                 0
                               )} hs para mantenimiento`}
@@ -2141,7 +2142,7 @@ export default function MaquinariaPage() {
             {/* Columna: Ingresadas */}
             <Card>
               <CardHeader className="pb-3 bg-gray-50">
-                <CardTitle className="text-sm">📥 Ingresadas</CardTitle>
+                <CardTitle className="text-sm inline-flex items-center gap-1"><Icon name="download" size={14} /> Ingresadas</CardTitle>
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
                 {ordenesTaller
@@ -2187,7 +2188,7 @@ export default function MaquinariaPage() {
             {/* Columna: En Proceso */}
             <Card>
               <CardHeader className="pb-3 bg-blue-50">
-                <CardTitle className="text-sm">🔧 En Proceso</CardTitle>
+                <CardTitle className="text-sm inline-flex items-center gap-1"><Icon name="wrench" size={14} /> En Proceso</CardTitle>
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
                 {ordenesTaller
@@ -2218,7 +2219,7 @@ export default function MaquinariaPage() {
                             {orden.maquinaria?.codigo} - {orden.categoria}
                           </p>
                           {orden.mecanicoAsignado && (
-                            <p className="text-xs text-blue-600">👤 {orden.mecanicoAsignado}</p>
+                            <p className="text-xs text-blue-600 inline-flex items-center gap-1"><Icon name="users" size={12} /> {orden.mecanicoAsignado}</p>
                           )}
                         </div>
                       </CardContent>
@@ -2278,7 +2279,7 @@ export default function MaquinariaPage() {
             {/* Columna: Completadas */}
             <Card>
               <CardHeader className="pb-3 bg-green-50">
-                <CardTitle className="text-sm">✅ Completadas</CardTitle>
+                <CardTitle className="text-sm inline-flex items-center gap-1"><Icon name="check" size={14} /> Completadas</CardTitle>
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
                 {ordenesTaller
@@ -2339,7 +2340,7 @@ export default function MaquinariaPage() {
           {/* Ranking de Operadores */}
           <Card>
             <CardHeader>
-              <CardTitle>🏆 Ranking de Operadores</CardTitle>
+              <CardTitle className="inline-flex items-center gap-2"><Icon name="target" size={18} /> Ranking de Operadores</CardTitle>
               <CardDescription>Ordenados por score promedio</CardDescription>
             </CardHeader>
             <CardContent>
@@ -2364,9 +2365,9 @@ export default function MaquinariaPage() {
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="flex items-center gap-2">
-                                {index === 0 && <span className="text-2xl">🥇</span>}
-                                {index === 1 && <span className="text-2xl">🥈</span>}
-                                {index === 2 && <span className="text-2xl">🥉</span>}
+                                {index === 0 && <span className="text-2xl text-yellow-500"><Icon name="target" size={22} /></span>}
+                                {index === 1 && <span className="text-2xl text-gray-400"><Icon name="target" size={22} /></span>}
+                                {index === 2 && <span className="text-2xl text-orange-400"><Icon name="target" size={22} /></span>}
                                 <h3 className="font-bold">
                                   {operador.nombre} {operador.apellido}
                                 </h3>
@@ -3637,13 +3638,13 @@ export default function MaquinariaPage() {
                       : "bg-green-50 border border-green-200"
                   }`}
                 >
-                  <p className="text-sm font-medium">
+                  <p className="text-sm font-medium inline-flex items-center gap-1">
                     Estado:{" "}
                     {parseFloat(sensorForm.valorActual) >= parseFloat(sensorForm.umbralCritico)
-                      ? "🔴 CRÍTICO"
+                      ? <span className="inline-flex items-center gap-1 text-red-600"><Icon name="alert" size={14} /> CRÍTICO</span>
                       : parseFloat(sensorForm.valorActual) >= parseFloat(sensorForm.umbralAlerta)
-                      ? "🟡 ALERTA"
-                      : "🟢 NORMAL"}
+                      ? <span className="inline-flex items-center gap-1 text-yellow-600"><Icon name="alert" size={14} /> ALERTA</span>
+                      : <span className="inline-flex items-center gap-1 text-green-600"><Icon name="check" size={14} /> NORMAL</span>}
                   </p>
                 </div>
               )}
@@ -3931,7 +3932,7 @@ export default function MaquinariaPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="font-semibold mb-3">📊 Métricas de Seguridad</h4>
+                <h4 className="font-semibold mb-3 inline-flex items-center gap-2"><Icon name="chart" size={16} /> Métricas de Seguridad</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Velocidad Promedio (km/h)</Label>
@@ -4028,7 +4029,7 @@ export default function MaquinariaPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="font-semibold mb-3">⚡ Métricas de Eficiencia</h4>
+                <h4 className="font-semibold mb-3 inline-flex items-center gap-2"><Icon name="bolt" size={16} /> Métricas de Eficiencia</h4>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Tiempo Trabajando (hs)</Label>
@@ -4081,7 +4082,7 @@ export default function MaquinariaPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="font-semibold mb-3">🔧 Cuidado de Maquinaria</h4>
+                <h4 className="font-semibold mb-3 inline-flex items-center gap-2"><Icon name="wrench" size={16} /> Cuidado de Maquinaria</h4>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2">
                     <input

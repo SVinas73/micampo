@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { IABadge } from "@/components/mc";
+import { Icon, IABadge } from "@/components/mc";
 import type { SugerenciaIA } from "./BalanceHidrico";
 
 export type RegistroRiego = {
@@ -34,7 +34,7 @@ function Section({ title, icon, right, children }: { title: string; icon: string
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
+        <span style={{ fontSize: 14, display: "grid", placeItems: "center" }}><Icon name={icon} size={14} /></span>
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--mc-muted)", textTransform: "uppercase", letterSpacing: ".06em" }}>{title}</span>
         <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
         {right}
@@ -109,11 +109,11 @@ export default function RegistrarRiegoModal({
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 6, letterSpacing: ".06em", textTransform: "uppercase" }}>Agronomía · Plan de Riego</div>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 26 }}>💧</span> Registrar Evento de Riego
+              <span style={{ fontSize: 26, display: "grid", placeItems: "center" }}><Icon name="droplet" size={26} /></span> Registrar Evento de Riego
             </div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>Confirmá una sugerencia IA o ingresá un riego manual.</div>
           </div>
-          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, color: "#fff", width: 34, height: 34, fontSize: 17, cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 }}>✕</button>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, color: "#fff", width: 34, height: 34, fontSize: 17, cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name="x" size={16} /></button>
         </div>
 
         {/* Body */}
@@ -135,7 +135,7 @@ export default function RegistrarRiegoModal({
 
           {modo === "ia" ? (
             <>
-              <Section title="Sugerencias IA — esta semana" icon="✨" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{sugerencias.length} detectadas</span>}>
+              <Section title="Sugerencias IA — esta semana" icon="bolt" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{sugerencias.length} detectadas</span>}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {sugerencias.map((s, i) => (
                     <div
@@ -168,11 +168,11 @@ export default function RegistrarRiegoModal({
                 </div>
               </Section>
 
-              <Section title="Detalle del Evento" icon="📍">
+              <Section title="Detalle del Evento" icon="map">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
                     <label style={lbl}>Fecha</label>
-                    <input value="🔒 Según sugerencia IA" readOnly style={{ ...inp, background: "#f1f5f9", color: "#64748b" }} />
+                    <input value="Según sugerencia IA" readOnly style={{ ...inp, background: "#f1f5f9", color: "#64748b" }} />
                   </div>
                   <div>
                     <label style={lbl}>Método</label>
@@ -183,7 +183,7 @@ export default function RegistrarRiegoModal({
                 </div>
               </Section>
 
-              <Section title="Ubicación Objetivo (según plan)" icon="🌾" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{selectedCount} seleccionados</span>}>
+              <Section title="Ubicación Objetivo (según plan)" icon="wheat" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{selectedCount} seleccionados</span>}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {lotesOptions.map((o) => (
                     <div key={o.key} onClick={() => toggleLote(o.key)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: `2px solid ${lotes[o.key] ? "#2c82c9" : "#c0c5ce"}`, background: lotes[o.key] ? "#eff6ff" : "#fff", cursor: "pointer" }}>
@@ -200,12 +200,12 @@ export default function RegistrarRiegoModal({
               </Section>
 
               <button className="mc-btn mc-btn--block" style={{ background: "var(--mc-green-700)", color: "#fff" }} onClick={submitIA} disabled={guardando}>
-                ✓ Confirmar Riego IA
+                <Icon name="check" size={13} /> Confirmar Riego IA
               </button>
             </>
           ) : (
             <>
-              <Section title="Cantidad de Agua" icon="💧">
+              <Section title="Cantidad de Agua" icon="droplet">
                 <div style={{ display: "flex", alignItems: "stretch", gap: 14 }}>
                   <div style={{ flex: "0 0 160px", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "#eff6ff", borderRadius: 12, padding: "14px 12px", border: "1.5px solid #bfdbfe" }}>
                     <div style={bigNum}>{mm}</div>
@@ -228,7 +228,7 @@ export default function RegistrarRiegoModal({
                 </div>
               </Section>
 
-              <Section title="Ubicación y Sistema" icon="📍">
+              <Section title="Ubicación y Sistema" icon="map">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
                     <label style={lbl}>Método</label>
@@ -249,7 +249,7 @@ export default function RegistrarRiegoModal({
                 </div>
               </Section>
 
-              <Section title="Lotes Incluidos" icon="🌾" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{selectedCount} seleccionados</span>}>
+              <Section title="Lotes Incluidos" icon="wheat" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{selectedCount} seleccionados</span>}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {lotesOptions.map((o) => (
                     <div key={o.key} onClick={() => toggleLote(o.key)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: `2px solid ${lotes[o.key] ? "#2c82c9" : "#c0c5ce"}`, background: lotes[o.key] ? "#eff6ff" : "#fff", cursor: "pointer" }}>
@@ -265,12 +265,12 @@ export default function RegistrarRiegoModal({
                 </div>
               </Section>
 
-              <Section title="Observaciones (opcional)" icon="📝">
+              <Section title="Observaciones (opcional)" icon="pen">
                 <textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={3} placeholder="Ej: Riego complementario post-lluvia · Verificar caudal de pivot 1..." style={{ ...inp, resize: "vertical", lineHeight: 1.5 }} />
               </Section>
 
               <button className="mc-btn mc-btn--block" style={{ background: "var(--mc-green-700)", color: "#fff" }} onClick={submitManual} disabled={guardando}>
-                ✓ Guardar Registro Manual
+                <Icon name="check" size={13} /> Guardar Registro Manual
               </button>
             </>
           )}

@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         },
       });
       ingresos = transaccionesIngreso.reduce(
-        (sum, t) => sum + parseFloat(t.monto.toString()),  // ✅ CORREGIDO
+        (sum, t) => sum + parseFloat(t.monto.toString()),  // CORREGIDO
         0
       );
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         },
       });
       costos = costosLote.reduce(
-        (sum, c) => sum + parseFloat(c.monto.toString()),  // ✅ CORREGIDO
+        (sum, c) => sum + parseFloat(c.monto.toString()),  // CORREGIDO
         0
       );
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         },
       });
       costos += asignaciones.reduce(
-        (sum, a) => sum + parseFloat(a.monto.toString()),  // ✅ CORREGIDO
+        (sum, a) => sum + parseFloat(a.monto.toString()),  // CORREGIDO
         0
       );
 
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
         },
       });
       ingresos = transaccionesIngreso.reduce(
-        (sum, t) => sum + parseFloat(t.monto.toString()),  // ✅ CORREGIDO
+        (sum, t) => sum + parseFloat(t.monto.toString()),  // CORREGIDO
         0
       );
 
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
         },
       });
       costos = costosAnimal.reduce(
-        (sum, c) => sum + parseFloat(c.monto.toString()),  // ✅ CORREGIDO
+        (sum, c) => sum + parseFloat(c.monto.toString()),  // CORREGIDO
         0
       );
 
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         },
       });
       costos += asignaciones.reduce(
-        (sum, a) => sum + parseFloat(a.monto.toString()),  // ✅ CORREGIDO
+        (sum, a) => sum + parseFloat(a.monto.toString()),  // CORREGIDO
         0
       );
 
@@ -110,8 +110,8 @@ export async function POST(request: Request) {
       });
 
       detalles = {
-        animalCaravana: animal?.caravana,  // ✅ CORREGIDO (antes era "numero")
-        tipo: animal?.tipo,                // ✅ CORREGIDO (antes era "categoria")
+        animalCaravana: animal?.caravana,  // CORREGIDO (antes era "numero")
+        tipo: animal?.tipo,                // CORREGIDO (antes era "categoria")
         raza: animal?.raza,
         sexo: animal?.sexo,
       };
@@ -138,11 +138,11 @@ export async function POST(request: Request) {
 
       ingresos = transacciones
         .filter((t) => t.tipo === "Ingreso")
-        .reduce((sum, t) => sum + parseFloat(t.monto.toString()), 0);  // ✅ CORREGIDO
+        .reduce((sum, t) => sum + parseFloat(t.monto.toString()), 0);  // CORREGIDO
 
       costos = transacciones
         .filter((t) => t.tipo === "Gasto")
-        .reduce((sum, t) => sum + parseFloat(t.monto.toString()), 0);  // ✅ CORREGIDO
+        .reduce((sum, t) => sum + parseFloat(t.monto.toString()), 0);  // CORREGIDO
 
       detalles = {
         periodo,

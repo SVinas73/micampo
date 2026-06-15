@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Icon } from "@/components/mc";
 import { 
   Droplets, 
   TrendingUp, 
@@ -393,14 +394,14 @@ export default function ProduccionLecheraPage() {
 
             {prediccion.analisis && (
               <div className="p-3 bg-white rounded-lg border border-purple-200">
-                <p className="font-medium text-purple-900 text-sm">📊 Análisis:</p>
+                <p className="font-medium text-purple-900 text-sm inline-flex items-center gap-1"><Icon name="chart" size={14} /> Análisis:</p>
                 <p className="text-sm text-purple-800 mt-1">{prediccion.analisis}</p>
               </div>
             )}
 
             {prediccion.factoresRiesgo && prediccion.factoresRiesgo.length > 0 && (
               <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <p className="font-medium text-orange-900 text-sm">⚠️ Factores de Riesgo:</p>
+                <p className="font-medium text-orange-900 text-sm inline-flex items-center gap-1"><Icon name="alert" size={14} /> Factores de Riesgo:</p>
                 <ul className="text-sm text-orange-800 mt-1 list-disc list-inside">
                   {prediccion.factoresRiesgo.map((factor: string, idx: number) => (
                     <li key={idx}>{factor}</li>
@@ -411,7 +412,7 @@ export default function ProduccionLecheraPage() {
 
             {prediccion.recomendaciones && prediccion.recomendaciones.length > 0 && (
               <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="font-medium text-green-900 text-sm">💡 Recomendaciones:</p>
+                <p className="font-medium text-green-900 text-sm inline-flex items-center gap-1"><Icon name="bolt" size={14} /> Recomendaciones:</p>
                 <ul className="text-sm text-green-800 mt-1 list-disc list-inside">
                   {prediccion.recomendaciones.map((rec: string, idx: number) => (
                     <li key={idx}>{rec}</li>

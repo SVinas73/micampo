@@ -188,7 +188,7 @@ function PlanRiegoInner() {
       />
 
       <div className="grid g-cols-5">
-        <KPI label="Estado Hídrico" value={demo<React.ReactNode>(<span style={{ color: "var(--mc-green-700)" }}>Bien Hidratado</span>, "—")} delta={demo("✓ Lotes en confort", "—")} trend="up" icon="droplet" accent />
+        <KPI label="Estado Hídrico" value={demo<React.ReactNode>(<span style={{ color: "var(--mc-green-700)" }}>Bien Hidratado</span>, "—")} delta={demo<React.ReactNode>(<span className="row gap-4" style={{ alignItems: "center" }}><Icon name="check" size={12} />Lotes en confort</span>, "—")} trend="up" icon="droplet" accent />
         <KPI label="Agua Útil (Tanque)" value={demo("45%", "—")} delta={demo("120 mm disponibles", "—")} trend="up" icon="activity" />
         <KPI label="Consumo Diario (ETo)" value={demo("6 mm/día", "—")} delta={demo("Maíz V6 · K=1.1", "—")} trend="up" icon="thermometer" />
         <KPI label="Próximo Riego IA" value={demo("24/09 5:00", "—")} delta={demo("+15 mm sugeridos", "—")} trend="up" icon="calendar" ia />

@@ -38,11 +38,11 @@ type AlertaInfo = {
 };
 
 const ALERTAS_DEMO: AlertaInfo[] = [
-  { lote: "Lote 4 (Maíz)", enfermedad: "Roya Común", estadio: "R1 (Floración)", img: "🌽", imgBg: "linear-gradient(135deg,#c0392b,#922b21)", deteccion: "Detección Satelital IVN", afect: "15 Ha afectadas · Hace 2h", riesgo: "ALTA (35%)", riesgoColor: "red", perdida: "$4.500 USD", proy: "Proyección a cosecha", recom: "Aplicar Fungicida (Triazol)", iaIcon: true },
-  { lote: "Lote 2 (Maíz)", enfermedad: "Oruga Cogollera", estadio: "V8 (Vegetativo)", img: "🐛", imgBg: "linear-gradient(135deg,#6db870,#4f9d52)", deteccion: "Foto de Monitoreo (Dron)", afect: "8 Ha afectadas · Ayer", riesgo: "MEDIA (15%)", riesgoColor: "amber", perdida: "$1.200 USD", proy: "Daño foliar progresivo", recom: "Monitoreo + Insecticida" },
-  { lote: "Lote 7 (Soja)", enfermedad: "Mancha Marrón", estadio: "R3 (Form. Vainas)", img: "🌱", imgBg: "linear-gradient(135deg,#d9a538,#c48410)", deteccion: "Detección Satelital IVN", afect: "20 Ha afectadas · Hace 4h", riesgo: "BAJA (5%)", riesgoColor: "green", perdida: "$500 USD", proy: "Impacto leve", recom: "Monitoreo Intensivo", iaIcon: true },
-  { lote: "Lote 1 (Trigo)", enfermedad: "Pulgón Verde", estadio: "Z31 (Primer Nudo)", img: "🌾", imgBg: "linear-gradient(135deg,#a88032,#d9a538)", deteccion: "Foto de Campo", afect: "30 Ha afectadas · Hace 1h", riesgo: "ALTA (40%)", riesgoColor: "red", perdida: "$3.200 USD", proy: "Rápida propagación", recom: "Aplicar Insecticida Sistémico" },
-  { lote: "Lote 5 (Girasol)", enfermedad: "Esclerotinia", estadio: "R5 (Llenado Grano)", img: "🌻", imgBg: "linear-gradient(135deg,#e8b94a,#d9a538)", deteccion: "Detección Satelital IVN", afect: "12 Ha afectadas · Ayer", riesgo: "MEDIA (20%)", riesgoColor: "amber", perdida: "$2.100 USD", proy: "Riesgo de vuelco", recom: "Evaluar Daño y Cosecha Anticipada", iaIcon: true },
+  { lote: "Lote 4 (Maíz)", enfermedad: "Roya Común", estadio: "R1 (Floración)", img: "wheat", imgBg: "linear-gradient(135deg,#c0392b,#922b21)", deteccion: "Detección Satelital IVN", afect: "15 Ha afectadas · Hace 2h", riesgo: "ALTA (35%)", riesgoColor: "red", perdida: "$4.500 USD", proy: "Proyección a cosecha", recom: "Aplicar Fungicida (Triazol)", iaIcon: true },
+  { lote: "Lote 2 (Maíz)", enfermedad: "Oruga Cogollera", estadio: "V8 (Vegetativo)", img: "bug", imgBg: "linear-gradient(135deg,#6db870,#4f9d52)", deteccion: "Foto de Monitoreo (Dron)", afect: "8 Ha afectadas · Ayer", riesgo: "MEDIA (15%)", riesgoColor: "amber", perdida: "$1.200 USD", proy: "Daño foliar progresivo", recom: "Monitoreo + Insecticida" },
+  { lote: "Lote 7 (Soja)", enfermedad: "Mancha Marrón", estadio: "R3 (Form. Vainas)", img: "sprout", imgBg: "linear-gradient(135deg,#d9a538,#c48410)", deteccion: "Detección Satelital IVN", afect: "20 Ha afectadas · Hace 4h", riesgo: "BAJA (5%)", riesgoColor: "green", perdida: "$500 USD", proy: "Impacto leve", recom: "Monitoreo Intensivo", iaIcon: true },
+  { lote: "Lote 1 (Trigo)", enfermedad: "Pulgón Verde", estadio: "Z31 (Primer Nudo)", img: "wheat", imgBg: "linear-gradient(135deg,#a88032,#d9a538)", deteccion: "Foto de Campo", afect: "30 Ha afectadas · Hace 1h", riesgo: "ALTA (40%)", riesgoColor: "red", perdida: "$3.200 USD", proy: "Rápida propagación", recom: "Aplicar Insecticida Sistémico" },
+  { lote: "Lote 5 (Girasol)", enfermedad: "Esclerotinia", estadio: "R5 (Llenado Grano)", img: "leaf", imgBg: "linear-gradient(135deg,#e8b94a,#d9a538)", deteccion: "Detección Satelital IVN", afect: "12 Ha afectadas · Ayer", riesgo: "MEDIA (20%)", riesgoColor: "amber", perdida: "$2.100 USD", proy: "Riesgo de vuelco", recom: "Evaluar Daño y Cosecha Anticipada", iaIcon: true },
 ];
 
 export default function TabDeteccion() {
@@ -75,7 +75,7 @@ export default function TabDeteccion() {
               loteId: a.loteId,
               enfermedad: a.plaga,
               estadio: "—",
-              img: "🌿",
+              img: "leaf",
               imgBg: "linear-gradient(135deg,#6db870,#4f9d52)",
               deteccion: a.metodoDeteccion || "Manual",
               afect: `${a.areaAfectada || 0} Ha afectadas · Reciente`,
@@ -116,7 +116,7 @@ export default function TabDeteccion() {
         }),
       }).catch(() => {});
     }
-    toast.show(`"${a.recom}" agregado a Labores para ${a.lote} 🚜`);
+    toast.show(`"${a.recom}" agregado a Labores para ${a.lote}`);
   };
 
   const generarAlerta = async (data: { loteId?: string; plaga: string; tipo: string; incidencia: number; observaciones: string }) => {
@@ -131,14 +131,14 @@ export default function TabDeteccion() {
     setAlertas((prev) => [
       {
         lote: `${lotes.find((l) => l.id === data.loteId)?.nombre || "Lote"} (${data.tipo})`,
-        loteId: data.loteId, enfermedad: data.plaga, estadio: "—", img: "🐛",
+        loteId: data.loteId, enfermedad: data.plaga, estadio: "—", img: "bug",
         imgBg: "linear-gradient(135deg,#6db870,#4f9d52)", deteccion: "Reporte Manual",
         afect: `${data.incidencia}% incidencia · Ahora`, riesgo: `${data.incidencia >= 50 ? "ALTA" : data.incidencia >= 20 ? "MEDIA" : "BAJA"} (${data.incidencia}%)`,
         riesgoColor: sevColor, perdida: "Por evaluar", proy: data.observaciones || "", recom: "Evaluación agronómica",
       },
       ...prev,
     ]);
-    toast.show(`Alerta de "${data.plaga}" generada 🐛`);
+    toast.show(`Alerta de "${data.plaga}" generada`);
     setReportarOpen(false);
   };
 
@@ -158,7 +158,7 @@ export default function TabDeteccion() {
       <SubTabs tabs={["Información", "Análisis (IA)"]} active={sub} onChange={setSub} />
 
       {sub === "Información" && <EnfermedadesInfo alertas={alertas} onAgregar={agregarALabores} />}
-      {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} onAgregar={() => toast.show("Tratamiento agregado a Labores 🚜")} />}
+      {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} onAgregar={() => toast.show("Tratamiento agregado a Labores")} />}
     </>
   );
 }
@@ -173,7 +173,7 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 200, display: "grid", placeItems: "center" }} onClick={() => setEnlarged(null)}>
           <div style={{ background: "var(--mc-surface)", borderRadius: 14, padding: 20, width: 460, maxWidth: "92vw", boxShadow: "0 12px 48px rgba(0,0,0,0.35)" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: "100%", aspectRatio: "16/10", background: enlarged.imgBg, borderRadius: 10, position: "relative", marginBottom: 14, overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 64 }}>{enlarged.img}</div>
+              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 64 }}><Icon name={enlarged.img} size={64} /></div>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.7))", padding: "14px 16px" }}>
                 <div style={{ color: "white", fontWeight: 700, fontSize: 13 }}>{enlarged.deteccion}</div>
                 <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 12 }}>{enlarged.afect}</div>
@@ -192,7 +192,7 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
             {alertas.map((a, i) => (
               <div key={i} style={{ padding: "10px 12px", border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "120px 1fr 100px 120px 130px 150px", gap: 10, alignItems: "center" }}>
                 <div style={{ width: 120, height: 80, borderRadius: 8, background: a.imgBg, position: "relative", overflow: "hidden", cursor: "pointer", flexShrink: 0 }} onClick={() => setEnlarged(a)}>
-                  <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-60%)", fontSize: 32 }}>{a.img}</div>
+                  <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-60%)", fontSize: 32 }}><Icon name={a.img} size={32} /></div>
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.65)", padding: "4px 6px" }}>
                     <div style={{ color: "white", fontSize: 9, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.deteccion}</div>
                   </div>
@@ -256,17 +256,17 @@ function EstrategiaControl() {
       <div className="text-xs text-muted">Tratamiento Prioritario para Roya</div>
       <div className="grid g-cols-3 gap-8 mt-12">
         <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-          <div style={{ fontSize: 16 }}>💧</div>
+          <div style={{ fontSize: 16 }}><Icon name="droplet" size={16} /></div>
           <div className="text-xs text-muted">Dosis</div>
           <div className="font-semi text-sm">400 cc/Ha</div>
         </div>
         <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-          <div style={{ fontSize: 16 }}>🌤</div>
+          <div style={{ fontSize: 16 }}><Icon name="sun" size={16} /></div>
           <div className="text-xs text-muted">Venta Óptima</div>
           <div className="font-semi text-sm">Próx. 4hs</div>
         </div>
         <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-          <div style={{ fontSize: 16 }}>💵</div>
+          <div style={{ display: "flex", justifyContent: "center" }}><Icon name="dollar" size={16} /></div>
           <div className="text-xs text-muted">Costo Estimado</div>
           <div className="font-semi text-sm">$28/Ha</div>
         </div>
@@ -309,9 +309,9 @@ function Probabilidades() {
               <div style={{ height: "100%", width: `${p.pct}%`, background: `linear-gradient(90deg, ${p.color}, ${p.colorLight})`, borderRadius: 999 }}></div>
             </div>
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 8, fontSize: 11 }}>
-              <span style={{ color: p.color, fontWeight: 700 }}>{p.tendencia === "up" ? "📈" : p.tendencia === "down" ? "📉" : "➡"} Tendencia: {p.deltaText}</span>
+              <span style={{ color: p.color, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={p.tendencia === "up" ? "arrowUp" : p.tendencia === "down" ? "arrowDown" : "arrowRight"} size={13} /> Tendencia: {p.deltaText}</span>
               <div className="row gap-4" style={{ alignItems: "center" }}>
-                <span className="text-xs text-muted" style={{ fontWeight: 600 }}>📍 Afectados:</span>
+                <span className="text-xs text-muted" style={{ fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="map" size={12} /> Afectados:</span>
                 {p.lotes.map((l, j) => (
                   <span key={j} style={{ padding: "2px 8px", background: "var(--mc-surface)", border: `1px solid ${p.color}40`, borderRadius: 999, fontSize: 10, fontWeight: 700, color: p.color }}>{l}</span>
                 ))}
@@ -353,7 +353,7 @@ function EnfermedadesAnalisisIA({
         const d = await res.json();
         setResultado(d);
         if (d.simulado) toast.show("Análisis demo (configurá ANTHROPIC_API_KEY para IA real)");
-        else toast.show(`Detección completada: ${d.enfermedad} (${d.confianzaGlobal}%) ✦`);
+        else toast.show(`Detección completada: ${d.enfermedad} (${d.confianzaGlobal}%)`);
       } catch {
         toast.show("No se pudo analizar la imagen", "err");
       }
@@ -471,17 +471,17 @@ function EnfermedadesAnalisisIA({
           <div className="text-xs text-muted">Tratamiento Prioritario</div>
           <div className="grid g-cols-3 gap-8 mt-12">
             <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ fontSize: 16 }}>💧</div>
+              <div style={{ fontSize: 16 }}><Icon name="droplet" size={16} /></div>
               <div className="text-xs text-muted">Dosis</div>
               <div className="font-semi text-sm">{datos?.recomendacion.dosis ?? "400 cc/Ha"}</div>
             </div>
             <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ fontSize: 16 }}>🌤</div>
+              <div style={{ fontSize: 16 }}><Icon name="sun" size={16} /></div>
               <div className="text-xs text-muted">Venta Óptima</div>
               <div className="font-semi text-sm">{datos?.recomendacion.ventanaAplicacion ?? "Próx. 4hs"}</div>
             </div>
             <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ fontSize: 16 }}>💵</div>
+              <div style={{ display: "flex", justifyContent: "center" }}><Icon name="dollar" size={16} /></div>
               <div className="text-xs text-muted">Costo Estimado</div>
               <div className="font-semi text-sm">{datos?.recomendacion.costoEstimadoHa ?? "$28/Ha"}</div>
             </div>

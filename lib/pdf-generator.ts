@@ -15,11 +15,11 @@ export const generateEstadoResultadosPDF = (data: any) => {
   // Ingresos
   let yPos = 50;
   doc.setFontSize(14);
-  doc.setFont("helvetica", "bold"); // ✅ Cambiar undefined por "helvetica"
+  doc.setFont("helvetica", "bold"); // Cambiar undefined por "helvetica"
   doc.text("INGRESOS", 20, yPos);
   
   doc.setFontSize(11);
-  doc.setFont("helvetica", "normal"); // ✅ Cambiar undefined por "helvetica"
+  doc.setFont("helvetica", "normal"); // Cambiar undefined por "helvetica"
   yPos += 10;
   
   const ingresosData = Object.entries(data.ingresosPorCategoria).map(([cat, monto]: any) => [
@@ -38,8 +38,7 @@ export const generateEstadoResultadosPDF = (data: any) => {
   yPos = (doc as any).lastAutoTable.finalY + 10;
 
   // Total Ingresos
-  doc.setFont("helvetica", "bold"); // ✅
-  doc.text(`Total Ingresos: $${data.totalIngresos.toFixed(2)}`, 20, yPos);
+  doc.setFont("helvetica", "bold"); //   doc.text(`Total Ingresos: $${data.totalIngresos.toFixed(2)}`, 20, yPos);
   yPos += 15;
 
   // Gastos
@@ -47,8 +46,7 @@ export const generateEstadoResultadosPDF = (data: any) => {
   doc.text("GASTOS", 20, yPos);
   
   doc.setFontSize(11);
-  doc.setFont("helvetica", "normal"); // ✅
-  yPos += 10;
+  doc.setFont("helvetica", "normal"); //   yPos += 10;
 
   const gastosData = Object.entries(data.gastosPorCategoria).map(([cat, monto]: any) => [
     cat,
@@ -66,8 +64,7 @@ export const generateEstadoResultadosPDF = (data: any) => {
   yPos = (doc as any).lastAutoTable.finalY + 10;
 
   // Total Gastos
-  doc.setFont("helvetica", "bold"); // ✅
-  doc.text(`Total Gastos: $${data.totalGastos.toFixed(2)}`, 20, yPos);
+  doc.setFont("helvetica", "bold"); //   doc.text(`Total Gastos: $${data.totalGastos.toFixed(2)}`, 20, yPos);
   yPos += 10;
 
   // Utilidad
@@ -92,8 +89,7 @@ export const generateFlujoCajaPDF = (data: any) => {
 
   // Saldo Inicial
   doc.setFontSize(14);
-  doc.setFont("helvetica", "bold"); // ✅
-  doc.text(`Saldo Inicial: $${data.saldoInicial.toFixed(2)}`, 20, yPos);
+  doc.setFont("helvetica", "bold"); //   doc.text(`Saldo Inicial: $${data.saldoInicial.toFixed(2)}`, 20, yPos);
   yPos += 15;
 
   // Ingresos
@@ -139,8 +135,7 @@ export const generateFlujoCajaPDF = (data: any) => {
 
   // Saldo Final
   doc.setFontSize(14);
-  doc.setFont("helvetica", "bold"); // ✅
-  doc.text(`Saldo Final: $${data.saldoFinal.toFixed(2)}`, 20, yPos);
+  doc.setFont("helvetica", "bold"); //   doc.text(`Saldo Final: $${data.saldoFinal.toFixed(2)}`, 20, yPos);
 
   doc.save(`flujo-caja-${Date.now()}.pdf`);
 };
@@ -158,13 +153,11 @@ export const generateBalancePDF = (data: any) => {
 
   // ACTIVOS
   doc.setFontSize(16);
-  doc.setFont("helvetica", "bold"); // ✅
-  doc.text("ACTIVOS", 20, yPos);
+  doc.setFont("helvetica", "bold"); //   doc.text("ACTIVOS", 20, yPos);
   yPos += 10;
 
   doc.setFontSize(12);
-  doc.setFont("helvetica", "normal"); // ✅
-
+  doc.setFont("helvetica", "normal"); // 
   const activosData = [
     ["Efectivo y Bancos", `$${data.efectivo.toFixed(2)}`],
     ["Cuentas por Cobrar", `$${data.cuentasPorCobrar.toFixed(2)}`],
@@ -181,8 +174,7 @@ export const generateBalancePDF = (data: any) => {
 
   yPos = (doc as any).lastAutoTable.finalY + 5;
 
-  doc.setFont("helvetica", "bold"); // ✅
-  doc.text(`Total Activos: $${data.totalActivos.toFixed(2)}`, 20, yPos);
+  doc.setFont("helvetica", "bold"); //   doc.text(`Total Activos: $${data.totalActivos.toFixed(2)}`, 20, yPos);
   yPos += 20;
 
   // PASIVOS
@@ -191,8 +183,7 @@ export const generateBalancePDF = (data: any) => {
   yPos += 10;
 
   doc.setFontSize(12);
-  doc.setFont("helvetica", "normal"); // ✅
-
+  doc.setFont("helvetica", "normal"); // 
   const pasivosData = [
     ["Cuentas por Pagar", `$${data.cuentasPorPagar.toFixed(2)}`],
     ["Otras Obligaciones", `$${data.otrasObligaciones.toFixed(2)}`],
@@ -207,8 +198,7 @@ export const generateBalancePDF = (data: any) => {
 
   yPos = (doc as any).lastAutoTable.finalY + 5;
 
-  doc.setFont("helvetica", "bold"); // ✅
-  doc.text(`Total Pasivos: $${data.totalPasivos.toFixed(2)}`, 20, yPos);
+  doc.setFont("helvetica", "bold"); //   doc.text(`Total Pasivos: $${data.totalPasivos.toFixed(2)}`, 20, yPos);
   yPos += 20;
 
   // PATRIMONIO

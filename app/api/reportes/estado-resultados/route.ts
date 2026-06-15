@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       .filter((t) => t.tipo === "Ingreso")
       .reduce((acc, t) => {
         const cat = t.categoria || "Otros";
-        acc[cat] = (acc[cat] || 0) + parseFloat(t.monto.toString());  // ✅ CORREGIDO
+        acc[cat] = (acc[cat] || 0) + parseFloat(t.monto.toString());  // CORREGIDO
         return acc;
       }, {} as Record<string, number>);
 
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       .filter((t) => t.tipo === "Gasto")
       .reduce((acc, t) => {
         const cat = t.categoria || "Otros";
-        acc[cat] = (acc[cat] || 0) + parseFloat(t.monto.toString());  // ✅ CORREGIDO
+        acc[cat] = (acc[cat] || 0) + parseFloat(t.monto.toString());  // CORREGIDO
         return acc;
       }, {} as Record<string, number>);
 

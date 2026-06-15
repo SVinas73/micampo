@@ -44,6 +44,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { Icon } from "@/components/mc";
 
 type StockInsumo = {
   id: string;
@@ -977,8 +978,8 @@ export default function LogisticaInventarioPage() {
                         </div>
                         {materia.alertaStockBajo && (
                           <div className="bg-red-50 p-2 rounded mt-3 border border-red-200">
-                            <p className="text-xs font-medium text-red-900">
-                              ⚠️ Stock por debajo del mínimo
+                            <p className="text-xs font-medium text-red-900 inline-flex items-center gap-1">
+                              <Icon name="alert" size={12} /> Stock por debajo del mínimo
                             </p>
                           </div>
                         )}
@@ -1223,8 +1224,8 @@ export default function LogisticaInventarioPage() {
 
                   {tanque.alertaNivelBajo && (
                     <div className="bg-red-50 p-2 rounded border border-red-200">
-                      <p className="text-xs font-medium text-red-900">
-                        ⚠️ Nivel por debajo del mínimo
+                      <p className="text-xs font-medium text-red-900 inline-flex items-center gap-1">
+                        <Icon name="alert" size={12} /> Nivel por debajo del mínimo
                       </p>
                     </div>
                   )}

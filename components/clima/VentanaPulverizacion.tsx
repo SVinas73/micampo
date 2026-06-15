@@ -47,9 +47,9 @@ export function VentanaPulverizacion() {
   const condActual = fullDay[horaActual];
 
   const stateIcon = (e: string) => {
-    if (e === "ÓPTIMO" || e === "BUENO") return "✓";
-    if (e === "NO APTO" || e === "RIESGO ALTO") return "✗";
-    return "⚠";
+    if (e === "ÓPTIMO" || e === "BUENO") return "check";
+    if (e === "NO APTO" || e === "RIESGO ALTO") return "x";
+    return "alert";
   };
   const stateBadgeColor = (e: string) =>
     e === "ÓPTIMO" || e === "BUENO"
@@ -70,8 +70,8 @@ export function VentanaPulverizacion() {
         <div className="row gap-8" style={{ alignItems: "center" }}>
           <div className="col" style={{ alignItems: "flex-end", gap: 2 }}>
             <span className="text-xs text-muted">Condición Actual · {horaStr}</span>
-            <span className={`mc-badge mc-badge--${stateBadgeColor(condActual.e)}`} style={{ fontSize: 11, fontWeight: 800 }}>
-              {stateIcon(condActual.e)} {condActual.e}
+            <span className={`mc-badge mc-badge--${stateBadgeColor(condActual.e)}`} style={{ fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Icon name={stateIcon(condActual.e)} size={12} /> {condActual.e}
             </span>
           </div>
         </div>
@@ -130,7 +130,7 @@ export function VentanaPulverizacion() {
                     fontWeight: 800,
                   }}
                 >
-                  {stateIcon(h.e)}
+                  <Icon name={stateIcon(h.e)} size={12} />
                 </div>
               </div>
               <div className="col gap-4" style={{ flex: 1 }}>

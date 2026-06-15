@@ -2,10 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { Icon, KPI } from "@/components/mc";
+import { demo } from "@/lib/demo";
 
 /* ========== TAB RESUMEN (Figma CDResumen) ========== */
 export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: string) => void }) {
-  const [kpis, setKpis] = useState({ ha: "558 Ha", sembradas: "426 / 558", labores: "17", atrasadas: "3 atrasadas" });
+  const [kpis, setKpis] = useState(
+    demo(
+      { ha: "558 Ha", sembradas: "426 / 558", labores: "17", atrasadas: "3 atrasadas" },
+      { ha: "0 Ha", sembradas: "0 / 0", labores: "0", atrasadas: "0 atrasadas" }
+    )
+  );
 
   useEffect(() => {
     fetch("/api/lotes")
@@ -28,14 +34,25 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       .catch(() => {});
   }, []);
 
+  const focos = demo(
+    [
+      { nivel: "red" as const, titulo: "Plaga: chinche verde", lote: "Lote Norte 1 · Soja", detail: "Sup. umbral · acción inmediata", icon: "alert", tab: "Detección de Enfermedades (IA)" },
+      { nivel: "orange" as const, titulo: "Stress hídrico", lote: "Lote Este 1 · Maíz", detail: "NDVI -8% en 7d · agua útil 42%", icon: "droplet", tab: "Lotes" },
+      { nivel: "amber" as const, titulo: "Enfermedad detectada", lote: "Lote Sur 1 · Trigo", detail: "Mancha foliar · IA 81% conf.", icon: "leaf", tab: "Detección de Enfermedades (IA)" },
+      { nivel: "amber" as const, titulo: "Labor atrasada", lote: "Lote Sur 2", detail: "Fertilización · 2d de atraso", icon: "wrench", tab: "Labores" },
+      { nivel: "blue" as const, titulo: "Cosecha lista", lote: "Lote Este 1 · Maíz", detail: "Humedad 14.5% · ventana óptima", icon: "check", tab: "Cultivos" },
+    ],
+    [] as { nivel: "red" | "orange" | "amber" | "blue"; titulo: string; lote: string; detail: string; icon: string; tab: string }[]
+  );
+
   return (
     <>
       <div className="grid g-cols-5">
-        <KPI label="Hectáreas totales" value={kpis.ha} delta="+3.2% vs campaña ant." trend="up" icon="map" accent />
-        <KPI label="Hectáreas sembradas" value={kpis.sembradas} delta="76% de ocupación" trend="up" icon="sprout" />
-        <KPI label="Siembras programadas" value="3" delta="Próx. 22 abr · Trigo" trend="up" icon="calendar" />
+        <KPI label="Hectáreas totales" value={kpis.ha} delta={demo("+3.2% vs campaña ant.", "—")} trend="up" icon="map" accent />
+        <KPI label="Hectáreas sembradas" value={kpis.sembradas} delta={demo("76% de ocupación", "—")} trend="up" icon="sprout" />
+        <KPI label="Siembras programadas" value={demo("3", "0")} delta={demo("Próx. 22 abr · Trigo", "—")} trend="up" icon="calendar" />
         <KPI label="Labores próximas" value={kpis.labores} delta={kpis.atrasadas} trend="warn" icon="wrench" />
-        <KPI label="Alertas sanitarias" value="2" delta="Chinche + mancha" trend="warn" icon="alert" warn />
+        <KPI label="Alertas sanitarias" value={demo("2", "0")} delta={demo("Chinche + mancha", "—")} trend="warn" icon="alert" warn />
       </div>
 
       <PlantacionesCard />
@@ -45,14 +62,16 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Focos de atención</div>
-            <span className="mc-badge mc-badge--orange">5</span>
+            <span className="mc-badge mc-badge--orange">{focos.length}</span>
           </div>
           <div className="col gap-8">
-            <FocoRow nivel="red" titulo="Plaga: chinche verde" lote="Lote Norte 1 · Soja" detail="Sup. umbral · acción inmediata" icon="alert" onClick={() => onNavigateTab?.("Detección de Enfermedades (IA)")} />
-            <FocoRow nivel="orange" titulo="Stress hídrico" lote="Lote Este 1 · Maíz" detail="NDVI -8% en 7d · agua útil 42%" icon="droplet" onClick={() => onNavigateTab?.("Lotes")} />
-            <FocoRow nivel="amber" titulo="Enfermedad detectada" lote="Lote Sur 1 · Trigo" detail="Mancha foliar · IA 81% conf." icon="leaf" onClick={() => onNavigateTab?.("Detección de Enfermedades (IA)")} />
-            <FocoRow nivel="amber" titulo="Labor atrasada" lote="Lote Sur 2" detail="Fertilización · 2d de atraso" icon="wrench" onClick={() => onNavigateTab?.("Labores")} />
-            <FocoRow nivel="blue" titulo="Cosecha lista" lote="Lote Este 1 · Maíz" detail="Humedad 14.5% · ventana óptima" icon="check" onClick={() => onNavigateTab?.("Cultivos")} />
+            {focos.length === 0 ? (
+              <div className="text-sm text-muted" style={{ padding: "18px 4px" }}>Sin focos de atención.</div>
+            ) : (
+              focos.map((f, i) => (
+                <FocoRow key={i} nivel={f.nivel} titulo={f.titulo} lote={f.lote} detail={f.detail} icon={f.icon} onClick={() => onNavigateTab?.(f.tab)} />
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -72,7 +91,7 @@ function PlantacionesCard() {
         <div className="row gap-12">
           <div style={{ textAlign: "right" }}>
             <div className="text-xs text-muted">Total productivo</div>
-            <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, color: "var(--mc-ink)" }}>558 Ha</div>
+            <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, color: "var(--mc-ink)" }}>{demo("558 Ha", "0 Ha")}</div>
           </div>
           <div className="mc-seg">
             <button className={mode === "ha" ? "is-on" : ""} onClick={() => setMode("ha")}>Hectáreas</button>
@@ -87,17 +106,20 @@ function PlantacionesCard() {
 }
 
 function BarChartPlantaciones({ mode }: { mode: "ha" | "lotes" | "pct" }) {
-  const data = [
-    { nombre: "Maíz", ha: 205, lotes: 8, color: "#d9a538" },
-    { nombre: "Soja", ha: 157, lotes: 6, color: "#4f9d52" },
-    { nombre: "Trigo", ha: 64, lotes: 3, color: "#a88032" },
-    { nombre: "Alfalfa", ha: 42, lotes: 2, color: "#9ecf8c" },
-    { nombre: "Girasol", ha: 0, lotes: 0, color: "#e8b94a" },
-    { nombre: "Trébol", ha: 0, lotes: 0, color: "#7bc77e" },
-    { nombre: "En descanso", ha: 60, lotes: 2, color: "#d5d9d2" },
-    { nombre: "Vacío", ha: 30, lotes: 1, color: "#e8e6e0" },
-  ];
-  const totalHa = 558;
+  const data = demo(
+    [
+      { nombre: "Maíz", ha: 205, lotes: 8, color: "#d9a538" },
+      { nombre: "Soja", ha: 157, lotes: 6, color: "#4f9d52" },
+      { nombre: "Trigo", ha: 64, lotes: 3, color: "#a88032" },
+      { nombre: "Alfalfa", ha: 42, lotes: 2, color: "#9ecf8c" },
+      { nombre: "Girasol", ha: 0, lotes: 0, color: "#e8b94a" },
+      { nombre: "Trébol", ha: 0, lotes: 0, color: "#7bc77e" },
+      { nombre: "En descanso", ha: 60, lotes: 2, color: "#d5d9d2" },
+      { nombre: "Vacío", ha: 30, lotes: 1, color: "#e8e6e0" },
+    ],
+    [] as { nombre: string; ha: number; lotes: number; color: string }[]
+  );
+  const totalHa = demo(558, 1);
   const getValue = (d: (typeof data)[0]) => (mode === "ha" ? d.ha : mode === "lotes" ? d.lotes : Math.round((d.ha / totalHa) * 100));
   const getLabel = (d: (typeof data)[0]) => (mode === "ha" ? String(d.ha) : mode === "lotes" ? String(d.lotes) : `${Math.round((d.ha / totalHa) * 100)}%`);
   const ytConfig = {
@@ -109,6 +131,15 @@ function BarChartPlantaciones({ mode }: { mode: "ha" | "lotes" | "pct" }) {
   const W = 1400, H = 260, padL = 50, padR = 16, padT = 16, padB = 50;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
+
+  if (data.length === 0) {
+    return (
+      <div style={{ padding: "40px 4px", textAlign: "center" }} className="text-sm text-muted">
+        Sin plantaciones registradas.
+      </div>
+    );
+  }
+
   const groupW = innerW / data.length;
   const barW = groupW * 0.55;
 
@@ -163,13 +194,16 @@ function BarChartPlantaciones({ mode }: { mode: "ha" | "lotes" | "pct" }) {
 }
 
 function UltimasActividadesCard({ onVerTodo }: { onVerTodo: () => void }) {
-  const activs = [
-    { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", emoji: "🌧", time: "Hace 2 horas" },
-    { inicial: "J", color: "#d9a538", quien: "Joaquin", verb: "finalizó", obj: "Siembra", lote: "Lote 1", emoji: "🌾", time: "Hace 5 horas" },
-    { sistema: true, inicial: "", color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", emoji: "🐛", time: "Ayer" },
-    { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de Cultivo", lote: "Lote 4", emoji: "📷", time: "Ayer" },
-    { inicial: "M", color: "#e7892b", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", emoji: "💧", time: "Hace 2 días" },
-  ];
+  const activs = demo(
+    [
+      { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", icon: "droplet", time: "Hace 2 horas" },
+      { inicial: "J", color: "#d9a538", quien: "Joaquin", verb: "finalizó", obj: "Siembra", lote: "Lote 1", icon: "sprout", time: "Hace 5 horas" },
+      { sistema: true, inicial: "", color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", icon: "bug", time: "Ayer" },
+      { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de Cultivo", lote: "Lote 4", icon: "camera", time: "Ayer" },
+      { inicial: "M", color: "#e7892b", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", icon: "droplet", time: "Hace 2 días" },
+    ],
+    [] as { inicial: string; color: string; quien: string; verb: string; obj: string; lote: string; icon: string; time: string; sistema?: boolean }[]
+  );
   return (
     <div className="mc-card">
       <div className="mc-card__head">
@@ -179,22 +213,26 @@ function UltimasActividadesCard({ onVerTodo }: { onVerTodo: () => void }) {
         </button>
       </div>
       <div className="mc-actividades">
-        {activs.map((a, i) => (
-          <div key={i} className="mc-act-row">
-            <div className="mc-act-row__avatar" style={{ background: a.color }}>
-              {a.sistema ? <Icon name="bolt" size={14} /> : a.inicial}
-            </div>
-            <div className="mc-act-row__content">
-              <div className="mc-act-row__text">
-                <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb}{" "}
-                <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en{" "}
-                <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span>
-                <span style={{ marginLeft: 6, fontFamily: "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif", fontSize: 14, lineHeight: 1, verticalAlign: "middle" }}>{a.emoji}</span>
+        {activs.length === 0 ? (
+          <div className="text-sm text-muted" style={{ padding: "18px 4px" }}>Sin actividades recientes.</div>
+        ) : (
+          activs.map((a, i) => (
+            <div key={i} className="mc-act-row">
+              <div className="mc-act-row__avatar" style={{ background: a.color }}>
+                {a.sistema ? <Icon name="bolt" size={14} /> : a.inicial}
               </div>
+              <div className="mc-act-row__content">
+                <div className="mc-act-row__text">
+                  <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb}{" "}
+                  <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en{" "}
+                  <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span>
+                  <Icon name={a.icon} size={13} style={{ marginLeft: 6, verticalAlign: "middle", color: "var(--mc-text-3)" }} />
+                </div>
+              </div>
+              <div className="mc-act-row__time">{a.time}</div>
             </div>
-            <div className="mc-act-row__time">{a.time}</div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

@@ -17,11 +17,11 @@ export interface SiembraData {
 }
 
 const CULTIVOS = [
-  { nombre: "Maíz", emoji: "🌽" },
-  { nombre: "Soja", emoji: "🌱" },
-  { nombre: "Trigo", emoji: "🌾" },
-  { nombre: "Sorgo", emoji: "🌿" },
-  { nombre: "Girasol", emoji: "🌻" },
+  { nombre: "Maíz", emoji: "wheat" },
+  { nombre: "Soja", emoji: "sprout" },
+  { nombre: "Trigo", emoji: "wheat" },
+  { nombre: "Sorgo", emoji: "leaf" },
+  { nombre: "Girasol", emoji: "sun" },
 ];
 
 export function NuevaSiembraModal({
@@ -120,7 +120,7 @@ export function NuevaSiembraModal({
                     border: cultivo === c.nombre ? "2px solid var(--mc-green-700)" : "1px solid var(--mc-green-200)",
                   }}
                 >
-                  {c.emoji}
+                  <Icon name={c.emoji} size={20} />
                 </button>
               ))}
             </div>

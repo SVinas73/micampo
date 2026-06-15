@@ -12,7 +12,7 @@ function InfoCell({
 }: {
   icon: string;
   big: React.ReactNode;
-  sub: string;
+  sub: React.ReactNode;
   highlight?: boolean;
 }) {
   return (
@@ -83,7 +83,7 @@ export function ClimaConGantt({
   const headerDate = `${dayShort[today.getDay()]} ${today.getDate()} ${monthsShort[today.getMonth()]} · ${String(today.getHours()).padStart(2, "0")}:${String(today.getMinutes()).padStart(2, "0")}`;
   const now = days[0];
   const condicionTxt =
-    now.ic === "🌧️" ? "Lluvia" : now.ic === "🌦️" ? "Chaparrones aislados" : now.ic === "☀️" ? "Despejado" : "Parcialmente nublado";
+    now.ic === "droplet" ? "Lluvia" : now.ic === "cloud" ? "Parcialmente nublado" : now.ic === "sun" ? "Despejado" : "Parcialmente nublado";
 
   // Acomodo de eventos en filas sin solaparse
   const rows: GanttEvent[][] = [];
@@ -130,8 +130,8 @@ export function ClimaConGantt({
         <div className="row" style={{ alignItems: "stretch", gap: 14 }}>
           {/* Temperatura grande a la izquierda */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 18, borderRight: "1px solid rgba(255,255,255,0.22)" }}>
-            <span style={{ fontFamily: "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif", fontSize: 38, lineHeight: 1 }}>
-              {now.ic}
+            <span style={{ display: "grid", placeItems: "center", fontSize: 38, lineHeight: 1 }}>
+              <Icon name={now.ic} size={38} />
             </span>
             <div className="col">
               <span style={{ fontFamily: "var(--ff-display)", fontSize: 56, lineHeight: 0.92, fontWeight: 600 }}>{now.max}°</span>
@@ -165,7 +165,7 @@ export function ClimaConGantt({
             />
             <InfoCell icon="droplet" big="68%" sub={`Rocío ${now.min + 2}°`} />
             <InfoCell icon="wind" big={now.wind.split(" ").slice(0, 2).join(" ")} sub={`${now.wind.split(" ").slice(2).join(" ")} · Ráf. 18`} />
-            <InfoCell icon="activity" big="ΔT 5.2" sub="✓ Apto pulver." highlight />
+            <InfoCell icon="activity" big="ΔT 5.2" sub={<span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="check" size={12} /> Apto pulver.</span>} highlight />
           </div>
         </div>
       </div>
@@ -199,13 +199,13 @@ export function ClimaConGantt({
               <div style={{ fontSize: 10, color: d.isToday ? "var(--mc-green-700)" : "var(--mc-text-2)", fontWeight: 600, marginTop: 1 }}>
                 {d.num}
               </div>
-              <div style={{ fontSize: 30, lineHeight: 1, marginTop: 6, fontFamily: "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif" }}>
-                {d.ic}
+              <div style={{ fontSize: 30, lineHeight: 1, marginTop: 6, display: "grid", placeItems: "center" }}>
+                <Icon name={d.ic} size={28} />
               </div>
               {/* espacio para la curva */}
               <div style={{ height: 80 }} />
               {d.mm > 0 ? (
-                <div style={{ fontSize: 11, color: "var(--mc-blue)", fontWeight: 700, fontFamily: "var(--ff-mono)" }}>💧 {d.mm}mm</div>
+                <div style={{ fontSize: 11, color: "var(--mc-blue)", fontWeight: 700, fontFamily: "var(--ff-mono)", display: "inline-flex", alignItems: "center", gap: 3 }}><Icon name="droplet" size={12} /> {d.mm}mm</div>
               ) : (
                 <div style={{ height: 17 }} />
               )}

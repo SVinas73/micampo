@@ -135,7 +135,7 @@ export function NuevaOrdenLaborModal({
                 style={prioridad === "Urgente" ? { background: "#e7892b", color: "white" } : undefined}
                 onClick={() => setPrioridad("Urgente")}
               >
-                [ 🔥 Urgente ]
+                [ <Icon name="bolt" size={13} /> Urgente ]
               </button>
             </div>
             <button className="mc-icon-btn" onClick={onClose}><Icon name="x" size={15} /></button>
@@ -163,7 +163,7 @@ export function NuevaOrdenLaborModal({
                   </span>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? "var(--mc-ink)" : done ? "var(--mc-green-700)" : "var(--mc-text-3)" }}>{s}</div>
-                    {done && <div style={{ fontSize: 10, color: "var(--mc-green-600)", fontWeight: 600 }}>✓ Completed</div>}
+                    {done && <div style={{ fontSize: 10, color: "var(--mc-green-600)", fontWeight: 600, display: "flex", alignItems: "center", gap: 3 }}><Icon name="check" size={10} /> Completed</div>}
                   </div>
                 </div>
               );
@@ -310,7 +310,7 @@ export function NuevaOrdenLaborModal({
                       </div>
                       <div>
                         <div className="font-semi text-sm">{operario}</div>
-                        <span className="mc-badge mc-badge--green" style={{ fontSize: 10 }}>Licencia: Vigente ✓</span>
+                        <span className="mc-badge mc-badge--green" style={{ fontSize: 10, display: "inline-flex", alignItems: "center", gap: 3 }}>Licencia: Vigente <Icon name="check" size={10} /></span>
                       </div>
                     </div>
                     <select style={inputS} value={operario} onChange={(e) => setOperario(e.target.value)}>
@@ -318,7 +318,7 @@ export function NuevaOrdenLaborModal({
                     </select>
                     {operario === "Marcos Gonzalez" && (
                       <div style={{ marginTop: 10, padding: "8px 10px", background: "var(--mc-amber-bg)", borderRadius: 8, fontSize: 11.5, color: "var(--mc-amber)" }}>
-                        ⚠ Turno doble acumulado · lleva 6.5h en turno actual
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={12} /> Turno doble acumulado · lleva 6.5h en turno actual</span>
                       </div>
                     )}
                   </div>
@@ -345,7 +345,7 @@ export function NuevaOrdenLaborModal({
                       {["Sembradora Pla STC", "Rotoenfardadora Mainero", "Pulverizador Metalfor", "Fertilizadora Altina"].map((o) => <option key={o}>{o}</option>)}
                     </select>
                     <div style={{ marginTop: 12, padding: "8px 10px", background: "var(--mc-surface-2)", borderRadius: 8, fontSize: 12 }}>
-                      ⚙ Config: 16 líneas a 52cm
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="settings" size={12} /> Config: 16 líneas a 52cm</span>
                     </div>
                     <span className="mc-badge mc-badge--green mt-12"><Icon name="check" size={10} />Compatible con Tractor</span>
                   </div>
@@ -365,7 +365,7 @@ export function NuevaOrdenLaborModal({
                   style={{ alignSelf: "flex-start", color: "var(--mc-blue)", borderColor: "var(--mc-blue)" }}
                   onClick={() => setParametros((p) => ({ ...p }))}
                 >
-                  ⚡ Cargar Configuración Predefinida
+                  <Icon name="bolt" size={13} /> Cargar Configuración Predefinida
                 </button>
                 <div className="grid g-cols-3 gap-12">
                   {Object.entries(parametros).map(([k, v]) => (
@@ -403,7 +403,7 @@ export function NuevaOrdenLaborModal({
                   )}
                 </div>
                 <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ alignSelf: "flex-start", color: "var(--mc-blue)", borderColor: "var(--mc-blue)" }}>
-                  📡 Crear mapeo de telemetría
+                  <Icon name="activity" size={13} /> Crear mapeo de telemetría
                 </button>
               </div>
             )}
@@ -504,7 +504,7 @@ export function NuevaOrdenLaborModal({
                   <div>
                     <div className="font-semi" style={{ marginBottom: 8 }}>A. Presupuesto Estimado</div>
                     <div style={{ padding: 18, borderRadius: 12, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)", textAlign: "center" }}>
-                      <div className="text-sm text-muted">Costo Total del Evento 📊</div>
+                      <div className="text-sm text-muted" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>Costo Total del Evento <Icon name="chart" size={13} /></div>
                       <div style={{ fontFamily: "var(--ff-display)", fontSize: 34, color: "var(--mc-ink)", marginTop: 4 }}>${costoTotal.toLocaleString("es-AR")} USD</div>
                       <div className="text-xs text-muted mt-2">(${haNetas > 0 ? (costoTotal / haNetas).toFixed(2) : "0"} / Ha)</div>
                     </div>
@@ -544,7 +544,7 @@ export function NuevaOrdenLaborModal({
             </button>
           ) : (
             <button className="mc-btn mc-btn--primary mc-btn--lg" disabled={emitiendo} onClick={emitir}>
-              🚀 {emitiendo ? "Emitiendo..." : "Emitir y Notificar Orden"}
+              <Icon name="send" size={14} /> {emitiendo ? "Emitiendo..." : "Emitir y Notificar Orden"}
             </button>
           )}
         </div>

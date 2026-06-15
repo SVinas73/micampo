@@ -144,7 +144,7 @@ export async function POST(request: Request) {
       }
 
       if (gananciaPromedioDiaria < gananciaEsperada * 0.7) {
-        alertas.push("⚠️ Ganancia de peso por debajo de lo esperado");
+        alertas.push("Ganancia de peso por debajo de lo esperado");
         analisisIA.tendencia = "Baja";
         analisisIA.recomendaciones.push("Revisar plan nutricional");
         analisisIA.recomendaciones.push("Descartar problemas sanitarios");
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
     }
 
     if (condicionCorporal && parseFloat(condicionCorporal) < 2.5) {
-      alertas.push("⚠️ Condición corporal baja");
+      alertas.push("Condición corporal baja");
       analisisIA.recomendaciones.push("Incrementar aporte nutricional");
     }
 

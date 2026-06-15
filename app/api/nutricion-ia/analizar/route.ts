@@ -155,7 +155,7 @@ export async function POST(request: Request) {
       ],
       alertas:
         proteinaDiaria > 2.5
-          ? ["⚠️ Alto nivel de proteína, puede ser costoso. Evaluar alternativas."]
+          ? ["Alto nivel de proteína, puede ser costoso. Evaluar alternativas."]
           : [],
     };
 

@@ -134,7 +134,7 @@ export async function POST(request: Request) {
       analisisIA.evaluacion = `Sobrecarga del ${(porcentajeCapacidad - 100).toFixed(0)}%. Riesgo de degradación del pastizal.`;
       analisisIA.recomendaciones.push(`Reducir ${animalesReducir} animales o aumentar superficie`);
       analisisIA.recomendaciones.push("Implementar rotación de pasturas");
-      alertas.push("⚠️ Carga animal excesiva");
+      alertas.push("Carga animal excesiva");
     } else if (estado === "Subcargado") {
       analisisIA.evaluacion = `Subcarga del ${(100 - porcentajeCapacidad).toFixed(0)}%. Capacidad no utilizada.`;
       analisisIA.recomendaciones.push(`Puede agregar hasta ${animalesAdicionales} animales más`);
@@ -148,10 +148,10 @@ export async function POST(request: Request) {
     if (disponibilidadForraje && diasDisponibilidad) {
       const dias = parseInt(diasDisponibilidad);
       if (dias < 15) {
-        alertas.push("⚠️ Forraje disponible para menos de 15 días");
+        alertas.push("Forraje disponible para menos de 15 días");
         analisisIA.recomendaciones.push("Planificar movimiento urgente o suplementación");
       } else if (dias < 30) {
-        alertas.push("ℹ️ Forraje disponible para menos de 30 días");
+        alertas.push("ℹForraje disponible para menos de 30 días");
         analisisIA.recomendaciones.push("Preparar próximo lote o suplemento");
       }
     }
