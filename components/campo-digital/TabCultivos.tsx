@@ -36,9 +36,9 @@ type PlanIA = {
 };
 
 const PLANES_ACTIVOS_DEMO: PlanActivo[] = [
-  { titulo: "Maíz Tardío - Lotes Norte", emoji: "🌽", costo: "$45.500 USD", lotes: "4, 5, 8", ha: "320 Ha", fecha: "20-25 Oct", insumo: "Híbrido DK-7210", densidad: "70 pl/Ha", steps: 3, color: "#d9a538" },
-  { titulo: "Soja Primera - Lotes Sur", emoji: "🌱", costo: "$62.000 USD", lotes: "9, 12, 15", ha: "450 Ha", fecha: "05-10 Nov", insumo: "Semilla SY 5x1", densidad: "280k pl/Ha", steps: 2, color: "#4f9d52" },
-  { titulo: "Girasol - Lotes Oeste", emoji: "🌻", costo: "$55.000 USD", lotes: "1, 3, 7", ha: "280 Ha", fecha: "15-20 Nov", insumo: "Semilla P245", densidad: "60k pl/Ha", steps: 4, color: "#e7892b" },
+  { titulo: "Maíz Tardío - Lotes Norte", emoji: "wheat", costo: "$45.500 USD", lotes: "4, 5, 8", ha: "320 Ha", fecha: "20-25 Oct", insumo: "Híbrido DK-7210", densidad: "70 pl/Ha", steps: 3, color: "#d9a538" },
+  { titulo: "Soja Primera - Lotes Sur", emoji: "sprout", costo: "$62.000 USD", lotes: "9, 12, 15", ha: "450 Ha", fecha: "05-10 Nov", insumo: "Semilla SY 5x1", densidad: "280k pl/Ha", steps: 2, color: "#4f9d52" },
+  { titulo: "Girasol - Lotes Oeste", emoji: "leaf", costo: "$55.000 USD", lotes: "1, 3, 7", ha: "280 Ha", fecha: "15-20 Nov", insumo: "Semilla P245", densidad: "60k pl/Ha", steps: 4, color: "#e7892b" },
 ];
 
 const PLANES_IA_DEMO: PlanIA[] = [
@@ -110,7 +110,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
           }),
         }).catch(() => {});
       }
-      toast.show(`Siembra de ${data.cultivo} en ${data.loteNombre} guardada 🌱`);
+      toast.show(`Siembra de ${data.cultivo} en ${data.loteNombre} guardada`);
       setSiembraOpen(false);
     } catch {
       toast.show("No se pudo guardar la siembra", "err");
@@ -132,7 +132,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
           }),
         }).catch(() => {});
       }
-      toast.show(`Cosecha de ${data.cultivo} registrada: ${data.rendimiento} Tn ✓${data.cerrarLote ? " · Lote cerrado" : ""}`);
+      toast.show(`Cosecha de ${data.cultivo} registrada: ${data.rendimiento} Tn${data.cerrarLote ? " · Lote cerrado" : ""}`);
       setCosechaOpen(false);
     } catch {
       toast.show("No se pudo registrar la cosecha", "err");
@@ -226,10 +226,10 @@ function CultivosEstados({ onNuevaTarea }: { onNuevaTarea: (lote: string) => voi
               <div style={{ background: l.color, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div className="row gap-12" style={{ alignItems: "center" }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.22)", display: "grid", placeItems: "center", fontSize: 22 }}>
-                    {l.cultivo === "Maíz" ? "🌽" : "🌱"}
+                    <Icon name={l.cultivo === "Maíz" ? "wheat" : "sprout"} size={22} />
                   </div>
                   <div>
-                    <div style={{ color: "white", fontWeight: 700, fontSize: 16, fontFamily: "var(--ff-display)", lineHeight: 1.2 }}>{l.id} ({l.cultivo}) ⚠</div>
+                    <div style={{ color: "white", fontWeight: 700, fontSize: 16, fontFamily: "var(--ff-display)", lineHeight: 1.2, display: "flex", alignItems: "center", gap: 4 }}>{l.id} ({l.cultivo}) <Icon name="alert" size={14} /></div>
                     <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, marginTop: 2 }}>{l.has} Has | Activo</div>
                   </div>
                 </div>
@@ -258,7 +258,7 @@ function CultivosEstados({ onNuevaTarea }: { onNuevaTarea: (lote: string) => voi
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     <Pill label="Estadio" value={l.estadio} />
-                    <Pill label="Agua acum." value={`💧 ${l.agua} | ☀ ${l.gdd}`} />
+                    <Pill label="Agua acum." value={<span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="droplet" size={12} /> {l.agua} | <Icon name="sun" size={12} /> {l.gdd}</span>} />
                   </div>
                 </SeccionLote>
                 <SeccionLote color={l.color} icon="wrench" titulo="Cosecha">
@@ -275,11 +275,11 @@ function CultivosEstados({ onNuevaTarea }: { onNuevaTarea: (lote: string) => voi
                   <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                     <div style={{ padding: "8px 10px", background: `${l.color}10`, borderRadius: 8, borderLeft: `3px solid ${l.color}60` }}>
                       <div className="text-xs text-muted" style={{ marginBottom: 2 }}>Última</div>
-                      <div className="font-semi text-xs" style={{ color: "var(--mc-ink)" }}>⚠ {l.fertilizacion}</div>
+                      <div className="font-semi text-xs" style={{ color: "var(--mc-ink)", display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={12} /> {l.fertilizacion}</div>
                     </div>
                     <div style={{ padding: "8px 10px", background: "rgba(255,255,255,0.7)", borderRadius: 8, border: `1px dashed ${l.color}50` }}>
                       <div className="text-xs text-muted" style={{ marginBottom: 2 }}>Próxima</div>
-                      <div className="font-semi text-xs" style={{ color: l.color }}>⚠ {l.monitoreo}</div>
+                      <div className="font-semi text-xs" style={{ color: l.color, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={12} /> {l.monitoreo}</div>
                     </div>
                   </div>
                 </SeccionLote>
@@ -302,14 +302,14 @@ function CultivosEstados({ onNuevaTarea }: { onNuevaTarea: (lote: string) => voi
         </div>
         <div className="col gap-10 mt-12">
           {[
-            { nombre: "Maíz", ha: 120, pct: 51, color: "#4f9d52", emoji: "🌽", trend: "up", delta: "+8 Ha" },
-            { nombre: "Soja", ha: 85, pct: 36, color: "#3aa6d9", emoji: "🌱", trend: "flat", delta: "—" },
-            { nombre: "Sorgo", ha: 30, pct: 13, color: "#e7892b", emoji: "🌿", trend: "down", delta: "-4 Ha" },
+            { nombre: "Maíz", ha: 120, pct: 51, color: "#4f9d52", emoji: "wheat", trend: "up", delta: "+8 Ha" },
+            { nombre: "Soja", ha: 85, pct: 36, color: "#3aa6d9", emoji: "sprout", trend: "flat", delta: "—" },
+            { nombre: "Sorgo", ha: 30, pct: 13, color: "#e7892b", emoji: "leaf", trend: "down", delta: "-4 Ha" },
           ].map((d) => (
             <div key={d.nombre} style={{ padding: "10px 12px", background: `${d.color}0d`, borderRadius: 10, border: `1px solid ${d.color}25` }}>
               <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                 <div className="row gap-8" style={{ alignItems: "center" }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: d.color, display: "grid", placeItems: "center", fontSize: 14 }}>{d.emoji}</div>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: d.color, display: "grid", placeItems: "center", color: "white" }}><Icon name={d.emoji} size={14} /></div>
                   <div>
                     <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13 }}>{d.nombre}</div>
                     <div className="text-xs text-muted">{d.ha} Ha</div>
@@ -348,7 +348,7 @@ function SeccionLote({ color, icon, titulo, extra, last, children }: { color: st
   );
 }
 
-function Pill({ label, value, color }: { label: string; value: string; color?: string }) {
+function Pill({ label, value, color }: { label: string; value: React.ReactNode; color?: string }) {
   return (
     <div style={{ padding: "6px 10px", background: "rgba(255,255,255,0.7)", borderRadius: 7, fontSize: 11 }}>
       <span className="text-muted">{label}:</span> <span className="font-semi" style={color ? { color } : undefined}>{value}</span>
@@ -435,12 +435,12 @@ function CultivosPlanificador({
       .then((d) => {
         if (!Array.isArray(d) || d.length === 0) return;
         const colores = ["#d9a538", "#4f9d52", "#e7892b"];
-        const emojis: Record<string, string> = { Maíz: "🌽", Soja: "🌱", Girasol: "🌻", Trigo: "🌾", Sorgo: "🌿" };
+        const emojis: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Girasol: "sun", Trigo: "wheat", Sorgo: "leaf" };
         setActivos(
           d.slice(0, 6).map((p: { id: string; cultivo: string; hectareas: number; costoEstimado?: number; fechaSiembraRecomendada: string; variedad?: string; lote?: { nombre: string }; estado?: string }, i: number) => ({
             id: p.id,
             titulo: `${p.cultivo} - ${p.lote?.nombre || "Plan"}`,
-            emoji: emojis[p.cultivo] || "🌿",
+            emoji: emojis[p.cultivo] || "leaf",
             costo: `$${Math.round(p.costoEstimado || 0).toLocaleString("es-AR")} USD`,
             lotes: p.lote?.nombre || "—",
             ha: `${Math.round(p.hectareas)} Ha`,
@@ -489,7 +489,7 @@ function CultivosPlanificador({
             };
           })
         );
-        toast.show(`${d.planes.length} planes generados con IA ✦`);
+        toast.show(`${d.planes.length} planes generados con IA`);
       }
     } catch {
       toast.show("IA no disponible: mostrando recomendaciones de ejemplo (configurá ANTHROPIC_API_KEY)", "err");
@@ -500,7 +500,7 @@ function CultivosPlanificador({
   const convertir = async (p: PlanIA) => {
     setRecomendados((prev) => prev.filter((x) => x !== p));
     setActivos((prev) => [
-      { titulo: p.sugerencia, emoji: "🌿", costo: "A presupuestar", lotes: p.lotes, ha: "—", fecha: "A definir", insumo: "A definir", densidad: "—", steps: 1, color: p.color },
+      { titulo: p.sugerencia, emoji: "leaf", costo: "A presupuestar", lotes: p.lotes, ha: "—", fecha: "A definir", insumo: "A definir", densidad: "—", steps: 1, color: p.color },
       ...prev,
     ]);
     if (p.id) {
@@ -510,7 +510,7 @@ function CultivosPlanificador({
         body: JSON.stringify({ estado: "Aprobado" }),
       }).catch(() => {});
     }
-    toast.show(`"${p.sugerencia}" convertido en plan activo ✓`);
+    toast.show(`"${p.sugerencia}" convertido en plan activo`);
   };
 
   const descartar = async (p: PlanIA) => {
@@ -533,7 +533,7 @@ function CultivosPlanificador({
       }).catch(() => {});
     }
     setActivos((prev) => prev.map((x) => (x === p ? { ...x, steps: Math.min(4, x.steps + 1) } : x)));
-    toast.show(`Orden de trabajo generada para "${p.titulo}" 🚜`);
+    toast.show(`Orden de trabajo generada para "${p.titulo}"`);
   };
 
   return (
@@ -607,7 +607,7 @@ function CultivosPlanificador({
             <IABadge />
           </div>
           <button className="mc-btn mc-btn--secondary mc-btn--sm" disabled={generando} onClick={regenerar}>
-            {generando ? "Generando con IA..." : "✦ Regenerar con IA"}
+            {generando ? "Generando con IA..." : <><Icon name="bolt" size={12} /> Regenerar con IA</>}
           </button>
         </div>
         <div className="grid g-cols-3 gap-14">
@@ -626,7 +626,7 @@ function CultivosPlanificador({
               </div>
               <div style={{ padding: "12px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ fontSize: 12 }}>
-                  <div className="text-xs text-muted" style={{ marginBottom: 2 }}>📍 Lotes Afectados</div>
+                  <div className="text-xs text-muted" style={{ marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="map" size={12} /> Lotes Afectados</div>
                   <div className="font-semi" style={{ color: "var(--mc-ink)" }}>{p.lotes}</div>
                 </div>
                 <div style={{ padding: "10px 12px", background: "var(--mc-surface-2)", borderRadius: 9, fontSize: 12 }}>
@@ -634,14 +634,14 @@ function CultivosPlanificador({
                     <IABadge />
                     <div className="font-semi" style={{ color: "var(--mc-ink)" }}>El Razonamiento (The Why)</div>
                   </div>
-                  <div className="text-muted">⚠ Detectado: {p.razon}</div>
+                  <div className="text-muted" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={12} /> Detectado: {p.razon}</div>
                 </div>
                 <div style={{ padding: "10px 12px", background: `${p.color}0d`, borderRadius: 9, fontSize: 12 }}>
-                  <div style={{ color: p.color, fontWeight: 700, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.06em", marginBottom: 4 }}>📈 Proyección Económica</div>
+                  <div style={{ color: p.color, fontWeight: 700, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="chart" size={12} /> Proyección Económica</div>
                   <div className="font-semi" style={{ color: "var(--mc-ink)" }}>{p.proy}</div>
                 </div>
                 <div style={{ padding: "10px 12px", background: "linear-gradient(to right, #00FF0010, #FF9D0010)", border: "1.5px solid #FF9D0040", borderRadius: 9, fontSize: 12 }}>
-                  <div style={{ color: "#a85f00", fontWeight: 700, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.06em", marginBottom: 4 }}>✅ Beneficio Clave</div>
+                  <div style={{ color: "#a85f00", fontWeight: 700, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="check" size={12} /> Beneficio Clave</div>
                   <div style={{ color: "var(--mc-ink)", fontWeight: 600, lineHeight: 1.4 }}>{p.beneficio}</div>
                 </div>
               </div>
@@ -650,7 +650,7 @@ function CultivosPlanificador({
                   <Icon name="x" size={10} />Descartar
                 </button>
                 <button className="mc-btn mc-btn--primary mc-btn--sm flex-1" style={{ fontSize: 11 }} onClick={() => convertir(p)}>
-                  ✓ Convertir en Plan
+                  <Icon name="check" size={11} /> Convertir en Plan
                 </button>
               </div>
             </div>
@@ -773,8 +773,8 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
             </div>
             <div className="col gap-8">
               {recomendacion(receta).map((r, i) => (
-                <div key={i} style={{ padding: "10px 12px", background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)", borderRadius: 8, fontSize: 13 }}>
-                  🌱 {r}
+                <div key={i} style={{ padding: "10px 12px", background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)", borderRadius: 8, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icon name="sprout" size={13} /> {r}
                 </div>
               ))}
             </div>
@@ -792,7 +792,7 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
             <div key={i} style={{ padding: 14, border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "1.2fr 1fr 0.8fr auto", gap: 14, alignItems: "center" }}>
               <div>
                 <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>Identity</div>
-                <div className="font-semi text-sm mt-4" style={{ color: "var(--mc-ink)" }}>🌾 {l.lote}</div>
+                <div className="font-semi text-sm mt-4" style={{ color: "var(--mc-ink)", display: "flex", alignItems: "center", gap: 4 }}><Icon name="wheat" size={13} /> {l.lote}</div>
                 <div className="text-xs text-muted mt-2">{l.cultivo}</div>
               </div>
               <div>
@@ -811,7 +811,7 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
                   </span>
                 </div>
                 <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12 }}>
-                  <span className="mc-badge mc-badge--neutral">MO {l.mo} 🌱</span>
+                  <span className="mc-badge mc-badge--neutral" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>MO {l.mo} <Icon name="sprout" size={12} /></span>
                 </div>
               </div>
               <div className="col gap-4" style={{ minWidth: 110 }}>
@@ -850,9 +850,9 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
                   <td className="mc-cell--mono">{r.fecha}</td>
                   <td>{r.lote}</td>
                   <td className="mc-cell--mono">{r.prof}</td>
-                  <td><span style={{ color: r.pWarn ? "var(--mc-red)" : "var(--mc-ink)", fontWeight: r.pWarn ? 700 : 500 }}>{r.p} {r.pWarn && "⚠"}</span></td>
+                  <td><span style={{ color: r.pWarn ? "var(--mc-red)" : "var(--mc-ink)", fontWeight: r.pWarn ? 700 : 500, display: "inline-flex", alignItems: "center", gap: 3 }}>{r.p} {r.pWarn && <Icon name="alert" size={12} />}</span></td>
                   <td className="mc-cell--mono">{r.n}</td>
-                  <td><span style={{ color: r.phWarn ? "var(--mc-red)" : "var(--mc-ink)" }}>{r.ph} {r.phWarn && "⚠"}</span></td>
+                  <td><span style={{ color: r.phWarn ? "var(--mc-red)" : "var(--mc-ink)", display: "inline-flex", alignItems: "center", gap: 3 }}>{r.ph} {r.phWarn && <Icon name="alert" size={12} />}</span></td>
                   <td><span className={`mc-badge mc-badge--${r.estadoColor}`}>{r.estado}</span></td>
                   <td>
                     <button
@@ -916,7 +916,7 @@ function NutBar({ letter, value }: { letter: string; value: number }) {
   return (
     <div className="row gap-4" style={{ alignItems: "center", fontSize: 11 }}>
       <span style={{ width: 14, fontWeight: 700, color: "var(--mc-ink)" }}>{letter}</span>
-      {value < 35 && <span style={{ color: "var(--mc-red)" }}>⚠</span>}
+      {value < 35 && <Icon name="alert" size={12} style={{ color: "var(--mc-red)" }} />}
       <div className="mc-prog" style={{ flex: 1, height: 6 }}>
         <div className="mc-prog__bar" style={{ width: `${value}%`, background: color }}></div>
       </div>
@@ -950,7 +950,7 @@ function NuevoAnalisisModal({
           }),
         }).catch(() => {});
       }
-      toast.show(`Análisis de suelo de ${l?.nombre || "lote"} registrado 🧪`);
+      toast.show(`Análisis de suelo de ${l?.nombre || "lote"} registrado`);
       onClose();
     } catch {
       toast.show("No se pudo registrar el análisis", "err");

@@ -30,7 +30,7 @@ function Section({ icon, title, children }: { icon: string; title: string; child
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
+        <Icon name={icon} size={14} />
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--mc-muted)", textTransform: "uppercase", letterSpacing: ".06em" }}>{title}</span>
         <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
       </div>
@@ -91,7 +91,7 @@ export function AgregarCampoModal({
 
         {/* Body */}
         <div style={{ padding: "22px 28px", overflowY: "auto", flex: 1 }}>
-          <Section icon="📝" title="Datos del Establecimiento">
+          <Section icon="pen" title="Datos del Establecimiento">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 14 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
@@ -124,7 +124,7 @@ export function AgregarCampoModal({
             </div>
           </Section>
 
-          <Section icon="🤝" title="Régimen de Tenencia">
+          <Section icon="users" title="Régimen de Tenencia">
             <div style={{ display: "flex", gap: 8 }}>
               {([["propio", "Propio"], ["arrendado", "Arrendado"]] as const).map(([val, label]) => {
                 const sel = tenencia === val;
@@ -142,7 +142,7 @@ export function AgregarCampoModal({
           </Section>
 
           {tenencia === "arrendado" && (
-            <Section icon="📄" title="Condiciones del Contrato (opcional)">
+            <Section icon="book" title="Condiciones del Contrato (opcional)">
               <div style={{ display: "flex", gap: 8 }}>
                 <input style={{ ...inp, width: 100, flexShrink: 0 }} type="number" placeholder="180" value={valor} onChange={(e) => setValor(e.target.value)} />
                 <select style={{ ...inp, flex: 1 }} value={moneda} onChange={(e) => setMoneda(e.target.value)}>
@@ -202,7 +202,7 @@ export function EliminarCampoModal({
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 6, letterSpacing: ".06em", textTransform: "uppercase" }}>Acción irreversible</div>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 26 }}>⚠️</span> Eliminar Establecimiento
+              <Icon name="alert" size={26} /> Eliminar Establecimiento
             </div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>Esta acción borrará todos los datos asociados</div>
           </div>
@@ -213,7 +213,7 @@ export function EliminarCampoModal({
 
         {/* Body */}
         <div style={{ padding: "22px 28px", overflowY: "auto", flex: 1 }}>
-          <Section icon="🏞️" title="Establecimiento">
+          <Section icon="map" title="Establecimiento">
             <label style={lbl}>Seleccione el campo a eliminar</label>
             <select value={campo} onChange={(e) => { setCampo(e.target.value); setConfirmado(false); }} style={inp}>
               {campos.map((c) => (
@@ -223,7 +223,7 @@ export function EliminarCampoModal({
           </Section>
 
           <div style={{ background: "#fef2f2", border: "1.5px solid #fca5a5", borderRadius: 10, padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <span style={{ fontSize: 18, lineHeight: 1 }}>⚠️</span>
+            <Icon name="alert" size={18} style={{ flexShrink: 0 }} />
             <div>
               <div style={{ fontWeight: 700, fontSize: 13, color: "#b91c1c", marginBottom: 4 }}>¡Acción irreversible!</div>
               <div style={{ fontSize: 13, color: "#7f1d1d", lineHeight: 1.5 }}>

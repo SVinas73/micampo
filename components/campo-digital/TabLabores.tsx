@@ -326,7 +326,7 @@ export default function TabLabores() {
                         </button>
                       )}
                       {enCurso && (
-                        <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => patchLabor(l, { estado: "Completada" }, `${l.tarea} completada ✓`)}>
+                        <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => patchLabor(l, { estado: "Completada" }, `${l.tarea} completada`)}>
                           <Icon name="check" size={10} />Finalizar
                         </button>
                       )}
@@ -383,7 +383,7 @@ export default function TabLabores() {
                       setNuevaFecha(iso(2));
                       if (!target) toast.show("Labor de ejemplo: usá la tabla para reprogramar labores reales");
                     } else if (b.accion === "Solicitar") {
-                      toast.show("Solicitud de insumos enviada a Logística e Inventario 📦");
+                      toast.show("Solicitud de insumos enviada a Logística e Inventario");
                     } else {
                       setVerDetalle({ titulo: b.titulo, lote: b.lote, detalle: `${b.alertaTitulo} — ${b.alertaSub}` });
                     }
@@ -486,7 +486,7 @@ export default function TabLabores() {
                       <button className="mc-icon-btn" style={{ width: 26, height: 26, border: "none" }} title="Reprogramar" onClick={() => { setReprogramar(l); setNuevaFecha(l.fechaISO); }}>
                         <Icon name="calendar" size={13} />
                       </button>
-                      <button className="mc-icon-btn" style={{ width: 26, height: 26, border: "none" }} title="Completar" onClick={() => patchLabor(l, { estado: "Completada" }, `"${l.tarea}" completada ✓`)}>
+                      <button className="mc-icon-btn" style={{ width: 26, height: 26, border: "none" }} title="Completar" onClick={() => patchLabor(l, { estado: "Completada" }, `"${l.tarea}" completada`)}>
                         <Icon name="check" size={13} />
                       </button>
                     </div>

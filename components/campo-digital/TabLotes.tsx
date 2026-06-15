@@ -459,7 +459,7 @@ function LoteFichaTecnica({
         <div className="row gap-8 mt-8 text-xs text-muted" style={{ alignItems: "center" }}>
           <span>{lote.ha} Has</span>
           <span>·</span>
-          <span>🌱 {lote.cultivo || "Sin cultivo"} {lote.variety || ""}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="sprout" size={13} /> {lote.cultivo || "Sin cultivo"} {lote.variety || ""}</span>
           <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexShrink: 0 }}>
             <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`}>
               {lote.sano ? <Icon name="check" size={11} /> : <Icon name="alert" size={11} />} {lote.sano ? "Saludable" : "Atención"}
@@ -694,24 +694,24 @@ function LotesListaDetallada({
           </div>
           {rows.map(({ lote: l, x }, i) => {
             const cultivo = l.cultivo || "Sin cultivo";
-            const cropEmoji = cultivo.includes("Maíz") ? "🌽" : cultivo.includes("Soja") ? "🌱" : cultivo.includes("Trigo") ? "🌾" : cultivo.includes("Girasol") ? "🌻" : "🌿";
+            const cropEmoji = cultivo.includes("Maíz") ? "wheat" : cultivo.includes("Soja") ? "sprout" : cultivo.includes("Trigo") ? "wheat" : cultivo.includes("Girasol") ? "sun" : "leaf";
             return (
               <div key={i} className="mc-lotes-list__row" onClick={() => onVer(l)}>
                 <div>
                   <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>{l.campo}</div>
                   <div className="row gap-4 mt-4" style={{ alignItems: "center" }}>
-                    <span style={{ color: "var(--mc-red)", fontSize: 14 }}>📍</span>
+                    <Icon name="map" size={14} style={{ color: "var(--mc-red)" }} />
                     <span className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 14 }}>{l.id.replace("L-0", "Lote ")} - {l.name}</span>
                   </div>
                   <div className="text-xs text-muted mt-4">{l.ha} Hectáreas</div>
                 </div>
                 <div>
                   <div className="row gap-4" style={{ alignItems: "center" }}>
-                    <span style={{ fontSize: 16 }}>{cropEmoji}</span>
+                    <Icon name={cropEmoji} size={16} />
                     <span className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{cultivo}</span>
                   </div>
                   <span className="mc-badge mc-badge--neutral mt-4" style={{ fontSize: 10 }}>[ {l.estadio || "—"} ]</span>
-                  <div className="text-xs text-muted mt-4">🧬 Genética: {l.variety || x.genetica}</div>
+                  <div className="text-xs text-muted mt-4" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="activity" size={12} /> Genética: {l.variety || x.genetica}</div>
                 </div>
                 <div>
                   <div className="row" style={{ justifyContent: "flex-end", fontSize: 11, color: "var(--mc-text-3)" }}>{x.finPct}%</div>
@@ -732,11 +732,11 @@ function LotesListaDetallada({
                     <Icon name="droplet" size={11} style={{ color: "var(--mc-blue)" }} />
                     <span className="text-muted">Agua: {l.aguaUtil}%</span>
                   </div>
-                  <div className="text-xs text-muted mt-4">📅 Visita: {x.visita}</div>
+                  <div className="text-xs text-muted mt-4" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="calendar" size={12} /> Visita: {x.visita}</div>
                 </div>
                 <div>
                   <div className="row gap-4" style={{ alignItems: "center", fontSize: 12 }}>
-                    <span style={{ fontSize: 12 }}>🐛</span>
+                    <Icon name="bug" size={12} />
                     <span className="font-semi text-xs" style={{ color: "var(--mc-ink)" }}>{x.plaga}</span>
                   </div>
                   <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12 }}>
@@ -746,7 +746,7 @@ function LotesListaDetallada({
                     </span>
                   </div>
                   <span className={`mc-badge mt-4 ${x.monitor.includes("OK") ? "mc-badge--green" : x.monitor.includes("Vigilancia") || x.monitor.includes("Pendiente") ? "mc-badge--amber" : "mc-badge--red"}`} style={{ fontSize: 10 }}>
-                    {x.monitor.includes("OK") ? "✅" : "⚠️"} {x.monitor}
+                    <Icon name={x.monitor.includes("OK") ? "check" : "alert"} size={11} /> {x.monitor}
                   </span>
                 </div>
                 <div>
@@ -754,7 +754,7 @@ function LotesListaDetallada({
                   <div className="text-xs" style={{ color: x.neg ? "var(--mc-red)" : "var(--mc-green-700)", fontWeight: 600, marginTop: 2 }}>
                     {x.neg ? <Icon name="arrowDown" size={10} /> : <Icon name="arrowUp" size={10} />} {x.proyDelta}
                   </div>
-                  <div className="text-xs text-muted mt-4">📅 Est: {x.proyFecha}</div>
+                  <div className="text-xs text-muted mt-4" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="calendar" size={12} /> Est: {x.proyFecha}</div>
                 </div>
                 <div className="col gap-4" onClick={(e) => e.stopPropagation()}>
                   <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => onTarea(l)}>

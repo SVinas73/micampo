@@ -42,7 +42,7 @@ export function ReportarPlagaModal({
       <div style={{ background: "var(--mc-surface)", borderRadius: 16, width: 820, maxWidth: "100%", maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}>
         <div style={{ padding: "20px 28px", borderBottom: "1px solid var(--mc-line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: "var(--mc-ink)", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>🐛</span> Reportar Plaga o Enfermedad
+            <Icon name="bug" size={22} /> Reportar Plaga o Enfermedad
           </div>
           <button onClick={onClose} className="mc-icon-btn"><Icon name="x" size={15} /></button>
         </div>
@@ -50,13 +50,13 @@ export function ReportarPlagaModal({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", flex: 1, overflow: "auto" }}>
           {/* Left */}
           <div style={{ padding: "22px 22px 22px 28px", borderRight: "1px solid var(--mc-line)" }}>
-            <Section icon="📍" title="Ubicación">
+            <Section icon="map" title="Ubicación">
               <select value={loteIdx} onChange={(e) => setLoteIdx(Number(e.target.value))} style={inp}>
                 {lista.map((l, i) => <option key={i} value={i}>{l.nombre}{l.cultivo ? ` - ${l.cultivo}` : ""}</option>)}
               </select>
             </Section>
 
-            <Section icon="🔍" title="Identificación">
+            <Section icon="search" title="Identificación">
               <div className="row gap-6" style={{ marginBottom: 10 }}>
                 {(["Insecto", "Hongo", "Maleza"] as const).map((c) => (
                   <button
@@ -65,7 +65,7 @@ export function ReportarPlagaModal({
                     className="mc-btn mc-btn--sm"
                     style={{ flex: 1, background: categoria === c ? "var(--mc-green-600)" : "var(--mc-surface-2)", color: categoria === c ? "white" : "var(--mc-text-2)", border: "1px solid var(--mc-line-2)" }}
                   >
-                    {c === "Insecto" ? "🐛" : c === "Hongo" ? "🍄" : "🌿"} {c}
+                    <Icon name={c === "Insecto" ? "bug" : c === "Hongo" ? "sprout" : "leaf"} size={13} /> {c}
                   </button>
                 ))}
               </div>
@@ -88,7 +88,7 @@ export function ReportarPlagaModal({
               </div>
             </Section>
 
-            <Section icon="📊" title="Nivel de Daño" right={<span style={{ fontSize: 13, fontWeight: 700, color: incColor }}>Incidencia {incidencia}%</span>}>
+            <Section icon="chart" title="Nivel de Daño" right={<span style={{ fontSize: 13, fontWeight: 700, color: incColor }}>Incidencia {incidencia}%</span>}>
               <div style={{ position: "relative", height: 10, borderRadius: 6, background: "linear-gradient(to right,#22a261,#e59700,#d94040)", marginBottom: 10 }}>
                 <div style={{ position: "absolute", left: `${incidencia}%`, top: "50%", transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%", background: "#fff", border: `2.5px solid ${incColor}`, boxShadow: "0 2px 6px rgba(0,0,0,0.2)", zIndex: 1 }} />
                 <input type="range" min={1} max={100} value={incidencia} onChange={(e) => setIncidencia(+e.target.value)} style={{ width: "100%", opacity: 0, position: "absolute", top: -4, left: 0, height: 18, cursor: "pointer", margin: 0 }} />
@@ -101,7 +101,7 @@ export function ReportarPlagaModal({
 
           {/* Right */}
           <div style={{ padding: "22px 28px 22px 22px", display: "flex", flexDirection: "column" }}>
-            <Section icon="📷" title="Upload Photo">
+            <Section icon="camera" title="Upload Photo">
               <label
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
@@ -113,7 +113,7 @@ export function ReportarPlagaModal({
                   <img src={foto} alt="foto" style={{ width: "100%", height: 150, objectFit: "cover" }} />
                 ) : (
                   <>
-                    <div style={{ fontSize: 30, marginBottom: 8 }}>📷</div>
+                    <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}><Icon name="camera" size={30} /></div>
                     <div className="font-semi text-sm" style={{ color: "var(--mc-ink)", marginBottom: 4 }}>Arrastrar foto o Capturar</div>
                     <div className="text-xs" style={{ color: "var(--mc-green-700)", textDecoration: "underline" }}>o seleccionar archivo</div>
                   </>
@@ -123,7 +123,7 @@ export function ReportarPlagaModal({
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 14 }}>📝</span>
+                <Icon name="pen" size={14} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: ".06em" }}>Observaciones / Notas de campo</span>
                 <div style={{ flex: 1, height: 1, background: "var(--mc-line)" }} />
               </div>
@@ -151,7 +151,7 @@ function Section({ icon, title, right, children }: { icon: string; title: string
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
+        <Icon name={icon} size={14} />
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: ".06em" }}>{title}</span>
         <div style={{ flex: 1, height: 1, background: "var(--mc-line)" }} />
         {right}
