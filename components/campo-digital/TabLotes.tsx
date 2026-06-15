@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
+import { demo } from "@/lib/demo";
 import { useSetHeaderActions } from "./ActionsContext";
 import {
   LOTES_GEO, GEO_METRICAS, LOTES_INICIALES, LISTA_EXTRAS, mapLotesApi, fechaCorta,
@@ -17,7 +18,7 @@ import {
 export default function TabLotes() {
   const searchParams = useSearchParams();
   const toast = useToast();
-  const [lotes, setLotes] = useState<LoteUI[]>(LOTES_INICIALES);
+  const [lotes, setLotes] = useState<LoteUI[]>(demo(LOTES_INICIALES, []));
   const [selected, setSelected] = useState<LoteUI | null>(null);
   const [view, setView] = useState<"mapa" | "lista">("mapa");
   const [layer, setLayer] = useState("NDVI");
@@ -177,10 +178,10 @@ export default function TabLotes() {
 
       <div className="grid g-cols-5">
         <KPI label="Total de campos" value={String(campos.length)} delta={campos.map((c) => c.nombre).slice(0, 2).join(" + ") || "—"} trend="up" icon="map" accent />
-        <KPI label="Total de lotes" value={String(lotes.length)} delta="+2 esta campaña" trend="up" icon="sprout" />
+        <KPI label="Total de lotes" value={String(lotes.length)} delta={demo("+2 esta campaña", "—")} trend="up" icon="sprout" />
         <KPI label="Total de hectáreas" value={`${Math.round(totalHa)} Ha`} delta={`${Math.round(sembradas)} sembradas`} trend="up" icon="activity" />
         <KPI label="Lotes sin asignar" value={String(sinAsignar.length)} delta={sinAsignar.map((l) => l.name).slice(0, 2).join(" + ") || "Ninguno"} trend="warn" icon="alert" />
-        <KPI label="Marcadores" value="14" delta="Pozos, silos, casas" trend="up" icon="target" />
+        <KPI label="Marcadores" value={demo("14", "0")} delta="Pozos, silos, casas" trend="up" icon="target" />
       </div>
 
       <div className="row gap-8" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
