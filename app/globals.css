@@ -520,10 +520,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
       var(--mc-ovl-soft) 100%
     ),
     var(--mc-modulo-img, none);
-  /* La capa de velo cubre todo; la imagen se muestra COMPLETA (contain),
-     sin recortes ni estiramiento, centrada dentro del área del módulo. */
-  background-size: cover, contain;
-  background-position: center, center top;
+  /* La capa de velo cubre todo; la imagen llena toda la pantalla del módulo
+     (cover): conserva su proporción —no se deforma— y recorta lo que sobra. */
+  background-size: cover, cover;
+  background-position: center, center center;
   background-attachment: fixed, fixed;
   background-repeat: no-repeat, no-repeat;
 }
