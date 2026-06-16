@@ -59,7 +59,7 @@ const QUICK_ACTS: { id: string; icon: string; label: string; href?: string }[] =
 type LaborApi = { id: string; tipo: string; fecha: string; estado?: string; lote?: { nombre: string } };
 
 const TIPO_COLOR: Record<string, { color: string; icon: string }> = {
-  Siembra: { color: "#4f9d52", icon: "sprout" },
+  Siembra: { color: "#768f44", icon: "sprout" },
   Pulverización: { color: "#e7892b", icon: "flask" },
   Riego: { color: "#3aa6d9", icon: "droplet" },
   Cosecha: { color: "#d9a538", icon: "wrench" },
@@ -118,7 +118,7 @@ export default function InicioPage() {
         if (d.length > 0) {
           const totalHa = d.reduce((s: number, l: { hectareas?: number }) => s + (l.hectareas || 0), 0);
           setKpiValues((prev) => ({ ...prev, hectareas: { value: `${Math.round(totalHa).toLocaleString("es-AR")} Ha`, delta: `${d.length} lotes` } }));
-          const colores: Record<string, string> = { Maíz: "#d9a538", Soja: "#4f9d52", Trigo: "#a88032", Alfalfa: "#9ecf8c", Girasol: "#e8b94a", Sorgo: "#e7892b" };
+          const colores: Record<string, string> = { Maíz: "#d9a538", Soja: "#768f44", Trigo: "#a88032", Alfalfa: "#aabd76", Girasol: "#e8b94a", Sorgo: "#e7892b" };
           const porCultivo = new Map<string, number>();
           d.forEach((l: { cultivo?: string; hectareas?: number }) => {
             if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0));
@@ -567,8 +567,8 @@ function KpiPicker({ all, current, used, onPick, onClose }: { all: Record<string
 function SaludCampo({ onVer }: { onVer: () => void }) {
   const score = 86;
   const segs = [
-    { label: "Excelente", pct: 35, color: "#13a84a" },
-    { label: "Bueno", pct: 40, color: "#4f9d52" },
+    { label: "Excelente", pct: 35, color: "#5e7733" },
+    { label: "Bueno", pct: 40, color: "#768f44" },
     { label: "Regular", pct: 15, color: "#c48410" },
     { label: "Pobre", pct: 10, color: "#c93434" },
   ];
@@ -660,7 +660,7 @@ function ClimaHoy() {
 function ResumenSuelo({ onVer }: { onVer: () => void }) {
   const nutri = [
     { l: "Nitrógeno", k: "N", nivel: "Medio", color: "#c48410", pct: 60 },
-    { l: "Fósforo", k: "P", nivel: "Alto", color: "#13a84a", pct: 85 },
+    { l: "Fósforo", k: "P", nivel: "Alto", color: "#5e7733", pct: 85 },
     { l: "Potasio", k: "K", nivel: "Medio", color: "#c48410", pct: 62 },
   ];
   return (
@@ -697,9 +697,9 @@ function ResumenSuelo({ onVer }: { onVer: () => void }) {
 function DistribucionCultivos({ cultivos, onVer }: { cultivos: { nombre: string; ha: number; color: string }[] | null; onVer: () => void }) {
   const data = cultivos && cultivos.length ? cultivos : demo([
     { nombre: "Maíz", ha: 45.2, color: "#d9a538" },
-    { nombre: "Soja", ha: 32.8, color: "#4f9d52" },
+    { nombre: "Soja", ha: 32.8, color: "#768f44" },
     { nombre: "Trigo", ha: 25.6, color: "#a88032" },
-    { nombre: "Cebada", ha: 12.5, color: "#9ecf8c" },
+    { nombre: "Cebada", ha: 12.5, color: "#aabd76" },
     { nombre: "Otros", ha: 9.5, color: "#cbd5c5" },
   ], [] as { nombre: string; ha: number; color: string }[]);
   const total = data.reduce((s, c) => s + c.ha, 0);
@@ -802,22 +802,22 @@ function Tendencia({ balance }: { balance: { meses: string[]; ingresos: number[]
           <div className="text-xs text-muted">{sub}</div>
         </div>
         <div className="row gap-12 text-xs">
-          <span className="row gap-4"><span style={{ width: 10, height: 3, background: "#4f9d52", borderRadius: 2 }} />{usaBalance ? "Ingresos" : "Actual"}</span>
+          <span className="row gap-4"><span style={{ width: 10, height: 3, background: "#768f44", borderRadius: 2 }} />{usaBalance ? "Ingresos" : "Actual"}</span>
           <span className="row gap-4"><span style={{ width: 10, height: 3, background: "#9aa6b2", borderRadius: 2 }} />{usaBalance ? "Gastos" : "Pronóstico"}</span>
         </div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
         <defs>
-          <linearGradient id="trendA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4f9d52" stopOpacity="0.25" /><stop offset="100%" stopColor="#4f9d52" stopOpacity="0" /></linearGradient>
+          <linearGradient id="trendA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#768f44" stopOpacity="0.25" /><stop offset="100%" stopColor="#768f44" stopOpacity="0" /></linearGradient>
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
           const y = padT + ih * p;
           return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--mc-line)" strokeDasharray={i === 4 ? "0" : "2,3"} />;
         })}
         <path d={area(serieA)} fill="url(#trendA)" />
-        <path d={line(serieA)} fill="none" stroke="#4f9d52" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={line(serieA)} fill="none" stroke="#768f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         <path d={line(serieB)} fill="none" stroke="#9aa6b2" strokeWidth="2" strokeDasharray="5,4" strokeLinecap="round" strokeLinejoin="round" />
-        {serieA.map((v, i) => <circle key={i} cx={px(i)} cy={py(v)} r={i === n - 1 ? 4.5 : 3} fill="#4f9d52" />)}
+        {serieA.map((v, i) => <circle key={i} cx={px(i)} cy={py(v)} r={i === n - 1 ? 4.5 : 3} fill="#768f44" />)}
         {labels.map((l, i) => <text key={i} x={px(i)} y={H - 8} fontSize="10" fontFamily="var(--ff-ui)" fill="var(--mc-text-2)" textAnchor="middle">{l}</text>)}
       </svg>
     </div>

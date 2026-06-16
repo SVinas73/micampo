@@ -256,7 +256,7 @@ export function Modal({
       : headTone === "red"
         ? "linear-gradient(135deg, #b91c1c, #dc2626)"
         : headTone === "green"
-          ? "linear-gradient(135deg, #0a5a24, #13a84a)"
+          ? "linear-gradient(135deg, #4a5e29, #5e7733)"
           : undefined;
   return (
     <div className="mc-modal-backdrop" onClick={onClose}>

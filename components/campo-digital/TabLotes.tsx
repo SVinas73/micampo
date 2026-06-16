@@ -270,7 +270,7 @@ function LotesMapa({
   onEditar: (l: LoteUI) => void;
   onTarea: (l: LoteUI) => void;
 }) {
-  const ndviScale = (v: number) => (v >= 0.75 ? "#1f6e2a" : v >= 0.65 ? "#4f9d52" : v >= 0.55 ? "#a8d09c" : v >= 0.45 ? "#e1c069" : "#cf7a3a");
+  const ndviScale = (v: number) => (v >= 0.75 ? "#1f6e2a" : v >= 0.65 ? "#768f44" : v >= 0.55 ? "#a8d09c" : v >= 0.45 ? "#e1c069" : "#cf7a3a");
   const humScale = (v: number) => (v >= 80 ? "#1d4ed8" : v >= 65 ? "#3b82f6" : v >= 50 ? "#7ab4f0" : v >= 35 ? "#bcd9f4" : "#e8e6e0");
   const topoScale = (v: number) => (v >= 220 ? "#5b3b1a" : v >= 180 ? "#8a5a2a" : v >= 140 ? "#b88c50" : v >= 110 ? "#d8b380" : "#ecd9b8");
 
@@ -286,15 +286,15 @@ function LotesMapa({
 
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
     Cultivos: [
-      { color: "#4f9d52", label: "Soja" },
+      { color: "#768f44", label: "Soja" },
       { color: "#d9a538", label: "Maíz" },
       { color: "#a88032", label: "Trigo" },
-      { color: "#9ecf8c", label: "Alfalfa" },
+      { color: "#aabd76", label: "Alfalfa" },
       { color: "rgba(10,61,26,0.18)", label: "En descanso" },
     ],
     NDVI: [
       { color: "#1f6e2a", label: "Muy alto (≥0.75)" },
-      { color: "#4f9d52", label: "Alto" },
+      { color: "#768f44", label: "Alto" },
       { color: "#a8d09c", label: "Medio" },
       { color: "#e1c069", label: "Bajo" },
       { color: "#cf7a3a", label: "Crítico (<0.45)" },
@@ -368,7 +368,7 @@ function LotesMapa({
           <svg id="mc-mapa-lotes" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox={viewBox} preserveAspectRatio="xMidYMid slice">
             <defs>
               <pattern id="hatchVacio" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-                <line x1="0" y1="0" x2="0" y2="6" stroke="#0a3d1a" strokeWidth="1" opacity="0.18" />
+                <line x1="0" y1="0" x2="0" y2="6" stroke="#38491f" strokeWidth="1" opacity="0.18" />
               </pattern>
             </defs>
             {LOTES_GEO.map((p) => {
@@ -381,7 +381,7 @@ function LotesMapa({
                   <polygon
                     points={p.points}
                     fill={fillFor(p.id)}
-                    stroke={isSel ? "#475569" : met?.vacio ? "#0a3d1a" : "#0a5a24"}
+                    stroke={isSel ? "#475569" : met?.vacio ? "#38491f" : "#4a5e29"}
                     strokeWidth={isSel ? 4 : 1.5}
                     opacity={visible ? (isSel ? 1 : 0.92) : 0.25}
                   />
@@ -392,11 +392,11 @@ function LotesMapa({
               );
             })}
             <circle cx="200" cy="180" r="8" fill="#475569" stroke="white" strokeWidth="2.5" />
-            <text x="215" y="184" fontSize="10" fill="#0a3d1a" fontWeight="600">Pozo 1</text>
+            <text x="215" y="184" fontSize="10" fill="#38491f" fontWeight="600">Pozo 1</text>
             <circle cx="500" cy="280" r="8" fill="#2c6bb8" stroke="white" strokeWidth="2.5" />
-            <text x="515" y="284" fontSize="10" fill="#0a3d1a" fontWeight="600">Silo</text>
+            <text x="515" y="284" fontSize="10" fill="#38491f" fontWeight="600">Silo</text>
             <rect x="680" y="60" width="14" height="14" fill="#1a1f1c" stroke="white" strokeWidth="2" />
-            <text x="700" y="72" fontSize="10" fill="#0a3d1a" fontWeight="600">Casa</text>
+            <text x="700" y="72" fontSize="10" fill="#38491f" fontWeight="600">Casa</text>
           </svg>
 
           <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,0.95)", padding: "10px 14px", borderRadius: 10, fontSize: 12, display: "flex", gap: 14, flexWrap: "wrap", boxShadow: "var(--sh-md)" }}>

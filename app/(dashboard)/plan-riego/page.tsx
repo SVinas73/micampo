@@ -26,7 +26,7 @@ const SUGERENCIAS_DEMO: SugerenciaIA[] = [
 const EVENTOS_DEMO: EventoAgua[] = [
   { tipo: "Riego Variable (IA)", fecha: "Ayer, 04:00 AM", icon: "droplet", color: "#3aa6d9", val: "+12 mm", status: "ejecutado", iaIcon: true },
   { tipo: "Lluvia Fuerte", fecha: "Jueves 21, PM", icon: "droplet", color: "#3aa6d9", val: "+45 mm", status: "Reporte Manual" },
-  { tipo: "Fertirriego", fecha: "Lunes 18", icon: "leaf", color: "#4f9d52", val: "+10 mm", status: "Aplicación Urea" },
+  { tipo: "Fertirriego", fecha: "Lunes 18", icon: "leaf", color: "#768f44", val: "+10 mm", status: "Aplicación Urea" },
   { tipo: "Llovizna", fecha: "Sábado 16", icon: "droplet", color: "#3aa6d9", val: "+5 mm", status: "" },
   { tipo: "Riego IA", fecha: "Miércoles 13", icon: "droplet", color: "#3aa6d9", val: "+15 mm", status: "", iaIcon: true },
 ];

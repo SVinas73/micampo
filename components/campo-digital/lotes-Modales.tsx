@@ -112,10 +112,10 @@ export function AgregarCampoModal({
                 <div style={{ height: 86, borderRadius: 8, border: "1.5px solid #c0c5ce", background: "linear-gradient(135deg, #d4e8d4 0%, #b8d9b8 40%, #9ecfa0 100%)", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <div style={{ position: "absolute", inset: 0, opacity: 0.3 }}>
                     {[0, 1, 2, 3].map((i) => (
-                      <div key={`h${i}`} style={{ position: "absolute", left: 0, right: 0, top: `${i * 33}%`, height: 1, background: "#4f9d52" }} />
+                      <div key={`h${i}`} style={{ position: "absolute", left: 0, right: 0, top: `${i * 33}%`, height: 1, background: "#768f44" }} />
                     ))}
                     {[0, 1, 2, 3].map((i) => (
-                      <div key={`v${i}`} style={{ position: "absolute", top: 0, bottom: 0, left: `${i * 33}%`, width: 1, background: "#4f9d52" }} />
+                      <div key={`v${i}`} style={{ position: "absolute", top: 0, bottom: 0, left: `${i * 33}%`, width: 1, background: "#768f44" }} />
                     ))}
                   </div>
                   <div style={{ width: 20, height: 20, background: "#475569", borderRadius: "50% 50% 50% 0", transform: "rotate(-45deg)", border: "3px solid white", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />

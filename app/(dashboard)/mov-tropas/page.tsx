@@ -222,19 +222,19 @@ function MovResumen({ movs }: { movs: Mov[] }) {
               <g>
                 <circle cx="140" cy="120" r="22" fill="var(--mc-green-600)" stroke="white" strokeWidth="3" />
                 <text x="140" y="125" textAnchor="middle" fontSize="11" fill="white" fontWeight="600">D.R.</text>
-                <text x="140" y="155" textAnchor="middle" fontSize="10" fill="#0a3d1a">Don Ramón</text>
+                <text x="140" y="155" textAnchor="middle" fontSize="10" fill="#38491f">Don Ramón</text>
 
                 <circle cx="430" cy="90" r="22" fill="var(--mc-orange-600)" stroke="white" strokeWidth="3" />
                 <text x="430" y="95" textAnchor="middle" fontSize="11" fill="white" fontWeight="600">L.E.</text>
-                <text x="430" y="125" textAnchor="middle" fontSize="10" fill="#0a3d1a">La Esperanza</text>
+                <text x="430" y="125" textAnchor="middle" fontSize="10" fill="#38491f">La Esperanza</text>
 
                 <circle cx="320" cy="250" r="18" fill="var(--mc-amber)" stroke="white" strokeWidth="3" />
                 <text x="320" y="254" textAnchor="middle" fontSize="10" fill="white" fontWeight="600">LF</text>
-                <text x="320" y="280" textAnchor="middle" fontSize="10" fill="#0a3d1a">Liniers</text>
+                <text x="320" y="280" textAnchor="middle" fontSize="10" fill="#38491f">Liniers</text>
 
                 <circle cx="510" cy="280" r="16" fill="var(--mc-blue)" stroke="white" strokeWidth="3" />
                 <text x="510" y="284" textAnchor="middle" fontSize="10" fill="white" fontWeight="600">FR</text>
-                <text x="510" y="308" textAnchor="middle" fontSize="10" fill="#0a3d1a">Frigorífico</text>
+                <text x="510" y="308" textAnchor="middle" fontSize="10" fill="#38491f">Frigorífico</text>
               </g>
               <defs>
                 <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">

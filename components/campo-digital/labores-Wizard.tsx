@@ -274,7 +274,7 @@ export function NuevaOrdenLaborModal({
                         const polys = ["60,60 240,50 260,170 70,180", "260,170 70,180 80,300 270,310", "260,60 430,70 445,190 280,180", "445,190 280,180 275,300 440,315"];
                         return (
                           <g key={i}>
-                            <polygon points={polys[i % 4]} fill={sel ? "#4f9d52" : "#d5d9d2"} opacity={sel ? 0.85 : 0.5} stroke={sel ? "#0a5a24" : "#8a938d"} strokeWidth={sel ? 3 : 1.5} />
+                            <polygon points={polys[i % 4]} fill={sel ? "#768f44" : "#d5d9d2"} opacity={sel ? 0.85 : 0.5} stroke={sel ? "#4a5e29" : "#8a938d"} strokeWidth={sel ? 3 : 1.5} />
                             <text x={polys[i % 4].split(" ")[0].split(",")[0]} y={polys[i % 4].split(" ")[0].split(",")[1]} dx="30" dy="60" fontSize="12" fontWeight="700" fill={sel ? "white" : "#58645c"}>{l.nombre}</text>
                           </g>
                         );

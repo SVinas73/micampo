@@ -54,13 +54,13 @@ const DEMO_LABORES: LaborUI[] = [
 
 const BLOQUEADAS_DEMO = [
   { icon: "flask", iconColor: "#2c7ad9", titulo: "Pulverización", lote: "Lote 2 - Norte", alertaIcon: "wind", alertaTitulo: "Viento: 32 km/h", alertaSub: "Riesgo de Deriva", accion: "Reprogramar" },
-  { icon: "sprout", iconColor: "#4f9d52", titulo: "Siembra Maíz", lote: "Lote 4 - El Bajo", alertaIcon: "building", alertaTitulo: "Sin Stock: Semilla", alertaSub: "Faltan 20 bolsas", accion: "Solicitar" },
+  { icon: "sprout", iconColor: "#768f44", titulo: "Siembra Maíz", lote: "Lote 4 - El Bajo", alertaIcon: "building", alertaTitulo: "Sin Stock: Semilla", alertaSub: "Faltan 20 bolsas", accion: "Solicitar" },
   { icon: "wrench", iconColor: "#d9a538", titulo: "Cosecha Soja", lote: "Lote 7 - Sur", alertaIcon: "alert", alertaTitulo: "Cosechadora Averiada", alertaSub: "En taller mecánico", accion: "Ver Detalle" },
 ];
 
 const TIPO_ICON: Record<string, { icon: string; color: string }> = {
   Pulverización: { icon: "flask", color: "#2c7ad9" },
-  Siembra: { icon: "sprout", color: "#4f9d52" },
+  Siembra: { icon: "sprout", color: "#768f44" },
   Riego: { icon: "droplet", color: "#3aa6d9" },
   Cosecha: { icon: "wrench", color: "#d9a538" },
   Fertilización: { icon: "leaf", color: "#8a6d3b" },

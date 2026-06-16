@@ -39,7 +39,7 @@ type AlertaInfo = {
 
 const ALERTAS_DEMO: AlertaInfo[] = [
   { lote: "Lote 4 (Maíz)", enfermedad: "Roya Común", estadio: "R1 (Floración)", img: "wheat", imgBg: "linear-gradient(135deg,#c0392b,#922b21)", deteccion: "Detección Satelital IVN", afect: "15 Ha afectadas · Hace 2h", riesgo: "ALTA (35%)", riesgoColor: "red", perdida: "$4.500 USD", proy: "Proyección a cosecha", recom: "Aplicar Fungicida (Triazol)", iaIcon: true },
-  { lote: "Lote 2 (Maíz)", enfermedad: "Oruga Cogollera", estadio: "V8 (Vegetativo)", img: "bug", imgBg: "linear-gradient(135deg,#6db870,#4f9d52)", deteccion: "Foto de Monitoreo (Dron)", afect: "8 Ha afectadas · Ayer", riesgo: "MEDIA (15%)", riesgoColor: "amber", perdida: "$1.200 USD", proy: "Daño foliar progresivo", recom: "Monitoreo + Insecticida" },
+  { lote: "Lote 2 (Maíz)", enfermedad: "Oruga Cogollera", estadio: "V8 (Vegetativo)", img: "bug", imgBg: "linear-gradient(135deg,#6db870,#768f44)", deteccion: "Foto de Monitoreo (Dron)", afect: "8 Ha afectadas · Ayer", riesgo: "MEDIA (15%)", riesgoColor: "amber", perdida: "$1.200 USD", proy: "Daño foliar progresivo", recom: "Monitoreo + Insecticida" },
   { lote: "Lote 7 (Soja)", enfermedad: "Mancha Marrón", estadio: "R3 (Form. Vainas)", img: "sprout", imgBg: "linear-gradient(135deg,#d9a538,#c48410)", deteccion: "Detección Satelital IVN", afect: "20 Ha afectadas · Hace 4h", riesgo: "BAJA (5%)", riesgoColor: "green", perdida: "$500 USD", proy: "Impacto leve", recom: "Monitoreo Intensivo", iaIcon: true },
   { lote: "Lote 1 (Trigo)", enfermedad: "Pulgón Verde", estadio: "Z31 (Primer Nudo)", img: "wheat", imgBg: "linear-gradient(135deg,#a88032,#d9a538)", deteccion: "Foto de Campo", afect: "30 Ha afectadas · Hace 1h", riesgo: "ALTA (40%)", riesgoColor: "red", perdida: "$3.200 USD", proy: "Rápida propagación", recom: "Aplicar Insecticida Sistémico" },
   { lote: "Lote 5 (Girasol)", enfermedad: "Esclerotinia", estadio: "R5 (Llenado Grano)", img: "leaf", imgBg: "linear-gradient(135deg,#e8b94a,#d9a538)", deteccion: "Detección Satelital IVN", afect: "12 Ha afectadas · Ayer", riesgo: "MEDIA (20%)", riesgoColor: "amber", perdida: "$2.100 USD", proy: "Riesgo de vuelco", recom: "Evaluar Daño y Cosecha Anticipada", iaIcon: true },
@@ -76,7 +76,7 @@ export default function TabDeteccion() {
               enfermedad: a.plaga,
               estadio: "—",
               img: "leaf",
-              imgBg: "linear-gradient(135deg,#6db870,#4f9d52)",
+              imgBg: "linear-gradient(135deg,#6db870,#768f44)",
               deteccion: a.metodoDeteccion || "Manual",
               afect: `${a.areaAfectada || 0} Ha afectadas · Reciente`,
               riesgo: `${a.severidad.toUpperCase()}`,
@@ -132,7 +132,7 @@ export default function TabDeteccion() {
       {
         lote: `${lotes.find((l) => l.id === data.loteId)?.nombre || "Lote"} (${data.tipo})`,
         loteId: data.loteId, enfermedad: data.plaga, estadio: "—", img: "bug",
-        imgBg: "linear-gradient(135deg,#6db870,#4f9d52)", deteccion: "Reporte Manual",
+        imgBg: "linear-gradient(135deg,#6db870,#768f44)", deteccion: "Reporte Manual",
         afect: `${data.incidencia}% incidencia · Ahora`, riesgo: `${data.incidencia >= 50 ? "ALTA" : data.incidencia >= 20 ? "MEDIA" : "BAJA"} (${data.incidencia}%)`,
         riesgoColor: sevColor, perdida: "Por evaluar", proy: data.observaciones || "", recom: "Evaluación agronómica",
       },
@@ -199,7 +199,7 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
                 </div>
                 <div>
                   <div className="row gap-4" style={{ alignItems: "center" }}>
-                    {a.iaIcon && <div style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #6b46c1, #4f9d52)", display: "grid", placeItems: "center" }}><Icon name="sprout" size={10} style={{ color: "white" }} /></div>}
+                    {a.iaIcon && <div style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #6b46c1, #768f44)", display: "grid", placeItems: "center" }}><Icon name="sprout" size={10} style={{ color: "white" }} /></div>}
                     <div className="font-semi text-xs" style={{ color: "var(--mc-ink)" }}>{a.lote}</div>
                   </div>
                   <div className="text-xs text-muted">{a.enfermedad}</div>
@@ -282,7 +282,7 @@ function Probabilidades() {
   const probs = demo([
     { rank: 1, nombre: "Roya Común", cientifico: "Puccinia sorghi", pct: 88, color: "#d13a3a", colorLight: "#e85f5f", tinte: "rgba(209,58,58,0.08)", tendencia: "up", deltaText: "+12% vs ayer", lotes: ["Lote 4", "Lote 7"] },
     { rank: 2, nombre: "Tizón del Maíz", cientifico: "Exserohilum turcicum", pct: 42, color: "#d9a538", colorLight: "#e8b859", tinte: "rgba(217,165,56,0.08)", tendencia: "flat", deltaText: "Estable", lotes: ["Lote 2"] },
-    { rank: 3, nombre: "Cercospora", cientifico: "Mancha Gris", pct: 15, color: "#4f9d52", colorLight: "#6db870", tinte: "rgba(79,157,82,0.08)", tendencia: "down", deltaText: "Bajando", lotes: ["Lote 5 (Sector Norte)"] },
+    { rank: 3, nombre: "Cercospora", cientifico: "Mancha Gris", pct: 15, color: "#768f44", colorLight: "#6db870", tinte: "rgba(79,157,82,0.08)", tendencia: "down", deltaText: "Bajando", lotes: ["Lote 5 (Sector Norte)"] },
   ], [] as { rank: number; nombre: string; cientifico: string; pct: number; color: string; colorLight: string; tinte: string; tendencia: string; deltaText: string; lotes: string[] }[]);
   return (
     <div className="mc-card ia-card">
@@ -383,12 +383,12 @@ function EnfermedadesAnalisisIA({
             <Icon name="upload" size={12} />Cargar Imagen
           </button>
         </div>
-        <div style={{ position: "relative", width: "100%", aspectRatio: "16/10", background: imgUrl ? "#000" : "linear-gradient(135deg, #4f9d52, #5fae62)", borderRadius: 10, overflow: "hidden" }}>
+        <div style={{ position: "relative", width: "100%", aspectRatio: "16/10", background: imgUrl ? "#000" : "linear-gradient(135deg, #768f44, #5fae62)", borderRadius: 10, overflow: "hidden" }}>
           {imgUrl ? (
             <img src={imgUrl} alt="Lote analizado" style={{ width: "100%", height: "100%", objectFit: "cover", filter: modo === "Alto Contraste" ? "contrast(1.6) saturate(1.5)" : "none" }} />
           ) : (
             <>
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, #4f9d52 0%, #6db870 50%, #5fae62 100%)" }}></div>
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, #768f44 0%, #6db870 50%, #5fae62 100%)" }}></div>
               <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox="0 0 400 250" preserveAspectRatio="none">
                 <line x1="200" y1="0" x2="200" y2="250" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
                 {[40, 80, 120, 160, 200].map((y) => (
@@ -508,7 +508,7 @@ function DonutConfianza({ pct }: { pct: number }) {
     <svg width="150" height="150" viewBox="0 0 150 150">
       <defs>
         <linearGradient id="confGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#4f9d52" />
+          <stop offset="0%" stopColor="#768f44" />
           <stop offset="100%" stopColor="#7ec47f" />
         </linearGradient>
       </defs>

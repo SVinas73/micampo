@@ -109,9 +109,9 @@ function BarChartPlantaciones({ mode }: { mode: "ha" | "lotes" | "pct" }) {
   const data = demo(
     [
       { nombre: "Maíz", ha: 205, lotes: 8, color: "#d9a538" },
-      { nombre: "Soja", ha: 157, lotes: 6, color: "#4f9d52" },
+      { nombre: "Soja", ha: 157, lotes: 6, color: "#768f44" },
       { nombre: "Trigo", ha: 64, lotes: 3, color: "#a88032" },
-      { nombre: "Alfalfa", ha: 42, lotes: 2, color: "#9ecf8c" },
+      { nombre: "Alfalfa", ha: 42, lotes: 2, color: "#aabd76" },
       { nombre: "Girasol", ha: 0, lotes: 0, color: "#e8b94a" },
       { nombre: "Trébol", ha: 0, lotes: 0, color: "#7bc77e" },
       { nombre: "En descanso", ha: 60, lotes: 2, color: "#d5d9d2" },
