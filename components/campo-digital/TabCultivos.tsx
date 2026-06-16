@@ -38,13 +38,13 @@ type PlanIA = {
 const PLANES_ACTIVOS_DEMO: PlanActivo[] = [
   { titulo: "Maíz Tardío - Lotes Norte", emoji: "wheat", costo: "$45.500 USD", lotes: "4, 5, 8", ha: "320 Ha", fecha: "20-25 Oct", insumo: "Híbrido DK-7210", densidad: "70 pl/Ha", steps: 3, color: "#d9a538" },
   { titulo: "Soja Primera - Lotes Sur", emoji: "sprout", costo: "$62.000 USD", lotes: "9, 12, 15", ha: "450 Ha", fecha: "05-10 Nov", insumo: "Semilla SY 5x1", densidad: "280k pl/Ha", steps: 2, color: "#768f44" },
-  { titulo: "Girasol - Lotes Oeste", emoji: "leaf", costo: "$55.000 USD", lotes: "1, 3, 7", ha: "280 Ha", fecha: "15-20 Nov", insumo: "Semilla P245", densidad: "60k pl/Ha", steps: 4, color: "#e7892b" },
+  { titulo: "Girasol - Lotes Oeste", emoji: "leaf", costo: "$55.000 USD", lotes: "1, 3, 7", ha: "280 Ha", fecha: "15-20 Nov", insumo: "Semilla P245", densidad: "60k pl/Ha", steps: 4, color: "#c08a22" },
 ];
 
 const PLANES_IA_DEMO: PlanIA[] = [
   { sugerencia: "Rotación a Maíz Tardío", confianza: 92, nivel: "Alta", color: "#768f44", lotes: "Lotes 3 y 7 (Vienen de Soja de 1ra)", razon: "Compactación severa y déficit de N en suelo.", proy: "Margen proyectado: +15% vs. repetir Soja", beneficio: "Beneficio Maíz: aporte clave de rastrojo y mejora estructural." },
   { sugerencia: "Siembra de Cultivo de Cobertura", confianza: 92, nivel: "Alta", color: "#3aa6d9", lotes: "Lotes 2 y 8 (Previo a Soja de 2da)", razon: "Alto riesgo de erosión y presión de malezas invernales.", proy: "Ahorro estimado: $30 USD/Ha en herbicidas", beneficio: "Beneficio Cobertura: protección del suelo, retención de humedad y supresión de malezas." },
-  { sugerencia: "Aplicación de Nitrógeno Variable", confianza: 85, nivel: "Media", color: "#e7892b", lotes: "Lotes 5 y 9 (Maíz en V6)", razon: "Variabilidad significativa de N en suelo y zonas de bajo potencial.", proy: "Aumento de rinde estimado: +8% por eficiencia de uso", beneficio: "Beneficio Dosis Variable: optimización de insumos, reducción de costos y menor impacto ambiental." },
+  { sugerencia: "Aplicación de Nitrógeno Variable", confianza: 85, nivel: "Media", color: "#c08a22", lotes: "Lotes 5 y 9 (Maíz en V6)", razon: "Variabilidad significativa de N en suelo y zonas de bajo potencial.", proy: "Aumento de rinde estimado: +8% por eficiencia de uso", beneficio: "Beneficio Dosis Variable: optimización de insumos, reducción de costos y menor impacto ambiental." },
 ];
 
 export default function TabCultivos({ initialSub }: { initialSub?: string }) {
@@ -76,7 +76,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   /* ---- Header actions según sub-tab (Figma) ---- */
   useSetHeaderActions(
     sub === "Análisis de Suelo" ? (
-      <button className="mc-btn" style={{ background: "#e7892b", color: "white" }} onClick={() => setAnalisisOpen(true)}>
+      <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setAnalisisOpen(true)}>
         <Icon name="plus" size={14} />Nuevo Analisis
       </button>
     ) : (
@@ -304,7 +304,7 @@ function CultivosEstados({ onNuevaTarea }: { onNuevaTarea: (lote: string) => voi
           {[
             { nombre: "Maíz", ha: 120, pct: 51, color: "#768f44", emoji: "wheat", trend: "up", delta: "+8 Ha" },
             { nombre: "Soja", ha: 85, pct: 36, color: "#3aa6d9", emoji: "sprout", trend: "flat", delta: "—" },
-            { nombre: "Sorgo", ha: 30, pct: 13, color: "#e7892b", emoji: "leaf", trend: "down", delta: "-4 Ha" },
+            { nombre: "Sorgo", ha: 30, pct: 13, color: "#c08a22", emoji: "leaf", trend: "down", delta: "-4 Ha" },
           ].map((d) => (
             <div key={d.nombre} style={{ padding: "10px 12px", background: `${d.color}0d`, borderRadius: 10, border: `1px solid ${d.color}25` }}>
               <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -360,7 +360,7 @@ function DonutResumen() {
   const data = [
     { nombre: "Maíz", pct: 51, color: "#768f44", colorLight: "#6db870" },
     { nombre: "Soja", pct: 36, color: "#3aa6d9", colorLight: "#5fb6e5" },
-    { nombre: "Sorgo", pct: 13, color: "#e7892b", colorLight: "#f3a64f" },
+    { nombre: "Sorgo", pct: 13, color: "#c08a22", colorLight: "#f3a64f" },
   ];
   const cx = 130, cy = 130, r = 88, sw = 26, gap = 5;
   let cumPct = 0;
@@ -412,7 +412,7 @@ function DonutResumen() {
       <text x={cx} y={cy + 30} textAnchor="middle" fontSize="11" fontFamily="var(--ff-mono)" fontWeight="600" fill="var(--mc-text-2)">Ha Totales</text>
       <circle cx={cx} cy={cy + 44} r="3" fill="#768f44" />
       <circle cx={cx + 10} cy={cy + 44} r="3" fill="#3aa6d9" />
-      <circle cx={cx - 10} cy={cy + 44} r="3" fill="#e7892b" />
+      <circle cx={cx - 10} cy={cy + 44} r="3" fill="#c08a22" />
     </svg>
   );
 }
@@ -434,7 +434,7 @@ function CultivosPlanificador({
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
         if (!Array.isArray(d) || d.length === 0) return;
-        const colores = ["#d9a538", "#768f44", "#e7892b"];
+        const colores = ["#d9a538", "#768f44", "#c08a22"];
         const emojis: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Girasol: "sun", Trigo: "wheat", Sorgo: "leaf" };
         setActivos(
           d.slice(0, 6).map((p: { id: string; cultivo: string; hectareas: number; costoEstimado?: number; fechaSiembraRecomendada: string; variedad?: string; lote?: { nombre: string }; estado?: string }, i: number) => ({
@@ -469,7 +469,7 @@ function CultivosPlanificador({
       if (!res.ok) throw new Error();
       const d = await res.json();
       if (Array.isArray(d.planes) && d.planes.length > 0) {
-        const colores = ["#768f44", "#3aa6d9", "#e7892b"];
+        const colores = ["#768f44", "#3aa6d9", "#c08a22"];
         setRecomendados(
           d.planes.map((p: { id?: string; cultivo: string; confianza?: number; analisisIA?: string; lote?: { nombre: string } }, i: number) => {
             let analisis: { justificacion?: string; beneficiosRotacion?: string; margenEstimadoPorHa?: number } = {};

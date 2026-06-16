@@ -136,7 +136,7 @@ export function ReportarPlagaModal({
           <button onClick={onClose} className="mc-btn mc-btn--secondary">Cancelar</button>
           <button
             className="mc-btn"
-            style={{ background: "#e7892b", color: "white" }}
+            style={{ background: "#c08a22", color: "white" }}
             onClick={() => onConfirm({ loteId: lista[loteIdx]?.id, plaga: plaga.split(" (")[0], tipo: categoria === "Insecto" ? "Insecto" : categoria === "Hongo" ? "Hongo" : "Maleza", incidencia, observaciones: notas })}
           >
             <Icon name="alert" size={14} /> Generar Alerta

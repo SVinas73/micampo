@@ -34,7 +34,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const COLORS = ["#16a34a", "#2563eb", "#9333ea", "#ea580c", "#eab308"];
+const COLORS = ["#5e7733", "#1a5fa0", "#475569", "#c08a22", "#d9a538"];
 
 export default function ProduccionLecheraPage() {
   const [estadisticas, setEstadisticas] = useState<any>(null);
@@ -276,7 +276,7 @@ export default function ProduccionLecheraPage() {
               <Line 
                 type="monotone" 
                 dataKey="litros" 
-                stroke="#2563eb" 
+                stroke="#1a5fa0" 
                 strokeWidth={2}
                 name="Producción Real"
                 dot={{ r: 4 }}
@@ -286,7 +286,7 @@ export default function ProduccionLecheraPage() {
                   <Line 
                     type="monotone" 
                     dataKey="litrosPredichos" 
-                    stroke="#9333ea" 
+                    stroke="#475569" 
                     strokeWidth={2}
                     strokeDasharray="5 5"
                     name="Predicción IA"
@@ -295,7 +295,7 @@ export default function ProduccionLecheraPage() {
                   <Line 
                     type="monotone" 
                     dataKey="limiteInferior" 
-                    stroke="#d1d5db" 
+                    stroke="#d5d9d2" 
                     strokeWidth={1}
                     strokeDasharray="2 2"
                     name="Límite Inferior"
@@ -304,7 +304,7 @@ export default function ProduccionLecheraPage() {
                   <Line 
                     type="monotone" 
                     dataKey="limiteSuperior" 
-                    stroke="#d1d5db" 
+                    stroke="#d5d9d2" 
                     strokeWidth={1}
                     strokeDasharray="2 2"
                     name="Límite Superior"
@@ -334,7 +334,7 @@ export default function ProduccionLecheraPage() {
                   labelLine={false}
                   label={(entry: any) => `${entry.turno}: ${((entry.litros / dataTurnos.reduce((sum, d) => sum + d.litros, 0)) * 100).toFixed(0)}%`}
                   outerRadius={100}
-                  fill="#8884d8"
+                  fill="#768f44"
                   dataKey="litros"
                 >
                   {dataTurnos.map((entry, index) => (
@@ -360,7 +360,7 @@ export default function ProduccionLecheraPage() {
                 <XAxis dataKey="caravana" tick={{ fontSize: 11 }} />
                 <YAxis />
                 <Tooltip formatter={(value: any) => `${Math.round(value)}L`} />
-                <Bar dataKey="litros" fill="#16a34a" />
+                <Bar dataKey="litros" fill="#5e7733" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

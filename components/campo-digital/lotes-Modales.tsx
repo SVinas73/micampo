@@ -198,7 +198,7 @@ export function EliminarCampoModal({
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onClose}>
       <div style={{ background: "#fff", borderRadius: 16, width: 500, maxWidth: "100%", maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }} onClick={(e) => e.stopPropagation()}>
         {/* Header gradiente peligro */}
-        <div style={{ background: "linear-gradient(135deg,#dc2626 0%,#7f1d1d 100%)", padding: "22px 28px 20px", color: "#fff", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ background: "linear-gradient(135deg,#c93434 0%,#7f1d1d 100%)", padding: "22px 28px 20px", color: "#fff", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 6, letterSpacing: ".06em", textTransform: "uppercase" }}>Acción irreversible</div>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", display: "flex", alignItems: "center", gap: 10 }}>
@@ -234,7 +234,7 @@ export function EliminarCampoModal({
           </div>
 
           <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: "var(--mc-ink)", padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1.5px solid #e2e8f0" }}>
-            <input type="checkbox" checked={confirmado} onChange={(e) => setConfirmado(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#dc2626", cursor: "pointer" }} />
+            <input type="checkbox" checked={confirmado} onChange={(e) => setConfirmado(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#c93434", cursor: "pointer" }} />
             Soy consciente de que perderé los datos
           </label>
         </div>
@@ -246,7 +246,7 @@ export function EliminarCampoModal({
             disabled={!confirmado || borrando}
             onClick={eliminar}
             className="mc-btn"
-            style={{ background: confirmado ? "#dc2626" : "#fca5a5", color: "#fff", border: "none", cursor: confirmado ? "pointer" : "not-allowed" }}
+            style={{ background: confirmado ? "#c93434" : "#fca5a5", color: "#fff", border: "none", cursor: confirmado ? "pointer" : "not-allowed" }}
           >
             <Icon name="trash" size={14} />{borrando ? "Eliminando..." : "Eliminar Definitivamente"}
           </button>

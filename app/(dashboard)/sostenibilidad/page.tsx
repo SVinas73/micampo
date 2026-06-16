@@ -1014,8 +1014,8 @@ export default function SostenibilidadPage() {
                         <AreaChart data={dashboard.huellaCarbono.historico}>
                           <defs>
                             <linearGradient id="colorEmisiones" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                              <stop offset="5%" stopColor="#5e7733" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="#5e7733" stopOpacity={0} />
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -1026,7 +1026,7 @@ export default function SostenibilidadPage() {
                           <Area
                             type="monotone"
                             dataKey="emisionesTotales"
-                            stroke="#10b981"
+                            stroke="#5e7733"
                             fillOpacity={1}
                             fill="url(#colorEmisiones)"
                             name="Emisiones Totales (kg CO2e)"
@@ -1034,9 +1034,9 @@ export default function SostenibilidadPage() {
                           <Area
                             type="monotone"
                             dataKey="emisionesPorHectarea"
-                            stroke="#3b82f6"
+                            stroke="#2c6bb8"
                             fillOpacity={0.6}
-                            fill="#3b82f6"
+                            fill="#2c6bb8"
                             name="Por Hectárea (kg CO2e/ha)"
                           />
                         </AreaChart>
@@ -1156,17 +1156,17 @@ export default function SostenibilidadPage() {
                               {
                                 name: "Bajo",
                                 value: dashboard.eudr.porRiesgo.bajo,
-                                color: "#10b981",
+                                color: "#5e7733",
                               },
                               {
                                 name: "Medio",
                                 value: dashboard.eudr.porRiesgo.medio,
-                                color: "#f59e0b",
+                                color: "#d9a538",
                               },
                               {
                                 name: "Alto",
                                 value: dashboard.eudr.porRiesgo.alto,
-                                color: "#ef4444",
+                                color: "#c93434",
                               },
                             ]}
                             dataKey="value"
@@ -1176,9 +1176,9 @@ export default function SostenibilidadPage() {
                             outerRadius={80}
                             label
                           >
-                            <Cell fill="#10b981" />
-                            <Cell fill="#f59e0b" />
-                            <Cell fill="#ef4444" />
+                            <Cell fill="#5e7733" />
+                            <Cell fill="#d9a538" />
+                            <Cell fill="#c93434" />
                           </Pie>
                           <Tooltip />
                           <Legend />

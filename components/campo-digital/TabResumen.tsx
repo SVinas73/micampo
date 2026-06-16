@@ -200,7 +200,7 @@ function UltimasActividadesCard({ onVerTodo }: { onVerTodo: () => void }) {
       { inicial: "J", color: "#d9a538", quien: "Joaquin", verb: "finalizó", obj: "Siembra", lote: "Lote 1", icon: "sprout", time: "Hace 5 horas" },
       { sistema: true, inicial: "", color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", icon: "bug", time: "Ayer" },
       { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de Cultivo", lote: "Lote 4", icon: "camera", time: "Ayer" },
-      { inicial: "M", color: "#e7892b", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", icon: "droplet", time: "Hace 2 días" },
+      { inicial: "M", color: "#c08a22", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", icon: "droplet", time: "Hace 2 días" },
     ],
     [] as { inicial: string; color: string; quien: string; verb: string; obj: string; lote: string; icon: string; time: string; sistema?: boolean }[]
   );

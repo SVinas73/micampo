@@ -1242,7 +1242,7 @@ export default function FinanzasPage() {
     }
   };
 
-  const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+  const COLORS = ["#2c6bb8", "#5e7733", "#d9a538", "#c93434", "#64748b", "#c08a22"];
 
   return (
     <div className="space-y-6">
@@ -1481,7 +1481,7 @@ export default function FinanzasPage() {
                           `${payload.categoria}: $${payload.monto.toFixed(0)}`
                         }
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill="#768f44"
                         dataKey="monto"
                       >
                         {dashboardData.costosPorCategoria.map((entry, index) => (
@@ -1514,7 +1514,7 @@ export default function FinanzasPage() {
                         width={100}
                       />
                       <Tooltip />
-                      <Bar dataKey="porcentajeMargen" fill="#10b981" />
+                      <Bar dataKey="porcentajeMargen" fill="#5e7733" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -2297,7 +2297,7 @@ export default function FinanzasPage() {
                     <Line
                       type="monotone"
                       dataKey="promedio"
-                      stroke="#3b82f6"
+                      stroke="#2c6bb8"
                       strokeWidth={2}
                       name="Tipo de Cambio"
                     />

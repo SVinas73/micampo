@@ -90,7 +90,7 @@ export default function MapaPrecision({
             allowIntersection: false,
             showArea: true, // ← Mostrar área mientras dibuja
             shapeOptions: {
-              color: "#16a34a",
+              color: "#5e7733",
               weight: 3,
               fillOpacity: 0.2,
             },
@@ -103,7 +103,7 @@ export default function MapaPrecision({
           rectangle: {
             showArea: true, // ← Mostrar área
             shapeOptions: {
-              color: "#16a34a",
+              color: "#5e7733",
               weight: 3,
               fillOpacity: 0.2,
             },
@@ -182,7 +182,7 @@ export default function MapaPrecision({
           const geoJSON = JSON.parse(lote.coordenadas);
           const layer = L.geoJSON(geoJSON, {
             style: {
-              color: "#16a34a",
+              color: "#5e7733",
               weight: 2,
               fillOpacity: 0.2,
             },

@@ -2024,10 +2024,10 @@ export default function MaquinariaPage() {
                                   dataKey="valor"
                                   stroke={
                                     sensor.estado === "Crítico"
-                                      ? "#dc2626"
+                                      ? "#c93434"
                                       : sensor.estado === "Alerta"
-                                      ? "#ca8a04"
-                                      : "#16a34a"
+                                      ? "#c08a22"
+                                      : "#5e7733"
                                   }
                                   strokeWidth={2}
                                   dot={false}
@@ -2574,11 +2574,11 @@ export default function MaquinariaPage() {
                                 key={`cell-${index}`}
                                 fill={
                                   [
-                                    "#3b82f6",
-                                    "#10b981",
-                                    "#f59e0b",
-                                    "#ef4444",
-                                    "#8b5cf6",
+                                    "#2c6bb8",
+                                    "#5e7733",
+                                    "#d9a538",
+                                    "#c93434",
+                                    "#64748b",
                                   ][index % 5]
                                 }
                               />

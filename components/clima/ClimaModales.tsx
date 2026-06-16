@@ -263,7 +263,7 @@ export type LluviaResult = {
 
 const COND_LLUVIA = [
   { key: "Granizo", color: "#c93434", icon: "droplet" },
-  { key: "Viento Fuerte", color: "#e7892b", icon: "wind" },
+  { key: "Viento Fuerte", color: "#c08a22", icon: "wind" },
   { key: "Actividad Eléctrica", color: "#7c3aed", icon: "bolt" },
   { key: "Torrencial / Lavado", color: "#2c82c9", icon: "droplet" },
   { key: "Lluvia Mansa (Efectiva)", color: "#768f44", icon: "cloud" },
@@ -519,7 +519,7 @@ export function ReportarAlertaModal({
 
   return (
     <ModalShell
-      headBg="linear-gradient(135deg,#e7892b 0%,#b45309 100%)"
+      headBg="linear-gradient(135deg,#c08a22 0%,#b45309 100%)"
       eyebrow="Agricultura · Clima · Alertas"
       emoji="alert"
       title="Reportar Evento Climático"
@@ -528,7 +528,7 @@ export function ReportarAlertaModal({
       footer={
         <>
           <button className="mc-btn mc-btn--secondary" onClick={onClose}>Cancelar</button>
-          <button className="mc-btn" style={{ background: "#e7892b", color: "white", flex: 1, maxWidth: 240, justifyContent: "center" }} onClick={guardar}>
+          <button className="mc-btn" style={{ background: "#c08a22", color: "white", flex: 1, maxWidth: 240, justifyContent: "center" }} onClick={guardar}>
             <Icon name="alert" size={14} /> Guardar Alerta
           </button>
         </>
@@ -593,8 +593,8 @@ export function ReportarAlertaModal({
         </div>
       </Section>
 
-      <Section title="Lotes Afectados" icon="wheat" right={<span style={{ fontSize: 11, color: "#e7892b", fontWeight: 600 }}>{sel.size} seleccionados</span>}>
-        <LoteSelector lotes={lotes} selected={sel} onToggle={toggleLote} onToggleAll={toggleAll} accent="#e7892b" />
+      <Section title="Lotes Afectados" icon="wheat" right={<span style={{ fontSize: 11, color: "#c08a22", fontWeight: 600 }}>{sel.size} seleccionados</span>}>
+        <LoteSelector lotes={lotes} selected={sel} onToggle={toggleLote} onToggleAll={toggleAll} accent="#c08a22" />
       </Section>
 
       <Section title="Fecha y Hora del Inicio" icon="clock">

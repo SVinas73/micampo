@@ -98,7 +98,7 @@ function ClimaInner() {
             titulo: a.titulo,
             lugar: a.ubicacion || "Área General",
             icon: iconForTipo(a.tipo),
-            color: a.severidad === "Baja" ? "#3aa6d9" : a.severidad === "Moderado" || a.severidad === "Media" ? "#d9a538" : "#e7892b",
+            color: a.severidad === "Baja" ? "#3aa6d9" : a.severidad === "Moderado" || a.severidad === "Media" ? "#d9a538" : "#c08a22",
             val: a.descripcion || a.tipo,
             chart: "icon",
           }))
@@ -190,7 +190,7 @@ function ClimaInner() {
         titulo: `${r.tipo} reportado`,
         lugar: `${r.loteNombre} · Hoy`,
         icon: iconForTipo(r.tipo),
-        color: r.severidad === "Severo - Daño" ? "#e7892b" : r.severidad === "Leve" ? "#3aa6d9" : "#d9a538",
+        color: r.severidad === "Severo - Daño" ? "#c08a22" : r.severidad === "Leve" ? "#3aa6d9" : "#d9a538",
         val: `Severidad: ${r.severidad}`,
         chart: "icon",
       },
@@ -248,7 +248,7 @@ function ClimaInner() {
             <button className="mc-btn mc-btn--primary" onClick={() => setShowLluvia(true)}>
               <Icon name="droplet" size={14} />Registrar Lluvia
             </button>
-            <button className="mc-btn" style={{ background: "#e7892b", color: "white" }} onClick={() => setShowAlerta(true)}>
+            <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setShowAlerta(true)}>
               <Icon name="alert" size={14} />Registrar Alerta
             </button>
           </>
@@ -317,7 +317,7 @@ function ClimaInicio({ onVerDetalle }: { onVerDetalle: (d: DayForecast) => void 
               style={{ alignItems: "center", padding: "6px 12px", background: "var(--mc-surface-2)", borderRadius: 999, border: "1px solid var(--mc-line)" }}
             >
               <span className="row gap-4" style={{ alignItems: "center" }}>
-                <span style={{ width: 14, height: 3, background: "#e7892b", borderRadius: 2 }} />
+                <span style={{ width: 14, height: 3, background: "#c08a22", borderRadius: 2 }} />
                 <span style={{ color: "var(--mc-text-2)", fontWeight: 600 }}>Máx</span>
               </span>
               <span style={{ width: 1, height: 12, background: "var(--mc-line)" }} />
@@ -360,9 +360,9 @@ type AlertaRow = {
 const DEMO_ALERTAS: AlertaRow[] = [
   { seccion: "critical", titulo: "Riesgo de Helada Inminente", lugar: "Lote Bajo · 04:00 AM", icon: "thermometer", color: "#3aa6d9", val: "-2.5°C", chart: "temp" },
   { seccion: "critical", titulo: "Reporte de Granizo Confirmado", lugar: "Campo Oeste · Hace 15 min", icon: "alert", color: "#3aa6d9", val: "Intensidad: ALTA (Daño visible)", chart: "icon" },
-  { seccion: "critical", titulo: "Alerta de Tormenta Eléctrica", lugar: "Área General · En curso", icon: "bolt", color: "#e7892b", val: "Proximidad: < 5km (Riesgo personal)", chart: "icon" },
+  { seccion: "critical", titulo: "Alerta de Tormenta Eléctrica", lugar: "Área General · En curso", icon: "bolt", color: "#c08a22", val: "Proximidad: < 5km (Riesgo personal)", chart: "icon" },
   { seccion: "warning", titulo: "Umbral de Isoca Superado", lugar: "Lote 4 (Soja)", icon: "leaf", color: "#d9a538", val: "8/10 por metro", chart: "bar", pct: 80 },
-  { seccion: "warning", titulo: "Viento Excesivo para Pulverizar", lugar: "Actualmente", icon: "wind", color: "#e7892b", val: "Ráfagas: 45 km/h", chart: "icon" },
+  { seccion: "warning", titulo: "Viento Excesivo para Pulverizar", lugar: "Actualmente", icon: "wind", color: "#c08a22", val: "Ráfagas: 45 km/h", chart: "icon" },
   { seccion: "warning", titulo: "Estrés Hídrico Detectado", lugar: "Lote de Maíz", icon: "droplet", color: "#a88032", val: "Agua Útil: 20% (Crítico)", chart: "icon" },
   { seccion: "info", titulo: "Lluvia Registrada (Automático)", lugar: "Hace 30 min", icon: "droplet", color: "#3aa6d9", val: "45 mm", chart: "drop" },
 ];

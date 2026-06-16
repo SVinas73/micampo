@@ -460,7 +460,7 @@ export default function InicioPage() {
       const totalHa = d.reduce((s: number, l: { hectareas?: number }) => s + (l.hectareas || 0), 0);
       setKpiValues((p) => ({ ...p, hectareas: { value: `${Math.round(totalHa).toLocaleString("es-AR")} Ha`, delta: `${d.length} lotes` } }));
       setLotes(d.map((l: { id: string; nombre: string }) => ({ id: l.id, nombre: l.nombre })));
-      const colores: Record<string, string> = { Trigo: "#d9a538", Maíz: "#c08a22", Soja: "#8ea65a", Cebada: "#5e7733", Alfalfa: "#aabd76", Girasol: "#e8b94a", Sorgo: "#e7892b" };
+      const colores: Record<string, string> = { Trigo: "#d9a538", Maíz: "#c08a22", Soja: "#8ea65a", Cebada: "#5e7733", Alfalfa: "#aabd76", Girasol: "#e8b94a", Sorgo: "#c08a22" };
       const porCultivo = new Map<string, number>();
       d.forEach((l: { cultivo?: string; hectareas?: number }) => { if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0)); });
       if (porCultivo.size > 0) {

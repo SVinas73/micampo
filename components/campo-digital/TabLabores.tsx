@@ -334,7 +334,7 @@ export default function TabLabores() {
                         <Icon name="eye" size={10} />Ver
                       </button>
                     </div>
-                    <button className="mc-btn mc-btn--sm" style={{ background: "#e7892b", color: "white", padding: "4px 8px", fontSize: 11 }} onClick={() => { setReportar(l); setMotivoReporte(""); }}>
+                    <button className="mc-btn mc-btn--sm" style={{ background: "#c08a22", color: "white", padding: "4px 8px", fontSize: 11 }} onClick={() => { setReportar(l); setMotivoReporte(""); }}>
                       <Icon name="alert" size={10} />Reportar
                     </button>
                   </div>
@@ -519,7 +519,7 @@ export default function TabLabores() {
             <button className="mc-btn mc-btn--ghost" onClick={() => setReportar(null)}>Cancelar</button>
             <button
               className="mc-btn"
-              style={{ background: "#e7892b", color: "white" }}
+              style={{ background: "#c08a22", color: "white" }}
               onClick={() => {
                 if (reportar) patchLabor(reportar, { estado: "Pausada", motivoBloqueo: motivoReporte || "Problema reportado en campo" }, "Labor reportada y bloqueada");
                 setReportar(null);

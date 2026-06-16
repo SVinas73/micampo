@@ -234,8 +234,8 @@ export function ClimaConGantt({
         >
           <defs>
             <linearGradient id="ic-max-area" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#e7892b" stopOpacity="0.16" />
-              <stop offset="100%" stopColor="#e7892b" stopOpacity="0" />
+              <stop offset="0%" stopColor="#c08a22" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#c08a22" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="ic-min-area" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#3aa6d9" stopOpacity="0.12" />
@@ -249,7 +249,7 @@ export function ClimaConGantt({
           <polygon points={`50,80 ${days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} 650,80`} fill="url(#ic-min-area)" />
           <polyline
             fill="none"
-            stroke="#e7892b"
+            stroke="#c08a22"
             strokeWidth="2.6"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -267,7 +267,7 @@ export function ClimaConGantt({
             const x = i * 100 + 50;
             return (
               <g key={i}>
-                <circle cx={x} cy={tY(d.max)} r="5" fill="#e7892b" stroke="white" strokeWidth="1.8" filter="url(#ic-dot-shadow)" />
+                <circle cx={x} cy={tY(d.max)} r="5" fill="#c08a22" stroke="white" strokeWidth="1.8" filter="url(#ic-dot-shadow)" />
                 <circle cx={x} cy={tY(d.min)} r="4.5" fill="#3aa6d9" stroke="white" strokeWidth="1.6" filter="url(#ic-dot-shadow)" />
               </g>
             );

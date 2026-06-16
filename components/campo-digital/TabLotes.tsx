@@ -271,7 +271,7 @@ function LotesMapa({
   onTarea: (l: LoteUI) => void;
 }) {
   const ndviScale = (v: number) => (v >= 0.75 ? "#1f6e2a" : v >= 0.65 ? "#768f44" : v >= 0.55 ? "#a8d09c" : v >= 0.45 ? "#e1c069" : "#cf7a3a");
-  const humScale = (v: number) => (v >= 80 ? "#1d4ed8" : v >= 65 ? "#3b82f6" : v >= 50 ? "#7ab4f0" : v >= 35 ? "#bcd9f4" : "#e8e6e0");
+  const humScale = (v: number) => (v >= 80 ? "#1d4ed8" : v >= 65 ? "#2c6bb8" : v >= 50 ? "#7ab4f0" : v >= 35 ? "#bcd9f4" : "#e8e6e0");
   const topoScale = (v: number) => (v >= 220 ? "#5b3b1a" : v >= 180 ? "#8a5a2a" : v >= 140 ? "#b88c50" : v >= 110 ? "#d8b380" : "#ecd9b8");
 
   const fillFor = (code: string) => {
@@ -301,7 +301,7 @@ function LotesMapa({
     ],
     Humedad: [
       { color: "#1d4ed8", label: "Saturado (≥80%)" },
-      { color: "#3b82f6", label: "Alto" },
+      { color: "#2c6bb8", label: "Alto" },
       { color: "#7ab4f0", label: "Óptimo" },
       { color: "#bcd9f4", label: "Bajo" },
       { color: "#e8e6e0", label: "Seco (<35%)" },

@@ -254,7 +254,7 @@ export function Modal({
     headTone === "blue"
       ? "linear-gradient(135deg, #2c6bb8, #3aa6d9)"
       : headTone === "red"
-        ? "linear-gradient(135deg, #b91c1c, #dc2626)"
+        ? "linear-gradient(135deg, #b91c1c, #c93434)"
         : headTone === "green"
           ? "linear-gradient(135deg, #4a5e29, #5e7733)"
           : undefined;

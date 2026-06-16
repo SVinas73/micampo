@@ -26,7 +26,7 @@ function Legend({ color, label, mode }: { color: string; label: string; mode: "l
 function BHKpi({ label, value, sub, tone }: { label: string; value: string; sub: string; tone: "blue" | "red" | "orange" | "green" }) {
   const map = {
     blue: { bg: "#eff6ff", border: "#bfdbfe", txt: "#1e40af", fg: "#2c82c9" },
-    red: { bg: "#fef2f2", border: "#fecaca", txt: "#991b1b", fg: "#dc2626" },
+    red: { bg: "#fef2f2", border: "#fecaca", txt: "#991b1b", fg: "#c93434" },
     orange: { bg: "linear-gradient(135deg, #FFF8EC, #FFF0DD)", border: "#FF9D00", txt: "#a85f00", fg: "#a85f00" },
     green: { bg: "#f0fdf4", border: "#bbf7d0", txt: "#166534", fg: "#22a261" },
   } as const;
