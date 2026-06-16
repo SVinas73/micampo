@@ -13,6 +13,23 @@ export type DayForecast = {
   vent: "ok" | "warn" | "bad";
 };
 
+// Curva suave (monotone cubic) para líneas prolijas sin sobrepicos
+function smooth(pts: { x: number; y: number }[]) {
+  if (pts.length < 2) return pts.length ? `M ${pts[0].x} ${pts[0].y}` : "";
+  const n = pts.length, dx: number[] = [], dy: number[] = [], m: number[] = [], t: number[] = [];
+  for (let i = 0; i < n - 1; i++) { dx[i] = pts[i + 1].x - pts[i].x; dy[i] = pts[i + 1].y - pts[i].y; m[i] = dy[i] / dx[i]; }
+  t[0] = m[0];
+  for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  t[n - 1] = m[n - 2];
+  let p = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 0; i < n - 1; i++) {
+    const x1 = pts[i].x + dx[i] / 3, y1 = pts[i].y + t[i] * dx[i] / 3;
+    const x2 = pts[i + 1].x - dx[i] / 3, y2 = pts[i + 1].y - t[i + 1] * dx[i] / 3;
+    p += ` C ${x1} ${y1} ${x2} ${y2} ${pts[i + 1].x} ${pts[i + 1].y}`;
+  }
+  return p;
+}
+
 /* Forecast 10-day chart — HTML grid + SVG curve overlay so emojis render reliably */
 export function ForecastChart({
   days,
@@ -160,41 +177,21 @@ export function ForecastChart({
           );
         })}
 
-        <polygon
-          points={`50,${OVERLAY_H} ${days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")} ${(N - 1) * 100 + 50},${OVERLAY_H}`}
-          fill="url(#fcMaxArea)"
-        />
-        <polygon
-          points={`50,${OVERLAY_H} ${days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} ${(N - 1) * 100 + 50},${OVERLAY_H}`}
-          fill="url(#fcMinArea)"
-        />
-
-        <polyline
-          fill="none"
-          stroke="#3aa6d9"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          points={days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")}
-        />
-        <polyline
-          fill="none"
-          stroke="#c08a22"
-          strokeWidth="2.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          points={days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")}
-        />
-
-        {days.map((d, i) => {
-          const x = i * 100 + 50;
+        {(() => {
+          const ptsMax = days.map((d, i) => ({ x: i * 100 + 50, y: tY(d.max) }));
+          const ptsMin = days.map((d, i) => ({ x: i * 100 + 50, y: tY(d.min) }));
+          const dMax = smooth(ptsMax), dMin = smooth(ptsMin);
+          const areaMax = `${dMax} L ${(N - 1) * 100 + 50},${OVERLAY_H} L 50,${OVERLAY_H} Z`;
+          const areaMin = `${dMin} L ${(N - 1) * 100 + 50},${OVERLAY_H} L 50,${OVERLAY_H} Z`;
           return (
-            <g key={`d${i}`}>
-              <circle cx={x} cy={tY(d.max)} r="6" fill="#c08a22" stroke="white" strokeWidth="2" filter="url(#fcDotShadow)" />
-              <circle cx={x} cy={tY(d.min)} r="5" fill="#3aa6d9" stroke="white" strokeWidth="2" filter="url(#fcDotShadow)" />
-            </g>
+            <>
+              <path d={areaMax} fill="url(#fcMaxArea)" />
+              <path d={areaMin} fill="url(#fcMinArea)" />
+              <path d={dMin} fill="none" stroke="#3aa6d9" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={dMax} fill="none" stroke="#c08a22" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+            </>
           );
-        })}
+        })()}
       </svg>
 
       <div
@@ -211,6 +208,8 @@ export function ForecastChart({
       >
         {days.map((d, i) => (
           <div key={i} style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: "50%", top: tY(d.max), transform: "translate(-50%, -50%)", width: 7, height: 7, borderRadius: "50%", background: "#c08a22", border: "1.5px solid #fff", boxShadow: "0 1px 2px rgba(0,0,0,0.18)" }} />
+            <span style={{ position: "absolute", left: "50%", top: tY(d.min), transform: "translate(-50%, -50%)", width: 6, height: 6, borderRadius: "50%", background: "#3aa6d9", border: "1.5px solid #fff", boxShadow: "0 1px 2px rgba(0,0,0,0.18)" }} />
             <span
               style={{
                 position: "absolute",
