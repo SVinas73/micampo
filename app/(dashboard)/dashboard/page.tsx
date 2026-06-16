@@ -17,6 +17,10 @@ import { Icon, Modal, Field, useToast } from "@/components/mc";
 
 const MC_OLIVE = "#5e7733", MC_OLIVE_L = "#8ea65a", MC_GOLD = "#d9a538", MC_GOLD_D = "#c08a22";
 
+type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; presion: number; deltaT: number; aptoPulverizacion: boolean; icono: string; descripcion: string };
+type ClimaDia = { nombre: string; num: number; esHoy: boolean; icono: string; max: number; min: number; mm: number; probLluvia: number; viento: number; et0: number };
+type ClimaData = { actual: ClimaActual; dias: ClimaDia[]; ubicacion?: { nombre?: string } };
+
 type KpiCfg = { key: string; label: string; value: string; delta: string; trend: "up" | "down" | "warn"; icon: string; tone?: "accent" | "warn" };
 
 const KPIS_BASE: KpiCfg[] = [
@@ -169,28 +173,16 @@ function SummaryCard({ tone, eyebrow, value, sub, badge, icon, onVer }: {
 }
 
 /* ---------- Clima de hoy + pronóstico 7 días + agenda semanal ---------- */
-function ClimaSemana({ onVerAgenda }: { onVerAgenda: () => void }) {
-  const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-  const today = new Date(2026, 3, 18);
-  const weather = [
-    { ic: "cloud", max: 22, min: 14, mm: 0, wind: "12 km/h ↘ SE" },
-    { ic: "sun", max: 24, min: 15, mm: 0, wind: "15 km/h → E" },
-    { ic: "droplet", max: 20, min: 12, mm: 25, wind: "18 km/h ↙ SO" },
-    { ic: "cloud", max: 21, min: 13, mm: 15, wind: "10 km/h ↓ S" },
-    { ic: "cloud", max: 23, min: 14, mm: 0, wind: "8 km/h ↗ NE" },
-    { ic: "sun", max: 26, min: 16, mm: 0, wind: "12 km/h ↑ N" },
-    { ic: "cloud", max: 22, min: 13, mm: 8, wind: "20 km/h ↙ SO" },
-  ];
-  const days = weather.map((w, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return { name: dayNames[d.getDay()], num: d.getDate(), isToday: i === 0, ...w }; });
+function ClimaSemana({ onVerAgenda, clima, lugar }: { onVerAgenda: () => void; clima: ClimaData | null; lugar: string }) {
+  const a = clima?.actual ?? null;
+  const days = (clima?.dias ?? []).map((d) => ({ name: d.nombre, num: d.num, isToday: d.esHoy, ic: d.icono, max: d.max, min: d.min, mm: d.mm, wind: `${d.viento} km/h` }));
+  const hoyFecha = new Date().toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
   const events: { titulo: string; inicio: number; dur: number; color: string; icon: string }[] = [];
   const rows: (typeof events)[] = [];
-  events.forEach((e) => {
-    let placed = false;
-    for (const r of rows) { if (!r.some((x) => !(e.inicio + e.dur <= x.inicio || x.inicio + x.dur <= e.inicio))) { r.push(e); placed = true; break; } }
-    if (!placed) rows.push([e]);
-  });
-  const tempLow = 10, tempHigh = 30;
-  const tY = (t: number) => 60 * (1 - (t - tempLow) / (tempHigh - tempLow)) + 6;
+  const allTemps = days.flatMap((d) => [d.max, d.min]);
+  const tempLow = allTemps.length ? Math.min(...allTemps) - 2 : 8;
+  const tempHigh = allTemps.length ? Math.max(...allTemps) + 2 : 32;
+  const tY = (t: number) => 60 * (1 - (t - tempLow) / (tempHigh - tempLow || 1)) + 6;
 
   const InfoCell = ({ icon, big, sub, highlight }: { icon: string; big: React.ReactNode; sub: string; highlight?: boolean }) => (
     <div style={{ padding: "12px 14px", borderRight: "1px solid rgba(255,255,255,0.12)", background: highlight ? "rgba(255,255,255,0.10)" : "transparent", display: "flex", alignItems: "center", gap: 10 }}>
@@ -206,22 +198,22 @@ function ClimaSemana({ onVerAgenda }: { onVerAgenda: () => void }) {
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ background: "var(--mc-field-grad)", color: "white", padding: "18px 22px 20px" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontSize: 10, opacity: 0.78, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>Don Ramón · vie 18 abr · 14:32</div>
-          <div style={{ fontSize: 11, opacity: 0.9, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>Parcialmente nublado</div>
+          <div style={{ fontSize: 10, opacity: 0.78, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>{lugar} · {hoyFecha}</div>
+          <div style={{ fontSize: 11, opacity: 0.9, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>{a?.descripcion ?? "Cargando…"}</div>
         </div>
         <div className="row" style={{ alignItems: "stretch", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 18, borderRight: "1px solid rgba(255,255,255,0.22)" }}>
-            <Icon name="cloud" size={38} />
+            <Icon name={a?.icono ?? "cloud"} size={38} />
             <div className="col" style={{ gap: 0 }}>
-              <span style={{ fontFamily: "var(--ff-display)", fontSize: 56, lineHeight: 0.92, fontWeight: 600 }}>22°</span>
+              <span style={{ fontFamily: "var(--ff-display)", fontSize: 56, lineHeight: 0.92, fontWeight: 600 }}>{a ? `${a.temperatura}°` : "—"}</span>
               <span style={{ fontSize: 11, opacity: 0.78, letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600, marginTop: 2 }}>Ahora</span>
             </div>
           </div>
           <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, overflow: "hidden" }}>
-            <InfoCell icon="thermometer" big={<span><span style={{ color: "#ffd28a" }}>24°</span><span style={{ opacity: 0.62, margin: "0 6px", fontSize: 13, fontFamily: "var(--ff-mono)", fontWeight: 500 }}>°C</span><span style={{ color: "#9ad8ff" }}>14°</span></span>} sub="Sens. 21°" />
-            <InfoCell icon="droplet" big="68%" sub="Rocío 16°" />
-            <InfoCell icon="wind" big="12 km/h" sub="↘ SE · Ráf. 18" />
-            <InfoCell icon="activity" big="ΔT 5.2" sub="Apto pulver." highlight />
+            <InfoCell icon="thermometer" big={<span><span style={{ color: "#ffd28a" }}>{days[0]?.max ?? "—"}°</span><span style={{ opacity: 0.62, margin: "0 6px", fontSize: 13, fontFamily: "var(--ff-mono)", fontWeight: 500 }}>°C</span><span style={{ color: "#9ad8ff" }}>{days[0]?.min ?? "—"}°</span></span>} sub={a ? `Sens. ${a.sensacion}°` : ""} />
+            <InfoCell icon="droplet" big={a ? `${a.humedad}%` : "—"} sub={a ? `Rocío ${a.rocio}°` : ""} />
+            <InfoCell icon="wind" big={a ? `${a.viento} km/h` : "—"} sub={a ? `${a.vientoDir} · Ráf. ${a.rafaga}` : ""} />
+            <InfoCell icon="activity" big={a ? `ΔT ${a.deltaT}` : "—"} sub={a ? (a.aptoPulverizacion ? "Apto pulver." : "Fuera de rango") : ""} highlight />
           </div>
         </div>
       </div>
@@ -415,6 +407,8 @@ export default function InicioPage() {
   const [laborForm, setLaborForm] = useState({ tipo: "Pulverización", loteId: "", fecha: new Date().toISOString().slice(0, 10) });
   const [balance, setBalance] = useState<{ meses: string[]; ingresos: number[]; gastos: number[] } | null>(null);
   const [cultivos, setCultivos] = useState<{ label: string; ha: string; pct: number; color: string }[] | null>(null);
+  const [clima, setClima] = useState<ClimaData | null>(null);
+  const [climaLugar, setClimaLugar] = useState("Tu campo");
 
   useEffect(() => {
     fetch("/api/dashboard/inicio").then((r) => (r.ok ? r.json() : null)).then((d) => {
@@ -461,6 +455,16 @@ export default function InicioPage() {
       }
       if (ingresos.some((v) => v > 0) || gastos.some((v) => v > 0)) setBalance({ meses, ingresos, gastos });
     }).catch(() => {});
+  }, []);
+
+  // Clima real (Open-Meteo) — usa el centroide de un lote del usuario si existe
+  useEffect(() => {
+    fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      const loc = Array.isArray(d) ? d.find((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud) : null;
+      if (loc?.nombre) setClimaLugar(String(loc.nombre));
+      const q = loc ? `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}` : "";
+      return fetch(`/api/clima${q}`);
+    }).then((r) => (r && r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
   }, []);
 
   const kpis = useMemo(() => KPIS_BASE.map((k) => ({ ...k, ...(kpiValues[k.key] || {}) })), [kpiValues]);
@@ -545,7 +549,7 @@ export default function InicioPage() {
 
       {/* Clima + agenda | Salud lotes + suelo */}
       <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 14 }}>
-        <ClimaSemana onVerAgenda={() => router.push("/calendario")} />
+        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} lugar={climaLugar} />
         <div className="col gap-16"><FieldHealth /><SoilHealth /></div>
       </div>
 
