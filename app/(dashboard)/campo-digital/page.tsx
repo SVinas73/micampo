@@ -49,7 +49,7 @@ function CampoDigitalInner() {
         subtitle="Mapa operativo, siembras, cultivos y sanidad de tus hectáreas productivas."
         actions={actions}
       />
-      <Tabs tabs={TABS} active={tab} onChange={setTab} warnTabs={["Detección de Enfermedades (IA)", "Labores"]} />
+      <Tabs tabs={TABS} active={tab} onChange={setTab} />
       {tab === "Resumen" && <TabResumen onNavigateTab={setTab} />}
       {tab === "Lotes" && <TabLotes />}
       {tab === "Labores" && <TabLabores />}

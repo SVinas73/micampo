@@ -20,11 +20,11 @@ const MC_OLIVE = "#5e7733", MC_OLIVE_L = "#8ea65a", MC_GOLD = "#d9a538", MC_GOLD
 type KpiCfg = { key: string; label: string; value: string; delta: string; trend: "up" | "down" | "warn"; icon: string; tone?: "accent" | "warn" };
 
 const KPIS_BASE: KpiCfg[] = [
-  { key: "hectareas", label: "Hectáreas productivas", value: "558 Ha", delta: "+3.2% vs campaña ant.", trend: "up", icon: "map", tone: "accent" },
-  { key: "cabezas", label: "Cabezas de ganado", value: "1,284", delta: "+24 últ. 30d", trend: "up", icon: "cow" },
-  { key: "ingresosMes", label: "Ingresos del mes", value: "$8.6M", delta: "+12% vs marzo", trend: "up", icon: "dollar" },
-  { key: "labores", label: "Labores pendientes", value: "17", delta: "3 atrasadas", trend: "warn", icon: "wrench", tone: "warn" },
-  { key: "agua", label: "Reserva agua útil", value: "62%", delta: "-4 pts vs ayer", trend: "down", icon: "droplet" },
+  { key: "hectareas", label: "Hectáreas productivas", value: "0 Ha", delta: "—", trend: "up", icon: "map", tone: "accent" },
+  { key: "cabezas", label: "Cabezas de ganado", value: "0", delta: "—", trend: "up", icon: "cow" },
+  { key: "ingresosMes", label: "Ingresos del mes", value: "$0", delta: "—", trend: "up", icon: "dollar" },
+  { key: "labores", label: "Labores pendientes", value: "0", delta: "—", trend: "up", icon: "wrench" },
+  { key: "agua", label: "Reserva agua útil", value: "0%", delta: "—", trend: "up", icon: "droplet" },
 ];
 
 /* ---------- monotone cubic interpolation (curvas suaves) ---------- */
@@ -79,7 +79,7 @@ function Donut({ segments, size = 150, thickness = 16, gap = 2, rounded = true, 
 /* ---------- Balance mensual (área línea ingresos/gastos) ---------- */
 function BalanceArea({ meses, ingresos, gastos }: { meses: string[]; ingresos: number[]; gastos: number[] }) {
   const max = Math.max(10, ...ingresos, ...gastos);
-  const W = 460, H = 210, padL = 36, padR = 14, padT = 14, padB = 26;
+  const W = 560, H = 170, padL = 36, padR = 14, padT = 14, padB = 26;
   const iW = W - padL - padR, iH = H - padT - padB, n = meses.length;
   const X = (i: number) => padL + (i / (n - 1)) * iW, Y = (v: number) => padT + iH * (1 - v / max);
   const pI = ingresos.map((v, i) => ({ x: X(i), y: Y(v) }));
@@ -89,7 +89,7 @@ function BalanceArea({ meses, ingresos, gastos }: { meses: string[]; ingresos: n
   const areaG = lineG + ` L ${X(n - 1)} ${Y(0)} L ${X(0)} ${Y(0)} Z`;
   const ticks = [0, 0.2, 0.4, 0.6, 0.8, 1].map((p) => Math.round(max * p));
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: 680, margin: "0 auto", maxHeight: 200 }}>
       <defs>
         <linearGradient id="mcba-i" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={MC_OLIVE} stopOpacity="0.26" /><stop offset="100%" stopColor={MC_OLIVE} stopOpacity="0" /></linearGradient>
         <linearGradient id="mcba-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={MC_GOLD} stopOpacity="0.20" /><stop offset="100%" stopColor={MC_GOLD} stopOpacity="0" /></linearGradient>
@@ -182,14 +182,7 @@ function ClimaSemana({ onVerAgenda }: { onVerAgenda: () => void }) {
     { ic: "cloud", max: 22, min: 13, mm: 8, wind: "20 km/h ↙ SO" },
   ];
   const days = weather.map((w, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return { name: dayNames[d.getDay()], num: d.getDate(), isToday: i === 0, ...w }; });
-  const events = [
-    { titulo: "Siembra Lote 3", inicio: 0, dur: 2, color: "#5e7733", icon: "sprout" },
-    { titulo: "Pulverización N1", inicio: 0, dur: 1, color: "#c08a22", icon: "flask" },
-    { titulo: "Retira Conaprole", inicio: 1, dur: 1, color: "#2c6bb8", icon: "truck" },
-    { titulo: "Riego Sector A", inicio: 2, dur: 4, color: "#3a93b8", icon: "droplet" },
-    { titulo: "Vacunación Aftosa", inicio: 3, dur: 1, color: "#b23b2c", icon: "syringe" },
-    { titulo: "Cosecha Maíz E1", inicio: 5, dur: 2, color: "#8ea65a", icon: "wrench" },
-  ];
+  const events: { titulo: string; inicio: number; dur: number; color: string; icon: string }[] = [];
   const rows: (typeof events)[] = [];
   events.forEach((e) => {
     let placed = false;
@@ -276,7 +269,8 @@ function ClimaSemana({ onVerAgenda }: { onVerAgenda: () => void }) {
           <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", pointerEvents: "none", zIndex: 0 }}>
             {days.map((d, i) => <div key={i} style={{ borderRight: i < 6 ? "1px dashed rgba(0,0,0,0.06)" : "none", background: d.isToday ? "var(--mc-green-50)" : "transparent" }} />)}
           </div>
-          <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ position: "relative", zIndex: 1, minHeight: 26 }}>
+            {rows.length === 0 && <div style={{ fontSize: 11, color: "var(--mc-text-3)", padding: "5px 2px" }}>Sin eventos esta semana.</div>}
             {rows.map((row, ri) => (
               <div key={ri} style={{ position: "relative", height: 26, marginBottom: ri < rows.length - 1 ? 5 : 0 }}>
                 {row.map((e, ei) => {
@@ -300,25 +294,21 @@ function ClimaSemana({ onVerAgenda }: { onVerAgenda: () => void }) {
 
 /* ---------- Salud de los lotes (dona) ---------- */
 function FieldHealth() {
-  const segs = [
-    { label: "Excelente", value: 35, color: "#5e7733" },
-    { label: "Bueno", value: 40, color: "#8ea65a" },
-    { label: "Regular", value: 15, color: "#d9a538" },
-    { label: "Pobre", value: 10, color: "#c93434" },
-  ];
+  const labels = ["Excelente", "Bueno", "Regular", "Pobre"];
+  const colors = ["#5e7733", "#8ea65a", "#d9a538", "#c93434"];
   return (
     <div className="mc-card">
-      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Análisis IA · vegetación &amp; suelo</div><div className="mc-card__title mt-4">Salud de los lotes</div></div><span className="mc-badge mc-badge--green">86/100</span></div>
+      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Análisis IA · vegetación &amp; suelo</div><div className="mc-card__title mt-4">Salud de los lotes</div></div><span className="mc-badge mc-badge--neutral">Sin datos</span></div>
       <div className="row" style={{ gap: 18, alignItems: "center" }}>
-        <Donut segments={segs} size={140} thickness={15}>
-          <span style={{ fontFamily: "var(--ff-display)", fontSize: 40, color: "var(--mc-ink)", lineHeight: 1 }}>86</span>
-          <span style={{ fontSize: 11, color: "var(--mc-green-700)", fontWeight: 600 }}>Bueno</span>
+        <Donut segments={[{ value: 1, color: "var(--mc-surface-3)" }]} size={140} thickness={15} rounded={false}>
+          <span style={{ fontFamily: "var(--ff-display)", fontSize: 36, color: "var(--mc-text-3)", lineHeight: 1 }}>—</span>
+          <span style={{ fontSize: 11, color: "var(--mc-text-3)", fontWeight: 600 }}>Sin análisis</span>
         </Donut>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-          {segs.map((s) => (
-            <div key={s.label} className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
-              <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: s.color }} /><span style={{ color: "var(--mc-text-2)" }}>{s.label}</span></div>
-              <span style={{ fontWeight: 600, color: "var(--mc-ink)", fontVariantNumeric: "tabular-nums" }}>{s.value}%</span>
+          {labels.map((label, i) => (
+            <div key={label} className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
+              <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: colors[i] }} /><span style={{ color: "var(--mc-text-2)" }}>{label}</span></div>
+              <span style={{ fontWeight: 600, color: "var(--mc-text-3)", fontVariantNumeric: "tabular-nums" }}>0%</span>
             </div>
           ))}
         </div>
@@ -333,16 +323,16 @@ function SoilHealth() {
     <div className="mc-card">
       <div className="mc-card__head"><div><div className="mc-card__eyebrow">Promedio de todos los lotes</div><div className="mc-card__title mt-4">Salud del suelo</div></div></div>
       <div className="row" style={{ gap: 8, marginBottom: 14 }}>
-        <div className="mc-nutri mc-nutri--ok" style={{ flex: 1, justifyContent: "center" }}>N · Medio</div>
-        <div className="mc-nutri mc-nutri--ok" style={{ flex: 1, justifyContent: "center" }}>P · Alto</div>
-        <div className="mc-nutri mc-nutri--low" style={{ flex: 1, justifyContent: "center" }}>K · Medio</div>
+        <div className="mc-nutri" style={{ flex: 1, justifyContent: "center", background: "var(--mc-surface-3)", color: "var(--mc-text-3)" }}>N · —</div>
+        <div className="mc-nutri" style={{ flex: 1, justifyContent: "center", background: "var(--mc-surface-3)", color: "var(--mc-text-3)" }}>P · —</div>
+        <div className="mc-nutri" style={{ flex: 1, justifyContent: "center", background: "var(--mc-surface-3)", color: "var(--mc-text-3)" }}>K · —</div>
       </div>
       <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
         <span style={{ color: "var(--mc-text-2)" }}>Materia orgánica</span>
-        <span style={{ fontWeight: 600, color: "var(--mc-ink)", fontFamily: "var(--ff-mono)" }}>2.8%</span>
+        <span style={{ fontWeight: 600, color: "var(--mc-text-3)", fontFamily: "var(--ff-mono)" }}>0%</span>
       </div>
-      <div className="mc-prog"><div className="mc-prog__bar" style={{ width: "70%" }} /></div>
-      <div className="text-xs text-muted mt-8">Nivel bueno · +0.2 pts vs análisis anterior</div>
+      <div className="mc-prog"><div className="mc-prog__bar" style={{ width: "0%" }} /></div>
+      <div className="text-xs text-muted mt-8">Sin análisis de suelo cargado</div>
     </div>
   );
 }
@@ -350,15 +340,17 @@ function SoilHealth() {
 /* ---------- Distribución de cultivos (dona) ---------- */
 function CropDistribution({ cultivos }: { cultivos: { label: string; ha: string; pct: number; color: string }[] }) {
   const total = cultivos.reduce((s, c) => s + (parseFloat(c.ha) || 0), 0);
+  const vacio = cultivos.length === 0;
   return (
     <div className="mc-card">
       <div className="mc-card__head"><div><div className="mc-card__eyebrow">Por superficie</div><div className="mc-card__title mt-4">Distribución de cultivos</div></div></div>
       <div className="row" style={{ gap: 20, alignItems: "center" }}>
-        <Donut segments={cultivos.map((c) => ({ value: c.pct, color: c.color }))} size={158} thickness={28} gap={2.5}>
-          <span style={{ fontFamily: "var(--ff-display)", fontSize: 30, color: "var(--mc-ink)", lineHeight: 1 }}>{Math.round(total) || 558}</span>
+        <Donut segments={vacio ? [{ value: 1, color: "var(--mc-surface-3)" }] : cultivos.map((c) => ({ value: c.pct, color: c.color }))} size={158} thickness={28} gap={2.5} rounded={!vacio}>
+          <span style={{ fontFamily: "var(--ff-display)", fontSize: 30, color: vacio ? "var(--mc-text-3)" : "var(--mc-ink)", lineHeight: 1 }}>{Math.round(total) || 0}</span>
           <span style={{ fontSize: 10.5, color: "var(--mc-text-3)" }}>Ha totales</span>
         </Donut>
         <div style={{ flex: 1 }}>
+          {vacio && <div className="text-sm text-muted" style={{ padding: "8px 0" }}>Cargá tus lotes y cultivos para ver la distribución.</div>}
           {cultivos.map((c) => (
             <div key={c.label} className="row" style={{ justifyContent: "space-between", padding: "5px 0", borderBottom: "1px dashed var(--mc-line)", fontSize: 13 }}>
               <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: c.color }} /><span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{c.label}</span></div>
@@ -373,24 +365,12 @@ function CropDistribution({ cultivos }: { cultivos: { label: string; ha: string;
 
 /* ---------- Últimas actividades ---------- */
 function Actividades({ onVerTodo }: { onVerTodo: () => void }) {
-  const activs = [
-    { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", icon: "droplet", time: "Hace 2 horas" },
-    { inicial: "J", color: "#d9a538", quien: "Joaquín", verb: "finalizó", obj: "Siembra", lote: "Lote 1", icon: "truck", time: "Hace 5 horas" },
-    { sys: true, color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", icon: "bug", time: "Ayer" },
-    { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de cultivo", lote: "Lote 4", icon: "camera", time: "Ayer" },
-    { inicial: "M", color: "#c08a22", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", icon: "droplet", time: "Hace 2 días" },
-  ];
   return (
     <div className="mc-card">
       <div className="mc-card__head"><div className="mc-card__title">Últimas actividades</div><button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVerTodo}>Ver todo <Icon name="chevRight" size={13} /></button></div>
-      <div>
-        {activs.map((a, i) => (
-          <div key={i} className="mc-act-row">
-            <div className="mc-act-row__avatar" style={{ background: a.color }}>{a.sys ? <Icon name="bolt" size={14} /> : a.inicial}</div>
-            <div className="mc-act-row__text"><span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb} <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span> <span style={{ marginLeft: 4, color: "var(--mc-text-3)" }}><Icon name={a.icon} size={12} /></span></div>
-            <div className="mc-act-row__time">{a.time}</div>
-          </div>
-        ))}
+      <div className="mc-empty">
+        <div className="mc-empty__icon"><Icon name="timeline" size={22} /></div>
+        Todavía no hay actividad registrada.
       </div>
     </div>
   );
@@ -398,23 +378,12 @@ function Actividades({ onVerTodo }: { onVerTodo: () => void }) {
 
 /* ---------- Alertas activas ---------- */
 function Alertas() {
-  const alerts = [
-    { nivel: "red", lbl: "Crítica", title: "Plaga detectada", body: "Chinches verdes en Lote Norte 1 · superó umbral" },
-    { nivel: "amber", lbl: "Alta", title: "Ventana de pulverización cerrada", body: "Viento >20km/h las próximas 12hs" },
-    { nivel: "amber", lbl: "Media", title: "Stock bajo", body: "Urea · quedan 4 días de consumo" },
-    { nivel: "blue", lbl: "Info", title: "Cosecha lista", body: "Maíz Lote Este 1 · humedad 14.5%" },
-  ];
-  const map: Record<string, string> = { red: "mc-badge--red", amber: "mc-badge--amber", blue: "mc-badge--blue" };
   return (
     <div className="mc-card">
-      <div className="mc-card__head"><div className="mc-card__title">Alertas activas</div><span className="mc-badge mc-badge--red"><span className="mc-badge__dot" />5 críticas</span></div>
-      <div className="col gap-8">
-        {alerts.map((a, i) => (
-          <div key={i} className="mc-alert">
-            <div className="mc-alert__head"><div className="mc-alert__title">{a.title}</div><span className={`mc-badge ${map[a.nivel]}`}><span className="mc-badge__dot" />{a.lbl}</span></div>
-            <div className="mc-alert__body">{a.body}</div>
-          </div>
-        ))}
+      <div className="mc-card__head"><div className="mc-card__title">Alertas activas</div><span className="mc-badge mc-badge--neutral"><span className="mc-badge__dot" />0 activas</span></div>
+      <div className="mc-empty">
+        <div className="mc-empty__icon"><Icon name="shieldCheck" size={22} /></div>
+        Sin alertas activas.
       </div>
     </div>
   );
@@ -496,14 +465,8 @@ export default function InicioPage() {
 
   const kpis = useMemo(() => KPIS_BASE.map((k) => ({ ...k, ...(kpiValues[k.key] || {}) })), [kpiValues]);
 
-  const cultivosData = cultivos && cultivos.length ? cultivos : [
-    { label: "Trigo", ha: "201 Ha", pct: 36, color: "#d9a538" },
-    { label: "Maíz", ha: "145 Ha", pct: 26, color: "#c08a22" },
-    { label: "Soja", ha: "112 Ha", pct: 20, color: "#8ea65a" },
-    { label: "Cebada", ha: "56 Ha", pct: 10, color: "#5e7733" },
-    { label: "Otros", ha: "44 Ha", pct: 8, color: "#aabd76" },
-  ];
-  const bal = balance || { meses: ["Nov", "Dic", "Ene", "Feb", "Mar", "Abr"], ingresos: [4.2, 5.8, 6.1, 7.1, 7.6, 8.6], gastos: [3.1, 3.4, 4.0, 4.2, 5.1, 5.8] };
+  const cultivosData = cultivos && cultivos.length ? cultivos : [];
+  const bal = balance || { meses: ["Nov", "Dic", "Ene", "Feb", "Mar", "Abr"], ingresos: [0, 0, 0, 0, 0, 0], gastos: [0, 0, 0, 0, 0, 0] };
   const ingTot = bal.ingresos[bal.ingresos.length - 1] || 0;
   const gasTot = bal.gastos[bal.gastos.length - 1] || 0;
 
@@ -568,7 +531,7 @@ export default function InicioPage() {
               <span className="mc-kpi__glyph"><Icon name={k.icon} size={14} /></span>
               <div className="mc-kpi__label">{k.label}</div>
               <div className="mc-kpi__value">{k.value}</div>
-              <div className={`mc-kpi__delta ${tcls}`}><Icon name={tIcon} size={12} />{k.delta}</div>
+              <div className={`mc-kpi__delta ${k.delta === "—" ? "" : tcls}`}>{k.delta === "—" ? null : <Icon name={tIcon} size={12} />}{k.delta}</div>
             </div>
           );
         })}
@@ -576,8 +539,8 @@ export default function InicioPage() {
 
       {/* Tarjetas resumen */}
       <div className="grid g-cols-2">
-        <SummaryCard tone="field" icon="leaf" eyebrow="Estado general de campos" value="Bueno" sub="86/100 · +12% vs semana anterior" badge="↑ 12%" onVer={() => router.push("/campo-digital?tab=Detección de Enfermedades (IA)")} />
-        <SummaryCard tone="gold" icon="dollar" eyebrow="Gastos del mes" value={`$${gasTot.toFixed(1)}M`} sub={`Margen bruto est. $${Math.max(0, ingTot - gasTot).toFixed(1)}M`} badge="+14%" onVer={() => router.push("/finanzas")} />
+        <SummaryCard tone="field" icon="leaf" eyebrow="Estado general de campos" value="Sin datos" sub="Cargá tus lotes para ver el análisis" onVer={() => router.push("/campo-digital?tab=Detección de Enfermedades (IA)")} />
+        <SummaryCard tone="gold" icon="dollar" eyebrow="Gastos del mes" value={`$${gasTot.toFixed(1)}M`} sub={`Margen bruto est. $${Math.max(0, ingTot - gasTot).toFixed(1)}M`} onVer={() => router.push("/finanzas")} />
       </div>
 
       {/* Clima + agenda | Salud lotes + suelo */}
@@ -607,12 +570,11 @@ export default function InicioPage() {
         <div className="mc-card">
           <div className="mc-card__head">
             <div><div className="mc-card__eyebrow">Campaña 25/26 · t/Ha</div><div className="mc-card__title mt-4">Rinde por lote</div></div>
-            <div className="row" style={{ gap: 14 }}>
-              <span className="row gap-8" style={{ fontSize: 12, color: "var(--mc-text-2)" }}><span style={{ width: 9, height: 9, borderRadius: 3, background: "#5e7733" }} />Real</span>
-              <span className="row gap-8" style={{ fontSize: 12, color: "var(--mc-text-2)" }}><span style={{ width: 9, height: 9, borderRadius: 3, background: "var(--mc-line-2)" }} />Objetivo</span>
-            </div>
           </div>
-          <RindeBars />
+          <div className="mc-empty">
+            <div className="mc-empty__icon"><Icon name="chart" size={22} /></div>
+            Sin datos de rinde todavía. Se completará al registrar cosechas.
+          </div>
         </div>
         <CropDistribution cultivos={cultivosData} />
       </div>

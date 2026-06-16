@@ -202,7 +202,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 function TweaksPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [tweaks, setTweaks] = useState({ theme: "light", palette: "natural", font: "editorial", density: "compact" });
+  const [tweaks, setTweaks] = useState({ theme: "light", palette: "natural", font: "inter", density: "compact" });
 
   useEffect(() => {
     try {
@@ -317,7 +317,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         const r = document.documentElement;
         r.setAttribute("data-theme", t.theme || "light");
         r.setAttribute("data-palette", t.palette || "natural");
-        r.setAttribute("data-font", t.font || "editorial");
+        r.setAttribute("data-font", "inter");
         r.setAttribute("data-density", t.density || "compact");
       }
     } catch {}

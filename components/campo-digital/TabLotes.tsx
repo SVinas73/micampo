@@ -1,14 +1,27 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useSetHeaderActions } from "./ActionsContext";
 import {
-  LOTES_GEO, GEO_METRICAS, LOTES_INICIALES, LISTA_EXTRAS, mapLotesApi, fechaCorta,
+  LOTES_INICIALES, LISTA_EXTRAS, mapLotesApi, fechaCorta,
   type LoteUI,
 } from "./lotes-data";
+
+// Mapa satelital real (Leaflet) — solo en cliente
+const MapaNDVI = dynamic(() => import("./MapaNDVI"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ height: 600, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
+      Cargando mapa satelital…
+    </div>
+  ),
+});
+
+type DibujoLote = { geojson: { type: "Polygon"; coordinates: number[][][] }; hectareas: number; centro: { lat: number; lng: number }; perimetro: number };
 import {
   AgregarCampoModal, EliminarCampoModal, EditarLoteModal, NuevaTareaModal,
   type AgregarCampoData, type EditarLoteData, type NuevaTareaData,
@@ -23,7 +36,6 @@ export default function TabLotes() {
   const [view, setView] = useState<"mapa" | "lista">("mapa");
   const [layer, setLayer] = useState("NDVI");
   const [campoFiltro, setCampoFiltro] = useState("Todos");
-  const [zoom, setZoom] = useState(1);
   const [showAgregar, setShowAgregar] = useState(searchParams.get("modal") === "nuevo");
   const [showEliminar, setShowEliminar] = useState(false);
   const [showFiltros, setShowFiltros] = useState(false);
@@ -32,6 +44,7 @@ export default function TabLotes() {
   const [tareaLote, setTareaLote] = useState<LoteUI | null>(null);
   const [notaLote, setNotaLote] = useState<LoteUI | null>(null);
   const [comentarioGeneral, setComentarioGeneral] = useState(false);
+  const [dibujado, setDibujado] = useState<DibujoLote | null>(null);
 
   useEffect(() => {
     fetch("/api/lotes")
@@ -78,23 +91,32 @@ export default function TabLotes() {
   /* ---- Acciones conectadas ---- */
   const crearCampo = async (data: AgregarCampoData) => {
     try {
+      const geom = dibujado;
       const res = await fetch("/api/lotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: data.nombre, hectareas: data.hectareas, cultivo: null }),
+        body: JSON.stringify({
+          nombre: data.nombre,
+          hectareas: data.hectareas,
+          cultivo: null,
+          coordenadas: geom?.geojson ?? null,
+          centroLatitud: geom?.centro.lat ?? null,
+          centroLongitud: geom?.centro.lng ?? null,
+          perimetro: geom?.perimetro ?? null,
+        }),
       });
-      const code = LOTES_GEO[lotes.length % LOTES_GEO.length].id;
-      const met = GEO_METRICAS[code];
       let dbId: string | undefined;
       if (res.ok) dbId = (await res.json()).id;
       setLotes((prev) => [
         ...prev,
         {
-          id: code, dbId, name: data.nombre, campo: data.nombre, ha: data.hectareas,
-          cultivo: null, estadio: "—", ndvi: met.ndvi, aguaUtil: met.hum, sano: true, vacio: true, comentarios: [],
+          id: dbId || `L-${prev.length + 1}`, dbId, name: data.nombre, campo: data.nombre, ha: data.hectareas,
+          cultivo: null, estadio: "—", ndvi: 0, aguaUtil: 0, sano: true, vacio: true, comentarios: [],
+          geojson: geom?.geojson ?? null, cultivoColor: null,
         },
       ]);
-      toast.show(`Establecimiento "${data.nombre}" creado`);
+      setDibujado(null);
+      toast.show(geom ? `Lote "${data.nombre}" agregado al mapa` : `Establecimiento "${data.nombre}" creado`);
       setShowAgregar(false);
     } catch {
       toast.show("No se pudo crear el establecimiento", "err");
@@ -164,7 +186,7 @@ export default function TabLotes() {
   return (
     <>
       {toast.node}
-      {showAgregar && <AgregarCampoModal onClose={() => setShowAgregar(false)} onConfirm={crearCampo} />}
+      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} />}
       {showEliminar && <EliminarCampoModal campos={campos} onClose={() => setShowEliminar(false)} onConfirm={eliminarCampo} />}
       {editLote && <EditarLoteModal lote={editLote} onClose={() => setEditLote(null)} onConfirm={guardarEdicion} />}
       {tareaLote && <NuevaTareaModal lote={tareaLote} onClose={() => setTareaLote(null)} onConfirm={crearTarea} />}
@@ -237,11 +259,10 @@ export default function TabLotes() {
           onSelect={setSelected}
           layer={layer}
           onLayerChange={setLayer}
-          zoom={zoom}
-          onZoom={setZoom}
           onNota={(l) => setNotaLote(l)}
           onEditar={(l) => setEditLote(l)}
           onTarea={(l) => setTareaLote(l)}
+          onDrawn={(d) => { setDibujado(d); setShowAgregar(true); }}
         />
       )}
       {view === "lista" && (
@@ -257,67 +278,37 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, zoom, onZoom, onNota, onEditar, onTarea,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
   onSelect: (l: LoteUI | null) => void;
   layer: string;
   onLayerChange: (l: string) => void;
-  zoom: number;
-  onZoom: (z: number) => void;
   onNota: (l: LoteUI) => void;
   onEditar: (l: LoteUI) => void;
   onTarea: (l: LoteUI) => void;
+  onDrawn: (d: { geojson: { type: "Polygon"; coordinates: number[][][] }; hectareas: number; centro: { lat: number; lng: number }; perimetro: number }) => void;
 }) {
-  const ndviScale = (v: number) => (v >= 0.75 ? "#1f6e2a" : v >= 0.65 ? "#768f44" : v >= 0.55 ? "#a8d09c" : v >= 0.45 ? "#e1c069" : "#cf7a3a");
-  const humScale = (v: number) => (v >= 80 ? "#1d4ed8" : v >= 65 ? "#2c6bb8" : v >= 50 ? "#7ab4f0" : v >= 35 ? "#bcd9f4" : "#e8e6e0");
-  const topoScale = (v: number) => (v >= 220 ? "#5b3b1a" : v >= 180 ? "#8a5a2a" : v >= 140 ? "#b88c50" : v >= 110 ? "#d8b380" : "#ecd9b8");
-
-  const fillFor = (code: string) => {
-    const m = GEO_METRICAS[code];
-    if (!m) return "#e8e6e0";
-    if (layer === "Cultivos") return m.vacio ? "url(#hatchVacio)" : m.cultivoColor || "url(#hatchVacio)";
-    if (layer === "NDVI") return ndviScale(m.ndvi);
-    if (layer === "Humedad") return humScale(m.hum);
-    if (layer === "Topografía") return topoScale(m.topo);
-    return m.cultivoColor || "url(#hatchVacio)";
-  };
-
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
-    Cultivos: [
-      { color: "#768f44", label: "Soja" },
-      { color: "#d9a538", label: "Maíz" },
-      { color: "#a88032", label: "Trigo" },
-      { color: "#aabd76", label: "Alfalfa" },
-      { color: "rgba(10,61,26,0.18)", label: "En descanso" },
-    ],
     NDVI: [
       { color: "#1f6e2a", label: "Muy alto (≥0.75)" },
-      { color: "#768f44", label: "Alto" },
-      { color: "#a8d09c", label: "Medio" },
-      { color: "#e1c069", label: "Bajo" },
-      { color: "#cf7a3a", label: "Crítico (<0.45)" },
+      { color: "#5e7733", label: "Alto" },
+      { color: "#8ea65a", label: "Medio" },
+      { color: "#d9a538", label: "Bajo" },
+      { color: "#9aa39a", label: "Sin medición" },
     ],
-    Humedad: [
-      { color: "#1d4ed8", label: "Saturado (≥80%)" },
-      { color: "#2c6bb8", label: "Alto" },
-      { color: "#7ab4f0", label: "Óptimo" },
-      { color: "#bcd9f4", label: "Bajo" },
-      { color: "#e8e6e0", label: "Seco (<35%)" },
+    Cultivos: [
+      { color: "#8ea65a", label: "Soja" },
+      { color: "#c08a22", label: "Maíz" },
+      { color: "#d9a538", label: "Trigo" },
+      { color: "#aabd76", label: "Alfalfa" },
+      { color: "#9aa39a", label: "En descanso" },
     ],
-    Topografía: [
-      { color: "#5b3b1a", label: "≥220 m" },
-      { color: "#8a5a2a", label: "180–220" },
-      { color: "#b88c50", label: "140–180" },
-      { color: "#d8b380", label: "110–140" },
-      { color: "#ecd9b8", label: "<110 m" },
-    ],
+    "Satélite": [],
   };
-  const legend = legendByLayer[layer] || legendByLayer.Cultivos;
-  const codesVisibles = new Set(lotes.map((l) => l.id));
-  const vb = 1 / zoom;
-  const viewBox = `${(800 - 800 * vb) / 2} ${(600 - 600 * vb) / 2} ${800 * vb} ${600 * vb}`;
+  const legend = legendByLayer[layer] || [];
+  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null }));
 
   return (
     <div className="grid" style={{ gridTemplateColumns: selected ? "360px 1fr" : "1fr", gap: 14, alignItems: "stretch" }}>
@@ -332,97 +323,30 @@ function LotesMapa({
       )}
 
       <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)" }}>
-          <div className="row gap-8">
-            <div className="mc-seg">
-              {["NDVI", "Cultivos", "Humedad", "Topografía"].map((l) => (
-                <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
-              ))}
-            </div>
-          </div>
-          <div className="row gap-4">
-            <button className="mc-icon-btn" title="Ver primer lote" onClick={() => onSelect(lotes[0] || null)}>
-              <Icon name="search" size={14} />
-            </button>
-            <button
-              className="mc-icon-btn"
-              title="Exportar mapa"
-              onClick={() => {
-                const svg = document.getElementById("mc-mapa-lotes");
-                if (!svg) return;
-                const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `micampo-mapa-${layer.toLowerCase()}.svg`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-            >
-              <Icon name="download" size={14} />
-            </button>
-          </div>
-        </div>
-        <div className="mc-map" style={{ borderRadius: 0, border: "none", height: 600, position: "relative" }}>
-          <div className="mc-map__grid"></div>
-          <svg id="mc-mapa-lotes" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox={viewBox} preserveAspectRatio="xMidYMid slice">
-            <defs>
-              <pattern id="hatchVacio" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-                <line x1="0" y1="0" x2="0" y2="6" stroke="#38491f" strokeWidth="1" opacity="0.18" />
-              </pattern>
-            </defs>
-            {LOTES_GEO.map((p) => {
-              const lote = lotes.find((l) => l.id === p.id);
-              const isSel = selected?.id === p.id;
-              const visible = codesVisibles.has(p.id);
-              const met = GEO_METRICAS[p.id];
-              return (
-                <g key={p.id} style={{ cursor: visible ? "pointer" : "default" }} onClick={() => lote && onSelect(lote)}>
-                  <polygon
-                    points={p.points}
-                    fill={fillFor(p.id)}
-                    stroke={isSel ? "#475569" : met?.vacio ? "#38491f" : "#4a5e29"}
-                    strokeWidth={isSel ? 4 : 1.5}
-                    opacity={visible ? (isSel ? 1 : 0.92) : 0.25}
-                  />
-                  <text x={p.labelX} y={p.labelY} fontSize="13" fill={p.labelFill} fontWeight="700" fontFamily="var(--ff-ui)" style={{ pointerEvents: "none" }}>
-                    {lote?.name || p.id}
-                  </text>
-                </g>
-              );
-            })}
-            <circle cx="200" cy="180" r="8" fill="#475569" stroke="white" strokeWidth="2.5" />
-            <text x="215" y="184" fontSize="10" fill="#38491f" fontWeight="600">Pozo 1</text>
-            <circle cx="500" cy="280" r="8" fill="#2c6bb8" stroke="white" strokeWidth="2.5" />
-            <text x="515" y="284" fontSize="10" fill="#38491f" fontWeight="600">Silo</text>
-            <rect x="680" y="60" width="14" height="14" fill="#1a1f1c" stroke="white" strokeWidth="2" />
-            <text x="700" y="72" fontSize="10" fill="#38491f" fontWeight="600">Casa</text>
-          </svg>
-
-          <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,0.95)", padding: "10px 14px", borderRadius: 10, fontSize: 12, display: "flex", gap: 14, flexWrap: "wrap", boxShadow: "var(--sh-md)" }}>
-            {legend.map((l) => (
-              <div key={l.label} className="row gap-4">
-                <span style={{ width: 12, height: 12, background: l.color, borderRadius: 3 }}></span>
-                {l.label}
-              </div>
+        <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)", gap: 12, flexWrap: "wrap" }}>
+          <div className="mc-seg">
+            {["NDVI", "Satélite", "Cultivos"].map((l) => (
+              <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
-
-          <div style={{ position: "absolute", top: 12, right: 12, display: "flex", flexDirection: "column", gap: 4 }}>
-            <button className="mc-icon-btn" style={{ background: "white", boxShadow: "var(--sh-sm)" }} title="Acercar" onClick={() => onZoom(Math.min(2.5, zoom + 0.25))}>
-              <Icon name="plus" size={16} />
-            </button>
-            <button className="mc-icon-btn" style={{ background: "white", boxShadow: "var(--sh-sm)" }} title="Alejar" onClick={() => onZoom(Math.max(1, zoom - 0.25))}>
-              <Icon name="minus" size={16} />
-            </button>
-            <button className="mc-icon-btn" style={{ background: "white", boxShadow: "var(--sh-sm)" }} title="Centrar" onClick={() => onZoom(1)}>
-              <Icon name="target" size={16} />
-            </button>
-          </div>
-
-          {!selected && (
-            <div style={{ position: "absolute", top: 12, left: 12, background: "rgba(26,31,28,0.85)", color: "white", padding: "8px 14px", borderRadius: 8, fontSize: 12 }}>
-              Click en un lote para ver su ficha técnica
+          <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Dibujá tu lote con la herramienta de polígono (arriba a la derecha del mapa)</div>
+        </div>
+        <div style={{ height: 600, position: "relative" }}>
+          <MapaNDVI
+            lotes={lotesGeo}
+            selectedId={selected?.id ?? null}
+            layer={layer}
+            onSelect={(id) => onSelect(lotes.find((l) => l.id === id) || null)}
+            onDrawn={onDrawn}
+          />
+          {legend.length > 0 && (
+            <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 500, background: "rgba(255,255,255,0.95)", padding: "10px 14px", borderRadius: 10, fontSize: 12, display: "flex", gap: 14, flexWrap: "wrap", boxShadow: "var(--sh-md)" }}>
+              {legend.map((l) => (
+                <div key={l.label} className="row gap-4">
+                  <span style={{ width: 12, height: 12, background: l.color, borderRadius: 3 }}></span>
+                  {l.label}
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -20,6 +20,8 @@ export interface LoteUI {
   sano: boolean;
   vacio?: boolean;
   comentarios: ComentarioLote[];
+  geojson?: { type: "Polygon"; coordinates: number[][][] } | null;
+  cultivoColor?: string | null;
 }
 
 export interface LoteGeo {
@@ -129,24 +131,32 @@ export function fechaCorta(d: Date): string {
 
 /* Mapea filas reales de /api/lotes a la forma de UI, reutilizando geo/metricas de ejemplo */
 export function mapLotesApi(rows: Array<Record<string, unknown>>): LoteUI[] {
-  const campos = ["Don Ramón", "La Esperanza"];
   return rows.map((r, i) => {
-    const code = LOTES_GEO[i % LOTES_GEO.length].id;
-    const met = GEO_METRICAS[code];
+    // Geometría real guardada en la base (GeoJSON en `coordenadas`)
+    let geojson: LoteUI["geojson"] = null;
+    if (typeof r.coordenadas === "string" && r.coordenadas) {
+      try {
+        const parsed = JSON.parse(r.coordenadas as string);
+        if (parsed?.type === "Polygon" && Array.isArray(parsed.coordinates)) geojson = parsed;
+      } catch {}
+    }
+    const cultivo = (r.cultivo as string) || null;
     return {
-      id: code,
+      id: String(r.id ?? `L-${i + 1}`),
       dbId: String(r.id ?? ""),
       name: String(r.nombre ?? `Lote ${i + 1}`),
-      campo: campos[i % 2],
+      campo: String(r.campo ?? "Mi campo"),
       ha: Number(r.hectareas ?? 0),
-      cultivo: (r.cultivo as string) || null,
+      cultivo,
       variety: undefined,
-      estadio: r.cultivo ? "Vegetativo" : "—",
-      ndvi: met.ndvi,
-      aguaUtil: met.hum,
-      sano: met.ndvi >= 0.6,
-      vacio: !r.cultivo,
+      estadio: cultivo ? "Vegetativo" : "—",
+      ndvi: 0, // sin medición satelital aún; se completará con NDVI real
+      aguaUtil: 0,
+      sano: true,
+      vacio: !cultivo,
       comentarios: [],
+      geojson,
+      cultivoColor: cultivo ? (CULTIVO_COLORES[cultivo] || "#5e7733") : null,
     };
   });
 }
