@@ -33,6 +33,8 @@ type Props = {
 };
 
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
+// Nombre de la capa NDVI dentro de tu instancia de Sentinel Hub (por defecto "NDVI")
+const SENTINEL_LAYER = process.env.NEXT_PUBLIC_SENTINEL_NDVI_LAYER || "NDVI";
 
 // Escala NDVI (0–1) → color (oliva DS). Para lotes sin medición (0) usa gris.
 function ndviColor(v: number) {
@@ -73,11 +75,17 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }
 
     // Capa NDVI real (Sentinel Hub) si está configurada
     if (SENTINEL_INSTANCE) {
+      // Ventana temporal: últimos 90 días, para mostrar el estado actual del campo
+      const hoy = new Date();
+      const desde = new Date(hoy.getTime() - 90 * 86400000);
+      const fmt = (d: Date) => d.toISOString().slice(0, 10);
       ndviLayerRef.current = L.tileLayer.wms(`https://services.sentinel-hub.com/ogc/wms/${SENTINEL_INSTANCE}`, {
-        layers: "NDVI",
+        layers: SENTINEL_LAYER,
         format: "image/png",
         transparent: true,
-        maxcc: 20,
+        maxcc: 30,
+        time: `${fmt(desde)}/${fmt(hoy)}`,
+        priority: "mostRecent",
         version: "1.3.0",
         attribution: "NDVI © Sentinel Hub / Copernicus Sentinel-2",
       } as L.WMSOptions);
