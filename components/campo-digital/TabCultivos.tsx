@@ -9,6 +9,10 @@ import { NuevaSiembraModal, NuevaCosechaModal, type SiembraData, type CosechaDat
 
 /* ========== TAB CULTIVOS (Figma CDCultivos) ========== */
 
+type DistCultivo = { nombre: string; ha: number; pct: number; color: string; icon: string };
+const CULTIVO_COLOR: Record<string, string> = { Maíz: "#c08a22", Soja: "#768f44", Trigo: "#d9a538", Sorgo: "#8ea65a", Girasol: "#e8b94a", Cebada: "#5e7733", Alfalfa: "#aabd76" };
+const CULTIVO_ICON: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Trigo: "wheat", Sorgo: "leaf", Girasol: "sun", Cebada: "wheat", Alfalfa: "leaf" };
+
 type PlanActivo = {
   id?: string;
   titulo: string;
@@ -62,13 +66,26 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
     { nombre: "Lote 4 - El Bajo", ha: 120 },
     { nombre: "Lote 5 - Sur", ha: 85 },
   ], []));
+  const [distribucion, setDistribucion] = useState<DistCultivo[]>([]);
 
   useEffect(() => {
     fetch("/api/lotes")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
-        if (Array.isArray(d) && d.length > 0)
+        if (!Array.isArray(d)) return;
+        if (d.length > 0)
           setLotes(d.map((l: { id: string; nombre: string; hectareas: number }) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas })));
+        // Distribución real por cultivo (0 si no hay lotes con cultivo sembrado)
+        const porCultivo = new Map<string, number>();
+        d.forEach((l: { cultivo?: string; hectareas?: number }) => {
+          if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0));
+        });
+        const tot = Array.from(porCultivo.values()).reduce((s, v) => s + v, 0) || 1;
+        setDistribucion(
+          Array.from(porCultivo.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([nombre, ha]) => ({ nombre, ha: Math.round(ha), pct: Math.round((ha / tot) * 100), color: CULTIVO_COLOR[nombre] || "#5e7733", icon: CULTIVO_ICON[nombre] || "leaf" }))
+        );
       })
       .catch(() => {});
   }, []);
@@ -185,7 +202,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
 
       <SubTabs tabs={["Estados", "Planificador de Siembra (IA)", "Análisis de Suelo"]} active={sub} onChange={setSub} />
 
-      {sub === "Estados" && <CultivosEstados onNuevaTarea={(lote) => toast.show(`Creá la tarea para ${lote} desde el tab Labores`)} />}
+      {sub === "Estados" && <CultivosEstados onNuevaTarea={(lote) => toast.show(`Creá la tarea para ${lote} desde el tab Labores`)} distribucion={distribucion} />}
       {sub === "Planificador de Siembra (IA)" && <CultivosPlanificador toast={toast} lotes={lotes} onEditar={() => setSiembraOpen(true)} />}
       {sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} />}
     </>
@@ -193,7 +210,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
 }
 
 /* ========== ESTADOS (Figma CultivosEstados) ========== */
-function CultivosEstados({ onNuevaTarea }: { onNuevaTarea: (lote: string) => void }) {
+function CultivosEstados({ onNuevaTarea, distribucion }: { onNuevaTarea: (lote: string) => void; distribucion: DistCultivo[] }) {
   const [filtro, setFiltro] = useState(false);
   const [soloActivos, setSoloActivos] = useState(false);
   const lotesEstados = demo([
@@ -295,39 +312,38 @@ function CultivosEstados({ onNuevaTarea }: { onNuevaTarea: (lote: string) => voi
             <div className="mc-card__eyebrow">Distribución de cultivos</div>
             <div className="mc-card__title mt-2">Resumen:</div>
           </div>
-          <span className="mc-badge mc-badge--green" style={{ fontSize: 11 }}>3 activos</span>
+          <span className={`mc-badge ${distribucion.length ? "mc-badge--green" : "mc-badge--neutral"}`} style={{ fontSize: 11 }}>{distribucion.length} activos</span>
         </div>
         <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 4px" }}>
-          <DonutResumen />
+          <DonutResumen data={distribucion} />
         </div>
-        <div className="col gap-10 mt-12">
-          {[
-            { nombre: "Maíz", ha: 120, pct: 51, color: "#768f44", emoji: "wheat", trend: "up", delta: "+8 Ha" },
-            { nombre: "Soja", ha: 85, pct: 36, color: "#3aa6d9", emoji: "sprout", trend: "flat", delta: "—" },
-            { nombre: "Sorgo", ha: 30, pct: 13, color: "#c08a22", emoji: "leaf", trend: "down", delta: "-4 Ha" },
-          ].map((d) => (
-            <div key={d.nombre} style={{ padding: "10px 12px", background: `${d.color}0d`, borderRadius: 10, border: `1px solid ${d.color}25` }}>
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                <div className="row gap-8" style={{ alignItems: "center" }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 8, background: d.color, display: "grid", placeItems: "center", color: "white" }}><Icon name={d.emoji} size={14} /></div>
-                  <div>
-                    <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13 }}>{d.nombre}</div>
-                    <div className="text-xs text-muted">{d.ha} Ha</div>
+        {distribucion.length === 0 ? (
+          <div className="text-xs text-muted" style={{ textAlign: "center", padding: "10px 0 4px" }}>
+            Sin cultivos sembrados. Cargá una siembra en tus lotes y la distribución se completa sola.
+          </div>
+        ) : (
+          <div className="col gap-10 mt-12">
+            {distribucion.map((d) => (
+              <div key={d.nombre} style={{ padding: "10px 12px", background: `${d.color}0d`, borderRadius: 10, border: `1px solid ${d.color}25` }}>
+                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                  <div className="row gap-8" style={{ alignItems: "center" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: d.color, display: "grid", placeItems: "center", color: "white" }}><Icon name={d.icon} size={14} /></div>
+                    <div>
+                      <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13 }}>{d.nombre}</div>
+                      <div className="text-xs text-muted">{d.ha} Ha</div>
+                    </div>
+                  </div>
+                  <div className="col" style={{ alignItems: "flex-end", gap: 1 }}>
+                    <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 800, color: d.color }}>{d.pct}%</div>
                   </div>
                 </div>
-                <div className="col" style={{ alignItems: "flex-end", gap: 1 }}>
-                  <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 800, color: d.color }}>{d.pct}%</div>
-                  <div className="text-xs" style={{ color: d.trend === "up" ? "var(--mc-green-700)" : d.trend === "down" ? "var(--mc-red)" : "var(--mc-text-3)", fontWeight: 600 }}>
-                    {d.trend === "up" ? "↑" : d.trend === "down" ? "↓" : "—"} {d.delta}
-                  </div>
+                <div style={{ height: 4, background: `${d.color}20`, borderRadius: 999, marginTop: 8, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${d.pct}%`, background: d.color, borderRadius: 999 }}></div>
                 </div>
               </div>
-              <div style={{ height: 4, background: `${d.color}20`, borderRadius: 999, marginTop: 8, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${d.pct}%`, background: d.color, borderRadius: 999 }}></div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -356,13 +372,10 @@ function Pill({ label, value, color }: { label: string; value: React.ReactNode; 
   );
 }
 
-function DonutResumen() {
-  const data = [
-    { nombre: "Maíz", pct: 51, color: "#768f44", colorLight: "#6db870" },
-    { nombre: "Soja", pct: 36, color: "#3aa6d9", colorLight: "#5fb6e5" },
-    { nombre: "Sorgo", pct: 13, color: "#c08a22", colorLight: "#f3a64f" },
-  ];
+function DonutResumen({ data }: { data: DistCultivo[] }) {
   const cx = 130, cy = 130, r = 88, sw = 26, gap = 5;
+  const totalHa = data.reduce((s, d) => s + d.ha, 0);
+  const vacio = data.length === 0;
   let cumPct = 0;
   const seg = data.map((d) => {
     const startDeg = cumPct * 3.6 - 90;
@@ -389,30 +402,22 @@ function DonutResumen() {
 
   return (
     <svg width="260" height="260" viewBox="0 0 260 260">
-      <defs>
-        {data.map((d, i) => (
-          <linearGradient key={i} id={`donutGrad${i}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={d.color} />
-            <stop offset="100%" stopColor={d.colorLight} />
-          </linearGradient>
-        ))}
-      </defs>
       {ticks.map((t, i) => (
         <line key={i} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} stroke={t.major ? "var(--mc-line)" : "var(--mc-surface-2)"} strokeWidth={t.major ? 1.5 : 1} opacity="0.7" />
       ))}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mc-surface-2)" strokeWidth={sw + 6} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mc-surface-3)" strokeWidth={sw} />
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mc-line)" strokeWidth="1" opacity="0.6" />
-      {seg.map((s, i) => (
-        <path key={i} d={`M ${s.x1} ${s.y1} A ${r} ${r} 0 ${s.large} 1 ${s.x2} ${s.y2}`} stroke={`url(#donutGrad${i})`} strokeWidth={sw} fill="none" strokeLinecap="round" />
+      {!vacio && seg.map((s, i) => (
+        <path key={i} d={`M ${s.x1} ${s.y1} A ${r} ${r} 0 ${s.large} 1 ${s.x2} ${s.y2}`} stroke={s.color} strokeWidth={sw} fill="none" strokeLinecap="round" />
       ))}
       <circle cx={cx} cy={cy} r={r - sw / 2 - 4} fill="var(--mc-surface)" />
       <circle cx={cx} cy={cy} r={r - sw / 2 - 4} fill="none" stroke="var(--mc-line)" strokeWidth="1" opacity="0.5" />
       <text x={cx} y={cy - 18} textAnchor="middle" fontSize="11" fontFamily="var(--ff-ui)" fontWeight="700" fill="var(--mc-text-3)" letterSpacing="0.1em">SUPERFICIE</text>
-      <text x={cx} y={cy + 12} textAnchor="middle" fontSize="42" fontFamily="var(--ff-display)" fontWeight="800" fill="var(--mc-ink)">235</text>
+      <text x={cx} y={cy + 12} textAnchor="middle" fontSize="42" fontFamily="var(--ff-display)" fontWeight="800" fill={vacio ? "var(--mc-text-3)" : "var(--mc-ink)"}>{totalHa}</text>
       <text x={cx} y={cy + 30} textAnchor="middle" fontSize="11" fontFamily="var(--ff-mono)" fontWeight="600" fill="var(--mc-text-2)">Ha Totales</text>
-      <circle cx={cx} cy={cy + 44} r="3" fill="#768f44" />
-      <circle cx={cx + 10} cy={cy + 44} r="3" fill="#3aa6d9" />
-      <circle cx={cx - 10} cy={cy + 44} r="3" fill="#c08a22" />
+      {data.slice(0, 5).map((d, i) => (
+        <circle key={i} cx={cx + (i - (Math.min(data.length, 5) - 1) / 2) * 10} cy={cy + 44} r="3" fill={d.color} />
+      ))}
     </svg>
   );
 }
@@ -678,12 +683,19 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
   ], [] as AnalisisRow[]));
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
   const [evolFiltro, setEvolFiltro] = useState<"Tipo" | "Lote">("Tipo");
+  const [evolucion, setEvolucion] = useState<{ label: string; ppm: number }[]>([]);
 
   useEffect(() => {
     fetch("/api/analisis-suelo")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
         if (!Array.isArray(d) || d.length === 0) return;
+        // Evolución histórica real de Fósforo (ppm) ordenada por fecha
+        const pts = [...d]
+          .filter((a: { fosforo?: number; fechaAnalisis?: string }) => a.fosforo != null && a.fechaAnalisis)
+          .sort((a: { fechaAnalisis: string }, b: { fechaAnalisis: string }) => new Date(a.fechaAnalisis).getTime() - new Date(b.fechaAnalisis).getTime())
+          .map((a: { fosforo: number; fechaAnalisis: string }) => ({ label: new Date(a.fechaAnalisis).toLocaleDateString("es-AR", { month: "short", year: "2-digit" }), ppm: Math.round(a.fosforo) }));
+        setEvolucion(pts);
         setLotesAnalisis(
           d.slice(0, 4).map((a: { lote?: { nombre: string }; fechaAnalisis: string; nitrogeno?: number; fosforo?: number; potasio?: number; pH?: number; materiaOrganica?: number }) => ({
             lote: a.lote?.nombre || "Lote",
@@ -884,27 +896,43 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
               <button className={evolFiltro === "Lote" ? "is-on" : ""} onClick={() => setEvolFiltro("Lote")}>Lote</button>
             </div>
           </div>
-          <svg viewBox="0 0 400 220" width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
-            {[0, 10, 20, 30, 40].map((v, i) => {
-              const y = 200 - (v / 40) * 170;
-              return (
-                <g key={i}>
-                  <line x1="40" y1={y} x2="390" y2={y} stroke="var(--mc-line)" strokeDasharray="2,3" />
-                  <text x="32" y={y + 3} fontSize="9" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">{v}</text>
-                </g>
-              );
-            })}
-            <text x="22" y="120" fontSize="9" fontFamily="var(--ff-ui)" fill="var(--mc-text-3)" textAnchor="middle" transform="rotate(-90, 22, 120)">ppm</text>
-            <line x1="40" y1={200 - (15 / 40) * 170} x2="390" y2={200 - (15 / 40) * 170} stroke="var(--mc-red)" strokeDasharray="4,3" opacity="0.6" />
-            <text x="385" y={200 - (15 / 40) * 170 - 4} fontSize="9" fill="var(--mc-red)" textAnchor="end">Umbral Crítico (15 ppm)</text>
-            <polyline points={evolFiltro === "Tipo" ? "60,140 130,180 200,160 270,170 340,90" : "60,120 130,150 200,175 270,140 340,110"} fill="none" stroke="var(--mc-blue)" strokeWidth="2.5" />
-            {[60, 130, 200, 270, 340].map((x, i) => (
-              <circle key={i} cx={x} cy={(evolFiltro === "Tipo" ? [140, 180, 160, 170, 90] : [120, 150, 175, 140, 110])[i]} r="4" fill="var(--mc-blue)" />
-            ))}
-            {[2021, 2022, 2023, 2024, 2025].map((y, i) => (
-              <text key={y} x={[60, 130, 200, 270, 340][i]} y="218" fontSize="10" fontFamily="var(--ff-ui)" fill="var(--mc-text-2)" textAnchor="middle">{y}</text>
-            ))}
-          </svg>
+          {evolucion.length === 0 ? (
+            <div className="mc-empty">
+              <div className="mc-empty__icon"><Icon name="chart" size={22} /></div>
+              Sin análisis históricos todavía. Cargá análisis de suelo y la evolución del fósforo se grafica acá.
+            </div>
+          ) : (() => {
+            const W = 400, H = 220, padL = 40, padR = 12, padT = 14, padB = 22;
+            const maxPpm = Math.max(40, ...evolucion.map((e) => e.ppm));
+            const n = evolucion.length;
+            const X = (i: number) => padL + (n === 1 ? 0.5 : i / (n - 1)) * (W - padL - padR);
+            const Y = (v: number) => H - padB - (v / maxPpm) * (H - padT - padB);
+            const yThr = Y(15);
+            const ticks = [0, 0.25, 0.5, 0.75, 1].map((p) => Math.round(maxPpm * p));
+            return (
+              <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+                {ticks.map((v, i) => {
+                  const y = Y(v);
+                  return (
+                    <g key={i}>
+                      <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--mc-line)" strokeDasharray="2,3" />
+                      <text x={padL - 8} y={y + 3} fontSize="9" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">{v}</text>
+                    </g>
+                  );
+                })}
+                <text x="18" y={H / 2} fontSize="9" fontFamily="var(--ff-ui)" fill="var(--mc-text-3)" textAnchor="middle" transform={`rotate(-90, 18, ${H / 2})`}>ppm</text>
+                <line x1={padL} y1={yThr} x2={W - padR} y2={yThr} stroke="var(--mc-red)" strokeDasharray="4,3" opacity="0.6" />
+                <text x={W - padR} y={yThr - 4} fontSize="9" fill="var(--mc-red)" textAnchor="end">Umbral Crítico (15 ppm)</text>
+                <polyline points={evolucion.map((e, i) => `${X(i)},${Y(e.ppm)}`).join(" ")} fill="none" stroke="var(--mc-blue)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                {evolucion.map((e, i) => (
+                  <g key={i}>
+                    <circle cx={X(i)} cy={Y(e.ppm)} r="3.5" fill={e.ppm < 15 ? "var(--mc-red)" : "var(--mc-blue)"} stroke="#fff" strokeWidth="1.5" />
+                    <text x={X(i)} y={H - 6} fontSize="9" fontFamily="var(--ff-ui)" fill="var(--mc-text-2)" textAnchor="middle">{e.label}</text>
+                  </g>
+                ))}
+              </svg>
+            );
+          })()}
         </div>
       </div>
     </>
