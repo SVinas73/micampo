@@ -3,462 +3,634 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Icon, Badge, Modal, Field, Alerta, useToast } from "@/components/mc";
-import { demo } from "@/lib/demo";
+import { Icon, Modal, Field, useToast } from "@/components/mc";
 
-/* ============ KPIs disponibles ============ */
-type KpiCfg = {
-  label: string;
-  value: string;
-  delta: string;
-  trend: "up" | "down" | "warn";
-  icon: string;
-  accent?: boolean;
-  warn?: boolean;
-};
+/* ============================================================
+   MiCampo — Inicio (dashboard)
+   Recreación fiel del MiCampo Design System (ui_kits/inicio):
+   topbar + header serif, 5 KPIs planos, 2 tarjetas resumen,
+   clima+agenda, salud de lotes + suelo, balance (área),
+   rinde (barras), distribución (dona), actividades, alertas,
+   acciones rápidas. Los datos reales (KPIs, balance, cultivos)
+   se cargan por API y reemplazan a los de muestra cuando existen.
+   ============================================================ */
 
-const ALL_KPIS_BASE: Record<string, KpiCfg> = {
-  hectareas: { label: "Hectáreas productivas", value: demo("558 Ha", "—"), delta: demo("+3.2% vs campaña ant.", "—"), trend: "up", icon: "map", accent: true },
-  cabezas: { label: "Cabezas de ganado", value: demo("1,284", "0"), delta: demo("+24 últ. 30d", "—"), trend: "up", icon: "cow" },
-  ingresosMes: { label: "Ingresos del mes", value: demo("$8.6M", "—"), delta: demo("+12% vs mes ant.", "—"), trend: "up", icon: "dollar" },
-  labores: { label: "Labores pendientes", value: demo("17", "0"), delta: demo("3 atrasadas", "—"), trend: "warn", icon: "wrench", warn: true },
-  litros: { label: "Litros prom. diario", value: demo("4,820 L", "—"), delta: demo("+180L vs ayer", "—"), trend: "up", icon: "droplet" },
-  margen: { label: "Margen bruto est.", value: demo("$2.8M", "—"), delta: demo("+0.4M ajuste", "—"), trend: "up", icon: "activity" },
-  prenez: { label: "Preñez rodeo", value: demo("78%", "—"), delta: demo("Tacto parcial", "—"), trend: "up", icon: "heart" },
-  agua: { label: "Reserva agua útil", value: demo("62%", "—"), delta: demo("-4 pts vs ayer", "—"), trend: "down", icon: "droplet" },
-  ingresosProy: { label: "Ingresos proy. campaña", value: demo("$48.2M", "—"), delta: demo("+18% est.", "—"), trend: "up", icon: "dollar" },
-  hectareasSemb: { label: "Hectáreas sembradas", value: demo("426 Ha", "—"), delta: demo("76% del campo", "—"), trend: "up", icon: "sprout" },
-  alertas: { label: "Alertas activas", value: demo("5", "0"), delta: demo("2 críticas", "—"), trend: "warn", icon: "alert" },
-  rinde: { label: "Rinde promedio est.", value: demo("6.6 t/Ha", "—"), delta: demo("+0.4 vs ant.", "—"), trend: "up", icon: "activity" },
-};
+const MC_OLIVE = "#5e7733", MC_OLIVE_L = "#8ea65a", MC_GOLD = "#d9a538", MC_GOLD_D = "#c08a22";
 
-const DEFAULT_KPI_ORDER = ["hectareas", "cabezas", "ingresosMes", "labores"];
+type KpiCfg = { key: string; label: string; value: string; delta: string; trend: "up" | "down" | "warn"; icon: string; tone?: "accent" | "warn" };
 
-/* ============ Acciones rápidas (18) ============ */
-const QUICK_ACTS: { id: string; icon: string; label: string; href?: string }[] = [
-  { id: "lluvia", icon: "droplet", label: "Cargar lluvia", href: "/clima?modal=lluvia" },
-  { id: "pesada", icon: "scale", label: "Pesada", href: "/animales?tab=Peso" },
-  { id: "dosis", icon: "flask", label: "Calcular dosis", href: "/calculadora-dosis?tab=Nuevo Cálculo" },
-  { id: "sanidad", icon: "syringe", label: "Sanidad", href: "/animales?tab=Sanidad" },
-  { id: "siembra", icon: "sprout", label: "Nueva siembra", href: "/campo-digital?tab=Cultivos&modal=siembra" },
-  { id: "tropa", icon: "truck", label: "Mov. tropa", href: "/mov-tropas?modal=nuevo" },
-  { id: "labor", icon: "wrench", label: "Nueva labor" },
-  { id: "lote", icon: "map", label: "Nuevo lote", href: "/campo-digital?tab=Lotes&modal=nuevo" },
-  { id: "animal", icon: "cow", label: "Nuevo animal", href: "/animales?modal=nuevo" },
-  { id: "racion", icon: "leaf", label: "Nueva ración", href: "/animales?tab=Nutrición" },
-  { id: "gasto", icon: "dollar", label: "Registrar gasto", href: "/finanzas" },
-  { id: "plaga", icon: "upload", label: "Reportar plaga", href: "/campo-digital?tab=Detección de Enfermedades (IA)&modal=reportar" },
-  { id: "alerta", icon: "alert", label: "Registrar alerta", href: "/clima?modal=alerta" },
-  { id: "suelo", icon: "book", label: "Análisis de suelo", href: "/campo-digital?tab=Cultivos&sub=Análisis de Suelo" },
-  { id: "insumos", icon: "building", label: "Ingreso insumos", href: "/logistica-inventario" },
-  { id: "notif", icon: "bell", label: "Notificación" },
-  { id: "cerrar", icon: "check", label: "Cerrar labor", href: "/campo-digital?tab=Labores" },
-  { id: "agenda", icon: "calendar", label: "Ver agenda", href: "/calendario" },
+const KPIS_BASE: KpiCfg[] = [
+  { key: "hectareas", label: "Hectáreas productivas", value: "558 Ha", delta: "+3.2% vs campaña ant.", trend: "up", icon: "map", tone: "accent" },
+  { key: "cabezas", label: "Cabezas de ganado", value: "1,284", delta: "+24 últ. 30d", trend: "up", icon: "cow" },
+  { key: "ingresosMes", label: "Ingresos del mes", value: "$8.6M", delta: "+12% vs marzo", trend: "up", icon: "dollar" },
+  { key: "labores", label: "Labores pendientes", value: "17", delta: "3 atrasadas", trend: "warn", icon: "wrench", tone: "warn" },
+  { key: "agua", label: "Reserva agua útil", value: "62%", delta: "-4 pts vs ayer", trend: "down", icon: "droplet" },
 ];
 
-type LaborApi = { id: string; tipo: string; fecha: string; estado?: string; lote?: { nombre: string } };
+/* ---------- monotone cubic interpolation (curvas suaves) ---------- */
+function smoothPath(pts: { x: number; y: number }[]) {
+  if (pts.length < 2) return "";
+  const d = pts.map((p) => [p.x, p.y]);
+  const n = d.length, dx: number[] = [], dy: number[] = [], m: number[] = [], tan: number[] = [];
+  for (let i = 0; i < n - 1; i++) { dx[i] = d[i + 1][0] - d[i][0]; dy[i] = d[i + 1][1] - d[i][1]; m[i] = dy[i] / dx[i]; }
+  tan[0] = m[0];
+  for (let i = 1; i < n - 1; i++) tan[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  tan[n - 1] = m[n - 2];
+  let path = `M ${d[0][0]} ${d[0][1]}`;
+  for (let i = 0; i < n - 1; i++) {
+    const x1 = d[i][0] + dx[i] / 3, y1 = d[i][1] + tan[i] * dx[i] / 3;
+    const x2 = d[i + 1][0] - dx[i] / 3, y2 = d[i + 1][1] - tan[i + 1] * dx[i] / 3;
+    path += ` C ${x1} ${y1} ${x2} ${y2} ${d[i + 1][0]} ${d[i + 1][1]}`;
+  }
+  return path;
+}
 
-const TIPO_COLOR: Record<string, { color: string; icon: string }> = {
-  Siembra: { color: "#768f44", icon: "sprout" },
-  Pulverización: { color: "#e7892b", icon: "flask" },
-  Riego: { color: "#3aa6d9", icon: "droplet" },
-  Cosecha: { color: "#d9a538", icon: "wrench" },
-  Fertilización: { color: "#8a6d3b", icon: "leaf" },
-  Labranza: { color: "#7d6a55", icon: "wrench" },
-  Sanidad: { color: "#c14a3a", icon: "syringe" },
-  Monitoreo: { color: "#475569", icon: "eye" },
-};
+/* ---------- Donut (anillo con segmentos redondeados) ---------- */
+function Donut({ segments, size = 150, thickness = 16, gap = 2, rounded = true, children }: {
+  segments: { value: number; color: string }[]; size?: number; thickness?: number; gap?: number; rounded?: boolean; children?: React.ReactNode;
+}) {
+  const r = (size - thickness) / 2;
+  const c = 2 * Math.PI * r;
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  let offset = 0;
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--mc-surface-3)" strokeWidth={thickness} />
+        {segments.map((s, i) => {
+          const full = (s.value / total) * c;
+          const len = Math.max(0.5, full - gap);
+          const el = (
+            <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color}
+              strokeWidth={thickness} strokeDasharray={`${len} ${c - len}`} strokeDashoffset={-offset}
+              strokeLinecap={rounded ? "round" : "butt"} />
+          );
+          offset += full;
+          return el;
+        })}
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Balance mensual (área línea ingresos/gastos) ---------- */
+function BalanceArea({ meses, ingresos, gastos }: { meses: string[]; ingresos: number[]; gastos: number[] }) {
+  const max = Math.max(10, ...ingresos, ...gastos);
+  const W = 460, H = 210, padL = 36, padR = 14, padT = 14, padB = 26;
+  const iW = W - padL - padR, iH = H - padT - padB, n = meses.length;
+  const X = (i: number) => padL + (i / (n - 1)) * iW, Y = (v: number) => padT + iH * (1 - v / max);
+  const pI = ingresos.map((v, i) => ({ x: X(i), y: Y(v) }));
+  const pG = gastos.map((v, i) => ({ x: X(i), y: Y(v) }));
+  const lineI = smoothPath(pI), lineG = smoothPath(pG);
+  const areaI = lineI + ` L ${X(n - 1)} ${Y(0)} L ${X(0)} ${Y(0)} Z`;
+  const areaG = lineG + ` L ${X(n - 1)} ${Y(0)} L ${X(0)} ${Y(0)} Z`;
+  const ticks = [0, 0.2, 0.4, 0.6, 0.8, 1].map((p) => Math.round(max * p));
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+      <defs>
+        <linearGradient id="mcba-i" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={MC_OLIVE} stopOpacity="0.26" /><stop offset="100%" stopColor={MC_OLIVE} stopOpacity="0" /></linearGradient>
+        <linearGradient id="mcba-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={MC_GOLD} stopOpacity="0.20" /><stop offset="100%" stopColor={MC_GOLD} stopOpacity="0" /></linearGradient>
+      </defs>
+      {ticks.map((v, i) => { const y = Y(v); return (<g key={i}><line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--mc-line)" strokeDasharray={v === 0 ? "0" : "3,4"} /><text x={padL - 7} y={y + 3} fontSize="9.5" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">${v}M</text></g>); })}
+      <path d={areaG} fill="url(#mcba-g)" />
+      <path d={areaI} fill="url(#mcba-i)" />
+      <path d={lineG} fill="none" stroke={MC_GOLD} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={lineI} fill="none" stroke={MC_OLIVE} strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" />
+      {pG.map((p, i) => (i === n - 1 ? <circle key={i} cx={p.x} cy={p.y} r="4" fill="#fff" stroke={MC_GOLD} strokeWidth="2.5" /> : null))}
+      {pI.map((p, i) => i === n - 1
+        ? <g key={i}><circle cx={p.x} cy={p.y} r="9" fill={MC_OLIVE} opacity="0.14" /><circle cx={p.x} cy={p.y} r="4.5" fill="#fff" stroke={MC_OLIVE} strokeWidth="2.75" /></g>
+        : <circle key={i} cx={p.x} cy={p.y} r="3" fill="#fff" stroke={MC_OLIVE} strokeWidth="2.25" />)}
+      {meses.map((mn, i) => <text key={i} x={X(i)} y={H - 8} fontSize="10.5" fontFamily="var(--ff-ui)" fontWeight={i === n - 1 ? 700 : 500} fill={i === n - 1 ? "var(--mc-ink)" : "var(--mc-text-3)"} textAnchor="middle">{mn}</text>)}
+    </svg>
+  );
+}
+
+/* ---------- Rinde por lote (barras real vs objetivo) ---------- */
+function RindeBars() {
+  const lotes = ["N1", "N2", "E1", "E2", "S1", "S2"];
+  const real = [6.6, 5.8, 7.2, 4.9, 6.1, 5.4];
+  const obj = [6.0, 6.2, 6.8, 5.5, 5.8, 5.6];
+  const W = 460, H = 210, padL = 28, padR = 12, padT = 16, padB = 26, max = 8;
+  const iW = W - padL - padR, iH = H - padT - padB, n = lotes.length;
+  const band = iW / n, bw = 14, gap = 4;
+  const Y = (v: number) => padT + iH * (1 - v / max);
+  const maxIdx = real.indexOf(Math.max(...real));
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+      <defs>
+        <linearGradient id="mcbar-o" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={MC_OLIVE_L} /><stop offset="100%" stopColor={MC_OLIVE} /></linearGradient>
+        <linearGradient id="mcbar-hi" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={MC_GOLD} /><stop offset="100%" stopColor={MC_GOLD_D} /></linearGradient>
+      </defs>
+      {[0, 2, 4, 6, 8].map((v, i) => { const y = Y(v); return (<g key={i}><line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--mc-line)" strokeDasharray={v === 0 ? "0" : "3,4"} /><text x={padL - 6} y={y + 3} fontSize="9.5" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">{v}</text></g>); })}
+      {lotes.map((lt, i) => {
+        const cx = padL + band * i + band / 2;
+        const xObj = cx - bw - gap / 2, xReal = cx + gap / 2, hi = i === maxIdx;
+        return (
+          <g key={i}>
+            <rect x={xObj} y={Y(obj[i])} width={bw} height={Y(0) - Y(obj[i])} rx="4" fill="var(--mc-line-2)" opacity="0.7" />
+            <rect x={xReal} y={Y(real[i])} width={bw} height={Y(0) - Y(real[i])} rx="4" fill={hi ? "url(#mcbar-hi)" : "url(#mcbar-o)"} />
+            <text x={xReal + bw / 2} y={Y(real[i]) - 6} fontSize="9.5" fontFamily="var(--ff-mono)" fontWeight="700" fill={hi ? MC_GOLD_D : MC_OLIVE} textAnchor="middle">{real[i]}</text>
+            <text x={cx} y={H - 8} fontSize="10.5" fontFamily="var(--ff-ui)" fontWeight="600" fill="var(--mc-text-2)" textAnchor="middle">{lt}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ---------- Tarjeta resumen con gradiente (campo / gastos) ---------- */
+function SummaryCard({ tone, eyebrow, value, sub, badge, icon, onVer }: {
+  tone: "field" | "gold"; eyebrow: string; value: string; sub: string; badge?: string; icon: string; onVer?: () => void;
+}) {
+  const isGold = tone === "gold";
+  const bg = isGold ? "linear-gradient(135deg, #e9b94a 0%, #d9a538 100%)" : "var(--mc-field-grad)";
+  const fg = isGold ? "#3a2a06" : "#fff";
+  return (
+    <div style={{ position: "relative", borderRadius: "var(--r-lg)", padding: "20px 22px", background: bg, color: fg, overflow: "hidden", minHeight: 124, display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "var(--sh-md)" }}>
+      <div style={{ position: "absolute", right: -20, top: -20, opacity: 0.16 }}><Icon name={icon} size={120} /></div>
+      <div className="row" style={{ justifyContent: "space-between", position: "relative" }}>
+        <div className="row gap-8" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.02em" }}><Icon name={icon} size={16} />{eyebrow}</div>
+        {badge && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999, background: isGold ? "rgba(58,42,6,0.16)" : "rgba(255,255,255,0.18)" }}>{badge}</span>}
+      </div>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-end", position: "relative" }}>
+        <div>
+          <div style={{ fontFamily: "var(--ff-display)", fontSize: 40, lineHeight: 1, letterSpacing: "-0.02em" }}>{value}</div>
+          <div style={{ fontSize: 12, opacity: 0.82, marginTop: 4 }}>{sub}</div>
+        </div>
+        <button onClick={onVer} className="mc-icon-btn mc-icon-btn--circle" style={{ width: 38, height: 38, background: isGold ? "#3a2a06" : "rgba(255,255,255,0.16)", border: isGold ? "none" : "1px solid rgba(255,255,255,0.3)", color: isGold ? "#e9b94a" : "#fff" }}>
+          <Icon name="arrowRight" size={17} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Clima de hoy + pronóstico 7 días + agenda semanal ---------- */
+function ClimaSemana({ onVerAgenda }: { onVerAgenda: () => void }) {
+  const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+  const today = new Date(2026, 3, 18);
+  const weather = [
+    { ic: "cloud", max: 22, min: 14, mm: 0, wind: "12 km/h ↘ SE" },
+    { ic: "sun", max: 24, min: 15, mm: 0, wind: "15 km/h → E" },
+    { ic: "droplet", max: 20, min: 12, mm: 25, wind: "18 km/h ↙ SO" },
+    { ic: "cloud", max: 21, min: 13, mm: 15, wind: "10 km/h ↓ S" },
+    { ic: "cloud", max: 23, min: 14, mm: 0, wind: "8 km/h ↗ NE" },
+    { ic: "sun", max: 26, min: 16, mm: 0, wind: "12 km/h ↑ N" },
+    { ic: "cloud", max: 22, min: 13, mm: 8, wind: "20 km/h ↙ SO" },
+  ];
+  const days = weather.map((w, i) => { const d = new Date(today); d.setDate(d.getDate() + i); return { name: dayNames[d.getDay()], num: d.getDate(), isToday: i === 0, ...w }; });
+  const events = [
+    { titulo: "Siembra Lote 3", inicio: 0, dur: 2, color: "#5e7733", icon: "sprout" },
+    { titulo: "Pulverización N1", inicio: 0, dur: 1, color: "#c08a22", icon: "flask" },
+    { titulo: "Retira Conaprole", inicio: 1, dur: 1, color: "#2c6bb8", icon: "truck" },
+    { titulo: "Riego Sector A", inicio: 2, dur: 4, color: "#3a93b8", icon: "droplet" },
+    { titulo: "Vacunación Aftosa", inicio: 3, dur: 1, color: "#b23b2c", icon: "syringe" },
+    { titulo: "Cosecha Maíz E1", inicio: 5, dur: 2, color: "#8ea65a", icon: "wrench" },
+  ];
+  const rows: (typeof events)[] = [];
+  events.forEach((e) => {
+    let placed = false;
+    for (const r of rows) { if (!r.some((x) => !(e.inicio + e.dur <= x.inicio || x.inicio + x.dur <= e.inicio))) { r.push(e); placed = true; break; } }
+    if (!placed) rows.push([e]);
+  });
+  const tempLow = 10, tempHigh = 30;
+  const tY = (t: number) => 60 * (1 - (t - tempLow) / (tempHigh - tempLow)) + 6;
+
+  const InfoCell = ({ icon, big, sub, highlight }: { icon: string; big: React.ReactNode; sub: string; highlight?: boolean }) => (
+    <div style={{ padding: "12px 14px", borderRight: "1px solid rgba(255,255,255,0.12)", background: highlight ? "rgba(255,255,255,0.10)" : "transparent", display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(255,255,255,0.20)", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name={icon} size={15} /></div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>{big}</div>
+        <div style={{ fontSize: 10.5, opacity: 0.78, marginTop: 3, whiteSpace: "nowrap" }}>{sub}</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ background: "var(--mc-field-grad)", color: "white", padding: "18px 22px 20px" }}>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ fontSize: 10, opacity: 0.78, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>Don Ramón · vie 18 abr · 14:32</div>
+          <div style={{ fontSize: 11, opacity: 0.9, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>Parcialmente nublado</div>
+        </div>
+        <div className="row" style={{ alignItems: "stretch", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 18, borderRight: "1px solid rgba(255,255,255,0.22)" }}>
+            <Icon name="cloud" size={38} />
+            <div className="col" style={{ gap: 0 }}>
+              <span style={{ fontFamily: "var(--ff-display)", fontSize: 56, lineHeight: 0.92, fontWeight: 600 }}>22°</span>
+              <span style={{ fontSize: 11, opacity: 0.78, letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600, marginTop: 2 }}>Ahora</span>
+            </div>
+          </div>
+          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, overflow: "hidden" }}>
+            <InfoCell icon="thermometer" big={<span><span style={{ color: "#ffd28a" }}>24°</span><span style={{ opacity: 0.62, margin: "0 6px", fontSize: 13, fontFamily: "var(--ff-mono)", fontWeight: 500 }}>°C</span><span style={{ color: "#9ad8ff" }}>14°</span></span>} sub="Sens. 21°" />
+            <InfoCell icon="droplet" big="68%" sub="Rocío 16°" />
+            <InfoCell icon="wind" big="12 km/h" sub="↘ SE · Ráf. 18" />
+            <InfoCell icon="activity" big="ΔT 5.2" sub="Apto pulver." highlight />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ position: "relative", borderBottom: "1px solid var(--mc-line)", background: "var(--mc-surface)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+          {days.map((d, i) => (
+            <div key={i} style={{ padding: "10px 4px", textAlign: "center", borderRight: i < 6 ? "1px solid var(--mc-line)" : "none", background: d.isToday ? "var(--mc-green-50)" : "transparent", minHeight: 168 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: d.isToday ? "var(--mc-green-700)" : "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{d.name}</div>
+              <div style={{ fontSize: 10, color: d.isToday ? "var(--mc-green-700)" : "var(--mc-text-2)", fontWeight: 600, marginTop: 1 }}>{d.num}</div>
+              <div style={{ marginTop: 6, display: "grid", placeItems: "center", color: "var(--mc-text-2)" }}><Icon name={d.ic} size={26} /></div>
+              <div style={{ height: 80 }} />
+              {d.mm > 0 ? <div style={{ fontSize: 11, color: "var(--mc-blue)", fontWeight: 700, fontFamily: "var(--ff-mono)" }}>{d.mm}mm</div> : <div style={{ height: 17 }} />}
+              <div style={{ fontSize: 9, color: "var(--mc-text-3)", marginTop: 2, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px" }}>{d.wind}</div>
+            </div>
+          ))}
+        </div>
+        <svg style={{ position: "absolute", top: 70, left: 0, width: "100%", height: 80, pointerEvents: "none" }} viewBox="0 0 700 80" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="cl-max" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c08a22" stopOpacity="0.16" /><stop offset="100%" stopColor="#c08a22" stopOpacity="0" /></linearGradient>
+            <linearGradient id="cl-min" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3a93b8" stopOpacity="0.12" /><stop offset="100%" stopColor="#3a93b8" stopOpacity="0" /></linearGradient>
+          </defs>
+          <polygon points={`50,80 ${days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")} 650,80`} fill="url(#cl-max)" />
+          <polygon points={`50,80 ${days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} 650,80`} fill="url(#cl-min)" />
+          <polyline fill="none" stroke="#c08a22" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" points={days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")} />
+          <polyline fill="none" stroke="#3a93b8" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" points={days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} />
+          {days.map((d, i) => { const x = i * 100 + 50; return (<g key={i}><circle cx={x} cy={tY(d.max)} r="5" fill="#c08a22" stroke="white" strokeWidth="1.8" /><circle cx={x} cy={tY(d.min)} r="4.5" fill="#3a93b8" stroke="white" strokeWidth="1.6" /></g>); })}
+        </svg>
+        <div style={{ position: "absolute", top: 70, left: 0, width: "100%", height: 80, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", pointerEvents: "none" }}>
+          {days.map((d, i) => (
+            <div key={i} style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: `${tY(d.max) - 18}px`, fontFamily: "var(--ff-mono)", fontSize: 12, fontWeight: 800, color: "var(--mc-ink)", whiteSpace: "nowrap" }}>{d.max}°</span>
+              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: `${tY(d.min) + 8}px`, fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 700, color: "var(--mc-text-2)", whiteSpace: "nowrap" }}>{d.min}°</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: "10px 14px 14px" }}>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Agenda de la semana</div>
+          <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ padding: "2px 8px", fontSize: 11 }} onClick={onVerAgenda}>Ver calendario <Icon name="chevRight" size={11} /></button>
+        </div>
+        <div style={{ position: "relative" }}>
+          <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", pointerEvents: "none", zIndex: 0 }}>
+            {days.map((d, i) => <div key={i} style={{ borderRight: i < 6 ? "1px dashed rgba(0,0,0,0.06)" : "none", background: d.isToday ? "var(--mc-green-50)" : "transparent" }} />)}
+          </div>
+          <div style={{ position: "relative", zIndex: 1 }}>
+            {rows.map((row, ri) => (
+              <div key={ri} style={{ position: "relative", height: 26, marginBottom: ri < rows.length - 1 ? 5 : 0 }}>
+                {row.map((e, ei) => {
+                  const isMulti = e.dur > 1;
+                  const leftPct = isMulti ? ((e.inicio + 0.5) / 7) * 100 : (e.inicio / 7) * 100;
+                  const widthPct = isMulti ? ((e.dur - 1) / 7) * 100 : (1 / 7) * 100;
+                  return (
+                    <div key={ei} style={{ position: "absolute", left: `calc(${leftPct}% + ${isMulti ? 0 : 4}px)`, width: `calc(${widthPct}% - ${isMulti ? 0 : 8}px)`, top: 0, bottom: 0, background: e.color, borderRadius: 999, display: "flex", alignItems: "center", gap: 6, padding: "0 11px", fontSize: 11, color: "white", fontWeight: 600, overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer", boxShadow: `0 1px 4px ${e.color}55, inset 0 1px 0 rgba(255,255,255,0.18)` }}>
+                      <Icon name={e.icon} size={10} /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{e.titulo}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Salud de los lotes (dona) ---------- */
+function FieldHealth() {
+  const segs = [
+    { label: "Excelente", value: 35, color: "#5e7733" },
+    { label: "Bueno", value: 40, color: "#8ea65a" },
+    { label: "Regular", value: 15, color: "#d9a538" },
+    { label: "Pobre", value: 10, color: "#c93434" },
+  ];
+  return (
+    <div className="mc-card">
+      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Análisis IA · vegetación &amp; suelo</div><div className="mc-card__title mt-4">Salud de los lotes</div></div><span className="mc-badge mc-badge--green">86/100</span></div>
+      <div className="row" style={{ gap: 18, alignItems: "center" }}>
+        <Donut segments={segs} size={140} thickness={15}>
+          <span style={{ fontFamily: "var(--ff-display)", fontSize: 40, color: "var(--mc-ink)", lineHeight: 1 }}>86</span>
+          <span style={{ fontSize: 11, color: "var(--mc-green-700)", fontWeight: 600 }}>Bueno</span>
+        </Donut>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+          {segs.map((s) => (
+            <div key={s.label} className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
+              <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: s.color }} /><span style={{ color: "var(--mc-text-2)" }}>{s.label}</span></div>
+              <span style={{ fontWeight: 600, color: "var(--mc-ink)", fontVariantNumeric: "tabular-nums" }}>{s.value}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Salud del suelo (NPK + materia orgánica) ---------- */
+function SoilHealth() {
+  return (
+    <div className="mc-card">
+      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Promedio de todos los lotes</div><div className="mc-card__title mt-4">Salud del suelo</div></div></div>
+      <div className="row" style={{ gap: 8, marginBottom: 14 }}>
+        <div className="mc-nutri mc-nutri--ok" style={{ flex: 1, justifyContent: "center" }}>N · Medio</div>
+        <div className="mc-nutri mc-nutri--ok" style={{ flex: 1, justifyContent: "center" }}>P · Alto</div>
+        <div className="mc-nutri mc-nutri--low" style={{ flex: 1, justifyContent: "center" }}>K · Medio</div>
+      </div>
+      <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+        <span style={{ color: "var(--mc-text-2)" }}>Materia orgánica</span>
+        <span style={{ fontWeight: 600, color: "var(--mc-ink)", fontFamily: "var(--ff-mono)" }}>2.8%</span>
+      </div>
+      <div className="mc-prog"><div className="mc-prog__bar" style={{ width: "70%" }} /></div>
+      <div className="text-xs text-muted mt-8">Nivel bueno · +0.2 pts vs análisis anterior</div>
+    </div>
+  );
+}
+
+/* ---------- Distribución de cultivos (dona) ---------- */
+function CropDistribution({ cultivos }: { cultivos: { label: string; ha: string; pct: number; color: string }[] }) {
+  const total = cultivos.reduce((s, c) => s + (parseFloat(c.ha) || 0), 0);
+  return (
+    <div className="mc-card">
+      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Por superficie</div><div className="mc-card__title mt-4">Distribución de cultivos</div></div></div>
+      <div className="row" style={{ gap: 20, alignItems: "center" }}>
+        <Donut segments={cultivos.map((c) => ({ value: c.pct, color: c.color }))} size={158} thickness={28} gap={2.5}>
+          <span style={{ fontFamily: "var(--ff-display)", fontSize: 30, color: "var(--mc-ink)", lineHeight: 1 }}>{Math.round(total) || 558}</span>
+          <span style={{ fontSize: 10.5, color: "var(--mc-text-3)" }}>Ha totales</span>
+        </Donut>
+        <div style={{ flex: 1 }}>
+          {cultivos.map((c) => (
+            <div key={c.label} className="row" style={{ justifyContent: "space-between", padding: "5px 0", borderBottom: "1px dashed var(--mc-line)", fontSize: 13 }}>
+              <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: c.color }} /><span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{c.label}</span></div>
+              <div className="row gap-16"><span style={{ color: "var(--mc-text-3)", fontFamily: "var(--ff-mono)", fontSize: 12 }}>{c.ha}</span><span style={{ fontWeight: 600, color: "var(--mc-ink)", width: 32, textAlign: "right" }}>{c.pct}%</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Últimas actividades ---------- */
+function Actividades({ onVerTodo }: { onVerTodo: () => void }) {
+  const activs = [
+    { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", icon: "droplet", time: "Hace 2 horas" },
+    { inicial: "J", color: "#d9a538", quien: "Joaquín", verb: "finalizó", obj: "Siembra", lote: "Lote 1", icon: "truck", time: "Hace 5 horas" },
+    { sys: true, color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", icon: "bug", time: "Ayer" },
+    { inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de cultivo", lote: "Lote 4", icon: "camera", time: "Ayer" },
+    { inicial: "M", color: "#c08a22", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", icon: "droplet", time: "Hace 2 días" },
+  ];
+  return (
+    <div className="mc-card">
+      <div className="mc-card__head"><div className="mc-card__title">Últimas actividades</div><button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVerTodo}>Ver todo <Icon name="chevRight" size={13} /></button></div>
+      <div>
+        {activs.map((a, i) => (
+          <div key={i} className="mc-act-row">
+            <div className="mc-act-row__avatar" style={{ background: a.color }}>{a.sys ? <Icon name="bolt" size={14} /> : a.inicial}</div>
+            <div className="mc-act-row__text"><span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb} <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span> <span style={{ marginLeft: 4, color: "var(--mc-text-3)" }}><Icon name={a.icon} size={12} /></span></div>
+            <div className="mc-act-row__time">{a.time}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Alertas activas ---------- */
+function Alertas() {
+  const alerts = [
+    { nivel: "red", lbl: "Crítica", title: "Plaga detectada", body: "Chinches verdes en Lote Norte 1 · superó umbral" },
+    { nivel: "amber", lbl: "Alta", title: "Ventana de pulverización cerrada", body: "Viento >20km/h las próximas 12hs" },
+    { nivel: "amber", lbl: "Media", title: "Stock bajo", body: "Urea · quedan 4 días de consumo" },
+    { nivel: "blue", lbl: "Info", title: "Cosecha lista", body: "Maíz Lote Este 1 · humedad 14.5%" },
+  ];
+  const map: Record<string, string> = { red: "mc-badge--red", amber: "mc-badge--amber", blue: "mc-badge--blue" };
+  return (
+    <div className="mc-card">
+      <div className="mc-card__head"><div className="mc-card__title">Alertas activas</div><span className="mc-badge mc-badge--red"><span className="mc-badge__dot" />5 críticas</span></div>
+      <div className="col gap-8">
+        {alerts.map((a, i) => (
+          <div key={i} className="mc-alert">
+            <div className="mc-alert__head"><div className="mc-alert__title">{a.title}</div><span className={`mc-badge ${map[a.nivel]}`}><span className="mc-badge__dot" />{a.lbl}</span></div>
+            <div className="mc-alert__body">{a.body}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const QUICK_ACTS: { icon: string; label: string; href?: string; action?: "labor" }[] = [
+  { icon: "droplet", label: "Cargar lluvia", href: "/clima?modal=lluvia" },
+  { icon: "scale", label: "Pesada", href: "/animales?tab=Peso" },
+  { icon: "flask", label: "Calcular dosis", href: "/calculadora-dosis?tab=Nuevo Cálculo" },
+  { icon: "syringe", label: "Sanidad", href: "/animales?tab=Sanidad" },
+  { icon: "sprout", label: "Nueva siembra", href: "/campo-digital?tab=Cultivos&modal=siembra" },
+  { icon: "truck", label: "Mov. tropa", href: "/mov-tropas?modal=nuevo" },
+  { icon: "wrench", label: "Nueva labor", action: "labor" },
+  { icon: "map", label: "Nuevo lote", href: "/campo-digital?tab=Lotes&modal=nuevo" },
+  { icon: "cow", label: "Nuevo animal", href: "/animales?modal=nuevo" },
+  { icon: "dollar", label: "Registrar gasto", href: "/finanzas" },
+  { icon: "upload", label: "Reportar plaga", href: "/campo-digital?tab=Detección de Enfermedades (IA)&modal=reportar" },
+  { icon: "book", label: "Análisis suelo", href: "/campo-digital?tab=Cultivos&sub=Análisis de Suelo" },
+];
 
 export default function InicioPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const toast = useToast();
 
-  const [editKpis, setEditKpis] = useState(false);
-  const [kpiOrder, setKpiOrder] = useState<string[]>(DEFAULT_KPI_ORDER);
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
-  const [pickerOpen, setPickerOpen] = useState<string | false>(false);
   const [kpiValues, setKpiValues] = useState<Record<string, Partial<KpiCfg>>>({});
-  const [bellOpen, setBellOpen] = useState(false);
   const [laborModal, setLaborModal] = useState(false);
   const [lotes, setLotes] = useState<{ id: string; nombre: string }[]>([]);
   const [laborForm, setLaborForm] = useState({ tipo: "Pulverización", loteId: "", fecha: new Date().toISOString().slice(0, 10) });
-  const [labores, setLabores] = useState<LaborApi[]>([]);
   const [balance, setBalance] = useState<{ meses: string[]; ingresos: number[]; gastos: number[] } | null>(null);
-  const [editActs, setEditActs] = useState(false);
-  const [hiddenActs, setHiddenActs] = useState<string[]>([]);
-  const [cultivos, setCultivos] = useState<{ nombre: string; ha: number; color: string }[] | null>(null);
+  const [cultivos, setCultivos] = useState<{ label: string; ha: string; pct: number; color: string }[] | null>(null);
 
-  /* ---- carga inicial ---- */
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("micampo:kpis");
-      if (saved) setKpiOrder(JSON.parse(saved));
-      const acts = localStorage.getItem("micampo:quickacts");
-      if (acts) setHiddenActs(JSON.parse(acts));
-    } catch {}
+    fetch("/api/dashboard/inicio").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!d?.metricas) return;
+      const v: Record<string, Partial<KpiCfg>> = {};
+      if (d.metricas.balanceMesActual) v.ingresosMes = { value: `$${Math.round(d.metricas.balanceMesActual).toLocaleString("es-AR")}` };
+      setKpiValues((p) => ({ ...p, ...v }));
+    }).catch(() => {});
 
-    fetch("/api/dashboard/inicio")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d?.metricas) return;
-        const v: Record<string, Partial<KpiCfg>> = {};
-        if (d.metricas.litrosDiariosPromedio) v.litros = { value: `${d.metricas.litrosDiariosPromedio.toLocaleString("es-AR")} L` };
-        if (d.metricas.balanceMesActual) v.ingresosMes = { value: `$${Math.round(d.metricas.balanceMesActual).toLocaleString("es-AR")}` };
-        if (typeof d.metricas.alertasActivas === "number" && d.metricas.alertasActivas > 0) v.alertas = { value: String(d.metricas.alertasActivas) };
-        setKpiValues(v);
-      })
-      .catch(() => {});
+    fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d) || d.length === 0) return;
+      const totalHa = d.reduce((s: number, l: { hectareas?: number }) => s + (l.hectareas || 0), 0);
+      setKpiValues((p) => ({ ...p, hectareas: { value: `${Math.round(totalHa).toLocaleString("es-AR")} Ha`, delta: `${d.length} lotes` } }));
+      setLotes(d.map((l: { id: string; nombre: string }) => ({ id: l.id, nombre: l.nombre })));
+      const colores: Record<string, string> = { Trigo: "#d9a538", Maíz: "#c08a22", Soja: "#8ea65a", Cebada: "#5e7733", Alfalfa: "#aabd76", Girasol: "#e8b94a", Sorgo: "#e7892b" };
+      const porCultivo = new Map<string, number>();
+      d.forEach((l: { cultivo?: string; hectareas?: number }) => { if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0)); });
+      if (porCultivo.size > 0) {
+        const tot = Array.from(porCultivo.values()).reduce((s, v) => s + v, 0) || 1;
+        setCultivos(Array.from(porCultivo.entries()).sort((a, b) => b[1] - a[1]).map(([nombre, ha]) => ({ label: nombre, ha: `${Math.round(ha)} Ha`, pct: Math.round((ha / tot) * 100), color: colores[nombre] || "#7d8a76" })));
+      }
+    }).catch(() => {});
 
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (!Array.isArray(d)) return;
-        setLotes(d.map((l: { id: string; nombre: string }) => ({ id: l.id, nombre: l.nombre })));
-        if (d.length > 0) {
-          const totalHa = d.reduce((s: number, l: { hectareas?: number }) => s + (l.hectareas || 0), 0);
-          setKpiValues((prev) => ({ ...prev, hectareas: { value: `${Math.round(totalHa).toLocaleString("es-AR")} Ha`, delta: `${d.length} lotes` } }));
-          const colores: Record<string, string> = { Maíz: "#d9a538", Soja: "#768f44", Trigo: "#a88032", Alfalfa: "#aabd76", Girasol: "#e8b94a", Sorgo: "#e7892b" };
-          const porCultivo = new Map<string, number>();
-          d.forEach((l: { cultivo?: string; hectareas?: number }) => {
-            if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0));
-          });
-          if (porCultivo.size > 0)
-            setCultivos(Array.from(porCultivo.entries()).map(([nombre, ha]) => ({ nombre, ha, color: colores[nombre] || "#7d8a76" })).sort((a, b) => b.ha - a.ha));
-        }
-      })
-      .catch(() => {});
+    fetch("/api/animales").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (Array.isArray(d) && d.length > 0) setKpiValues((p) => ({ ...p, cabezas: { value: d.length.toLocaleString("es-AR"), delta: "rodeo registrado" } }));
+    }).catch(() => {});
 
-    fetch("/api/animales")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0) setKpiValues((prev) => ({ ...prev, cabezas: { value: d.length.toLocaleString("es-AR"), delta: "rodeo registrado" } }));
-      })
-      .catch(() => {});
+    fetch("/api/labores").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d) || d.length === 0) return;
+      const pend = d.filter((l: { estado?: string }) => l.estado && l.estado !== "Completada").length;
+      const atr = d.filter((l: { estado?: string }) => l.estado === "Atrasada").length;
+      if (pend > 0) setKpiValues((p) => ({ ...p, labores: { value: String(pend), delta: `${atr} atrasadas` } }));
+    }).catch(() => {});
 
-    fetch("/api/labores")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (!Array.isArray(d) || d.length === 0) return;
-        setLabores(d);
-        const pendientes = d.filter((l: LaborApi) => l.estado && !["Completada"].includes(l.estado)).length;
-        const atrasadas = d.filter((l: LaborApi) => l.estado === "Atrasada").length;
-        if (pendientes > 0) setKpiValues((prev) => ({ ...prev, labores: { value: String(pendientes), delta: `${atrasadas} atrasadas` } }));
-      })
-      .catch(() => {});
-
-    fetch("/api/transacciones")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (!Array.isArray(d) || d.length === 0) return;
-        const now = new Date();
-        const meses: string[] = [];
-        const ingresos: number[] = [];
-        const gastos: number[] = [];
-        for (let i = 5; i >= 0; i--) {
-          const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          meses.push(m.toLocaleString("es", { month: "short" }).replace(".", ""));
-          const enMes = d.filter((t: { fecha: string }) => {
-            const f = new Date(t.fecha);
-            return f.getFullYear() === m.getFullYear() && f.getMonth() === m.getMonth();
-          });
-          ingresos.push(enMes.filter((t: { tipo: string }) => t.tipo === "ingreso").reduce((s: number, t: { monto: number | string }) => s + Number(t.monto), 0) / 1e6);
-          gastos.push(enMes.filter((t: { tipo: string }) => t.tipo !== "ingreso").reduce((s: number, t: { monto: number | string }) => s + Number(t.monto), 0) / 1e6);
-        }
-        if (ingresos.some((v) => v > 0) || gastos.some((v) => v > 0)) setBalance({ meses, ingresos, gastos });
-      })
-      .catch(() => {});
+    fetch("/api/transacciones").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d) || d.length === 0) return;
+      const now = new Date(); const meses: string[] = [], ingresos: number[] = [], gastos: number[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        meses.push(m.toLocaleString("es", { month: "short" }).replace(".", ""));
+        const enMes = d.filter((t: { fecha: string }) => { const f = new Date(t.fecha); return f.getFullYear() === m.getFullYear() && f.getMonth() === m.getMonth(); });
+        ingresos.push(enMes.filter((t: { tipo: string }) => t.tipo === "ingreso").reduce((s: number, t: { monto: number | string }) => s + Number(t.monto), 0) / 1e6);
+        gastos.push(enMes.filter((t: { tipo: string }) => t.tipo !== "ingreso").reduce((s: number, t: { monto: number | string }) => s + Number(t.monto), 0) / 1e6);
+      }
+      if (ingresos.some((v) => v > 0) || gastos.some((v) => v > 0)) setBalance({ meses, ingresos, gastos });
+    }).catch(() => {});
   }, []);
 
-  const ALL_KPIS = useMemo(() => {
-    const merged: Record<string, KpiCfg> = {};
-    for (const k of Object.keys(ALL_KPIS_BASE)) merged[k] = { ...ALL_KPIS_BASE[k], ...(kpiValues[k] || {}) };
-    return merged;
-  }, [kpiValues]);
+  const kpis = useMemo(() => KPIS_BASE.map((k) => ({ ...k, ...(kpiValues[k.key] || {}) })), [kpiValues]);
 
-  const persistKpis = (order: string[]) => {
-    setKpiOrder(order);
-    try {
-      localStorage.setItem("micampo:kpis", JSON.stringify(order));
-    } catch {}
-  };
+  const cultivosData = cultivos && cultivos.length ? cultivos : [
+    { label: "Trigo", ha: "201 Ha", pct: 36, color: "#d9a538" },
+    { label: "Maíz", ha: "145 Ha", pct: 26, color: "#c08a22" },
+    { label: "Soja", ha: "112 Ha", pct: 20, color: "#8ea65a" },
+    { label: "Cebada", ha: "56 Ha", pct: 10, color: "#5e7733" },
+    { label: "Otros", ha: "44 Ha", pct: 8, color: "#aabd76" },
+  ];
+  const bal = balance || { meses: ["Nov", "Dic", "Ene", "Feb", "Mar", "Abr"], ingresos: [4.2, 5.8, 6.1, 7.1, 7.6, 8.6], gastos: [3.1, 3.4, 4.0, 4.2, 5.1, 5.8] };
+  const ingTot = bal.ingresos[bal.ingresos.length - 1] || 0;
+  const gasTot = bal.gastos[bal.gastos.length - 1] || 0;
 
-  const onDrop = (idx: number) => {
-    if (draggedIdx === null || draggedIdx === idx) return;
-    const next = [...kpiOrder];
-    const [m] = next.splice(draggedIdx, 1);
-    next.splice(idx, 0, m);
-    persistKpis(next);
-    setDraggedIdx(null);
-  };
-
-  const swapKpi = (oldKey: string, newKey: string) => {
-    persistKpis(kpiOrder.map((k) => (k === oldKey ? newKey : k)));
-    setPickerOpen(false);
-  };
-
-  /* ---- próximas tareas (reales o demo) ---- */
-  const proximasTareas = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const reales = labores
-      .filter((l) => l.estado !== "Completada")
-      .map((l) => ({ ...l, f: new Date(l.fecha) }))
-      .filter((l) => l.f.getTime() >= today.getTime() - 2 * 86400000)
-      .sort((a, b) => a.f.getTime() - b.f.getTime())
-      .slice(0, 4)
-      .map((l) => ({
-        tipo: l.tipo,
-        lote: l.lote?.nombre || "—",
-        fecha: l.f.toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
-        estado: l.estado || "Programada",
-      }));
-    if (reales.length > 0) return reales;
-    return demo([
-      { tipo: "Riego programado", lote: "Lote 4 - El Bajo", fecha: "21 jun · 08:00", estado: "Próxima" },
-      { tipo: "Fertilización", lote: "Norte 1", fecha: "22 jun · 09:30", estado: "Próxima" },
-      { tipo: "Monitoreo de plagas", lote: "Este 1", fecha: "23 jun · 10:00", estado: "Próxima" },
-      { tipo: "Pesada mensual", lote: "Tropa A", fecha: "25 jun · 07:00", estado: "Próxima" },
-    ], [] as { tipo: string; lote: string; fecha: string; estado: string }[]);
-  }, [labores]);
-
-  const ganttEvents = useMemo(() => proximasTareas.map((t) => t.tipo), [proximasTareas]);
+  const nombre = session?.user?.name?.split(" ")[0] || "productor";
+  const hoy = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
 
   const crearLabor = async () => {
-    if (!laborForm.loteId && lotes.length === 0) {
-      toast.show("Creá un lote primero en Campo Digital", "err");
-      return;
-    }
+    if (!laborForm.loteId && lotes.length === 0) { toast.show("Creá un lote primero en Campo Digital", "err"); return; }
     try {
-      const res = await fetch("/api/labores", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: laborForm.tipo, fecha: laborForm.fecha, loteId: laborForm.loteId || lotes[0]?.id, descripcion: laborForm.tipo, superficieTrabajada: 0 }),
-      });
+      const res = await fetch("/api/labores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: laborForm.tipo, fecha: laborForm.fecha, loteId: laborForm.loteId || lotes[0]?.id, descripcion: laborForm.tipo, superficieTrabajada: 0 }) });
       if (!res.ok) throw new Error();
-      toast.show("Labor creada correctamente");
-      setLaborModal(false);
-    } catch {
-      toast.show("No se pudo crear la labor", "err");
-    }
+      toast.show("Labor creada correctamente"); setLaborModal(false);
+    } catch { toast.show("No se pudo crear la labor", "err"); }
   };
 
   const descargarReporte = async () => {
     const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("MiCampo — Reporte Semanal", 14, 20);
-    doc.setFontSize(11);
-    doc.text(`Generado: ${new Date().toLocaleDateString("es-AR")}`, 14, 28);
-    let y = 40;
-    doc.setFontSize(13);
-    doc.text("Indicadores principales", 14, y);
-    y += 8;
-    doc.setFontSize(10);
-    kpiOrder.forEach((k) => {
-      const c = ALL_KPIS[k];
-      doc.text(`- ${c.label}: ${c.value} (${c.delta})`, 16, y);
-      y += 6;
-    });
-    y += 6;
-    doc.setFontSize(13);
-    doc.text("Próximas tareas", 14, y);
-    y += 8;
-    doc.setFontSize(10);
-    if (ganttEvents.length === 0) doc.text("Sin labores programadas.", 16, y);
-    ganttEvents.slice(0, 12).forEach((e) => {
-      doc.text(`- ${e}`, 16, y);
-      y += 6;
-    });
+    doc.setFontSize(18); doc.text("MiCampo — Reporte Semanal", 14, 20);
+    doc.setFontSize(11); doc.text(`Generado: ${new Date().toLocaleDateString("es-AR")}`, 14, 28);
+    let y = 42; doc.setFontSize(13); doc.text("Indicadores principales", 14, y); y += 8; doc.setFontSize(10);
+    kpis.forEach((k) => { doc.text(`- ${k.label}: ${k.value} (${k.delta})`, 16, y); y += 6; });
     doc.save("micampo-reporte-semanal.pdf");
     toast.show("Reporte semanal descargado");
   };
 
-  const toggleAct = (id: string) => {
-    const next = hiddenActs.includes(id) ? hiddenActs.filter((a) => a !== id) : [...hiddenActs, id];
-    setHiddenActs(next);
-    try {
-      localStorage.setItem("micampo:quickacts", JSON.stringify(next));
-    } catch {}
-  };
-
-  const nombre = session?.user?.name?.split(" ")[0] || "productor";
-  const rango = (() => {
-    const a = new Date();
-    const b = new Date();
-    b.setDate(b.getDate() + 6);
-    const f = (d: Date) => d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
-    return `${f(a)} – ${f(b)} ${b.getFullYear()}`;
-  })();
-
   return (
-    <div className="mc-inicio">
+    <div className="col gap-20">
       {toast.node}
 
-      {/* ===== HERO ===== */}
-      <div className="mc-hero">
-        <div className="mc-hero__bg" />
-        <div className="mc-hero__content">
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
-            <div>
-              <h1 className="mc-hero__title">Buen día, {nombre}</h1>
-              <p className="mc-hero__sub">Esto es lo que está pasando hoy en tu campo.</p>
-            </div>
-            <div className="row gap-8" style={{ position: "relative" }}>
-              <div className="mc-hero__chip">
-                <Icon name="calendar" size={14} /> {rango}
-              </div>
-              <button className="mc-hero__icon" onClick={() => setBellOpen(!bellOpen)} title="Notificaciones">
-                <Icon name="bell" size={16} />
-                <span className="mc-hero__dot" />
-              </button>
-              <button className="mc-hero__icon mc-hero__icon--primary" onClick={() => setLaborModal(true)} title="Nueva labor">
-                <Icon name="plus" size={18} />
-              </button>
-              {bellOpen && (
-                <>
-                  <div onClick={() => setBellOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-                  <div className="mc-pop">
-                    <div className="mc-card__title" style={{ marginBottom: 10 }}>Notificaciones</div>
-                    <div className="col gap-8">
-                      {demo(
-                        <>
-                          <Alerta nivel="red" title="Plaga detectada" body="Chinches verdes en Lote Norte 1 · superó umbral" />
-                          <Alerta nivel="orange" title="Ventana de pulverización cerrada" body="Viento >20km/h las próximas 12hs" />
-                          <Alerta nivel="blue" title="Cosecha lista" body="Maíz Lote Este 1 · humedad 14.5%" />
-                        </>,
-                        <div className="text-sm text-muted">Sin notificaciones.</div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* KPIs glass editables */}
-          <div className="row" style={{ justifyContent: "flex-end", marginTop: 16, marginBottom: 8, gap: 8 }}>
-            {editKpis && <Badge tone="blue"><span className="inline-flex items-center gap-1">Arrastrá para reordenar · <Icon name="pen" size={12} /> para cambiar</span></Badge>}
-            <button className="mc-hero__edit" onClick={() => setEditKpis(!editKpis)}>
-              <Icon name={editKpis ? "check" : "edit"} size={13} />
-              {editKpis ? "Listo" : "Editar KPIs"}
-            </button>
-          </div>
-          <div className="mc-hero__kpis">
-            {kpiOrder.map((k, idx) => {
-              const cfg = ALL_KPIS[k];
-              return (
-                <div
-                  key={k}
-                  className="mc-gkpi"
-                  draggable={editKpis}
-                  onDragStart={() => setDraggedIdx(idx)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => onDrop(idx)}
-                  style={{ cursor: editKpis ? "grab" : "default", opacity: draggedIdx === idx ? 0.5 : 1 }}
-                >
-                  <div className="mc-gkpi__top">
-                    <span className="mc-gkpi__icon"><Icon name={cfg.icon} size={16} /></span>
-                    {editKpis && (
-                      <button className="mc-gkpi__edit" onClick={(e) => { e.stopPropagation(); setPickerOpen(k); }}>
-                        <Icon name="edit" size={11} />
-                      </button>
-                    )}
-                  </div>
-                  <div className="mc-gkpi__label">{cfg.label}</div>
-                  <div className="mc-gkpi__value">{cfg.value}</div>
-                  <div className={`mc-gkpi__delta mc-gkpi__delta--${cfg.trend}`}>
-                    <Icon name={cfg.trend === "down" ? "arrowDown" : cfg.trend === "warn" ? "alert" : "arrowUp"} size={11} />
-                    {cfg.delta}
-                  </div>
-                  {pickerOpen === k && (
-                    <KpiPicker all={ALL_KPIS} current={k} used={kpiOrder} onPick={(nk) => swapKpi(k, nk)} onClose={() => setPickerOpen(false)} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className="row gap-8" style={{ marginTop: 14, justifyContent: "flex-end" }}>
-            <button className="mc-hero__btn" onClick={descargarReporte}>
-              <Icon name="download" size={14} /> Reporte semanal
-            </button>
-            <button className="mc-hero__btn mc-hero__btn--primary" onClick={() => setLaborModal(true)}>
-              <Icon name="plus" size={14} /> Nueva labor
-            </button>
-          </div>
+      {/* Topbar — búsqueda + acciones */}
+      <div className="row" style={{ gap: 12 }}>
+        <div className="mc-topsearch" style={{ maxWidth: 460, cursor: "pointer" }} onClick={() => router.push("/campo-digital")}>
+          <Icon name="search" size={16} />
+          <input placeholder="Buscar lotes, animales, labores, reportes…" />
+        </div>
+        <div className="row" style={{ marginLeft: "auto", gap: 8 }}>
+          <button className="mc-icon-btn" title="Notificaciones"><Icon name="bell" size={16} /></button>
+          <button className="mc-btn mc-btn--secondary" onClick={descargarReporte}><Icon name="download" size={15} />Reporte semanal</button>
+          <button className="mc-btn mc-btn--primary" onClick={() => setLaborModal(true)}><Icon name="plus" size={15} />Nueva labor</button>
         </div>
       </div>
 
-      {/* ===== FILA 1: Salud del campo + Clima ===== */}
-      <div className="grid" style={{ gridTemplateColumns: "1.15fr 1fr", gap: 14 }}>
-        <SaludCampo onVer={() => router.push("/campo-digital?tab=Detección de Enfermedades (IA)")} />
-        <ClimaHoy />
+      {/* Encabezado de página */}
+      <div className="mc-topbar">
+        <div>
+          <div className="mc-crumbs"><span>MiCampo</span><span className="sep">/</span><strong>Inicio</strong></div>
+          <h1 className="mc-title">Buen día, {nombre}.</h1>
+          <div className="mc-subtitle">Hoy es {hoy}. Tenés 3 labores programadas, 1 atrasada y lluvia prevista mañana.</div>
+        </div>
+        <span className="mc-badge mc-badge--green" style={{ padding: "6px 12px" }}><span className="mc-badge__dot" />Campaña 2025/26 en curso</span>
       </div>
 
-      {/* ===== FILA 2: Suelo + Distribución de cultivos ===== */}
-      <div className="grid" style={{ gridTemplateColumns: "1fr 1.1fr", gap: 14 }}>
-        <ResumenSuelo onVer={() => router.push("/campo-digital?tab=Cultivos&sub=Análisis de Suelo")} />
-        <DistribucionCultivos cultivos={cultivos} onVer={() => router.push("/campo-digital?tab=Cultivos")} />
+      {/* KPIs */}
+      <div className="grid g-cols-5">
+        {kpis.map((k) => {
+          const cls = k.tone === "accent" ? "mc-kpi mc-kpi--accent" : k.tone === "warn" ? "mc-kpi mc-kpi--warn" : "mc-kpi";
+          const tcls = k.trend === "down" ? "mc-kpi__delta--down" : k.trend === "warn" ? "mc-kpi__delta--warn" : "mc-kpi__delta--up";
+          const tIcon = k.trend === "down" ? "arrowDown" : k.trend === "warn" ? "alert" : "arrowUp";
+          return (
+            <div className={cls} key={k.key}>
+              <span className="mc-kpi__glyph"><Icon name={k.icon} size={14} /></span>
+              <div className="mc-kpi__label">{k.label}</div>
+              <div className="mc-kpi__value">{k.value}</div>
+              <div className={`mc-kpi__delta ${tcls}`}><Icon name={tIcon} size={12} />{k.delta}</div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* ===== FILA 3: Próximas tareas + Tendencia ===== */}
-      <div className="grid" style={{ gridTemplateColumns: "1fr 1.3fr", gap: 14 }}>
-        <ProximasTareas tareas={proximasTareas} onVer={() => router.push("/campo-digital?tab=Labores")} onNueva={() => setLaborModal(true)} />
-        <Tendencia balance={balance} />
+      {/* Tarjetas resumen */}
+      <div className="grid g-cols-2">
+        <SummaryCard tone="field" icon="leaf" eyebrow="Estado general de campos" value="Bueno" sub="86/100 · +12% vs semana anterior" badge="↑ 12%" onVer={() => router.push("/campo-digital?tab=Detección de Enfermedades (IA)")} />
+        <SummaryCard tone="gold" icon="dollar" eyebrow="Gastos del mes" value={`$${gasTot.toFixed(1)}M`} sub={`Margen bruto est. $${Math.max(0, ingTot - gasTot).toFixed(1)}M`} badge="+14%" onVer={() => router.push("/finanzas")} />
       </div>
 
-      {/* ===== FILA 4: Actividades + Alertas ===== */}
-      <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 14 }}>
-        <UltimasActividades onVerTodo={() => router.push("/campo-digital?tab=Labores")} />
+      {/* Clima + agenda | Salud lotes + suelo */}
+      <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 14 }}>
+        <ClimaSemana onVerAgenda={() => router.push("/calendario")} />
+        <div className="col gap-16"><FieldHealth /><SoilHealth /></div>
+      </div>
+
+      {/* Balance mensual */}
+      <div className="mc-card">
+        <div className="mc-card__head"><div><div className="mc-card__eyebrow">Últimos 6 meses</div><div className="mc-card__title mt-4">Balance mensual</div></div><button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={() => router.push("/finanzas")}>Ver finanzas</button></div>
+        <div className="row gap-10" style={{ marginBottom: 12 }}>
+          <div style={{ flex: 1, padding: "8px 12px", borderRadius: 10, background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)" }}>
+            <div className="row gap-4" style={{ fontSize: 10, color: "var(--mc-green-700)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5e7733" }} />Ingresos</div>
+            <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, color: "var(--mc-green-700)", marginTop: 2 }}>${ingTot.toFixed(1)}M</div>
+          </div>
+          <div style={{ flex: 1, padding: "8px 12px", borderRadius: 10, background: "var(--mc-gold-50)", border: "1px solid var(--mc-gold-100)" }}>
+            <div className="row gap-4" style={{ fontSize: 10, color: "var(--mc-gold-700)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#d9a538" }} />Gastos</div>
+            <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, color: "var(--mc-gold-700)", marginTop: 2 }}>${gasTot.toFixed(1)}M</div>
+          </div>
+        </div>
+        <BalanceArea meses={bal.meses} ingresos={bal.ingresos} gastos={bal.gastos} />
+      </div>
+
+      {/* Rinde | Distribución */}
+      <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <div className="mc-card">
           <div className="mc-card__head">
-            <div className="mc-card__title">Alertas activas</div>
-            <span className="mc-badge mc-badge--red"><span className="mc-badge__dot"></span>{demo("5", "0")} activas</span>
+            <div><div className="mc-card__eyebrow">Campaña 25/26 · t/Ha</div><div className="mc-card__title mt-4">Rinde por lote</div></div>
+            <div className="row" style={{ gap: 14 }}>
+              <span className="row gap-8" style={{ fontSize: 12, color: "var(--mc-text-2)" }}><span style={{ width: 9, height: 9, borderRadius: 3, background: "#5e7733" }} />Real</span>
+              <span className="row gap-8" style={{ fontSize: 12, color: "var(--mc-text-2)" }}><span style={{ width: 9, height: 9, borderRadius: 3, background: "var(--mc-line-2)" }} />Objetivo</span>
+            </div>
           </div>
-          <div className="col gap-8">
-            {demo(
-              <>
-                <Alerta nivel="red" title="Plaga detectada" body="Chinches verdes en Lote Norte 1 · superó umbral" />
-                <Alerta nivel="orange" title="Ventana de pulverización cerrada" body="Viento >20km/h las próximas 12hs" />
-                <Alerta nivel="amber" title="Stock bajo" body="Urea · quedan 4 días de consumo" />
-                <Alerta nivel="blue" title="Cosecha lista" body="Maíz Lote Este 1 · humedad 14.5%" />
-              </>,
-              <div className="text-sm text-muted">Sin alertas activas.</div>
-            )}
-          </div>
+          <RindeBars />
         </div>
+        <CropDistribution cultivos={cultivosData} />
       </div>
 
-      {/* ===== Acciones rápidas ===== */}
+      {/* Actividades | Alertas */}
+      <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 14 }}>
+        <Actividades onVerTodo={() => router.push("/campo-digital?tab=Labores")} />
+        <Alertas />
+      </div>
+
+      {/* Acciones rápidas */}
       <div className="mc-card">
-        <div className="mc-card__head">
-          <div className="mc-card__title">Acciones rápidas</div>
-          <button className={`mc-btn mc-btn--sm ${editActs ? "mc-btn--primary" : "mc-btn--ghost"}`} onClick={() => setEditActs(!editActs)}>
-            {editActs ? "Listo" : "Personalizar"}
-          </button>
-        </div>
+        <div className="mc-card__head"><div className="mc-card__title">Acciones rápidas</div></div>
         <div className="grid g-cols-6 gap-8" style={{ rowGap: 10 }}>
-          {QUICK_ACTS.filter((a) => editActs || !hiddenActs.includes(a.id)).map((a) => (
-            <button
-              key={a.id}
-              className="mc-card mc-quick"
-              style={{ padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, cursor: "pointer", position: "relative", opacity: editActs && hiddenActs.includes(a.id) ? 0.4 : 1 }}
-              onClick={() => {
-                if (editActs) { toggleAct(a.id); return; }
-                if (a.id === "labor") setLaborModal(true);
-                else if (a.id === "notif") setBellOpen(true);
-                else if (a.href) router.push(a.href);
-              }}
-            >
-              {editActs && (
-                <span style={{ position: "absolute", top: 6, right: 6, color: hiddenActs.includes(a.id) ? "var(--mc-text-3)" : "var(--mc-green-600)" }}>
-                  <Icon name={hiddenActs.includes(a.id) ? "x" : "check"} size={12} />
-                </span>
-              )}
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--mc-green-50)", color: "var(--mc-green-700)", display: "grid", placeItems: "center" }}>
-                <Icon name={a.icon} size={15} />
-              </div>
-              <div className="text-sm font-semi" style={{ color: "var(--mc-ink)", fontSize: 12.5 }}>{a.label}</div>
+          {QUICK_ACTS.map((a, i) => (
+            <button key={i} className="mc-card mc-quick" onClick={() => { if (a.action === "labor") setLaborModal(true); else if (a.href) router.push(a.href); }}>
+              <div className="mc-quick__ic"><Icon name={a.icon} size={15} /></div>
+              <div className="mc-quick__label">{a.label}</div>
             </button>
           ))}
         </div>
@@ -470,12 +642,10 @@ export default function InicioPage() {
         onClose={() => setLaborModal(false)}
         title="Nueva labor"
         subtitle="Creá una labor rápida; podés completar los detalles en Campo Digital."
-        footer={
-          <>
-            <button className="mc-btn mc-btn--ghost" onClick={() => setLaborModal(false)}>Cancelar</button>
-            <button className="mc-btn mc-btn--primary" onClick={crearLabor}><Icon name="check" size={14} /> Crear labor</button>
-          </>
-        }
+        footer={<>
+          <button className="mc-btn mc-btn--ghost" onClick={() => setLaborModal(false)}>Cancelar</button>
+          <button className="mc-btn mc-btn--primary" onClick={crearLabor}><Icon name="check" size={14} /> Crear labor</button>
+        </>}
       >
         <Field label="Tipo de labor">
           <select className="mc-select" value={laborForm.tipo} onChange={(e) => setLaborForm({ ...laborForm, tipo: e.target.value })}>
@@ -492,370 +662,6 @@ export default function InicioPage() {
           <input type="date" className="mc-input" value={laborForm.fecha} onChange={(e) => setLaborForm({ ...laborForm, fecha: e.target.value })} />
         </Field>
       </Modal>
-
-      <style jsx global>{`
-        .mc-inicio { display: flex; flex-direction: column; gap: 16px; }
-        /* HERO */
-        .mc-hero { position: relative; border-radius: 22px; overflow: hidden; padding: 26px 28px 24px; color: #eef6ee; box-shadow: 0 12px 36px -14px rgba(10,40,18,0.5); }
-        .mc-hero__bg { position: absolute; inset: 0; z-index: 0;
-          background:
-            radial-gradient(120% 80% at 80% -10%, rgba(120,200,120,0.30), transparent 55%),
-            radial-gradient(90% 70% at 10% 110%, rgba(20,80,40,0.55), transparent 60%),
-            linear-gradient(160deg, #1f4d2c 0%, #20582f 45%, #2c6a3a 100%);
-        }
-        .mc-hero__bg::after { content: ""; position: absolute; inset: 0;
-          background-image: linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
-          background-size: 34px 34px; -webkit-mask-image: radial-gradient(ellipse 80% 90% at 70% 0%, #000, transparent 75%); mask-image: radial-gradient(ellipse 80% 90% at 70% 0%, #000, transparent 75%); }
-        .mc-hero__content { position: relative; z-index: 1; }
-        .mc-hero__title { font-family: var(--ff-display); font-weight: 400; font-size: 34px; line-height: 1; margin: 0; letter-spacing: -0.01em; }
-        .mc-hero__sub { margin: 8px 0 0; font-size: 14px; opacity: 0.85; }
-        .mc-hero__chip { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); }
-        .mc-hero__icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); color: #fff; cursor: pointer; position: relative; transition: 0.15s; }
-        .mc-hero__icon:hover { background: rgba(255,255,255,0.24); }
-        .mc-hero__icon--primary { background: #59e069; color: #06310f; border-color: transparent; }
-        .mc-hero__icon--primary:hover { background: #6cf07d; }
-        .mc-hero__dot { position: absolute; top: 9px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: #ff6b5e; border: 1.5px solid #235a31; }
-        .mc-hero__edit { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); color: #fff; cursor: pointer; }
-        .mc-hero__edit:hover { background: rgba(255,255,255,0.24); }
-        .mc-hero__kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        @media (max-width: 1100px) { .mc-hero__kpis { grid-template-columns: repeat(2, 1fr); } }
-        .mc-hero__btn { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 10px; cursor: pointer; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22); color: #fff; transition: 0.15s; }
-        .mc-hero__btn:hover { background: rgba(255,255,255,0.24); }
-        .mc-hero__btn--primary { background: #59e069; color: #06310f; border-color: transparent; }
-        .mc-hero__btn--primary:hover { background: #6cf07d; }
-        /* GLASS KPI */
-        .mc-gkpi { position: relative; padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.20); backdrop-filter: blur(6px); transition: 0.18s; }
-        .mc-gkpi:hover { background: rgba(255,255,255,0.16); transform: translateY(-2px); }
-        .mc-gkpi__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .mc-gkpi__icon { width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.18); display: grid; place-items: center; color: #d7f7da; }
-        .mc-gkpi__edit { width: 22px; height: 22px; border-radius: 6px; border: none; background: #59e069; color: #06310f; display: grid; place-items: center; cursor: pointer; }
-        .mc-gkpi__label { font-size: 12px; opacity: 0.82; }
-        .mc-gkpi__value { font-family: var(--ff-display); font-size: 30px; line-height: 1.05; margin-top: 2px; }
-        .mc-gkpi__delta { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; margin-top: 6px; font-variant-numeric: tabular-nums; }
-        .mc-gkpi__delta--up { color: #9af0a6; }
-        .mc-gkpi__delta--down { color: #ffb3ab; }
-        .mc-gkpi__delta--warn { color: #ffd28a; }
-        .mc-pop { position: absolute; right: 0; top: 48px; width: 340px; z-index: 51; background: var(--mc-surface); border: 1px solid var(--mc-line); border-radius: 12px; box-shadow: var(--sh-lg); padding: 12px; color: var(--mc-ink); }
-        /* mini health legend bar */
-        .mc-hbar { height: 8px; border-radius: 999px; overflow: hidden; display: flex; }
-      `}</style>
-    </div>
-  );
-}
-
-/* ============ KPI PICKER ============ */
-function KpiPicker({ all, current, used, onPick, onClose }: { all: Record<string, KpiCfg>; current: string; used: string[]; onPick: (k: string) => void; onClose: () => void }) {
-  const keys = Object.keys(all).filter((k) => k === current || !used.includes(k));
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 6, background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 12, boxShadow: "var(--sh-md)", padding: 6, zIndex: 51, maxHeight: 280, overflowY: "auto", color: "var(--mc-ink)" }}>
-        <div className="text-xs text-muted" style={{ padding: "6px 10px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Reemplazar por</div>
-        {keys.map((k) => (
-          <button key={k} onClick={() => onPick(k)} style={{ width: "100%", padding: "8px 10px", display: "flex", alignItems: "center", gap: 10, border: "none", background: k === current ? "var(--mc-green-50)" : "transparent", color: "var(--mc-ink)", borderRadius: 6, cursor: "pointer", textAlign: "left" }}>
-            <span style={{ width: 24, height: 24, borderRadius: 6, background: "var(--mc-green-50)", color: "var(--mc-green-700)", display: "grid", placeItems: "center" }}><Icon name={all[k].icon} size={12} /></span>
-            <span style={{ flex: 1, fontSize: 13 }}>{all[k].label}</span>
-            {k === current && <Icon name="check" size={13} style={{ color: "var(--mc-green-700)" }} />}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
-
-/* ============ SALUD DEL CAMPO (donut) ============ */
-function SaludCampo({ onVer }: { onVer: () => void }) {
-  const score = 86;
-  const segs = [
-    { label: "Excelente", pct: 35, color: "#5e7733" },
-    { label: "Bueno", pct: 40, color: "#768f44" },
-    { label: "Regular", pct: 15, color: "#c48410" },
-    { label: "Pobre", pct: 10, color: "#c93434" },
-  ];
-  const r = 70, cx = 90, cy = 90, sw = 18, gap = 4;
-  let cum = 0;
-  const arcs = segs.map((s) => {
-    const a0 = cum * 3.6 - 90;
-    cum += s.pct;
-    const a1 = cum * 3.6 - 90;
-    const gr = (gap / (2 * Math.PI * r)) * 360;
-    const p = (ang: number) => [cx + r * Math.cos((ang * Math.PI) / 180), cy + r * Math.sin((ang * Math.PI) / 180)];
-    const [x1, y1] = p(a0 + gr / 2);
-    const [x2, y2] = p(a1 - gr / 2);
-    return { ...s, d: `M ${x1} ${y1} A ${r} ${r} 0 ${s.pct > 50 ? 1 : 0} 1 ${x2} ${y2}` };
-  });
-  return (
-    <div className="mc-card">
-      <div className="mc-card__head">
-        <div>
-          <div className="mc-card__title">Salud del campo</div>
-          <div className="text-xs text-muted">Análisis IA de vegetación y suelo</div>
-        </div>
-        <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVer}>Ver <Icon name="chevRight" size={13} /></button>
-      </div>
-      <div className="row gap-16" style={{ alignItems: "center" }}>
-        <svg width="180" height="180" viewBox="0 0 180 180" style={{ flexShrink: 0 }}>
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mc-surface-2)" strokeWidth={sw} />
-          {arcs.map((a, i) => <path key={i} d={a.d} fill="none" stroke={a.color} strokeWidth={sw} strokeLinecap="round" />)}
-          <text x={cx} y={cy - 4} textAnchor="middle" fontFamily="var(--ff-display)" fontSize="40" fontWeight="700" fill="var(--mc-ink)">{score}</text>
-          <text x={cx} y={cy + 18} textAnchor="middle" fontSize="12" fontWeight="600" fill="var(--mc-green-700)">Bueno</text>
-        </svg>
-        <div className="col gap-8" style={{ flex: 1 }}>
-          {segs.map((s) => (
-            <div key={s.label} className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
-              <span className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: s.color }} />{s.label}</span>
-              <span className="font-semi font-mono">{s.pct}%</span>
-            </div>
-          ))}
-          <div className="text-xs mt-8" style={{ color: "var(--mc-green-700)", fontWeight: 600 }}>↑ 12% de mejora vs. semana pasada</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============ CLIMA HOY + pronóstico ============ */
-function ClimaHoy() {
-  const dias = [
-    { d: "Dom", ic: "sun", max: 21, min: 14 },
-    { d: "Lun", ic: "cloud", max: 22, min: 15 },
-    { d: "Mar", ic: "droplet", max: 24, min: 16 },
-    { d: "Mié", ic: "cloud", max: 23, min: 15 },
-    { d: "Jue", ic: "cloud", max: 25, min: 17 },
-  ];
-  return (
-    <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
-      <div style={{ padding: "18px 20px 16px", background: "linear-gradient(135deg, #2d5f4a, #4a7c64)", color: "white" }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div className="font-semi" style={{ fontSize: 15 }}>Clima hoy</div>
-            <div className="text-xs row gap-4" style={{ opacity: 0.85, alignItems: "center" }}><Icon name="map" size={12} />Don Ramón · Parcialmente nublado</div>
-            <div style={{ fontFamily: "var(--ff-display)", fontSize: 46, lineHeight: 1, marginTop: 10 }}>22°<span style={{ fontSize: 16 }}>C</span></div>
-          </div>
-          <Icon name="cloud" size={44} />
-        </div>
-        <div className="grid g-cols-3 gap-8" style={{ marginTop: 14 }}>
-          {[{ l: "Humedad", v: "48%", ic: "droplet" }, { l: "Viento", v: "9 km/h", ic: "wind" }, { l: "Lluvia", v: "10%", ic: "cloud" }].map((m) => (
-            <div key={m.l} style={{ background: "rgba(255,255,255,0.12)", borderRadius: 10, padding: "8px 10px" }}>
-              <div className="row gap-4" style={{ fontSize: 10.5, opacity: 0.8 }}><Icon name={m.ic} size={11} />{m.l}</div>
-              <div className="font-semi" style={{ fontSize: 15, marginTop: 2 }}>{m.v}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="grid" style={{ gridTemplateColumns: "repeat(5, 1fr)", padding: "12px 8px" }}>
-        {dias.map((d) => (
-          <div key={d.d} style={{ textAlign: "center", padding: "4px 0" }}>
-            <div className="text-xs text-muted" style={{ fontWeight: 600 }}>{d.d}</div>
-            <div style={{ margin: "4px 0" }}><Icon name={d.ic} size={24} /></div>
-            <div className="font-mono" style={{ fontSize: 12 }}><span className="font-semi">{d.max}°</span> <span className="text-muted">{d.min}°</span></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ============ RESUMEN DE SUELO ============ */
-function ResumenSuelo({ onVer }: { onVer: () => void }) {
-  const nutri = [
-    { l: "Nitrógeno", k: "N", nivel: "Medio", color: "#c48410", pct: 60 },
-    { l: "Fósforo", k: "P", nivel: "Alto", color: "#5e7733", pct: 85 },
-    { l: "Potasio", k: "K", nivel: "Medio", color: "#c48410", pct: 62 },
-  ];
-  return (
-    <div className="mc-card">
-      <div className="mc-card__head">
-        <div>
-          <div className="mc-card__title">Resumen de suelo</div>
-          <div className="text-xs text-muted">Promedio de todos los lotes</div>
-        </div>
-        <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVer}>Ver <Icon name="chevRight" size={13} /></button>
-      </div>
-      <div className="grid g-cols-3 gap-8">
-        {nutri.map((n) => (
-          <div key={n.k} style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10, textAlign: "center" }}>
-            <div style={{ width: 34, height: 34, borderRadius: "50%", background: `${n.color}1f`, color: n.color, display: "grid", placeItems: "center", margin: "0 auto 6px", fontWeight: 700 }}>{n.k}</div>
-            <div className="text-xs text-muted">{n.l}</div>
-            <div className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{n.nivel}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: 14 }}>
-        <div className="row" style={{ justifyContent: "space-between", fontSize: 12.5 }}>
-          <span className="text-muted">Materia orgánica</span>
-          <span className="font-semi font-mono">2.8%</span>
-        </div>
-        <div className="mc-prog mt-4"><div className="mc-prog__bar" style={{ width: "70%" }} /></div>
-        <div className="text-xs" style={{ color: "var(--mc-green-700)", marginTop: 4 }}>Buen nivel</div>
-      </div>
-    </div>
-  );
-}
-
-/* ============ DISTRIBUCIÓN DE CULTIVOS (donut) ============ */
-function DistribucionCultivos({ cultivos, onVer }: { cultivos: { nombre: string; ha: number; color: string }[] | null; onVer: () => void }) {
-  const data = cultivos && cultivos.length ? cultivos : demo([
-    { nombre: "Maíz", ha: 45.2, color: "#d9a538" },
-    { nombre: "Soja", ha: 32.8, color: "#768f44" },
-    { nombre: "Trigo", ha: 25.6, color: "#a88032" },
-    { nombre: "Cebada", ha: 12.5, color: "#aabd76" },
-    { nombre: "Otros", ha: 9.5, color: "#cbd5c5" },
-  ], [] as { nombre: string; ha: number; color: string }[]);
-  const total = data.reduce((s, c) => s + c.ha, 0);
-  const r = 64, cx = 84, cy = 84, sw = 20, gap = 3;
-  let cum = 0;
-  const arcs = data.map((c) => {
-    const pct = (c.ha / total) * 100;
-    const a0 = cum * 3.6 - 90;
-    cum += pct;
-    const a1 = cum * 3.6 - 90;
-    const gr = (gap / (2 * Math.PI * r)) * 360;
-    const p = (ang: number) => [cx + r * Math.cos((ang * Math.PI) / 180), cy + r * Math.sin((ang * Math.PI) / 180)];
-    const [x1, y1] = p(a0 + gr / 2);
-    const [x2, y2] = p(a1 - gr / 2);
-    return { ...c, pct, d: `M ${x1} ${y1} A ${r} ${r} 0 ${pct > 50 ? 1 : 0} 1 ${x2} ${y2}` };
-  });
-  return (
-    <div className="mc-card">
-      <div className="mc-card__head">
-        <div>
-          <div className="mc-card__title">Distribución de cultivos</div>
-          <div className="text-xs text-muted">Por superficie</div>
-        </div>
-        <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVer}>Ver detalle <Icon name="chevRight" size={13} /></button>
-      </div>
-      <div className="row gap-16" style={{ alignItems: "center" }}>
-        <svg width="168" height="168" viewBox="0 0 168 168" style={{ flexShrink: 0 }}>
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mc-surface-2)" strokeWidth={sw} />
-          {arcs.map((a, i) => <path key={i} d={a.d} fill="none" stroke={a.color} strokeWidth={sw} strokeLinecap="round" />)}
-          <text x={cx} y={cy - 2} textAnchor="middle" fontFamily="var(--ff-display)" fontSize="26" fontWeight="700" fill="var(--mc-ink)">{Math.round(total)}</text>
-          <text x={cx} y={cy + 16} textAnchor="middle" fontSize="11" fill="var(--mc-text-2)">Ha totales</text>
-        </svg>
-        <div className="col gap-6" style={{ flex: 1 }}>
-          {arcs.map((c) => (
-            <div key={c.nombre} className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
-              <span className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: c.color }} />{c.nombre}</span>
-              <span><span className="font-mono text-muted">{c.ha.toLocaleString("es-AR")} ha</span> <span className="font-semi" style={{ marginLeft: 6 }}>{Math.round(c.pct)}%</span></span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============ PRÓXIMAS TAREAS ============ */
-function ProximasTareas({ tareas, onVer, onNueva }: { tareas: { tipo: string; lote: string; fecha: string; estado: string }[]; onVer: () => void; onNueva: () => void }) {
-  return (
-    <div className="mc-card">
-      <div className="mc-card__head">
-        <div className="mc-card__title">Próximas tareas</div>
-        <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={onNueva}><Icon name="plus" size={12} />Nueva</button>
-      </div>
-      <div className="col gap-8">
-        {tareas.map((t, i) => {
-          const c = TIPO_COLOR[t.tipo.split(" ")[0]] || { color: "#5E8F78", icon: "wrench" };
-          return (
-            <div key={i} className="row gap-12" style={{ padding: "10px 12px", border: "1px solid var(--mc-line)", borderRadius: 10, alignItems: "center" }}>
-              <div style={{ width: 34, height: 34, borderRadius: 9, background: `${c.color}1f`, color: c.color, display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name={c.icon} size={16} /></div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{t.tipo}</div>
-                <div className="text-xs text-muted">{t.lote}</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div className="font-mono text-xs" style={{ color: "var(--mc-text-2)" }}>{t.fecha}</div>
-                <span className="mc-badge mc-badge--green" style={{ fontSize: 9, marginTop: 2 }}>{t.estado}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <button className="mc-btn mc-btn--secondary mc-btn--block mt-12" onClick={onVer}>Ver todas las tareas</button>
-    </div>
-  );
-}
-
-/* ============ TENDENCIA (línea) ============ */
-function Tendencia({ balance }: { balance: { meses: string[]; ingresos: number[]; gastos: number[] } | null }) {
-  const usaBalance = !!balance;
-  const labels = balance?.meses || ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-  const serieA = balance?.ingresos || demo([72, 68, 64, 62, 52, 58, 62], [0, 0, 0, 0, 0, 0, 0]);
-  const serieB = balance?.gastos || demo([55, 58, 52, 50, 48, 51, 55], [0, 0, 0, 0, 0, 0, 0]);
-  const titulo = usaBalance ? "Balance mensual" : "Tendencia de humedad del suelo";
-  const sub = usaBalance ? "Ingresos vs. gastos (M$)" : "Actual vs. pronóstico (%)";
-  const W = 520, H = 200, padL = 34, padR = 14, padT = 16, padB = 28;
-  const iw = W - padL - padR, ih = H - padT - padB;
-  const max = Math.max(...serieA, ...serieB, usaBalance ? 1 : 100) * (usaBalance ? 1.1 : 1);
-  const min = usaBalance ? 0 : 0;
-  const n = labels.length;
-  const px = (i: number) => padL + (i / (n - 1)) * iw;
-  const py = (v: number) => padT + ih * (1 - (v - min) / (max - min));
-  const line = (s: number[]) => s.map((v, i) => `${i === 0 ? "M" : "L"} ${px(i)} ${py(v)}`).join(" ");
-  const area = (s: number[]) => `${line(s)} L ${px(n - 1)} ${padT + ih} L ${px(0)} ${padT + ih} Z`;
-
-  return (
-    <div className="mc-card">
-      <div className="mc-card__head">
-        <div>
-          <div className="mc-card__title">{titulo}</div>
-          <div className="text-xs text-muted">{sub}</div>
-        </div>
-        <div className="row gap-12 text-xs">
-          <span className="row gap-4"><span style={{ width: 10, height: 3, background: "#768f44", borderRadius: 2 }} />{usaBalance ? "Ingresos" : "Actual"}</span>
-          <span className="row gap-4"><span style={{ width: 10, height: 3, background: "#9aa6b2", borderRadius: 2 }} />{usaBalance ? "Gastos" : "Pronóstico"}</span>
-        </div>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
-        <defs>
-          <linearGradient id="trendA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#768f44" stopOpacity="0.25" /><stop offset="100%" stopColor="#768f44" stopOpacity="0" /></linearGradient>
-        </defs>
-        {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
-          const y = padT + ih * p;
-          return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--mc-line)" strokeDasharray={i === 4 ? "0" : "2,3"} />;
-        })}
-        <path d={area(serieA)} fill="url(#trendA)" />
-        <path d={line(serieA)} fill="none" stroke="#768f44" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={line(serieB)} fill="none" stroke="#9aa6b2" strokeWidth="2" strokeDasharray="5,4" strokeLinecap="round" strokeLinejoin="round" />
-        {serieA.map((v, i) => <circle key={i} cx={px(i)} cy={py(v)} r={i === n - 1 ? 4.5 : 3} fill="#768f44" />)}
-        {labels.map((l, i) => <text key={i} x={px(i)} y={H - 8} fontSize="10" fontFamily="var(--ff-ui)" fill="var(--mc-text-2)" textAnchor="middle">{l}</text>)}
-      </svg>
-    </div>
-  );
-}
-
-/* ============ ÚLTIMAS ACTIVIDADES ============ */
-function UltimasActividades({ onVerTodo }: { onVerTodo: () => void }) {
-  const activs = demo([
-    { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "registró", obj: "20mm de lluvia", lote: "Lote 2", emoji: "droplet", time: "Hace 2 horas" },
-    { tipo: "user", inicial: "J", color: "#d9a538", quien: "Joaquin", verb: "finalizó", obj: "Siembra", lote: "Lote 1", emoji: "truck", time: "Hace 5 horas" },
-    { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "detectó", obj: "Alerta de Isoca", lote: "Lote 3", emoji: "bug", time: "Ayer" },
-    { tipo: "user", inicial: "S", color: "#5E8F78", quien: "Santiago", verb: "cargó", obj: "Foto de Cultivo", lote: "Lote 4", emoji: "camera", time: "Ayer" },
-    { tipo: "user", inicial: "M", color: "#e7892b", quien: "Manuel", verb: "aplicó", obj: "Pulverización", lote: "Lote N1", emoji: "droplet", time: "Hace 2 días" },
-    { tipo: "system", inicial: "", color: "#3f4443", quien: "Sistema", verb: "completó", obj: "Análisis IA de NDVI", lote: "Todos", emoji: "chart", time: "Hace 2 días" },
-  ], [] as { tipo: string; inicial: string; color: string; quien: string; verb: string; obj: string; lote: string; emoji: string; time: string }[]);
-  return (
-    <div className="mc-card">
-      <div className="mc-card__head">
-        <div className="mc-card__title">Últimas Actividades</div>
-        <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVerTodo}>Ver todo <Icon name="chevRight" size={13} /></button>
-      </div>
-      <div className="mc-actividades">
-        {activs.map((a, i) => (
-          <div key={i} className="mc-act-row">
-            <div className="mc-act-row__avatar" style={{ background: a.color }}>{a.tipo === "system" ? <Icon name="bolt" size={14} /> : a.inicial}</div>
-            <div className="mc-act-row__content">
-              <div className="mc-act-row__text">
-                <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb}{" "}
-                <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en{" "}
-                <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span>
-                <span style={{ marginLeft: 6 }}><Icon name={a.emoji} size={13} /></span>
-              </div>
-            </div>
-            <div className="mc-act-row__time">{a.time}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
