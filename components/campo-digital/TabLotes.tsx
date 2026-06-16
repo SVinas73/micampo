@@ -7,7 +7,7 @@ import { Icon, KPI, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useSetHeaderActions } from "./ActionsContext";
 import {
-  LOTES_INICIALES, LISTA_EXTRAS, mapLotesApi, fechaCorta,
+  LOTES_INICIALES, mapLotesApi, fechaCorta,
   type LoteUI,
 } from "./lotes-data";
 
@@ -567,7 +567,19 @@ function LotesListaDetallada({
 }) {
   const [histLote, setHistLote] = useState<{ lote: string; genetica: string } | null>(null);
 
-  const rows = lotes.map((l, i) => ({ lote: l, x: LISTA_EXTRAS[i % LISTA_EXTRAS.length] }));
+  // Columnas derivadas de datos reales del lote; lo que aún no tiene fuente real va vacío ("—").
+  const rows = lotes.map((l) => ({
+    lote: l,
+    x: {
+      genetica: l.variety || "—",
+      finPct: 0, finUSD: "—", finDisp: "—",
+      ndviLabel: l.ndvi ? l.ndvi.toFixed(2) : "—", ndviTrend: "flat" as "up" | "down" | "flat",
+      visita: "—",
+      plaga: "Sin monitoreo", riesgo: "Sin datos", riesgoVal: "—", riesgoColor: "green",
+      monitor: "Sin datos",
+      proy: "—", proyDelta: "—", proyFecha: "—", neg: false,
+    },
+  }));
 
   return (
     <>
@@ -583,24 +595,9 @@ function LotesListaDetallada({
                 <Icon name="x" size={14} />
               </button>
             </div>
-            <div style={{ position: "relative", paddingLeft: 22 }}>
-              <div style={{ position: "absolute", left: 9, top: 4, bottom: 4, width: 2, background: "var(--mc-line)" }}></div>
-              {[
-                { fecha: "18/Abr", tipo: "Pulverización", detail: "Glifosato 3 L/Ha · J. Pérez", color: "var(--mc-orange-500)", icon: "flask" },
-                { fecha: "10/Abr", tipo: "Fertilización", detail: "Urea 120 kg/Ha", color: "var(--mc-amber)", icon: "leaf" },
-                { fecha: "22/Mar", tipo: "Siembra", detail: `${histLote.genetica} · 80 kpa`, color: "var(--mc-green-500)", icon: "sprout" },
-                { fecha: "15/Mar", tipo: "Análisis suelo", detail: "pH 6.2 · MO 2.8%", color: "var(--mc-blue)", icon: "activity" },
-                { fecha: "02/Mar", tipo: "Labranza", detail: "Cincel vibratorio · 25 cm", color: "var(--mc-text-2)", icon: "wrench" },
-              ].map((ev, i) => (
-                <div key={i} style={{ position: "relative", paddingBottom: i < 4 ? 14 : 0, paddingLeft: 8 }}>
-                  <div style={{ position: "absolute", left: -13, top: 2, width: 20, height: 20, borderRadius: "50%", background: ev.color, color: "white", display: "grid", placeItems: "center", border: "2px solid var(--mc-surface)" }}>
-                    <Icon name={ev.icon} size={10} />
-                  </div>
-                  <div className="font-mono text-xs" style={{ color: "var(--mc-text-3)" }}>{ev.fecha}</div>
-                  <div className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{ev.tipo}</div>
-                  <div className="text-xs text-muted">{ev.detail}</div>
-                </div>
-              ))}
+            <div className="mc-empty">
+              <div className="mc-empty__icon"><Icon name="timeline" size={20} /></div>
+              Sin eventos registrados en este lote todavía. Las labores y registros aparecerán acá.
             </div>
           </div>
         </div>

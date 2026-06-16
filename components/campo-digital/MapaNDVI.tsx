@@ -155,6 +155,7 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }
       const ring = l.geojson!.coordinates[0].map(([lng, lat]) => [lat, lng] as [number, number]);
       const sel = l.id === selectedId;
       const fill =
+        layer === "Satélite" ? "transparent" :
         layer === "Cultivos" ? (l.vacio ? "#9aa39a" : l.cultivoColor || "#5e7733") :
         layer === "NDVI" && SENTINEL_INSTANCE ? "transparent" :
         ndviColor(l.ndvi);
