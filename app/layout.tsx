@@ -17,7 +17,7 @@ export default function RootLayout({
       lang="es"
       data-theme="light"
       data-palette="natural"
-      data-font="editorial"
+      data-font="inter"
       data-density="compact"
     >
       <head>

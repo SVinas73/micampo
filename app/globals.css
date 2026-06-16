@@ -268,10 +268,10 @@
   --sh-md: 0 4px 14px -4px rgba(26,31,28,0.08), 0 2px 4px rgba(26,31,28,0.04);
   --sh-lg: 0 12px 32px -8px rgba(26,31,28,0.12), 0 4px 8px rgba(26,31,28,0.04);
 
-  /* Typography */
-  --ff-display: "Instrument Serif", "Times New Roman", serif;
+  /* Typography — Inter en todo el sistema (display, UI y números) */
+  --ff-display: "Inter", -apple-system, system-ui, sans-serif;
   --ff-ui:      "Inter", -apple-system, system-ui, sans-serif;
-  --ff-mono:    "JetBrains Mono", ui-monospace, monospace;
+  --ff-mono:    "Inter", ui-monospace, monospace;
 
   /* Densidad */
   --density: 1;
@@ -289,17 +289,15 @@
   --row-h:    44px;
 }
 
-:root[data-font="grotesk"] {
-  --ff-display: "Fraunces", "Instrument Serif", serif;
-  --ff-ui: "Inter", system-ui, sans-serif;
-}
-:root[data-font="editorial"] {
-  --ff-display: "Instrument Serif", serif;
-  --ff-ui: "Inter", system-ui, sans-serif;
-}
-:root[data-font="modern"] {
-  --ff-display: "Space Grotesk", system-ui, sans-serif;
-  --ff-ui: "Space Grotesk", system-ui, sans-serif;
+/* Todas las variantes resuelven a Inter: el sistema usa una sola tipografía
+   profesional y consistente, sin importar el valor persistido de data-font. */
+:root[data-font="grotesk"],
+:root[data-font="editorial"],
+:root[data-font="modern"],
+:root[data-font="inter"] {
+  --ff-display: "Inter", -apple-system, system-ui, sans-serif;
+  --ff-ui: "Inter", -apple-system, system-ui, sans-serif;
+  --ff-mono: "Inter", ui-monospace, monospace;
 }
 
 /* Dark mode — "photo dashboard" */
