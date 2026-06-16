@@ -27,7 +27,7 @@ export function RadarMap() {
       <div
         style={{
           height: 300,
-          background: "linear-gradient(135deg, #4f9d52 0%, #3aa6d9 50%, #d9a538 100%)",
+          background: "linear-gradient(135deg, #768f44 0%, #3aa6d9 50%, #d9a538 100%)",
           position: "relative",
         }}
       >
@@ -47,7 +47,7 @@ export function RadarMap() {
               <stop offset="100%" stopColor="#3aa6d9" stopOpacity="0" />
             </radialGradient>
             <pattern id="aerialField" patternUnits="userSpaceOnUse" width="80" height="60">
-              <rect width="80" height="60" fill="#4f9d52" />
+              <rect width="80" height="60" fill="#768f44" />
               <rect x="0" y="0" width="40" height="30" fill="#5fae62" />
               <rect x="40" y="30" width="40" height="30" fill="#6db870" />
             </pattern>

@@ -30,7 +30,7 @@ export function ForecastChart({
   const VBX = N * 100;
 
   const spray: Record<DayForecast["vent"], { color: string; label: string; icon: string; bg: string }> = {
-    ok: { color: "#4f9d52", label: "APTO", icon: "check", bg: "rgba(79,157,82,0.12)" },
+    ok: { color: "#768f44", label: "APTO", icon: "check", bg: "rgba(79,157,82,0.12)" },
     warn: { color: "#d9a538", label: "MARG.", icon: "alert", bg: "rgba(217,165,56,0.12)" },
     bad: { color: "#d13a3a", label: "NO APTO", icon: "x", bg: "rgba(209,58,58,0.12)" },
   };
@@ -57,13 +57,13 @@ export function ForecastChart({
               }}
             >
               {isToday && (
-                <span style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 3, background: "#4f9d52" }} />
+                <span style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 3, background: "#768f44" }} />
               )}
               <div
                 style={{
                   fontSize: 12,
                   fontWeight: isToday ? 800 : 700,
-                  color: isToday ? "#4f9d52" : "var(--mc-ink)",
+                  color: isToday ? "#768f44" : "var(--mc-ink)",
                   letterSpacing: "0.04em",
                 }}
               >

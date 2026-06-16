@@ -32,13 +32,13 @@ export interface LoteGeo {
 
 /* Polígonos del mapa (fiel al Figma) */
 export const LOTES_GEO: LoteGeo[] = [
-  { id: "L-01", points: "100,60 280,70 305,200 90,190", labelX: 190, labelY: 130, labelFill: "#0a3d1a" },
+  { id: "L-01", points: "100,60 280,70 305,200 90,190", labelX: 190, labelY: 130, labelFill: "#38491f" },
   { id: "L-02", points: "305,200 90,190 80,310 295,320", labelX: 190, labelY: 250, labelFill: "white" },
-  { id: "L-03", points: "305,75 540,90 555,230 305,200", labelX: 420, labelY: 155, labelFill: "#0a3d1a" },
-  { id: "L-04", points: "555,230 305,200 295,320 545,340", labelX: 420, labelY: 270, labelFill: "#0a3d1a" },
-  { id: "L-05", points: "545,340 295,320 290,440 540,460", labelX: 420, labelY: 395, labelFill: "#0a3d1a" },
-  { id: "L-06", points: "540,90 700,100 685,250 555,230", labelX: 610, labelY: 170, labelFill: "#0a3d1a" },
-  { id: "L-07", points: "685,250 540,230 540,360 690,380", labelX: 610, labelY: 320, labelFill: "#0a3d1a" },
+  { id: "L-03", points: "305,75 540,90 555,230 305,200", labelX: 420, labelY: 155, labelFill: "#38491f" },
+  { id: "L-04", points: "555,230 305,200 295,320 545,340", labelX: 420, labelY: 270, labelFill: "#38491f" },
+  { id: "L-05", points: "545,340 295,320 290,440 540,460", labelX: 420, labelY: 395, labelFill: "#38491f" },
+  { id: "L-06", points: "540,90 700,100 685,250 555,230", labelX: 610, labelY: 170, labelFill: "#38491f" },
+  { id: "L-07", points: "685,250 540,230 540,360 690,380", labelX: 610, labelY: 320, labelFill: "#38491f" },
   { id: "L-08", points: "690,380 540,360 540,480 695,490", labelX: 610, labelY: 430, labelFill: "white" },
 ];
 
@@ -47,21 +47,21 @@ export const GEO_METRICAS: Record<
   string,
   { cultivoColor: string | null; ndvi: number; hum: number; topo: number; vacio: boolean }
 > = {
-  "L-01": { cultivoColor: "#4f9d52", ndvi: 0.78, hum: 72, topo: 145, vacio: false },
+  "L-01": { cultivoColor: "#768f44", ndvi: 0.78, hum: 72, topo: 145, vacio: false },
   "L-02": { cultivoColor: "#5fae62", ndvi: 0.71, hum: 64, topo: 130, vacio: false },
   "L-03": { cultivoColor: "#d9a538", ndvi: 0.62, hum: 48, topo: 165, vacio: false },
   "L-04": { cultivoColor: "#a88032", ndvi: 0.55, hum: 42, topo: 195, vacio: false },
-  "L-05": { cultivoColor: "#9ecf8c", ndvi: 0.68, hum: 58, topo: 210, vacio: false },
+  "L-05": { cultivoColor: "#aabd76", ndvi: 0.68, hum: 58, topo: 210, vacio: false },
   "L-06": { cultivoColor: null, ndvi: 0.42, hum: 30, topo: 240, vacio: true },
   "L-07": { cultivoColor: "#d9a538", ndvi: 0.74, hum: 68, topo: 175, vacio: false },
   "L-08": { cultivoColor: "#5fae62", ndvi: 0.66, hum: 55, topo: 120, vacio: false },
 };
 
 export const CULTIVO_COLORES: Record<string, string> = {
-  Soja: "#4f9d52",
+  Soja: "#768f44",
   Maíz: "#d9a538",
   Trigo: "#a88032",
-  Alfalfa: "#9ecf8c",
+  Alfalfa: "#aabd76",
   Girasol: "#e8b94a",
   Trébol: "#7bc77e",
 };

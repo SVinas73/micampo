@@ -58,7 +58,7 @@ export interface GanttEvent {
 }
 
 export const FALLBACK_EVENTS: GanttEvent[] = [
-  { titulo: "Siembra Lote 3", inicio: 0, dur: 2, color: "#4f9d52", icon: "sprout" },
+  { titulo: "Siembra Lote 3", inicio: 0, dur: 2, color: "#768f44", icon: "sprout" },
   { titulo: "Pulverización N1", inicio: 0, dur: 1, color: "#e7892b", icon: "flask" },
   { titulo: "Retira Conaprole", inicio: 1, dur: 1, color: "#2c7ad9", icon: "truck" },
   { titulo: "Riego Sector A", inicio: 2, dur: 4, color: "#3aa6d9", icon: "droplet" },
@@ -67,7 +67,7 @@ export const FALLBACK_EVENTS: GanttEvent[] = [
 ];
 
 export const LABOR_COLORS: Record<string, { color: string; icon: string }> = {
-  Siembra: { color: "#4f9d52", icon: "sprout" },
+  Siembra: { color: "#768f44", icon: "sprout" },
   Cosecha: { color: "#d9a538", icon: "wrench" },
   Pulverización: { color: "#e7892b", icon: "flask" },
   Fertilización: { color: "#8a6dbb", icon: "leaf" },

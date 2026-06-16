@@ -266,7 +266,7 @@ const COND_LLUVIA = [
   { key: "Viento Fuerte", color: "#e7892b", icon: "wind" },
   { key: "Actividad Eléctrica", color: "#7c3aed", icon: "bolt" },
   { key: "Torrencial / Lavado", color: "#2c82c9", icon: "droplet" },
-  { key: "Lluvia Mansa (Efectiva)", color: "#4f9d52", icon: "cloud" },
+  { key: "Lluvia Mansa (Efectiva)", color: "#768f44", icon: "cloud" },
   { key: "Caminos Intransitables", color: "#92400e", icon: "truck" },
 ];
 
@@ -476,7 +476,7 @@ export function ReportarAlertaModal({
   onSave: (r: AlertaResult) => void;
 }) {
   const SEVERIDADES = [
-    { key: "Leve", color: "#4f9d52" },
+    { key: "Leve", color: "#768f44" },
     { key: "Moderado", color: "#d9a538" },
     { key: "Severo - Daño", color: "#c93434" },
   ];

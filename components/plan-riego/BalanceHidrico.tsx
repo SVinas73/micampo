@@ -194,7 +194,7 @@ export default function BalanceHidrico({
         ))}
 
         {days.map((d, i) => (
-          <text key={d + i} x={padL + i * dx} y={H - padB + 22} fontSize="11" fontFamily="var(--ff-ui)" fontWeight={i === 0 ? "800" : "600"} fill={i === 0 ? "#4f9d52" : "var(--mc-ink)"} textAnchor="middle">{d}</text>
+          <text key={d + i} x={padL + i * dx} y={H - padB + 22} fontSize="11" fontFamily="var(--ff-ui)" fontWeight={i === 0 ? "800" : "600"} fill={i === 0 ? "#768f44" : "var(--mc-ink)"} textAnchor="middle">{d}</text>
         ))}
       </svg>
 

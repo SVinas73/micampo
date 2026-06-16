@@ -292,15 +292,15 @@ function AnimResumen({ total, onVerSanidad }: { total: number; onVerSanidad: () 
             <svg viewBox="0 0 400 180" width="100%" height="100%" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="rodeoGrad" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0" stopColor="#0a5a24" stopOpacity="0.25" />
-                  <stop offset="1" stopColor="#0a5a24" stopOpacity="0" />
+                  <stop offset="0" stopColor="#4a5e29" stopOpacity="0.25" />
+                  <stop offset="1" stopColor="#4a5e29" stopOpacity="0" />
                 </linearGradient>
               </defs>
               {[30, 60, 90, 120, 150].map((y) => <line key={y} x1="0" y1={y} x2="400" y2={y} stroke="#e6e8e4" />)}
               <path d="M0,120 L50,115 L100,108 L150,100 L200,95 L250,88 L300,75 L350,68 L400,60 L400,180 L0,180 Z" fill="url(#rodeoGrad)" />
-              <path d="M0,120 L50,115 L100,108 L150,100 L200,95 L250,88 L300,75 L350,68 L400,60" fill="none" stroke="#0a5a24" strokeWidth="2.5" />
+              <path d="M0,120 L50,115 L100,108 L150,100 L200,95 L250,88 L300,75 L350,68 L400,60" fill="none" stroke="#4a5e29" strokeWidth="2.5" />
               {[0, 50, 100, 150, 200, 250, 300, 350, 400].map((x, i) => (
-                <circle key={i} cx={x} cy={[120, 115, 108, 100, 95, 88, 75, 68, 60][i]} r="3.5" fill="white" stroke="#0a5a24" strokeWidth="2" />
+                <circle key={i} cx={x} cy={[120, 115, 108, 100, 95, 88, 75, 68, 60][i]} r="3.5" fill="white" stroke="#4a5e29" strokeWidth="2" />
               ))}
             </svg>
           </div>
@@ -621,7 +621,7 @@ function AnimPeso({ animales, toast }: { animales: AnimalRow[]; toast: ReturnTyp
         <div style={{ height: 240, position: "relative" }}>
           <svg viewBox="0 0 400 220" width="100%" height="100%" preserveAspectRatio="none">
             {[30, 80, 130, 180].map((y) => <line key={y} x1="0" y1={y} x2="400" y2={y} stroke="#e6e8e4" />)}
-            <path d="M0,160 C60,155 120,140 180,130 C240,120 300,105 400,85" fill="none" stroke="#00A738" strokeWidth="3" />
+            <path d="M0,160 C60,155 120,140 180,130 C240,120 300,105 400,85" fill="none" stroke="#5e7733" strokeWidth="3" />
             <path d="M0,140 C60,135 120,130 180,120 C240,110 300,95 400,70" fill="none" stroke="#D45812" strokeWidth="3" />
             <path d="M0,180 C60,170 120,160 180,150 C240,140 300,125 400,110" fill="none" stroke="#c48410" strokeWidth="3" />
           </svg>
