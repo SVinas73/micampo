@@ -51,17 +51,22 @@ export interface AgregarCampoData {
 }
 
 export function AgregarCampoModal({
-  titulo = "Crear Nuevo Establecimiento",
+  titulo,
   onClose,
   onConfirm,
+  defaultHectareas,
+  dibujadoEnMapa = false,
 }: {
   titulo?: string;
   onClose: () => void;
   onConfirm: (data: AgregarCampoData) => Promise<void> | void;
+  defaultHectareas?: number;
+  dibujadoEnMapa?: boolean;
 }) {
+  const tituloFinal = titulo ?? (dibujadoEnMapa ? "Nuevo lote dibujado en el mapa" : "Crear Nuevo Establecimiento");
   const [nombre, setNombre] = useState("");
   const [ubicacion, setUbicacion] = useState("");
-  const [hectareas, setHectareas] = useState("100");
+  const [hectareas, setHectareas] = useState(defaultHectareas != null ? String(defaultHectareas) : "100");
   const [tenencia, setTenencia] = useState<"propio" | "arrendado">("propio");
   const [valor, setValor] = useState("");
   const [moneda, setMoneda] = useState("USD/Ha");
@@ -82,7 +87,7 @@ export function AgregarCampoModal({
         <div style={{ padding: "22px 28px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
           <div>
             <div style={{ fontSize: 11, color: "var(--mc-muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Agricultura · Campo Digital · Lotes</div>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--mc-ink)" }}>{titulo}</h3>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--mc-ink)" }}>{tituloFinal}</h3>
           </div>
           <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 34, height: 34, cursor: "pointer", color: "#64748b", fontSize: 17, display: "grid", placeItems: "center", flexShrink: 0 }}>
             <Icon name="x" size={15} />
