@@ -97,7 +97,7 @@ export default function TabDeteccion() {
       <button className="mc-btn mc-btn--primary" onClick={() => { setSub("Análisis (IA)"); setTimeout(() => fileRef.current?.click(), 100); }}>
         <Icon name="upload" size={14} />Cargar Imagen de Lote
       </button>
-      <button className="mc-btn" style={{ background: "#e7892b", color: "white" }} onClick={() => setReportarOpen(true)}>
+      <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setReportarOpen(true)}>
         <Icon name="alert" size={14} />Reportar Plaga
       </button>
     </>,

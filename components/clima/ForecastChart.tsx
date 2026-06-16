@@ -135,8 +135,8 @@ export function ForecastChart({
             <stop offset="100%" stopColor="#2c82c9" stopOpacity="0.85" />
           </linearGradient>
           <linearGradient id="fcMaxArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e7892b" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#e7892b" stopOpacity="0" />
+            <stop offset="0%" stopColor="#c08a22" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#c08a22" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="fcMinArea" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#3aa6d9" stopOpacity="0.14" />
@@ -179,7 +179,7 @@ export function ForecastChart({
         />
         <polyline
           fill="none"
-          stroke="#e7892b"
+          stroke="#c08a22"
           strokeWidth="2.8"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -190,7 +190,7 @@ export function ForecastChart({
           const x = i * 100 + 50;
           return (
             <g key={`d${i}`}>
-              <circle cx={x} cy={tY(d.max)} r="6" fill="#e7892b" stroke="white" strokeWidth="2" filter="url(#fcDotShadow)" />
+              <circle cx={x} cy={tY(d.max)} r="6" fill="#c08a22" stroke="white" strokeWidth="2" filter="url(#fcDotShadow)" />
               <circle cx={x} cy={tY(d.min)} r="5" fill="#3aa6d9" stroke="white" strokeWidth="2" filter="url(#fcDotShadow)" />
             </g>
           );

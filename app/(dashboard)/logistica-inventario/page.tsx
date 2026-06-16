@@ -1361,7 +1361,7 @@ export default function LogisticaInventarioPage() {
                       <XAxis dataKey="categoria" />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="cantidad" fill="#3b82f6" />
+                      <Bar dataKey="cantidad" fill="#2c6bb8" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -1396,7 +1396,7 @@ export default function LogisticaInventarioPage() {
                             return `${name}: ${(percent * 100).toFixed(0)}%`;
                         }}
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill="#768f44"
                         dataKey="value"
                       >
                         {Object.keys(
@@ -1408,7 +1408,7 @@ export default function LogisticaInventarioPage() {
                           <Cell
                             key={`cell-${index}`}
                             fill={
-                              ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"][
+                              ["#2c6bb8", "#5e7733", "#d9a538", "#c93434", "#64748b"][
                                 index % 5
                               ]
                             }

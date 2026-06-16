@@ -39,7 +39,7 @@ export function RadarMap() {
           <defs>
             <radialGradient id="storm1" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#ff3030" stopOpacity="0.8" />
-              <stop offset="50%" stopColor="#e7892b" stopOpacity="0.6" />
+              <stop offset="50%" stopColor="#c08a22" stopOpacity="0.6" />
               <stop offset="100%" stopColor="#d9a538" stopOpacity="0.2" />
             </radialGradient>
             <radialGradient id="storm2" cx="50%" cy="50%" r="50%">

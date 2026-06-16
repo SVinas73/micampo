@@ -94,7 +94,7 @@ export function NuevaSiembraModal({
               <label className="mc-label">Responsable</label>
               <div className="row gap-4">
                 {["JP", "MG", "CL"].map((r, i) => (
-                  <div key={r} style={{ width: 32, height: 32, borderRadius: "50%", background: ["#5E8F78", "#d9a538", "#e7892b"][i], color: "white", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, marginLeft: i > 0 ? -8 : 0, border: "2px solid var(--mc-surface)" }}>{r}</div>
+                  <div key={r} style={{ width: 32, height: 32, borderRadius: "50%", background: ["#5E8F78", "#d9a538", "#c08a22"][i], color: "white", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, marginLeft: i > 0 ? -8 : 0, border: "2px solid var(--mc-surface)" }}>{r}</div>
                 ))}
                 <span className="text-xs text-muted" style={{ marginLeft: 6 }}>Equipo de Siembra</span>
               </div>

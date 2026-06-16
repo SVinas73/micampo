@@ -161,7 +161,7 @@ export default function RegistrarRiegoModal({
                       </div>
                       <div style={{ background: "#dbeafe", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#1e40af", display: "flex", gap: 6, alignItems: "center" }}>
                         <IABadge /> Evita estrés severo · {s.motivo}
-                        <span style={{ marginLeft: "auto", color: "#16a34a", fontWeight: 700, whiteSpace: "nowrap" }}>${s.costoUSD} USD</span>
+                        <span style={{ marginLeft: "auto", color: "#5e7733", fontWeight: 700, whiteSpace: "nowrap" }}>${s.costoUSD} USD</span>
                       </div>
                     </div>
                   ))}

@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         restricciones: restricciones ? JSON.stringify(restricciones) : null,
         rendimientoPromedio: rendimientoPromedio ? parseFloat(rendimientoPromedio) : null,
         observaciones: observaciones || null,
-        color: color || "#3b82f6",
+        color: color || "#2c6bb8",
         userId: session.user.id,
       },
       include: {

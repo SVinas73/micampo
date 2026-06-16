@@ -467,22 +467,22 @@ function GanaderiaAvanzadaPage() {
     {
       name: "Bajo",
       value: diagnosticos.filter((d) => d.riesgo === "Bajo").length,
-      color: "#22c55e",
+      color: "#768f44",
     },
     {
       name: "Medio",
       value: diagnosticos.filter((d) => d.riesgo === "Medio").length,
-      color: "#eab308",
+      color: "#d9a538",
     },
     {
       name: "Alto",
       value: diagnosticos.filter((d) => d.riesgo === "Alto").length,
-      color: "#f97316",
+      color: "#d9a538",
     },
     {
       name: "Crítico",
       value: diagnosticos.filter((d) => d.riesgo === "Crítico").length,
-      color: "#ef4444",
+      color: "#c93434",
     },
   ].filter((d) => d.value > 0);
 
@@ -603,7 +603,7 @@ function GanaderiaAvanzadaPage() {
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill="#768f44"
                         dataKey="value"
                         label
                       >

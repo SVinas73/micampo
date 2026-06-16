@@ -132,7 +132,7 @@ export function NuevaOrdenLaborModal({
               <button className={prioridad === "Normal" ? "is-on" : ""} onClick={() => setPrioridad("Normal")}>[ Normal ]</button>
               <button
                 className={prioridad === "Urgente" ? "is-on" : ""}
-                style={prioridad === "Urgente" ? { background: "#e7892b", color: "white" } : undefined}
+                style={prioridad === "Urgente" ? { background: "#c08a22", color: "white" } : undefined}
                 onClick={() => setPrioridad("Urgente")}
               >
                 [ <Icon name="bolt" size={13} /> Urgente ]
