@@ -17,24 +17,22 @@ import { demo } from "@/lib/demo";
 
 const TABS = ["Inicio", "Alertas", "Registro de Lluvias"];
 
+type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; deltaT: number; aptoPulverizacion: boolean; icono: string; descripcion: string };
+type ClimaDia = { nombre: string; num: number; esHoy: boolean; icono: string; max: number; min: number; mm: number; probLluvia: number; viento: number };
+type ClimaData = { actual: ClimaActual; dias: ClimaDia[]; ubicacion?: { nombre?: string } };
+
+// Aptitud de pulverización por día (a partir del viento máximo del día)
+const ventDeViento = (v: number): "ok" | "warn" | "bad" => (v <= 15 ? "ok" : v <= 25 ? "warn" : "bad");
+function climaADias(clima: ClimaData | null): DayForecast[] {
+  if (!clima) return [];
+  return clima.dias.map((d) => ({ d: `${d.esHoy ? "HOY" : d.nombre.toUpperCase()} ${d.num}`, num: d.num, ic: d.icono, max: d.max, min: d.min, mm: d.mm, vent: ventDeViento(d.viento) }));
+}
+
 const DEMO_LOTES: LoteOpt[] = [
   { nombre: "Lote 1 - El Bajo", ha: 70 },
   { nombre: "Lote 2 - Norte", ha: 120 },
   { nombre: "Lote 4 - Sur", ha: 85 },
   { nombre: "Lote 7 - La Loma", ha: 95 },
-];
-
-const FORECAST_DAYS: DayForecast[] = [
-  { d: "HOY 21", num: 21, ic: "sun", max: 31, min: 19, mm: 0, vent: "ok" },
-  { d: "JUE 22", num: 22, ic: "cloud", max: 28, min: 17, mm: 0, vent: "warn" },
-  { d: "VIE 23", num: 23, ic: "droplet", max: 22, min: 15, mm: 25, vent: "ok" },
-  { d: "SÁB 24", num: 24, ic: "cloud", max: 19, min: 13, mm: 15, vent: "ok" },
-  { d: "DOM 25", num: 25, ic: "cloud", max: 21, min: 14, mm: 5, vent: "warn" },
-  { d: "LUN 26", num: 26, ic: "droplet", max: 25, min: 16, mm: 3, vent: "ok" },
-  { d: "MAR 27", num: 27, ic: "cloud", max: 27, min: 17, mm: 10, vent: "warn" },
-  { d: "MIÉ 28", num: 28, ic: "cloud", max: 29, min: 18, mm: 0, vent: "bad" },
-  { d: "JUE 29", num: 29, ic: "sun", max: 32, min: 20, mm: 0, vent: "bad" },
-  { d: "VIE 30", num: 30, ic: "droplet", max: 30, min: 19, mm: 0, vent: "ok" },
 ];
 
 export default function ClimaPage() {
@@ -59,6 +57,7 @@ function ClimaInner() {
   const [lluvias, setLluvias] = useState<LluviaRow[]>(demo(DEMO_LLUVIAS, []));
   const [alertas, setAlertas] = useState<AlertaRow[]>(demo(DEMO_ALERTAS, []));
   const [editLluvia, setEditLluvia] = useState<LluviaRow | null>(null);
+  const [clima, setClima] = useState<ClimaData | null>(null);
 
   useEffect(() => {
     fetch("/api/lotes")
@@ -66,6 +65,9 @@ function ClimaInner() {
       .then((d) => {
         if (Array.isArray(d) && d.length > 0)
           setLotes(d.map((l: { id: string; nombre: string; hectareas: number }) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas })));
+        const loc = Array.isArray(d) ? d.find((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud) : null;
+        const q = loc ? `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}` : "";
+        fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
       })
       .catch(() => {});
 
@@ -257,14 +259,14 @@ function ClimaInner() {
       <Tabs tabs={TABS} active={tab} onChange={setTab} warnTabs={["Alertas"]} />
 
       <div className="grid g-cols-5">
-        <KPI label="Temperatura" value={demo("28.6 °C", "—")} delta={demo("Sensación 30°", "—")} trend="up" icon="thermometer" accent />
-        <KPI label="Viento" value={demo("18 km/h", "—")} delta={demo("NE · ráfagas 25", "—")} trend="up" icon="wind" />
-        <KPI label="Delta T" value={demo("5", "—")} delta={demo("Apto pulverizar", "—")} trend="up" icon="activity" />
-        <KPI label="Lluvias últ. 7 días" value={demo("40 mm", "—")} delta={demo("vs prom 28 mm", "—")} trend="up" icon="droplet" />
+        <KPI label="Temperatura" value={clima ? `${clima.actual.temperatura} °C` : "—"} delta={clima ? `Sensación ${clima.actual.sensacion}°` : "—"} trend="up" icon="thermometer" accent />
+        <KPI label="Viento" value={clima ? `${clima.actual.viento} km/h` : "—"} delta={clima ? `${clima.actual.vientoDir} · ráfagas ${clima.actual.rafaga}` : "—"} trend="up" icon="wind" />
+        <KPI label="Delta T" value={clima ? String(clima.actual.deltaT) : "—"} delta={clima ? (clima.actual.aptoPulverizacion ? "Apto pulverizar" : "Fuera de rango") : "—"} trend="up" icon="activity" />
+        <KPI label="Lluvia prevista 7d" value={clima ? `${Math.round(clima.dias.reduce((s, d) => s + d.mm, 0))} mm` : "—"} delta={clima ? "pronóstico" : "—"} trend="up" icon="droplet" />
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
 
-      {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} />}
+      {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} />}
       {tab === "Alertas" && <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />}
       {tab === "Registro de Lluvias" && (
         <ClimaLluvias lluvias={lluvias} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} />
@@ -302,14 +304,14 @@ function ClimaInner() {
 }
 
 /* ================= TAB INICIO ================= */
-function ClimaInicio({ onVerDetalle }: { onVerDetalle: (d: DayForecast) => void }) {
+function ClimaInicio({ onVerDetalle, dias, lugar }: { onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string }) {
   return (
     <>
       <div className="mc-card">
         <div className="mc-card__head">
           <div>
-            <div className="mc-card__eyebrow">Pronóstico extendido · Don Ramón, Pergamino</div>
-            <div className="mc-card__title mt-4">Próximos 10 días</div>
+            <div className="mc-card__eyebrow">Pronóstico Open-Meteo · {lugar}</div>
+            <div className="mc-card__title mt-4">Próximos {dias.length || 7} días</div>
           </div>
           <div className="row gap-12" style={{ alignItems: "center" }}>
             <div
@@ -333,7 +335,11 @@ function ClimaInicio({ onVerDetalle }: { onVerDetalle: (d: DayForecast) => void 
             </div>
           </div>
         </div>
-        <ForecastChart days={demo(FORECAST_DAYS, [])} onVerDetalle={onVerDetalle} />
+        {dias.length > 0 ? (
+          <ForecastChart days={dias} onVerDetalle={onVerDetalle} />
+        ) : (
+          <div className="mc-empty"><div className="mc-empty__icon"><Icon name="cloud" size={22} /></div>Cargando pronóstico…</div>
+        )}
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 1.3fr", gap: 14 }}>
