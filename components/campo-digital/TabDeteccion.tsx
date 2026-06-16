@@ -35,6 +35,9 @@ type AlertaInfo = {
   proy: string;
   recom: string;
   iaIcon?: boolean;
+  // Estrategia de control sugerida por IA (se completa cuando el motor de IA
+  // del sistema esté conectado; mientras tanto queda indefinida).
+  estrategia?: { producto: string; dosis: string; ventana: string; costo: string; analisis: string };
 };
 
 const ALERTAS_DEMO: AlertaInfo[] = [
@@ -231,7 +234,11 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
         </div>
 
         <div className="col gap-14">
-          <EstrategiaControl />
+          {(() => {
+            const rank = { red: 3, amber: 2, green: 1 } as const;
+            const prioritaria = [...alertas].sort((a, b) => rank[b.riesgoColor] - rank[a.riesgoColor])[0];
+            return prioritaria ? <EstrategiaControl alerta={prioritaria} /> : <EstrategiaVacia />;
+          })()}
           <Probabilidades />
         </div>
       </div>
@@ -239,7 +246,8 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
   );
 }
 
-function EstrategiaControl() {
+function EstrategiaControl({ alerta }: { alerta: AlertaInfo }) {
+  const e = alerta.estrategia;
   return (
     <div className="mc-card ia-card">
       <div className="mc-card__head">
@@ -251,28 +259,49 @@ function EstrategiaControl() {
         </div>
         <IABadge />
       </div>
-      <div className="text-xs text-muted">Estrategia de Control Sugerida</div>
-      <div className="font-semi mt-4" style={{ color: "var(--mc-ink)", fontSize: 16 }}>Fungicida (Triazol + Estrob.)</div>
-      <div className="text-xs text-muted">Tratamiento Prioritario para Roya</div>
+      <div className="text-xs text-muted">Tratamiento prioritario para {alerta.enfermedad}</div>
+      <div className="font-semi mt-4" style={{ color: "var(--mc-ink)", fontSize: 16 }}>{e?.producto || alerta.recom}</div>
+      <div className="text-xs text-muted">{alerta.lote} · {alerta.riesgo}</div>
       <div className="grid g-cols-3 gap-8 mt-12">
         <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: 16 }}><Icon name="droplet" size={16} /></div>
           <div className="text-xs text-muted">Dosis</div>
-          <div className="font-semi text-sm">400 cc/Ha</div>
+          <div className="font-semi text-sm">{e?.dosis || "—"}</div>
         </div>
         <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: 16 }}><Icon name="sun" size={16} /></div>
-          <div className="text-xs text-muted">Venta Óptima</div>
-          <div className="font-semi text-sm">Próx. 4hs</div>
+          <div className="text-xs text-muted">Ventana Óptima</div>
+          <div className="font-semi text-sm">{e?.ventana || "—"}</div>
         </div>
         <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
           <div style={{ display: "flex", justifyContent: "center" }}><Icon name="dollar" size={16} /></div>
           <div className="text-xs text-muted">Costo Estimado</div>
-          <div className="font-semi text-sm">$28/Ha</div>
+          <div className="font-semi text-sm">{e?.costo || "—"}</div>
         </div>
       </div>
       <div className="text-xs mt-8" style={{ padding: 8, background: "var(--mc-green-50)", borderRadius: 6, color: "var(--mc-text)" }}>
-        <span className="font-semi" style={{ color: "var(--mc-green-700)" }}>Análisis IA:</span> Eficacia contra la roya en ensayos de campo. La combinación Triazol + Estrobilurina ofrece control preventivo, curativo y antirresistencia.
+        <span className="font-semi" style={{ color: "var(--mc-green-700)" }}>Análisis IA:</span>{" "}
+        {e?.analisis || "La recomendación detallada se generará con el motor de IA al analizar esta detección."}
+      </div>
+    </div>
+  );
+}
+
+function EstrategiaVacia() {
+  return (
+    <div className="mc-card ia-card">
+      <div className="mc-card__head">
+        <div className="row gap-8" style={{ alignItems: "center" }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--mc-surface-3)", display: "grid", placeItems: "center", color: "var(--mc-text-3)" }}>
+            <Icon name="flask" size={15} />
+          </div>
+          <div className="mc-card__title">Estrategia de Control Sugerida</div>
+        </div>
+        <IABadge />
+      </div>
+      <div className="mc-empty" style={{ marginTop: 4 }}>
+        <div className="mc-empty__icon"><Icon name="shieldCheck" size={22} /></div>
+        Sin estrategia de control. Cuando se reporte o detecte una plaga, la IA sugiere acá el tratamiento, la dosis y la ventana de aplicación.
       </div>
     </div>
   );
