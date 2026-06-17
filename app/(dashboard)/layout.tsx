@@ -362,10 +362,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       <aside className="mc-sb">
         <div className="mc-sb__brand">
           <div className="mc-sb__logo">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3c-3 4-4 8-4 11a4 4 0 0 0 8 0c0-3-1-7-4-11z" />
-              <path d="M12 14v7" />
-            </svg>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.jpg" alt="MiCampo" />
           </div>
           <div>
             <div className="mc-sb__brand-name">MiCampo</div>
