@@ -63,6 +63,7 @@ function ClimaInner() {
   const [alertas, setAlertas] = useState<AlertaRow[]>(demo(DEMO_ALERTAS, []));
   const [editLluvia, setEditLluvia] = useState<LluviaRow | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
+  const [tieneCampo, setTieneCampo] = useState(false);
 
   useEffect(() => {
     fetch("/api/lotes")
@@ -71,6 +72,7 @@ function ClimaInner() {
         if (Array.isArray(d) && d.length > 0)
           setLotes(d.map((l: { id: string; nombre: string; hectareas: number }) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas })));
         const loc = Array.isArray(d) ? d.find((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud) : null;
+        if (loc) setTieneCampo(true);
         const q = loc ? `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}` : "";
         fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
       })
@@ -84,6 +86,7 @@ function ClimaInner() {
         setLluvias(
           d.map((r: { id: string; fecha: string; milimetros: number; lote?: { nombre: string }; ubicacion?: string; observaciones?: string }) => ({
             id: r.id,
+            fechaRaw: r.fecha,
             fecha: new Date(r.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) + " - " + new Date(r.fecha).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
             lugar: r.lote?.nombre || r.ubicacion || "Campo General",
             mm: r.milimetros,
@@ -139,6 +142,7 @@ function ClimaInner() {
 
     const nueva: LluviaRow = {
       id: realId,
+      fechaRaw: `${r.fecha}T${r.hora || "00:00"}`,
       fecha: new Date(`${r.fecha}T${r.hora || "00:00"}`).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) + " - " + (r.hora || ""),
       lugar: r.loteNombre,
       mm: r.mm,
@@ -271,7 +275,7 @@ function ClimaInner() {
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
 
-      {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -33.3} lon={clima?.ubicacion?.lon ?? -61.5} />}
+      {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -33.3} lon={clima?.ubicacion?.lon ?? -61.5} marcador={tieneCampo} />}
       {tab === "Alertas" && <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />}
       {tab === "Registro de Lluvias" && (
         <ClimaLluvias lluvias={lluvias} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} />
@@ -309,7 +313,7 @@ function ClimaInner() {
 }
 
 /* ================= TAB INICIO ================= */
-function ClimaInicio({ onVerDetalle, dias, lugar, horas, lat, lon }: { onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string; horas: HoraPulver[]; lat: number; lon: number }) {
+function ClimaInicio({ onVerDetalle, dias, lugar, horas, lat, lon, marcador }: { onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string; horas: HoraPulver[]; lat: number; lon: number; marcador: boolean }) {
   return (
     <>
       <div className="mc-card">
@@ -353,7 +357,7 @@ function ClimaInicio({ onVerDetalle, dias, lugar, horas, lat, lon }: { onVerDeta
             <div className="mc-card__title" style={{ fontSize: 14 }}>Radar de lluvia</div>
             <span className="text-xs text-muted">En vivo · RainViewer</span>
           </div>
-          <RadarReal lat={lat} lon={lon} />
+          <RadarReal lat={lat} lon={lon} marcador={marcador} />
         </div>
         <VentanaPulverizacion horas={horas} />
       </div>
@@ -480,7 +484,7 @@ function ClimaAlertas({ alertas, onGestionar }: { alertas: AlertaRow[]; onGestio
 
 /* ================= TAB REGISTRO DE LLUVIAS ================= */
 type Tag = { label: string; color: "amber" | "blue" | "red" | "green" | "neutral"; icon: string };
-type LluviaRow = { id?: string; fecha: string; lugar: string; mm: number; pct: number; tags: Tag[] };
+type LluviaRow = { id?: string; fechaRaw?: string; fecha: string; lugar: string; mm: number; pct: number; tags: Tag[] };
 
 const DEMO_LLUVIAS: LluviaRow[] = [
   { fecha: "22 Dic - 04:30 AM", lugar: "Campo El Amanecer (Lotes 1, 2)", mm: 45, pct: 85, tags: [{ label: "Granizo", color: "amber", icon: "alert" }, { label: "Torrencial", color: "blue", icon: "droplet" }] },
@@ -498,20 +502,33 @@ function ClimaLluvias({
   onEditar: (r: LluviaRow) => void;
 }) {
   const [scope, setScope] = useState<"30d" | "mensual" | "anual">("mensual");
-
-  const dataMonth = demo([85, 110, 130, 95, 60, 25, 15, 35, 55, 95, 120, 140], [] as number[]);
-  const histMonth = demo([90, 105, 118, 88, 72, 32, 18, 38, 62, 88, 115, 135], [] as number[]);
-  const data30 = demo([4, 0, 0, 12, 8, 0, 0, 20, 32, 0, 0, 0, 4, 0, 0, 0, 8, 12, 0, 0, 5, 18, 0, 0, 6, 0, 0, 14, 0, 22], [] as number[]);
-  const hist30 = demo([3, 2, 0, 9, 6, 0, 0, 18, 25, 0, 0, 0, 3, 0, 0, 0, 7, 10, 0, 0, 4, 15, 0, 0, 5, 0, 0, 11, 0, 18], [] as number[]);
-  const dataYear = demo([612, 720, 685, 850, 740, 680], [] as number[]);
-  const histYear = demo([590, 680, 710, 790, 760, 700], [] as number[]);
   const monthLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-  const yearLabels = ["2020", "2021", "2022", "2023", "2024", "2025"];
+
+  // Series y resumen calculados desde las lluvias reales registradas
+  const conFecha = lluvias.filter((l) => l.fechaRaw).map((l) => ({ d: new Date(l.fechaRaw as string), mm: l.mm }));
+  const hoyD = new Date();
+  const anioActual = hoyD.getFullYear();
+
+  const dataMonth = monthLabels.map((_, m) => conFecha.filter((x) => x.d.getFullYear() === anioActual && x.d.getMonth() === m).reduce((s, x) => s + x.mm, 0));
+  const data30 = Array.from({ length: 30 }).map((_, i) => {
+    const dia = new Date(hoyD); dia.setDate(hoyD.getDate() - (29 - i));
+    return conFecha.filter((x) => x.d.toDateString() === dia.toDateString()).reduce((s, x) => s + x.mm, 0);
+  });
+  const yearsBack = Array.from({ length: 6 }).map((_, i) => anioActual - 5 + i);
+  const dataYear = yearsBack.map((y) => conFecha.filter((x) => x.d.getFullYear() === y).reduce((s, x) => s + x.mm, 0));
+  const yearLabels = yearsBack.map(String);
 
   const dataset = scope === "30d" ? data30 : scope === "mensual" ? dataMonth : dataYear;
-  const histset = scope === "30d" ? hist30 : scope === "mensual" ? histMonth : histYear;
+  const histset: number[] = [];
   const labels = scope === "30d" ? null : scope === "mensual" ? monthLabels : yearLabels;
-  const max = Math.max(...dataset, ...histset, 1);
+  const max = Math.max(...dataset, 1);
+
+  // Resumen
+  const acumuladoAnio = Math.round(conFecha.filter((x) => x.d.getFullYear() === anioActual).reduce((s, x) => s + x.mm, 0));
+  const mesesConDatos = new Set(conFecha.filter((x) => x.d.getFullYear() === anioActual).map((x) => x.d.getMonth())).size;
+  const promedioMensual = mesesConDatos ? Math.round(acumuladoAnio / mesesConDatos) : 0;
+  const ultimaLluvia = conFecha.length ? conFecha.map((x) => x.d.getTime()).sort((a, b) => b - a)[0] : null;
+  const diasSinLluvia = ultimaLluvia ? Math.floor((hoyD.getTime() - ultimaLluvia) / 86400000) : null;
 
   return (
     <>
@@ -521,8 +538,8 @@ function ClimaLluvias({
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-blue-bg)", display: "grid", placeItems: "center", color: "var(--mc-blue)", flexShrink: 0 }}><Icon name="droplet" size={24} /></div>
             <div>
               <div className="text-xs text-muted">Acumulado del año</div>
-              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-blue)", fontWeight: 700, lineHeight: 1.1 }}>{demo("850 mm", "—")}</div>
-              <div className="text-xs mt-4" style={{ color: "var(--mc-green-700)", fontWeight: 600 }}>{demo("+15% vs año pasado", "—")}</div>
+              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-blue)", fontWeight: 700, lineHeight: 1.1 }}>{acumuladoAnio} mm</div>
+              <div className="text-xs mt-4 text-muted">Campaña {anioActual}</div>
             </div>
           </div>
         </div>
@@ -531,8 +548,8 @@ function ClimaLluvias({
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-blue-bg)", display: "grid", placeItems: "center", color: "var(--mc-blue)", flexShrink: 0 }}><Icon name="calendar" size={24} /></div>
             <div>
               <div className="text-xs text-muted">Promedio mensual</div>
-              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", fontWeight: 700, lineHeight: 1.1 }}>{demo("45 mm", "—")}</div>
-              <div className="text-xs mt-4 text-muted">{demo("Faltan 20 mm para promedio", "—")}</div>
+              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", fontWeight: 700, lineHeight: 1.1 }}>{promedioMensual} mm</div>
+              <div className="text-xs mt-4 text-muted">{mesesConDatos ? `Sobre ${mesesConDatos} ${mesesConDatos === 1 ? "mes" : "meses"} con registro` : "Sin registros"}</div>
             </div>
           </div>
         </div>
@@ -541,8 +558,8 @@ function ClimaLluvias({
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--mc-red-bg)", display: "grid", placeItems: "center", color: "var(--mc-red)", flexShrink: 0 }}><Icon name="clock" size={24} /></div>
             <div>
               <div className="text-xs text-muted">Días sin lluvia</div>
-              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-red)", fontWeight: 700, lineHeight: 1.1 }}>{demo("8 Días", "—")}</div>
-              <div className="text-xs mt-4" style={{ color: "var(--mc-red)", fontWeight: 600 }}>{demo("Suelo perdiendo humedad", "—")}</div>
+              <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-red)", fontWeight: 700, lineHeight: 1.1 }}>{diasSinLluvia != null ? `${diasSinLluvia} días` : "—"}</div>
+              <div className="text-xs mt-4 text-muted">{diasSinLluvia != null && diasSinLluvia >= 7 ? "Suelo perdiendo humedad" : "Desde el último registro"}</div>
             </div>
           </div>
         </div>
@@ -551,10 +568,9 @@ function ClimaLluvias({
       <div className="mc-card">
         <div className="mc-card__head">
           <div>
-            <div className="mc-card__title">Actual vs Histórico</div>
+            <div className="mc-card__title">Acumulado de lluvias</div>
             <div className="row gap-12 text-xs text-muted mt-4">
-              <span className="row gap-4"><span style={{ width: 14, height: 3, background: "var(--mc-blue)", borderRadius: 2, display: "inline-block" }} />Período actual</span>
-              <span className="row gap-4"><span style={{ width: 14, height: 0, borderTop: "2px dashed var(--mc-text-3)", display: "inline-block" }} />Histórico promedio</span>
+              <span className="row gap-4"><span style={{ width: 14, height: 3, background: "var(--mc-blue)", borderRadius: 2, display: "inline-block" }} />mm registrados</span>
             </div>
           </div>
           <div className="mc-seg">
@@ -563,6 +579,9 @@ function ClimaLluvias({
             <button className={scope === "anual" ? "is-on" : ""} onClick={() => setScope("anual")}>Anual</button>
           </div>
         </div>
+        {dataset.every((v) => v === 0) ? (
+          <div className="mc-empty"><div className="mc-empty__icon"><Icon name="droplet" size={22} /></div>Sin lluvias registradas en este período. Cargá un registro y el acumulado se grafica acá.</div>
+        ) : (
         <svg viewBox="0 0 1000 280" width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
           {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
             const y = 30 + 220 * (1 - t);
@@ -607,6 +626,7 @@ function ClimaLluvias({
             return <circle key={i} cx={x} cy={y} r="3" fill="var(--mc-text-3)" opacity="0.7" />;
           })}
         </svg>
+        )}
       </div>
 
       <div className="mc-card">

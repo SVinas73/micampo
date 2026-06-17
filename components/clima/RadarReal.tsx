@@ -12,7 +12,7 @@ import L from "leaflet";
 
 type Frame = { time: number; path: string };
 
-export default function RadarReal({ lat, lon }: { lat: number; lon: number }) {
+export default function RadarReal({ lat, lon, marcador = false }: { lat: number; lon: number; marcador?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const hostRef = useRef<string>("https://tilecache.rainviewer.com");
@@ -26,16 +26,18 @@ export default function RadarReal({ lat, lon }: { lat: number; lon: number }) {
   // Init mapa + carga de frames de RainViewer
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
-    const map = L.map(ref.current, { center: [lat, lon], zoom: 8, zoomControl: true, attributionControl: false });
+    const map = L.map(ref.current, { center: [lat, lon], zoom: 7, zoomControl: true, attributionControl: false });
     mapRef.current = map;
 
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       maxZoom: 19, attribution: "© OpenStreetMap, © CARTO",
     }).addTo(map);
 
-    L.circleMarker([lat, lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#c93434", fillOpacity: 1 })
-      .addTo(map)
-      .bindTooltip("Tu campo", { permanent: false });
+    if (marcador) {
+      L.circleMarker([lat, lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#c93434", fillOpacity: 1 })
+        .addTo(map)
+        .bindTooltip("Tu campo", { permanent: false });
+    }
 
     fetch("https://api.rainviewer.com/public/weather-maps.json")
       .then((r) => r.json())
@@ -62,7 +64,7 @@ export default function RadarReal({ lat, lon }: { lat: number; lon: number }) {
     if (!map || !frames.length) return;
     const f = frames[i];
     if (!layersRef.current[i]) {
-      layersRef.current[i] = L.tileLayer(`${hostRef.current}${f.path}/256/{z}/{x}/{y}/4/1_1.png`, { opacity: 0, maxZoom: 19, tileSize: 256 });
+      layersRef.current[i] = L.tileLayer(`${hostRef.current}${f.path}/256/{z}/{x}/{y}/4/1_1.png`, { opacity: 0, maxNativeZoom: 9, maxZoom: 19, tileSize: 256 });
       layersRef.current[i].addTo(map);
     }
     Object.entries(layersRef.current).forEach(([k, lyr]) => lyr.setOpacity(Number(k) === i ? 0.7 : 0));
