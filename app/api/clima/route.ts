@@ -45,6 +45,17 @@ function deltaT(t: number, rh: number): number {
   return Math.max(0, Math.round((t - tw) * 10) / 10);
 }
 
+// Aptitud de pulverización a partir de viento (km/h) y ΔT
+function pulverEstado(w: number, dt: number): { label: string; nivel: "ok" | "warn" | "bad" } {
+  if (w < 3) return { label: "Inv. térmica", nivel: "warn" };
+  if (w >= 25) return { label: "No apto", nivel: "bad" };
+  if (w >= 20) return { label: "Riesgo mod.", nivel: "warn" };
+  if (dt < 2 || dt > 10) return { label: "ΔT fuera", nivel: "warn" };
+  if (w <= 15 && dt >= 2 && dt <= 8) return { label: "Óptimo", nivel: "ok" };
+  if (w <= 15) return { label: "Bueno", nivel: "ok" };
+  return { label: "Marginal", nivel: "warn" };
+}
+
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -60,6 +71,7 @@ export async function GET(request: Request) {
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,` +
       `wind_speed_10m,wind_direction_10m,wind_gusts_10m,dew_point_2m,surface_pressure` +
+      `&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,` +
       `precipitation_probability_max,wind_speed_10m_max,et0_fao_evapotranspiration` +
       `&timezone=auto&forecast_days=7`;
@@ -109,6 +121,25 @@ export async function GET(request: Request) {
       };
     });
 
+    // Ventana de pulverización por hora (próximas 6h) a partir del pronóstico horario
+    const h = data.hourly;
+    const ahora = new Date();
+    let startIdx = 0;
+    if (Array.isArray(h?.time)) {
+      const idx = (h.time as string[]).findIndex((t) => new Date(t).getTime() >= ahora.getTime() - 30 * 60000);
+      startIdx = idx >= 0 ? idx : 0;
+    }
+    const horas = Array.from({ length: 6 }).map((_, k) => {
+      const i = startIdx + k;
+      const t = h?.temperature_2m?.[i] ?? actual.temperatura;
+      const rh = h?.relative_humidity_2m?.[i] ?? actual.humedad;
+      const w = Math.round(h?.wind_speed_10m?.[i] ?? actual.viento);
+      const dt = deltaT(t, rh);
+      const estado = pulverEstado(w, dt);
+      const hora = h?.time?.[i] ? new Date(h.time[i]).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "";
+      return { hora, viento: w, deltaT: dt, estado: estado.label, nivel: estado.nivel };
+    });
+
     // Alertas agronómicas derivadas
     const alertas: { tipo: string; severidad: string; mensaje: string; recomendacion: string }[] = [];
     if (actual.temperatura <= 3) alertas.push({ tipo: "Riesgo de helada", severidad: "Crítica", mensaje: `Temperatura ${actual.temperatura}°C`, recomendacion: "Proteger cultivos sensibles y asegurar agua para el ganado." });
@@ -121,6 +152,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       actual,
       dias,
+      horas,
       alertas,
       ubicacion: { lat: Number(lat), lon: Number(lon), nombre: data.timezone || "Campo" },
       actualizado: new Date().toISOString(),

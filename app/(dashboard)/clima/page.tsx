@@ -1,11 +1,16 @@
 "use client";
 
 import React, { Suspense, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
 import { ForecastChart, type DayForecast } from "@/components/clima/ForecastChart";
-import { RadarMap } from "@/components/clima/RadarMap";
-import { VentanaPulverizacion } from "@/components/clima/VentanaPulverizacion";
+import { VentanaPulverizacion, type HoraPulver } from "@/components/clima/VentanaPulverizacion";
+
+const RadarReal = dynamic(() => import("@/components/clima/RadarReal"), {
+  ssr: false,
+  loading: () => <div style={{ height: 300, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>Cargando radar…</div>,
+});
 import {
   RegistrarLluviaModal,
   ReportarAlertaModal,
@@ -19,7 +24,7 @@ const TABS = ["Inicio", "Alertas", "Registro de Lluvias"];
 
 type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; deltaT: number; aptoPulverizacion: boolean; icono: string; descripcion: string };
 type ClimaDia = { nombre: string; num: number; esHoy: boolean; icono: string; max: number; min: number; mm: number; probLluvia: number; viento: number };
-type ClimaData = { actual: ClimaActual; dias: ClimaDia[]; ubicacion?: { nombre?: string } };
+type ClimaData = { actual: ClimaActual; dias: ClimaDia[]; horas?: HoraPulver[]; ubicacion?: { nombre?: string; lat?: number; lon?: number } };
 
 // Aptitud de pulverización por día (a partir del viento máximo del día)
 const ventDeViento = (v: number): "ok" | "warn" | "bad" => (v <= 15 ? "ok" : v <= 25 ? "warn" : "bad");
@@ -256,7 +261,7 @@ function ClimaInner() {
           </>
         }
       />
-      <Tabs tabs={TABS} active={tab} onChange={setTab} warnTabs={["Alertas"]} />
+      <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
       <div className="grid g-cols-5">
         <KPI label="Temperatura" value={clima ? `${clima.actual.temperatura} °C` : "—"} delta={clima ? `Sensación ${clima.actual.sensacion}°` : "—"} trend="up" icon="thermometer" accent />
@@ -266,7 +271,7 @@ function ClimaInner() {
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
 
-      {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} />}
+      {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -33.3} lon={clima?.ubicacion?.lon ?? -61.5} />}
       {tab === "Alertas" && <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />}
       {tab === "Registro de Lluvias" && (
         <ClimaLluvias lluvias={lluvias} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} />
@@ -304,7 +309,7 @@ function ClimaInner() {
 }
 
 /* ================= TAB INICIO ================= */
-function ClimaInicio({ onVerDetalle, dias, lugar }: { onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string }) {
+function ClimaInicio({ onVerDetalle, dias, lugar, horas, lat, lon }: { onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string; horas: HoraPulver[]; lat: number; lon: number }) {
   return (
     <>
       <div className="mc-card">
@@ -343,8 +348,14 @@ function ClimaInicio({ onVerDetalle, dias, lugar }: { onVerDetalle: (d: DayForec
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 1.3fr", gap: 14 }}>
-        <RadarMap />
-        <VentanaPulverizacion />
+        <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="mc-card__head" style={{ padding: "12px 16px", margin: 0, borderBottom: "1px solid var(--mc-line)" }}>
+            <div className="mc-card__title" style={{ fontSize: 14 }}>Radar de lluvia</div>
+            <span className="text-xs text-muted">En vivo · RainViewer</span>
+          </div>
+          <RadarReal lat={lat} lon={lon} />
+        </div>
+        <VentanaPulverizacion horas={horas} />
       </div>
     </>
   );
