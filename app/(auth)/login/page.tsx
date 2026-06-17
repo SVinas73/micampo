@@ -47,7 +47,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpg" alt="MiCampo" className="w-14 h-14 rounded-xl object-cover shadow-md" />
+            <img src="/logo.png" alt="MiCampo" className="h-24 w-auto object-contain" />
           </div>
           <CardTitle className="text-2xl text-center">MiCampo</CardTitle>
           <CardDescription className="text-center">

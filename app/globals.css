@@ -397,21 +397,37 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .mc-sb__brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px 14px 8px;
+  gap: 6px;
+  padding: 10px 8px 16px 8px;
   margin-bottom: 6px;
 }
+/* Logo completo integrado al fondo del sidebar (sin caja) */
+.mc-sb__logo-full {
+  width: 100%;
+  max-width: 210px;
+  height: auto;
+  max-height: 88px;
+  object-fit: contain;
+  display: block;
+}
+.mc-sb__estab {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+/* Caja de logo legacy (pantallas que aún la usen) */
 .mc-sb__logo {
   width: 38px; height: 38px;
   border-radius: 10px;
-  background: #fff;
   display: grid; place-items: center;
   overflow: hidden;
   flex: 0 0 auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
-.mc-sb__logo img { width: 100%; height: 100%; object-fit: cover; }
+.mc-sb__logo img { width: 100%; height: 100%; object-fit: contain; }
 .mc-sb__brand-name {
   font-family: var(--ff-display);
   font-size: 22px;
@@ -571,20 +587,21 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   inset: 0;
   background-size: cover;
   background-position: center;
-  filter: brightness(0.9);
-  opacity: 0.55;
+  filter: brightness(0.82);
+  opacity: 0.62;
   z-index: -2;
 }
+/* Velo: lienzo + un tinte oscuro suave para que el fondo quede un poco más oscuro */
 .mc-main[data-modulo]::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--mc-bg);
-  opacity: 0.9;
+  background: linear-gradient(rgba(20, 28, 16, 0.14), rgba(20, 28, 16, 0.14)), var(--mc-bg);
+  opacity: 0.74;
   z-index: -1;
 }
-:root[data-theme="dark"] .mc-main[data-modulo]::before { opacity: 0.32; }
-:root[data-theme="dark"] .mc-main[data-modulo]::after  { opacity: 0.88; }
+:root[data-theme="dark"] .mc-main[data-modulo]::before { opacity: 0.4; }
+:root[data-theme="dark"] .mc-main[data-modulo]::after  { opacity: 0.82; }
 
 .mc-main[data-modulo="inicio"]::before         { background-image: url("/modulos/Agriculture.jpg"); }
 .mc-main[data-modulo="agricultura"]::before    { background-image: url("/modulos/agricultura.jpg"); }
