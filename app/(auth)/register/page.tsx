@@ -60,9 +60,8 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-2xl font-bold">MC</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.jpg" alt="MiCampo" className="w-14 h-14 rounded-xl object-cover shadow-md" />
           </div>
           <CardTitle className="text-2xl text-center">Crear Cuenta</CardTitle>
           <CardDescription className="text-center">
