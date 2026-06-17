@@ -64,6 +64,7 @@ function ClimaInner() {
   const [editLluvia, setEditLluvia] = useState<LluviaRow | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
   const [tieneCampo, setTieneCampo] = useState(false);
+  const [histLluvia, setHistLluvia] = useState<{ promedioMensual: number[]; promedioAnual: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/lotes")
@@ -75,6 +76,7 @@ function ClimaInner() {
         if (loc) setTieneCampo(true);
         const q = loc ? `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}` : "";
         fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
+        fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistLluvia(h); }).catch(() => {});
       })
       .catch(() => {});
 
@@ -278,7 +280,7 @@ function ClimaInner() {
       {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -33.3} lon={clima?.ubicacion?.lon ?? -61.5} marcador={tieneCampo} />}
       {tab === "Alertas" && <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />}
       {tab === "Registro de Lluvias" && (
-        <ClimaLluvias lluvias={lluvias} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} />
+        <ClimaLluvias lluvias={lluvias} historico={histLluvia} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} />
       )}
 
       <Modal
@@ -494,10 +496,12 @@ const DEMO_LLUVIAS: LluviaRow[] = [
 
 function ClimaLluvias({
   lluvias,
+  historico,
   onRegistrar,
   onEditar,
 }: {
   lluvias: LluviaRow[];
+  historico: { promedioMensual: number[]; promedioAnual: number } | null;
   onRegistrar: () => void;
   onEditar: (r: LluviaRow) => void;
 }) {
@@ -519,9 +523,12 @@ function ClimaLluvias({
   const yearLabels = yearsBack.map(String);
 
   const dataset = scope === "30d" ? data30 : scope === "mensual" ? dataMonth : dataYear;
-  const histset: number[] = [];
+  const histset =
+    scope === "mensual" && historico ? historico.promedioMensual :
+    scope === "anual" && historico ? yearsBack.map(() => historico.promedioAnual) :
+    [];
   const labels = scope === "30d" ? null : scope === "mensual" ? monthLabels : yearLabels;
-  const max = Math.max(...dataset, 1);
+  const max = Math.max(...dataset, ...histset, 1);
 
   // Resumen
   const acumuladoAnio = Math.round(conFecha.filter((x) => x.d.getFullYear() === anioActual).reduce((s, x) => s + x.mm, 0));
@@ -529,6 +536,9 @@ function ClimaLluvias({
   const promedioMensual = mesesConDatos ? Math.round(acumuladoAnio / mesesConDatos) : 0;
   const ultimaLluvia = conFecha.length ? conFecha.map((x) => x.d.getTime()).sort((a, b) => b - a)[0] : null;
   const diasSinLluvia = ultimaLluvia ? Math.floor((hoyD.getTime() - ultimaLluvia) / 86400000) : null;
+  // Comparación con el promedio histórico (acumulado del año a la fecha)
+  const histAcumALaFecha = historico ? historico.promedioMensual.slice(0, hoyD.getMonth() + 1).reduce((s, v) => s + v, 0) : 0;
+  const pctVsHist = historico && histAcumALaFecha > 0 ? Math.round(((acumuladoAnio - histAcumALaFecha) / histAcumALaFecha) * 100) : null;
 
   return (
     <>
@@ -539,7 +549,13 @@ function ClimaLluvias({
             <div>
               <div className="text-xs text-muted">Acumulado del año</div>
               <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-blue)", fontWeight: 700, lineHeight: 1.1 }}>{acumuladoAnio} mm</div>
-              <div className="text-xs mt-4 text-muted">Campaña {anioActual}</div>
+              {pctVsHist != null ? (
+                <div className="text-xs mt-4" style={{ color: pctVsHist >= 0 ? "var(--mc-green-700)" : "var(--mc-red)", fontWeight: 600 }}>
+                  {pctVsHist >= 0 ? "+" : ""}{pctVsHist}% vs promedio histórico
+                </div>
+              ) : (
+                <div className="text-xs mt-4 text-muted">Campaña {anioActual}</div>
+              )}
             </div>
           </div>
         </div>
@@ -568,9 +584,10 @@ function ClimaLluvias({
       <div className="mc-card">
         <div className="mc-card__head">
           <div>
-            <div className="mc-card__title">Acumulado de lluvias</div>
+            <div className="mc-card__title">Acumulado de lluvias{historico ? " vs histórico" : ""}</div>
             <div className="row gap-12 text-xs text-muted mt-4">
               <span className="row gap-4"><span style={{ width: 14, height: 3, background: "var(--mc-blue)", borderRadius: 2, display: "inline-block" }} />mm registrados</span>
+              {histset.length > 0 && <span className="row gap-4"><span style={{ width: 14, height: 0, borderTop: "2px dashed var(--mc-text-3)", display: "inline-block" }} />Promedio histórico (10 años)</span>}
             </div>
           </div>
           <div className="mc-seg">
@@ -579,7 +596,7 @@ function ClimaLluvias({
             <button className={scope === "anual" ? "is-on" : ""} onClick={() => setScope("anual")}>Anual</button>
           </div>
         </div>
-        {dataset.every((v) => v === 0) ? (
+        {dataset.every((v) => v === 0) && histset.length === 0 ? (
           <div className="mc-empty"><div className="mc-empty__icon"><Icon name="droplet" size={22} /></div>Sin lluvias registradas en este período. Cargá un registro y el acumulado se grafica acá.</div>
         ) : (
         <svg viewBox="0 0 1000 280" width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
