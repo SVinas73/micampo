@@ -328,7 +328,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "var(--mc-bg)" }}>
         <div style={{ textAlign: "center" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.jpg" alt="MiCampo" style={{ width: 180, maxWidth: "70vw", height: "auto", objectFit: "contain", margin: "0 auto 14px", display: "block" }} />
+          <img src="/logo.png" alt="MiCampo" style={{ width: 180, maxWidth: "70vw", height: "auto", objectFit: "contain", margin: "0 auto 14px", display: "block" }} />
           <p style={{ color: "var(--mc-text-2)", fontSize: 14 }}>Cargando MiCampo...</p>
         </div>
       </div>
@@ -361,7 +361,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       <aside className="mc-sb">
         <div className="mc-sb__brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.jpg" alt="MiCampo" className="mc-sb__logo-full" />
+          <img src="/logo.png" alt="MiCampo" className="mc-sb__logo-full" />
           <div className="mc-sb__estab">Est. Don Ramón</div>
         </div>
 
