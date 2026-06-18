@@ -17,6 +17,8 @@ import { Icon, Modal, Field, useToast } from "@/components/mc";
 
 const MC_OLIVE = "#5e7733", MC_OLIVE_L = "#8ea65a", MC_GOLD = "#d9a538", MC_GOLD_D = "#c08a22";
 
+const capitalizar = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
 type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; presion: number; deltaT: number; aptoPulverizacion: boolean; icono: string; descripcion: string };
 type ClimaDia = { nombre: string; num: number; esHoy: boolean; icono: string; max: number; min: number; mm: number; probLluvia: number; viento: number; et0: number };
 type ClimaData = { actual: ClimaActual; dias: ClimaDia[]; ubicacion?: { nombre?: string } };
@@ -409,6 +411,8 @@ export default function InicioPage() {
   const [cultivos, setCultivos] = useState<{ label: string; ha: string; pct: number; color: string }[] | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
   const [climaLugar, setClimaLugar] = useState("Tu campo");
+  const [laboresPend, setLaboresPend] = useState(0);
+  const [laboresAtr, setLaboresAtr] = useState(0);
 
   useEffect(() => {
     fetch("/api/dashboard/inicio").then((r) => (r.ok ? r.json() : null)).then((d) => {
@@ -440,6 +444,8 @@ export default function InicioPage() {
       if (!Array.isArray(d) || d.length === 0) return;
       const pend = d.filter((l: { estado?: string }) => l.estado && l.estado !== "Completada").length;
       const atr = d.filter((l: { estado?: string }) => l.estado === "Atrasada").length;
+      setLaboresPend(pend);
+      setLaboresAtr(atr);
       if (pend > 0) setKpiValues((p) => ({ ...p, labores: { value: String(pend), delta: `${atr} atrasadas` } }));
     }).catch(() => {});
 
@@ -476,6 +482,24 @@ export default function InicioPage() {
 
   const nombre = session?.user?.name?.split(" ")[0] || "productor";
   const hoy = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+
+  // Resumen del día, conectado a datos reales (labores + clima)
+  const subtitulo = (() => {
+    const partes: string[] = [`Hoy es ${hoy}`];
+    if (laboresPend > 0) {
+      partes.push(`tenés ${laboresPend} ${laboresPend === 1 ? "labor programada" : "labores programadas"}${laboresAtr > 0 ? `, ${laboresAtr} atrasada${laboresAtr > 1 ? "s" : ""}` : ""}`);
+    } else {
+      partes.push("no tenés labores pendientes");
+    }
+    const manana = clima?.dias?.[1];
+    if (manana && (manana.mm >= 1 || manana.probLluvia >= 50)) {
+      partes.push(`lluvia prevista mañana (${manana.probLluvia}%)`);
+    }
+    // Une con comas y la última con "y"
+    if (partes.length === 1) return partes[0] + ".";
+    if (partes.length === 2) return `${partes[0]}. ${capitalizar(partes[1])}.`;
+    return `${partes[0]}. ${capitalizar(partes[1])} y ${partes[2]}.`;
+  })();
 
   const crearLabor = async () => {
     if (!laborForm.loteId && lotes.length === 0) { toast.show("Creá un lote primero en Campo Digital", "err"); return; }
@@ -519,7 +543,7 @@ export default function InicioPage() {
         <div>
           <div className="mc-crumbs"><span>MiCampo</span><span className="sep">/</span><strong>Inicio</strong></div>
           <h1 className="mc-title">Buen día, {nombre}.</h1>
-          <div className="mc-subtitle">Hoy es {hoy}. Tenés 3 labores programadas, 1 atrasada y lluvia prevista mañana.</div>
+          <div className="mc-subtitle">{subtitulo}</div>
         </div>
         <span className="mc-badge mc-badge--green" style={{ padding: "6px 12px" }}><span className="mc-badge__dot" />Campaña 2025/26 en curso</span>
       </div>
