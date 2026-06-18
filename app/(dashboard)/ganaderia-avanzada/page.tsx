@@ -682,20 +682,20 @@ function GanaderiaAvanzadaPage() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Gestión Nutricional</h2>
             <div className="flex gap-2">
-              <Button
+              <button
                 onClick={() => setAnalisisNutricionDialogOpen(true)}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="mc-btn mc-btn--primary"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
+                <Sparkles className="h-4 w-4" />
                 Análisis IA
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => setNutricionDialogOpen(true)}
-                className="bg-green-600 hover:bg-green-700"
+                className="mc-btn mc-btn--primary"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 Nuevo Plan
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -788,13 +788,13 @@ function GanaderiaAvanzadaPage() {
         <TabsContent value="reproduccion" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Análisis Reproductivo</h2>
-            <Button
+            <button
               onClick={() => setAnalisisReproductivoDialogOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="mc-btn mc-btn--primary"
             >
-              <BarChart3 className="h-4 w-4 mr-2" />
+              <BarChart3 className="h-4 w-4" />
               Generar Análisis
-            </Button>
+            </button>
           </div>
 
           {analisisReproductivos.length === 0 ? (
@@ -805,12 +805,12 @@ function GanaderiaAvanzadaPage() {
                   <p className="text-gray-600 mb-4">
                     No hay análisis reproductivos generados
                   </p>
-                  <Button
+                  <button
                     onClick={() => setAnalisisReproductivoDialogOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700"            
+                    className="mc-btn mc-btn--primary"
                   >
                     Generar Primer Análisis
-                  </Button>
+                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -887,13 +887,13 @@ function GanaderiaAvanzadaPage() {
         <TabsContent value="alertas" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Alertas Sanitarias</h2>
-            <Button
+            <button
               onClick={() => setAlertaDialogOpen(true)}
-              className="bg-orange-600 hover:bg-orange-700"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nueva Alerta
-            </Button>
+            </button>
           </div>
 
           <Card>
