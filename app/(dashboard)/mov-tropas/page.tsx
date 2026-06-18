@@ -15,6 +15,7 @@ type Mov = {
   est: string;
   tone: string;
   r: string;
+  ts?: number;
 };
 
 const DEMO_MOVS: Mov[] = [
@@ -54,17 +55,23 @@ function MovTropasInner() {
       .then((d) => {
         if (!Array.isArray(d) || d.length === 0) return;
         setMovs(
-          d.map((m: { fecha: string; tipoMovimiento?: string; origenNombre?: string; destinoNombre?: string }) => ({
-            f: new Date(m.fecha).toLocaleDateString("es-AR"),
-            t: m.tipoMovimiento === "Venta" ? "Venta" : m.tipoMovimiento === "Ingreso" ? "Compra" : "Interno",
-            o: m.origenNombre || "—",
-            d: m.destinoNombre || "—",
-            n: 1,
-            dte: "—",
-            est: "Completado",
-            tone: "green",
-            r: "—",
-          }))
+          d.map((m: { fecha: string; tipoMovimiento?: string; origenNombre?: string; destinoNombre?: string; observaciones?: string }) => {
+            const obs = m.observaciones || "";
+            const cab = parseInt((obs.match(/(\d+)\s*cabezas/i) || [])[1] || "1");
+            const resp = (obs.match(/Resp:\s*([^·]+)/i) || [])[1]?.trim() || "—";
+            return {
+              f: new Date(m.fecha).toLocaleDateString("es-AR"),
+              t: m.tipoMovimiento === "Venta" ? "Venta" : m.tipoMovimiento === "Ingreso" ? "Compra" : "Interno",
+              o: m.origenNombre || "—",
+              d: m.destinoNombre || "—",
+              n: cab,
+              dte: "—",
+              est: "Completado",
+              tone: "green",
+              r: resp,
+              ts: new Date(m.fecha).getTime(),
+            };
+          })
         );
       })
       .catch(() => {});
@@ -85,6 +92,7 @@ function MovTropasInner() {
       est: "Pendiente DT-e",
       tone: "orange",
       r: form.responsable || "—",
+      ts: new Date(form.fecha).getTime(),
     };
     // Persistencia mejor-esfuerzo: el modelo MovimientoAnimal es por animal;
     // los movimientos de tropa se registran en bloque y se documentan vía DT-e.
@@ -194,68 +202,90 @@ function MovTropasInner() {
 
 /* ============ RESUMEN (Figma) ============ */
 function MovResumen({ movs }: { movs: Mov[] }) {
-  const [periodo, setPeriodo] = useState("Último mes");
   const totalCab = movs.reduce((s, m) => s + m.n, 0);
   const pendientes = movs.filter((m) => m.est !== "Completado").length;
+  const ahora = new Date();
+  const movsMes = movs.filter((m) => m.ts && new Date(m.ts).getMonth() === ahora.getMonth() && new Date(m.ts).getFullYear() === ahora.getFullYear()).length;
+
+  const short = (s: string) => s.split("·")[0].trim();
+  // Nodos (ubicaciones) y aristas agregadas (origen→destino) reales
+  const nodos = Array.from(new Set(movs.flatMap((m) => [short(m.o), short(m.d)]))).filter(Boolean);
+  const pos: Record<string, { x: number; y: number }> = {};
+  nodos.forEach((nm, i) => {
+    const a = (i / Math.max(1, nodos.length)) * 2 * Math.PI - Math.PI / 2;
+    pos[nm] = { x: 300 + 215 * Math.cos(a), y: 180 + 115 * Math.sin(a) };
+  });
+  const edgeMap = new Map<string, { o: string; d: string; n: number; venta: boolean }>();
+  movs.forEach((m) => {
+    const k = `${short(m.o)}|${short(m.d)}`;
+    const e = edgeMap.get(k) || { o: short(m.o), d: short(m.d), n: 0, venta: m.t === "Venta" };
+    e.n += m.n;
+    edgeMap.set(k, e);
+  });
+  const edges = Array.from(edgeMap.values()).filter((e) => pos[e.o] && pos[e.d] && e.o !== e.d);
+  const cabPorNodo: Record<string, number> = {};
+  movs.forEach((m) => { cabPorNodo[short(m.o)] = (cabPorNodo[short(m.o)] || 0) + m.n; cabPorNodo[short(m.d)] = (cabPorNodo[short(m.d)] || 0) + m.n; });
+
   return (
     <>
       <div className="grid g-cols-4">
-        <KPI label="Movs. este mes" value={String(movs.length)} delta={demo("+3 vs mes pasado", "—")} trend="up" icon="route" accent />
-        <KPI label="Cabezas movidas" value={totalCab.toLocaleString("es-AR")} delta={demo("5 destinos", "—")} trend="up" icon="truck" />
+        <KPI label="Movs. este mes" value={String(movsMes)} delta={`${movs.length} en total`} trend="up" icon="route" accent />
+        <KPI label="Cabezas movidas" value={totalCab.toLocaleString("es-AR")} delta={`${nodos.length} ubicaciones`} trend="up" icon="truck" />
         <KPI label="DT-e emitidos" value={String(movs.length - pendientes)} delta={`${pendientes} pendiente firma`} trend="warn" icon="edit" />
-        <KPI label="Km recorridos" value={demo("1,240", "0")} delta={demo("Transporte propio", "—")} trend="up" icon="map" />
+        <KPI label="Tipos de movimiento" value={String(new Set(movs.map((m) => m.t)).size)} delta="interno · venta · compra" trend="up" icon="map" />
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1.4fr 1fr", gap: 14 }}>
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Mapa de movimientos</div>
-            <div className="mc-seg">
-              {["Último mes", "Trimestre", "Año"].map((p) => (
-                <button key={p} className={periodo === p ? "is-on" : ""} onClick={() => setPeriodo(p)}>{p}</button>
-              ))}
-            </div>
+            <span className="text-xs text-muted">{edges.length} rutas · {nodos.length} ubicaciones</span>
           </div>
-          <div className="mc-map" style={{ minHeight: 360 }}>
-            <div className="mc-map__grid"></div>
-            <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox="0 0 600 360" preserveAspectRatio="none">
-              <g>
-                <circle cx="140" cy="120" r="22" fill="var(--mc-green-600)" stroke="white" strokeWidth="3" />
-                <text x="140" y="125" textAnchor="middle" fontSize="11" fill="white" fontWeight="600">D.R.</text>
-                <text x="140" y="155" textAnchor="middle" fontSize="10" fill="#38491f">Don Ramón</text>
-
-                <circle cx="430" cy="90" r="22" fill="var(--mc-orange-600)" stroke="white" strokeWidth="3" />
-                <text x="430" y="95" textAnchor="middle" fontSize="11" fill="white" fontWeight="600">L.E.</text>
-                <text x="430" y="125" textAnchor="middle" fontSize="10" fill="#38491f">La Esperanza</text>
-
-                <circle cx="320" cy="250" r="18" fill="var(--mc-amber)" stroke="white" strokeWidth="3" />
-                <text x="320" y="254" textAnchor="middle" fontSize="10" fill="white" fontWeight="600">LF</text>
-                <text x="320" y="280" textAnchor="middle" fontSize="10" fill="#38491f">Liniers</text>
-
-                <circle cx="510" cy="280" r="16" fill="var(--mc-blue)" stroke="white" strokeWidth="3" />
-                <text x="510" y="284" textAnchor="middle" fontSize="10" fill="white" fontWeight="600">FR</text>
-                <text x="510" y="308" textAnchor="middle" fontSize="10" fill="#38491f">Frigorífico</text>
-              </g>
-              <defs>
-                <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                  <path d="M0,0 L0,6 L9,3 z" fill="var(--mc-orange-600)" />
-                </marker>
-              </defs>
-              <path d="M160,120 Q280,60 410,90" stroke="var(--mc-orange-600)" strokeWidth="2.5" fill="none" strokeDasharray="5,4" markerEnd="url(#arrow)" />
-              <path d="M145,140 Q200,220 305,245" stroke="var(--mc-orange-600)" strokeWidth="2.5" fill="none" strokeDasharray="5,4" markerEnd="url(#arrow)" />
-              <path d="M430,110 Q490,200 508,265" stroke="var(--mc-orange-600)" strokeWidth="2.5" fill="none" strokeDasharray="5,4" markerEnd="url(#arrow)" />
-            </svg>
-            <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(255,255,255,0.92)", padding: "8px 10px", borderRadius: 8, fontSize: 11 }}>
-              <div className="row gap-4 mb-4"><div style={{ width: 10, height: 10, background: "var(--mc-green-600)", borderRadius: "50%" }}></div>Origen</div>
-              <div className="row gap-4 mb-4"><div style={{ width: 10, height: 10, background: "var(--mc-orange-600)", borderRadius: "50%" }}></div>Destino</div>
-              <div className="row gap-4"><div style={{ width: 10, height: 10, background: "var(--mc-blue)", borderRadius: "50%" }}></div>Venta</div>
+          {movs.length === 0 ? (
+            <div className="mc-empty" style={{ minHeight: 360 }}>
+              <div className="mc-empty__icon"><Icon name="route" size={22} /></div>
+              Sin movimientos registrados. Registrá un movimiento y el mapa de flujos aparece acá.
             </div>
-          </div>
+          ) : (
+            <div className="mc-map" style={{ minHeight: 360 }}>
+              <div className="mc-map__grid"></div>
+              <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox="0 0 600 360" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <marker id="movArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="var(--mc-green-700)" /></marker>
+                  <marker id="movArrowV" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="var(--mc-blue)" /></marker>
+                </defs>
+                {edges.map((e, i) => {
+                  const a = pos[e.o], b = pos[e.d];
+                  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 24;
+                  const w = Math.max(1.5, Math.min(6, e.n / 20));
+                  return (
+                    <g key={i}>
+                      <path d={`M${a.x},${a.y} Q${mx},${my} ${b.x},${b.y}`} stroke={e.venta ? "var(--mc-blue)" : "var(--mc-green-700)"} strokeWidth={w} fill="none" opacity="0.7" markerEnd={e.venta ? "url(#movArrowV)" : "url(#movArrow)"} />
+                      <text x={mx} y={my + 4} fontSize="10" fontFamily="var(--ff-mono)" fontWeight="700" fill={e.venta ? "var(--mc-blue)" : "var(--mc-green-700)"} textAnchor="middle">{e.n}</text>
+                    </g>
+                  );
+                })}
+                {nodos.map((nm, i) => {
+                  const p = pos[nm];
+                  const r = Math.max(16, Math.min(26, 14 + (cabPorNodo[nm] || 0) / 30));
+                  const iniciales = nm.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+                  return (
+                    <g key={i}>
+                      <circle cx={p.x} cy={p.y} r={r} fill="var(--mc-green-600)" stroke="white" strokeWidth="3" />
+                      <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize="11" fill="white" fontWeight="700">{iniciales}</text>
+                      <text x={p.x} y={p.y + r + 14} textAnchor="middle" fontSize="10" fill="var(--mc-ink)" fontWeight="600">{nm.length > 18 ? nm.slice(0, 17) + "…" : nm}</text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+          )}
         </div>
 
         <div className="mc-card">
           <div className="mc-card__head"><div className="mc-card__title">Últimos movimientos</div></div>
           <div className="col gap-8">
+            {movs.length === 0 && <div className="mc-empty"><div className="mc-empty__icon"><Icon name="route" size={20} /></div>Sin movimientos aún.</div>}
             {movs.slice(0, 4).map((m, i) => (
               <div key={i} style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10 }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
@@ -314,6 +344,9 @@ function MovGestion({ movs, onNuevo }: { movs: Mov[]; onNuevo: () => void }) {
           <tr><th>Fecha</th><th>Tipo</th><th>Origen</th><th>Destino</th><th className="mc-cell--num">Cab.</th><th>DT-e</th><th>Estado</th><th>Responsable</th></tr>
         </thead>
         <tbody>
+          {visibles.length === 0 && (
+            <tr><td colSpan={8}><div className="mc-empty" style={{ margin: 8 }}><div className="mc-empty__icon"><Icon name="route" size={20} /></div>Sin movimientos. Registrá uno con &quot;Nuevo movimiento&quot;.</div></td></tr>
+          )}
           {visibles.map((r, i) => (
             <tr key={i}>
               <td className="mc-cell--mono">{r.f}</td>

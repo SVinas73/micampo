@@ -890,6 +890,23 @@ function AnimNutricion({ toast }: { toast: ReturnType<typeof useToast> }) {
 function AnimRepro({ animales, toast }: { animales: AnimalRow[]; toast: ReturnType<typeof useToast> }) {
   const [evento, setEvento] = useState<string | null>(null);
   const [form, setForm] = useState({ caravana: "", fecha: new Date().toISOString().slice(0, 10), notas: "" });
+  const [eventos, setEventos] = useState<{ tipo: string; fecha: string; caravana?: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/eventos-reproductivos").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d)) return;
+      setEventos(d.map((e: { tipo?: string; fecha: string; animal?: { caravana?: string } }) => ({ tipo: e.tipo || "Evento", fecha: e.fecha, caravana: e.animal?.caravana })));
+    }).catch(() => {});
+  }, []);
+
+  const cuenta = (t: string) => eventos.filter((e) => (e.tipo || "").toLowerCase().includes(t)).length;
+  const hace30 = Date.now() - 30 * 86400000;
+  const partos30 = eventos.filter((e) => (e.tipo || "").toLowerCase().includes("parto") && new Date(e.fecha).getTime() >= hace30).length;
+  const servicios = cuenta("servicio");
+  const tactos = cuenta("tacto");
+  const partosTot = cuenta("parto");
+  const hembras = animales.filter((a) => a.sexo === "H").length;
+  const prenezPct = servicios > 0 ? Math.round((tactos / servicios) * 100) : null;
 
   const registrar = async () => {
     if (!form.caravana) {
@@ -905,6 +922,7 @@ function AnimRepro({ animales, toast }: { animales: AnimalRow[]; toast: ReturnTy
           body: JSON.stringify({ animalId: animal.dbId, tipo: evento, fecha: form.fecha, observaciones: form.notas }),
         }).catch(() => {});
       }
+      setEventos((prev) => [{ tipo: evento || "Evento", fecha: form.fecha, caravana: form.caravana }, ...prev]);
       toast.show(`${evento} registrado para caravana ${form.caravana}`);
       setEvento(null);
       setForm({ ...form, caravana: "", notas: "" });
@@ -916,37 +934,45 @@ function AnimRepro({ animales, toast }: { animales: AnimalRow[]; toast: ReturnTy
   return (
     <div className="col gap-16">
       <div className="grid g-cols-5 gap-16">
-        <KPI label="Vientres servicio" value={demo("412", "0")} delta={demo("Tropa A + Vaquillonas", "—")} trend="up" icon="heart" accent />
-        <KPI label="Preñez confirmada" value={demo("78%", "—")} delta={demo("Tacto 60 días", "—")} trend="up" icon="check" />
-        <KPI label="Partos últimos 30d" value={demo("42", "0")} delta={demo("2 distócicos", "—")} trend="up" icon="cow" />
-        <KPI label="Terneros vivos" value={demo("284", "0")} delta={demo("Mortalidad 2.1%", "—")} trend="up" icon="egg" />
-        <KPI label="Días al parto (prom.)" value={demo("45 días", "—")} delta={demo("Pico calving oct/nov", "—")} trend="warn" icon="calendar" />
+        <KPI label="Hembras del rodeo" value={String(hembras)} delta={hembras ? "potenciales vientres" : "—"} trend="up" icon="heart" accent />
+        <KPI label="Servicios registrados" value={String(servicios)} delta={servicios ? "en el rodeo" : "—"} trend="up" icon="heart" />
+        <KPI label="Preñez (tacto/servicio)" value={prenezPct != null ? `${prenezPct}%` : "—"} delta={`${tactos} tactos`} trend="up" icon="check" />
+        <KPI label="Partos últimos 30d" value={String(partos30)} delta={`${partosTot} en total`} trend="up" icon="cow" />
+        <KPI label="Eventos registrados" value={String(eventos.length)} delta="reproductivos" trend="up" icon="calendar" />
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <div className="mc-card">
           <div className="mc-card__head"><div className="mc-card__title">Calendario reproductivo</div></div>
-          <div className="col gap-12">
-            {[
-              { etapa: "Servicio", periodo: "Dic 2025 – Mar 2026", estado: "Completado", pct: 100, color: "var(--mc-green-500)" },
-              { etapa: "Tacto rectal", periodo: "Abr – May 2026", estado: "En curso", pct: 62, color: "var(--mc-orange-500)" },
-              { etapa: "Parición", periodo: "Sep – Dic 2026", estado: "Pendiente", pct: 0, color: "var(--mc-text-3)" },
-              { etapa: "Destete", periodo: "Mar – Abr 2027", estado: "Pendiente", pct: 0, color: "var(--mc-text-3)" },
-            ].map((e, i) => (
-              <div key={i} style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10 }}>
-                <div className="row" style={{ justifyContent: "space-between" }}>
-                  <div>
-                    <div className="font-semi" style={{ color: "var(--mc-ink)" }}>{e.etapa}</div>
-                    <div className="text-xs text-muted">{e.periodo}</div>
+          {eventos.length === 0 ? (
+            <div className="mc-empty"><div className="mc-empty__icon"><Icon name="heart" size={22} /></div>Sin eventos reproductivos registrados. Registrá celos, servicios, tactos y partos con los botones de la derecha.</div>
+          ) : (
+            <>
+              <div className="grid g-cols-3 gap-8" style={{ marginBottom: 12 }}>
+                {[
+                  { t: "Servicio", c: cuenta("servicio"), color: "var(--mc-green-600)" },
+                  { t: "Tacto", c: cuenta("tacto"), color: "var(--mc-gold-500)" },
+                  { t: "Parto", c: cuenta("parto"), color: "var(--mc-green-700)" },
+                  { t: "Celo", c: cuenta("celo"), color: "var(--mc-red)" },
+                  { t: "Aborto", c: cuenta("aborto"), color: "var(--mc-red)" },
+                  { t: "Destete", c: cuenta("destete"), color: "var(--mc-amber)" },
+                ].filter((x) => x.c > 0).map((x) => (
+                  <div key={x.t} style={{ padding: 10, border: "1px solid var(--mc-line)", borderRadius: 10 }}>
+                    <div className="text-xs text-muted">{x.t}</div>
+                    <div style={{ fontFamily: "var(--ff-display)", fontSize: 24, color: x.color, lineHeight: 1, marginTop: 2 }}>{x.c}</div>
                   </div>
-                  <Badge tone={e.estado === "Completado" ? "green" : e.estado === "En curso" ? "orange" : "neutral"}>{e.estado}</Badge>
-                </div>
-                <div className="mc-prog mt-8">
-                  <div className="mc-prog__bar" style={{ width: `${e.pct}%`, background: e.color }}></div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+              <div className="col gap-6">
+                {eventos.slice(0, 6).map((e, i) => (
+                  <div key={i} className="row" style={{ justifyContent: "space-between", padding: "8px 10px", border: "1px solid var(--mc-line)", borderRadius: 8, fontSize: 13 }}>
+                    <span className="row gap-8" style={{ alignItems: "center" }}><Icon name="heart" size={13} style={{ color: "var(--mc-green-700)" }} /><span className="font-semi" style={{ color: "var(--mc-ink)" }}>{e.tipo}</span>{e.caravana && <span className="text-muted text-xs">· caravana {e.caravana}</span>}</span>
+                    <span className="text-muted text-xs font-mono">{new Date(e.fecha).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="mc-card">
