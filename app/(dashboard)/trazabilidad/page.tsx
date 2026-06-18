@@ -188,10 +188,10 @@ export default function TrazabilidadPage() {
         </div>
         <Dialog open={registroDialogOpen} onOpenChange={setRegistroDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700">
-              <Plus className="h-4 w-4 mr-2" />
+            <button className="mc-btn mc-btn--primary">
+              <Plus className="h-4 w-4" />
               Nuevo Producto
-            </Button>
+            </button>
           </DialogTrigger>
           <DialogContent>
             <form onSubmit={handleCreateRegistro}>

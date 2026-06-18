@@ -712,6 +712,34 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background: var(--mc-orange-600);
 }
 
+/* ---------- Tabs (shadcn) igualadas al estilo .mc-tabs del sistema ---------- */
+[data-slot="tabs-list"] {
+  background: var(--mc-surface-3);
+  border: 1px solid var(--mc-line);
+  border-radius: var(--r-pill);
+  height: auto;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px;
+  gap: 2px;
+  overflow-x: auto;
+}
+[data-slot="tabs-trigger"] {
+  border-radius: var(--r-pill);
+  color: var(--mc-text-2);
+  font-weight: 500;
+  font-size: 13.5px;
+  padding: 7px 16px;
+  height: auto;
+  flex: 0 0 auto;
+}
+[data-slot="tabs-trigger"]:hover { color: var(--mc-ink); }
+[data-slot="tabs-trigger"][data-state="active"] {
+  background: var(--mc-surface);
+  color: var(--mc-ink);
+  box-shadow: var(--sh-sm);
+}
+
 /* ---------- Buttons (rediseñados: fills planos, sin bisel) ---------- */
 .mc-btn {
   display: inline-flex;

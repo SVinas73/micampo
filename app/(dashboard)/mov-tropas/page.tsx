@@ -1,9 +1,16 @@
 "use client";
 
 import React, { Suspense, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, Badge, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
 import { demo } from "@/lib/demo";
+
+type LoteGeo = { nombre: string; lat: number; lng: number };
+const MovMapaGeo = dynamic(() => import("@/components/mov-tropas/MovMapaGeo"), {
+  ssr: false,
+  loading: () => <div style={{ minHeight: 360, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>Cargando mapa…</div>,
+});
 
 type Mov = {
   f: string;
@@ -39,6 +46,8 @@ function MovTropasInner() {
   const toast = useToast();
   const [tab, setTab] = useState("Resumen");
   const [movs, setMovs] = useState<Mov[]>(demo(DEMO_MOVS, []));
+  const [lotesGeo, setLotesGeo] = useState<LoteGeo[]>([]);
+  const [loteNames, setLoteNames] = useState<string[]>([]);
   const [modal, setModal] = useState(searchParams.get("modal") === "nuevo");
   const [form, setForm] = useState({
     fecha: new Date().toISOString().slice(0, 10),
@@ -73,6 +82,15 @@ function MovTropasInner() {
             };
           })
         );
+      })
+      .catch(() => {});
+
+    fetch("/api/lotes")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!Array.isArray(d)) return;
+        setLoteNames(d.map((l: { nombre: string }) => l.nombre).filter(Boolean));
+        setLotesGeo(d.filter((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud).map((l: { nombre: string; centroLatitud: number; centroLongitud: number }) => ({ nombre: l.nombre, lat: l.centroLatitud, lng: l.centroLongitud })));
       })
       .catch(() => {});
   }, []);
@@ -152,7 +170,7 @@ function MovTropasInner() {
         }
       />
       <Tabs tabs={["Resumen", "Gestión"]} active={tab} onChange={setTab} />
-      {tab === "Resumen" && <MovResumen movs={movs} />}
+      {tab === "Resumen" && <MovResumen movs={movs} lotesGeo={lotesGeo} />}
       {tab === "Gestión" && <MovGestion movs={movs} onNuevo={() => setModal(true)} />}
 
       <Modal
@@ -181,10 +199,11 @@ function MovTropasInner() {
         </div>
         <div className="grid g-cols-2 gap-12">
           <Field label="Origen *">
-            <input className="mc-input" placeholder="Ej: Don Ramón · Potrero 2" value={form.origen} onChange={(e) => setForm({ ...form, origen: e.target.value })} />
+            <input className="mc-input" list="mc-lotes-list" placeholder="Elegí un lote o escribí (ej: Frigorífico)" value={form.origen} onChange={(e) => setForm({ ...form, origen: e.target.value })} />
           </Field>
           <Field label="Destino *">
-            <input className="mc-input" placeholder="Ej: La Esperanza · Potrero 3" value={form.destino} onChange={(e) => setForm({ ...form, destino: e.target.value })} />
+            <input className="mc-input" list="mc-lotes-list" placeholder="Elegí un lote o escribí (ej: Remate)" value={form.destino} onChange={(e) => setForm({ ...form, destino: e.target.value })} />
+            <datalist id="mc-lotes-list">{loteNames.map((n) => <option key={n} value={n} />)}</datalist>
           </Field>
         </div>
         <div className="grid g-cols-2 gap-12">
@@ -201,7 +220,7 @@ function MovTropasInner() {
 }
 
 /* ============ RESUMEN (Figma) ============ */
-function MovResumen({ movs }: { movs: Mov[] }) {
+function MovResumen({ movs, lotesGeo }: { movs: Mov[]; lotesGeo: LoteGeo[] }) {
   const totalCab = movs.reduce((s, m) => s + m.n, 0);
   const pendientes = movs.filter((m) => m.est !== "Completado").length;
   const ahora = new Date();
@@ -239,12 +258,16 @@ function MovResumen({ movs }: { movs: Mov[] }) {
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Mapa de movimientos</div>
-            <span className="text-xs text-muted">{edges.length} rutas · {nodos.length} ubicaciones</span>
+            <span className="text-xs text-muted">{lotesGeo.length > 0 ? "satelital · georreferenciado" : `${edges.length} rutas · ${nodos.length} ubicaciones`}</span>
           </div>
           {movs.length === 0 ? (
             <div className="mc-empty" style={{ minHeight: 360 }}>
               <div className="mc-empty__icon"><Icon name="route" size={22} /></div>
-              Sin movimientos registrados. Registrá un movimiento y el mapa de flujos aparece acá.
+              Sin movimientos registrados. Registrá un movimiento y el mapa aparece acá.
+            </div>
+          ) : lotesGeo.length > 0 ? (
+            <div style={{ borderRadius: 0, overflow: "hidden" }}>
+              <MovMapaGeo lotes={lotesGeo} movs={movs.map((m) => ({ o: m.o, d: m.d, n: m.n, t: m.t }))} />
             </div>
           ) : (
             <div className="mc-map" style={{ minHeight: 360 }}>
