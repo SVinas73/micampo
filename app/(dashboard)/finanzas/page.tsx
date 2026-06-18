@@ -53,7 +53,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { Icon } from "@/components/mc";
+import { Icon, KPI } from "@/components/mc";
 
 type Comprobante = {
   id: string;
@@ -1257,72 +1257,11 @@ export default function FinanzasPage() {
 
       {/* KPIs Dashboard */}
       {dashboardData && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Ingresos del Mes
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                ${dashboardData.resumenMesActual.ingresos.toFixed(0)}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Mes actual</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Gastos del Mes
-              </CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                ${dashboardData.resumenMesActual.gastos.toFixed(0)}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Mes actual</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Margen Bruto</CardTitle>
-              <DollarSign className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                ${dashboardData.resumenMesActual.margen.toFixed(0)}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {dashboardData.resumenMesActual.porcentajeMargen.toFixed(1)}% de margen
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Alertas Financieras
-              </CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {dashboardData.alertas.cuentasVencidas + dashboardData.alertas.cuentasPorCobrar}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                $
-                {(
-                  dashboardData.alertas.montoVencido + dashboardData.alertas.montoPorCobrar
-                ).toFixed(0)}{" "}
-                pendiente
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid g-cols-4">
+          <KPI label="Ingresos del Mes" value={`$${dashboardData.resumenMesActual.ingresos.toFixed(0)}`} delta="Mes actual" trend="up" icon="dollar" accent />
+          <KPI label="Gastos del Mes" value={`$${dashboardData.resumenMesActual.gastos.toFixed(0)}`} delta="Mes actual" trend="down" icon="dollar" />
+          <KPI label="Margen Bruto" value={`$${dashboardData.resumenMesActual.margen.toFixed(0)}`} delta={`${dashboardData.resumenMesActual.porcentajeMargen.toFixed(1)}% de margen`} trend="up" icon="activity" />
+          <KPI label="Alertas Financieras" value={String(dashboardData.alertas.cuentasVencidas + dashboardData.alertas.cuentasPorCobrar)} delta={`$${(dashboardData.alertas.montoVencido + dashboardData.alertas.montoPorCobrar).toFixed(0)} pendiente`} trend="warn" icon="alert" warn />
         </div>
       )}
 

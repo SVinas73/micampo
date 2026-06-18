@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { KPI } from "@/components/mc";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -497,64 +498,11 @@ function GanaderiaAvanzadaPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Diagnósticos
-            </CardTitle>
-            <Heart className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{diagnosticos.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Últimos 90 días</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Alertas Sanitarias
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{alertasPendientes}</div>
-            <p className="text-xs text-gray-500 mt-1">{alertasCriticas} críticas</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Planes Nutricionales
-            </CardTitle>
-            <Apple className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{planesActivos}</div>
-            <p className="text-xs text-gray-500 mt-1">Activos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Costo Nutrición
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              $
-              {planesNutricionales
-                .filter((p) => p.estado === "Activo")
-                .reduce((sum, p) => sum + (p.costoTotal || 0), 0)
-                .toFixed(0)}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">USD/día</p>
-          </CardContent>
-        </Card>
+      <div className="grid g-cols-4">
+        <KPI label="Diagnósticos" value={String(diagnosticos.length)} delta="Últimos 90 días" trend="up" icon="heart" accent />
+        <KPI label="Alertas Sanitarias" value={String(alertasPendientes)} delta={`${alertasCriticas} críticas`} trend="warn" icon="alert" warn />
+        <KPI label="Planes Nutricionales" value={String(planesActivos)} delta="Activos" trend="up" icon="leaf" />
+        <KPI label="Costo Nutrición" value={`$${planesNutricionales.filter((p) => p.estado === "Activo").reduce((sum, p) => sum + (p.costoTotal || 0), 0).toFixed(0)}`} delta="USD/día" trend="up" icon="dollar" />
       </div>
 
       <Tabs defaultValue="salud" className="space-y-4">

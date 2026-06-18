@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { KPI } from "@/components/mc";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -273,49 +274,10 @@ export default function TrazabilidadPage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Productos Registrados
-            </CardTitle>
-            <QrCode className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{registros.length}</div>
-            <p className="text-xs text-gray-500 mt-1">En blockchain</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Etapas Totales
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {registros.reduce((sum, r) => sum + r.etapas.length, 0)}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Verificadas</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Productos Activos
-            </CardTitle>
-            <Shield className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {registros.filter(r => r.estado === "Activo").length}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Trazables</p>
-          </CardContent>
-        </Card>
+      <div className="grid g-cols-3">
+        <KPI label="Productos Registrados" value={String(registros.length)} delta="En blockchain" trend="up" icon="box" accent />
+        <KPI label="Etapas Totales" value={String(registros.reduce((sum, r) => sum + r.etapas.length, 0))} delta="Verificadas" trend="up" icon="check" />
+        <KPI label="Productos Activos" value={String(registros.filter((r) => r.estado === "Activo").length)} delta="Trazables" trend="up" icon="shieldCheck" />
       </div>
 
       <Card>
