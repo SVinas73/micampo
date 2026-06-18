@@ -52,6 +52,8 @@ export default function BalanceHidrico({
   costoEvento,
   onAprobar,
   cargando,
+  subtitle,
+  aguaUtilMm,
 }: {
   balance: PuntoBalance[];
   sugerencias: SugerenciaIA[];
@@ -61,6 +63,8 @@ export default function BalanceHidrico({
   costoEvento: number;
   onAprobar: () => void;
   cargando?: boolean;
+  subtitle?: string;
+  aguaUtilMm?: number;
 }) {
   const W = 900, H = 360;
   const padL = 56, padR = 30, padT = 40, padB = 56;
@@ -94,12 +98,14 @@ export default function BalanceHidrico({
   const sinRiegoPath = smoothPath(sinRiego);
   const conRiegoPath = smoothPath(conRiego);
 
-  // Bloques IA en los días 3 y 5 (SÁB / LUN) cuando existen.
-  const iaBars = [3, 5]
-    .filter((d) => d < conRiego.length)
-    .map((d, idx) => ({ day: d, level: conRiego[d], label: `+${sugerencias[idx]?.mm ?? 15}mm` }));
+  // Bloques de riego en los días reales donde se aplicó riego (salto en con-riego)
+  const gap = conRiego.map((c, i) => c - (sinRiego[i] ?? c));
+  const iaDays: number[] = [];
+  for (let i = 1; i < gap.length; i++) if (gap[i] - gap[i - 1] > 4) iaDays.push(i);
+  const iaBars = iaDays.map((d, idx) => ({ day: d, level: conRiego[d], label: `+${sugerencias[idx]?.mm ?? 15}mm` }));
 
-  const humedadActual = conRiego[0] ?? 82;
+  const humedadActual = conRiego[0] ?? 0;
+  const minSin = sinRiego.length ? Math.min(...sinRiego) : 0;
 
   return (
     <div className="mc-card ia-card" style={{ border: "none", padding: 0, overflow: "hidden" }}>
@@ -110,7 +116,7 @@ export default function BalanceHidrico({
               <div className="mc-card__title">Balance Hídrico Proyectado</div>
               <IABadge />
             </div>
-            <div className="text-xs text-muted mt-2">Próximos 7 días · Don Ramón · Maíz Lote 4 (V6)</div>
+            <div className="text-xs text-muted mt-2">{subtitle || "Próximos 7 días"}</div>
           </div>
           <div className="row gap-6" style={{ flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
             <Legend color="var(--mc-blue)" label="Humedad Actual" mode="line" />
@@ -121,13 +127,19 @@ export default function BalanceHidrico({
         </div>
 
         <div className="grid g-cols-4 gap-8" style={{ marginBottom: 8 }}>
-          <BHKpi label="Humedad actual" value={`${humedadActual}%`} sub="Capacidad campo" tone="blue" />
-          <BHKpi label="Agua útil" value="120 mm" sub="Suelo perfil 1m" tone="blue" />
-          <BHKpi label="Déficit proyectado" value={`-${Math.max(0, 47 - (sinRiego[4] ?? 22))} mm`} sub="día 4-5 sin riego" tone="red" />
-          <BHKpi label="Próximo riego IA" value="Sáb 25" sub={`+${sugerencias[0]?.mm ?? 15} mm sugeridos`} tone="orange" />
+          <BHKpi label="Humedad actual" value={`${humedadActual}%`} sub="Agua útil del suelo" tone="blue" />
+          <BHKpi label="Agua útil" value={`${aguaUtilMm ?? Math.round((humedadActual / 100) * 120)} mm`} sub="Perfil ~1 m" tone="blue" />
+          <BHKpi label="Mínimo sin riego" value={`${minSin}%`} sub="proyección 7 días" tone={minSin < 30 ? "red" : "orange"} />
+          <BHKpi label="Próximo riego" value={sugerencias[0]?.fecha?.split(" ").slice(0, 2).join(" ") || "—"} sub={sugerencias[0] ? `+${sugerencias[0].mm} mm sugeridos` : "sin riego necesario"} tone="orange" />
         </div>
       </div>
 
+      {balance.length === 0 ? (
+        <div className="mc-empty" style={{ margin: "4px 16px 16px" }}>
+          <div className="mc-empty__icon"><Icon name="droplet" size={22} /></div>
+          {cargando ? "Calculando balance hídrico con el clima de tu campo…" : "Dibujá un lote con ubicación para proyectar el balance hídrico real (ET0 + lluvia)."}
+        </div>
+      ) : (
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block", padding: "0 8px" }}>
         <defs>
           <linearGradient id="bhConRiegoArea" x1="0" y1="0" x2="0" y2="1">
@@ -197,6 +209,7 @@ export default function BalanceHidrico({
           <text key={d + i} x={padL + i * dx} y={H - padB + 22} fontSize="11" fontFamily="var(--ff-ui)" fontWeight={i === 0 ? "800" : "600"} fill={i === 0 ? "#768f44" : "var(--mc-ink)"} textAnchor="middle">{d}</text>
         ))}
       </svg>
+      )}
 
       {/* Footer estrategia */}
       <div className="row gap-12" style={{ alignItems: "center", padding: "14px 18px", background: "var(--mc-surface-2)", borderTop: "1px solid var(--mc-line)", flexWrap: "wrap" }}>

@@ -13,29 +13,39 @@ export type EventoAgua = {
   iaIcon?: boolean;
 };
 
-export default function AguaUlt30Dias({ eventos, totalMm }: { eventos: EventoAgua[]; totalMm?: number }) {
+export default function AguaUlt30Dias({ eventos, totalMm, lluviaMm, riegoMm, histMm }: { eventos: EventoAgua[]; totalMm?: number; lluviaMm?: number; riegoMm?: number; histMm?: number | null }) {
+  const total = totalMm ?? 0;
+  const pctVsHist = histMm && histMm > 0 ? Math.round(((total - histMm) / histMm) * 100) : null;
   return (
     <div className="mc-card" style={{ padding: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
           <div className="mc-card__eyebrow">Agua Últ. 30 Días</div>
           <div style={{ fontFamily: "var(--ff-display)", fontSize: 42, color: "var(--mc-blue)", fontWeight: 800, lineHeight: 1, marginTop: 4 }}>
-            {totalMm ?? 112} mm
+            {total} mm
           </div>
           <div className="row gap-12 mt-6 text-xs">
-            <span className="row gap-4" style={{ color: "var(--mc-blue)" }}><Icon name="droplet" size={11} />Lluvia: 80mm</span>
-            <span className="row gap-4" style={{ color: "var(--mc-green-700)" }}><Icon name="droplet" size={11} />Riego: 32mm</span>
+            <span className="row gap-4" style={{ color: "var(--mc-blue)" }}><Icon name="droplet" size={11} />Lluvia: {lluviaMm ?? 0}mm</span>
+            <span className="row gap-4" style={{ color: "var(--mc-green-700)" }}><Icon name="droplet" size={11} />Riego: {riegoMm ?? 0}mm</span>
           </div>
         </div>
-        <div style={{ padding: "8px 12px", background: "var(--mc-blue-bg)", borderRadius: 10, textAlign: "right" }}>
-          <div className="text-xs text-muted">vs prom. histórico</div>
-          <div className="font-semi" style={{ color: "var(--mc-blue)", fontSize: 14 }}>98 mm</div>
-          <div className="text-xs" style={{ color: "var(--mc-green-700)", fontWeight: 600 }}>+14%</div>
-        </div>
+        {histMm != null && (
+          <div style={{ padding: "8px 12px", background: "var(--mc-blue-bg)", borderRadius: 10, textAlign: "right" }}>
+            <div className="text-xs text-muted">prom. histórico</div>
+            <div className="font-semi" style={{ color: "var(--mc-blue)", fontSize: 14 }}>{histMm} mm</div>
+            {pctVsHist != null && <div className="text-xs" style={{ color: pctVsHist >= 0 ? "var(--mc-green-700)" : "var(--mc-red)", fontWeight: 600 }}>{pctVsHist >= 0 ? "+" : ""}{pctVsHist}%</div>}
+          </div>
+        )}
       </div>
 
       <div className="mc-divider"></div>
 
+      {eventos.length === 0 ? (
+        <div className="mc-empty" style={{ marginTop: 14 }}>
+          <div className="mc-empty__icon"><Icon name="droplet" size={20} /></div>
+          Sin lluvias ni riegos en los últimos 30 días. Registrá riegos y lluvias y aparecen acá.
+        </div>
+      ) : (
       <div style={{ position: "relative", marginTop: 14 }}>
         <div style={{ position: "absolute", left: 14, top: 8, bottom: 8, width: 2, background: "var(--mc-line)" }}></div>
         {eventos.map((e, i) => (
@@ -61,6 +71,7 @@ export default function AguaUlt30Dias({ eventos, totalMm }: { eventos: EventoAgu
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }
