@@ -56,7 +56,7 @@ import {
   Target,
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Icon } from "@/components/mc";
+import { Icon, KPI } from "@/components/mc";
 
 // ============================================
 // TYPES
@@ -1048,68 +1048,11 @@ export default function MaquinariaPage() {
 
       {/* KPIs Dashboard */}
       {dashboard && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total Maquinarias
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{dashboard.kpis.totalMaquinarias}</div>
-              <p className="text-sm text-gray-600 mt-1">
-                {dashboard.kpis.porcentajeOperativo.toFixed(0)}% operativas
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Alertas Activas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-orange-600">
-                {dashboard.alertas.total}
-              </div>
-              <p className="text-sm text-red-600 mt-1">
-                {dashboard.alertas.criticas} críticas
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Órdenes Abiertas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600">
-                {dashboard.ordenesTaller.abiertas}
-              </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {dashboard.ordenesTaller.completadasMes} completadas este mes
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Eficiencia Promedio
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                {dashboard.eficiencia.promedio}%
-              </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {dashboard.eficiencia.totalRegistros} registros
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid g-cols-4">
+          <KPI label="Total Maquinarias" value={String(dashboard.kpis.totalMaquinarias)} delta={`${dashboard.kpis.porcentajeOperativo.toFixed(0)}% operativas`} trend="up" icon="wrench" accent />
+          <KPI label="Alertas Activas" value={String(dashboard.alertas.total)} delta={`${dashboard.alertas.criticas} críticas`} trend="warn" icon="alert" warn />
+          <KPI label="Órdenes Abiertas" value={String(dashboard.ordenesTaller.abiertas)} delta={`${dashboard.ordenesTaller.completadasMes} completadas este mes`} trend="up" icon="box" />
+          <KPI label="Eficiencia Promedio" value={`${dashboard.eficiencia.promedio}%`} delta={`${dashboard.eficiencia.totalRegistros} registros`} trend="up" icon="activity" />
         </div>
       )}
       {/* TABS PRINCIPALES */}

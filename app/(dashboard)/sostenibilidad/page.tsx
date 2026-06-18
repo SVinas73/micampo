@@ -62,7 +62,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { Icon } from "@/components/mc";
+import { Icon, KPI } from "@/components/mc";
 
 // ============================================
 // TYPES
@@ -867,98 +867,12 @@ export default function SostenibilidadPage() {
 
       {/* KPIs Dashboard */}
       {dashboard && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="bg-green-50 border-green-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-green-700">
-                Huella de Carbono
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-700">
-                {dashboard.huellaCarbono.ultima?.emisionesTotales
-                  ? formatNumber(dashboard.huellaCarbono.ultima.emisionesTotales, 0)
-                  : "N/A"}
-              </div>
-              <p className="text-xs text-gray-600 mt-1">kg CO2e total</p>
-              {dashboard.huellaCarbono.tendencia !== 0 && (
-                <p
-                  className={`text-xs mt-1 ${
-                    dashboard.huellaCarbono.tendencia < 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {dashboard.huellaCarbono.tendencia > 0 ? "↑" : "↓"}{" "}
-                  {Math.abs(dashboard.huellaCarbono.tendencia).toFixed(1)}%
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-blue-50 border-blue-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-blue-700">
-                Recetas Agronómicas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-700">
-                {dashboard.recetas.total}
-              </div>
-              <p className="text-xs text-gray-600 mt-1">
-                {dashboard.recetas.porEstado.aprobadas} aprobadas
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-purple-50 border-purple-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-purple-700">
-                Reportes Agroquímicos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-700">
-                {dashboard.reportes.total}
-              </div>
-              <p className="text-xs text-gray-600 mt-1">
-                {dashboard.reportes.porEstado.aprobados} aprobados
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-yellow-50 border-yellow-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-yellow-700">
-                Certificaciones
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-700">
-                {dashboard.certificaciones.porEstado.vigentes}
-              </div>
-              <p className="text-xs text-gray-600 mt-1">
-                de {dashboard.certificaciones.total} total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-orange-50 border-orange-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-orange-700">
-                Declaraciones EUDR
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-700">
-                {dashboard.eudr.total}
-              </div>
-              <p className="text-xs text-gray-600 mt-1">
-                {dashboard.eudr.porEstado.aprobadas || 0} aprobadas
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid g-cols-5">
+          <KPI label="Huella de Carbono" value={dashboard.huellaCarbono.ultima?.emisionesTotales ? formatNumber(dashboard.huellaCarbono.ultima.emisionesTotales, 0) : "—"} delta={dashboard.huellaCarbono.tendencia !== 0 ? `${Math.abs(dashboard.huellaCarbono.tendencia).toFixed(1)}% kg CO2e` : "kg CO2e total"} trend={dashboard.huellaCarbono.tendencia < 0 ? "up" : dashboard.huellaCarbono.tendencia > 0 ? "down" : "up"} icon="leaf" accent />
+          <KPI label="Recetas Agronómicas" value={String(dashboard.recetas.total)} delta={`${dashboard.recetas.porEstado.aprobadas} aprobadas`} trend="up" icon="flask" />
+          <KPI label="Reportes Agroquímicos" value={String(dashboard.reportes.total)} delta={`${dashboard.reportes.porEstado.aprobados} aprobados`} trend="up" icon="beaker" />
+          <KPI label="Certificaciones" value={String(dashboard.certificaciones.porEstado.vigentes)} delta={`de ${dashboard.certificaciones.total} total`} trend="up" icon="shieldCheck" />
+          <KPI label="Declaraciones EUDR" value={String(dashboard.eudr.total)} delta={`${dashboard.eudr.porEstado.aprobadas || 0} aprobadas`} trend="up" icon="check" />
         </div>
       )}
       {/* TABS PRINCIPALES */}

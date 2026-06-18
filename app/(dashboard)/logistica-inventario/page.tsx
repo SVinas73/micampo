@@ -44,7 +44,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { Icon } from "@/components/mc";
+import { Icon, KPI } from "@/components/mc";
 
 type StockInsumo = {
   id: string;
@@ -568,62 +568,11 @@ export default function LogisticaInventarioPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Items en Stock
-            </CardTitle>
-            <Package className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalStocks}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {stocksConAlerta} con alerta
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Valor Inventario
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${Math.round(valorTotalInventario)}</div>
-            <p className="text-xs text-gray-500 mt-1">Total USD</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Alertas Activas
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{alertasActivas}</div>
-            <p className="text-xs text-gray-500 mt-1">Requieren atención</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Transferencias
-            </CardTitle>
-            <Truck className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{transferencias.length}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {transferencias.filter((t) => t.estado === "Pendiente").length} pendientes
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid g-cols-4">
+        <KPI label="Items en Stock" value={String(totalStocks)} delta={`${stocksConAlerta} con alerta`} trend={stocksConAlerta > 0 ? "warn" : "up"} icon="box" accent />
+        <KPI label="Valor Inventario" value={`$${Math.round(valorTotalInventario).toLocaleString("es-AR")}`} delta="Total USD" trend="up" icon="dollar" />
+        <KPI label="Alertas Activas" value={String(alertasActivas)} delta={alertasActivas > 0 ? "Requieren atención" : "Sin alertas"} trend="warn" icon="alert" warn />
+        <KPI label="Transferencias" value={String(transferencias.length)} delta={`${transferencias.filter((t) => t.estado === "Pendiente").length} pendientes`} trend="up" icon="truck" />
       </div>
       <Tabs defaultValue="stock" className="space-y-4">
         <TabsList className="grid w-full grid-cols-8">

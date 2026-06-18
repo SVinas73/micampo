@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Icon, Modal, Field, useToast } from "@/components/mc";
+import { Icon, Modal, Field, useToast, KPI } from "@/components/mc";
 import { 
   Droplets, 
   TrendingUp, 
@@ -251,65 +251,11 @@ export default function ProduccionLecheraPage() {
       )}
 
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Total Producido
-            </CardTitle>
-            <Droplets className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{resumen.totalLitros.toLocaleString()}L</div>
-            <p className="text-xs text-gray-500 mt-1">Últimos {periodo} días</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Promedio Diario
-            </CardTitle>
-            <Activity className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{resumen.promedioLitros}L</div>
-            <p className="text-xs text-gray-500 mt-1">Por ordeñe</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Calidad Promedio
-            </CardTitle>
-            <Award className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-bold">
-              {resumen.promedioGrasa ? `Grasa: ${resumen.promedioGrasa}%` : "-"}
-            </div>
-            <div className="text-sm font-bold">
-              {resumen.promedioProteina ? `Proteína: ${resumen.promedioProteina}%` : "-"}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {resumen.promedioSCC ? `SCC: ${Math.round(resumen.promedioSCC / 1000)}k` : "-"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Registros
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{resumen.totalRegistros}</div>
-            <p className="text-xs text-gray-500 mt-1">Ordeñes registrados</p>
-          </CardContent>
-        </Card>
+      <div className="grid g-cols-4">
+        <KPI label="Total Producido" value={`${resumen.totalLitros.toLocaleString("es-AR")} L`} delta={`Últimos ${periodo} días`} trend="up" icon="droplet" accent />
+        <KPI label="Promedio Diario" value={`${resumen.promedioLitros} L`} delta="Por ordeñe" trend="up" icon="activity" />
+        <KPI label="Calidad Promedio" value={resumen.promedioGrasa ? `Grasa ${resumen.promedioGrasa}%` : "—"} delta={`${resumen.promedioProteina ? `Proteína ${resumen.promedioProteina}%` : "—"}${resumen.promedioSCC ? ` · SCC ${Math.round(resumen.promedioSCC / 1000)}k` : ""}`} trend="up" icon="scale" />
+        <KPI label="Registros" value={String(resumen.totalRegistros)} delta="Ordeñes registrados" trend="up" icon="calendar" />
       </div>
 
       {/* Gráfico Principal */}
