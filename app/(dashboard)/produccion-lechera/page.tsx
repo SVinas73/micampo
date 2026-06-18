@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Icon } from "@/components/mc";
+import { Icon, Modal, Field, useToast } from "@/components/mc";
 import { 
   Droplets, 
   TrendingUp, 
@@ -42,10 +42,66 @@ export default function ProduccionLecheraPage() {
   const [loading, setLoading] = useState(true);
   const [generandoPrediccion, setGenerandoPrediccion] = useState(false);
   const [periodo, setPeriodo] = useState("30");
+  const toast = useToast();
+  const [registroOpen, setRegistroOpen] = useState(false);
+  const [animales, setAnimales] = useState<{ id: string; caravana: string }[]>([]);
+  const [form, setForm] = useState({ animalId: "", fecha: new Date().toISOString().slice(0, 10), litrosManana: "", litrosTarde: "", grasaButirosa: "", proteina: "" });
 
   useEffect(() => {
     fetchEstadisticas();
   }, [periodo]);
+
+  useEffect(() => {
+    fetch("/api/animales").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (Array.isArray(d)) setAnimales(d.filter((a: { sexo?: string }) => a.sexo === "Hembra" || !a.sexo).map((a: { id: string; caravana: string }) => ({ id: a.id, caravana: a.caravana })));
+    }).catch(() => {});
+  }, []);
+
+  const crearRegistro = async () => {
+    if (!form.animalId || (!form.litrosManana && !form.litrosTarde)) { toast.show("Elegí el animal y al menos un ordeñe", "err"); return; }
+    try {
+      const res = await fetch("/api/produccion-lechera", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ animalId: form.animalId, fecha: form.fecha, litrosManana: form.litrosManana || "0", litrosTarde: form.litrosTarde || "0", grasaButirosa: form.grasaButirosa || null, proteina: form.proteina || null }),
+      });
+      if (!res.ok) throw new Error();
+      toast.show("Ordeñe registrado");
+      setRegistroOpen(false);
+      setForm({ ...form, litrosManana: "", litrosTarde: "", grasaButirosa: "", proteina: "" });
+      fetchEstadisticas();
+    } catch { toast.show("No se pudo registrar el ordeñe", "err"); }
+  };
+
+  const registroModal = (
+    <Modal
+      open={registroOpen}
+      onClose={() => setRegistroOpen(false)}
+      title="Registrar ordeñe"
+      subtitle="Cargá la producción de un animal (mañana y/o tarde)."
+      footer={<>
+        <button className="mc-btn mc-btn--ghost" onClick={() => setRegistroOpen(false)}>Cancelar</button>
+        <button className="mc-btn mc-btn--primary" onClick={crearRegistro}><Icon name="check" size={14} />Guardar</button>
+      </>}
+    >
+      <Field label="Animal">
+        <select className="mc-select" value={form.animalId} onChange={(e) => setForm({ ...form, animalId: e.target.value })}>
+          <option value="">{animales.length ? "Seleccioná un animal…" : "Sin animales (cargá el rodeo primero)"}</option>
+          {animales.map((a) => <option key={a.id} value={a.id}>Caravana {a.caravana}</option>)}
+        </select>
+      </Field>
+      <div className="grid g-cols-2 gap-12">
+        <Field label="Fecha"><input type="date" className="mc-input" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} /></Field>
+        <div className="grid g-cols-2 gap-12">
+          <Field label="Litros mañana"><input className="mc-input" type="number" placeholder="0" value={form.litrosManana} onChange={(e) => setForm({ ...form, litrosManana: e.target.value })} /></Field>
+          <Field label="Litros tarde"><input className="mc-input" type="number" placeholder="0" value={form.litrosTarde} onChange={(e) => setForm({ ...form, litrosTarde: e.target.value })} /></Field>
+        </div>
+      </div>
+      <div className="grid g-cols-2 gap-12">
+        <Field label="Grasa butirosa (%)"><input className="mc-input" type="number" placeholder="opcional" value={form.grasaButirosa} onChange={(e) => setForm({ ...form, grasaButirosa: e.target.value })} /></Field>
+        <Field label="Proteína (%)"><input className="mc-input" type="number" placeholder="opcional" value={form.proteina} onChange={(e) => setForm({ ...form, proteina: e.target.value })} /></Field>
+      </div>
+    </Modal>
+  );
 
   const fetchEstadisticas = async () => {
     try {
@@ -95,11 +151,12 @@ export default function ProduccionLecheraPage() {
   if (!estadisticas) {
     return (
       <div className="text-center py-12">
+        {toast.node}
         <Droplets className="h-16 w-16 mx-auto text-blue-400 mb-4" />
         <p className="text-gray-600">No hay datos de producción lechera</p>
-        <p className="text-sm text-gray-500 mt-2">
-          Registrá producción en Ganadería → Producción Lechera
-        </p>
+        <p className="text-sm text-gray-500 mt-2 mb-4">Registrá el primer ordeñe para ver el dashboard.</p>
+        <button className="mc-btn mc-btn--primary" onClick={() => setRegistroOpen(true)}><Icon name="plus" size={14} />Registrar ordeñe</button>
+        {registroModal}
       </div>
     );
   }
@@ -128,6 +185,8 @@ export default function ProduccionLecheraPage() {
 
   return (
     <div className="space-y-6">
+      {toast.node}
+      {registroModal}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard Producción Lechera</h1>
@@ -136,6 +195,9 @@ export default function ProduccionLecheraPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button className="mc-btn mc-btn--primary" onClick={() => setRegistroOpen(true)}>
+            <Icon name="plus" size={14} />Registrar ordeñe
+          </button>
           <Select value={periodo} onValueChange={setPeriodo}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
