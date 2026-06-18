@@ -46,6 +46,8 @@ import {
 } from "recharts";
 import { Icon, KPI } from "@/components/mc";
 
+const CHART_COLORS = ["#5e7733", "#d9a538", "#2c6bb8", "#c93434", "#64748b", "#8a6d3b", "#46603a"];
+
 type StockInsumo = {
   id: string;
   codigo: string;
@@ -489,6 +491,90 @@ export default function LogisticaInventarioPage() {
     }
   };
 
+  const handleCreateTransferencia = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("/api/transferencias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...transferenciaForm,
+          fechaSolicitud: transferenciaForm.fechaSolicitud || new Date().toISOString(),
+        }),
+      });
+
+      if (response.ok) {
+        setTransferenciaDialogOpen(false);
+        setTransferenciaForm({
+          tipo: "Interna",
+          subtipo: "EntreEstablecimientos",
+          origen: "",
+          destino: "",
+          fechaSolicitud: "",
+          remito: "",
+          responsableOrigen: "",
+          responsableDestino: "",
+          observaciones: "",
+        });
+        fetchData();
+        alert("Transferencia creada");
+      } else {
+        alert("Error al crear transferencia");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al crear transferencia");
+    }
+  };
+
+  const handleCreateCargaCombustible = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload: Record<string, unknown> = {
+        tanqueId: cargaCombustibleForm.tanqueId,
+        tipoCarga: cargaCombustibleForm.tipoCarga,
+        litros: parseFloat(cargaCombustibleForm.litros),
+        precioLitro: cargaCombustibleForm.precioLitro
+          ? parseFloat(cargaCombustibleForm.precioLitro)
+          : null,
+        responsable: cargaCombustibleForm.responsable || null,
+        observaciones: cargaCombustibleForm.observaciones || null,
+      };
+      if (cargaCombustibleForm.tipoCarga === "CargaMaquina") {
+        if (cargaCombustibleForm.maquinaId) payload.maquinariaId = cargaCombustibleForm.maquinaId;
+        if (cargaCombustibleForm.horometroActual)
+          payload.horometroActual = parseFloat(cargaCombustibleForm.horometroActual);
+      }
+
+      const response = await fetch("/api/cargas-combustible", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setCargaCombustibleDialogOpen(false);
+        setCargaCombustibleForm({
+          tanqueId: "",
+          tipoCarga: "CargaTanque",
+          maquinaId: "",
+          litros: "",
+          precioLitro: "",
+          horometroActual: "",
+          responsable: "",
+          observaciones: "",
+        });
+        fetchData();
+        alert("Carga registrada");
+      } else {
+        alert("Error al registrar carga");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al registrar carga");
+    }
+  };
+
   const eliminarStock = async (id: string) => {
     if (!confirm("¿Eliminar stock?")) return;
     try {
@@ -615,21 +701,14 @@ export default function LogisticaInventarioPage() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Stock de Insumos</h2>
             <div className="flex gap-2">
-              <Button
-                onClick={() => setLoteDialogOpen(true)}
-                variant="outline"
-                className="bg-green-600 text-white hover:bg-green-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
+              <button className="mc-btn mc-btn--secondary" onClick={() => setLoteDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
                 Nuevo Lote
-              </Button>
-              <Button
-                onClick={() => setStockDialogOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
+              </button>
+              <button className="mc-btn mc-btn--primary" onClick={() => setStockDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
                 Nuevo Insumo
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -878,13 +957,13 @@ export default function LogisticaInventarioPage() {
         <TabsContent value="materias" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Materias Primas para Ganadería</h2>
-            <Button
+            <button
+              className="mc-btn mc-btn--primary"
               onClick={() => setMateriaPrimaDialogOpen(true)}
-              className="bg-green-600 hover:bg-green-700"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nueva Materia Prima
-            </Button>
+            </button>
           </div>
 
           <Card>
@@ -945,13 +1024,13 @@ export default function LogisticaInventarioPage() {
         <TabsContent value="transferencias" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Transferencias</h2>
-            <Button
+            <button
+              className="mc-btn mc-btn--primary"
               onClick={() => setTransferenciaDialogOpen(true)}
-              className="bg-purple-600 hover:bg-purple-700"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nueva Transferencia
-            </Button>
+            </button>
           </div>
 
           <Card>
@@ -1023,13 +1102,13 @@ export default function LogisticaInventarioPage() {
         <TabsContent value="repuestos" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Inventario de Repuestos</h2>
-            <Button
+            <button
+              className="mc-btn mc-btn--primary"
               onClick={() => setRepuestoDialogOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nuevo Repuesto
-            </Button>
+            </button>
           </div>
 
           <Card>
@@ -1106,21 +1185,20 @@ export default function LogisticaInventarioPage() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Gestión de Combustibles</h2>
             <div className="flex gap-2">
-              <Button
+              <button
+                className="mc-btn mc-btn--secondary"
                 onClick={() => setCargaCombustibleDialogOpen(true)}
-                variant="outline"
-                className="bg-orange-600 text-white hover:bg-orange-700"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 Registrar Carga
-              </Button>
-              <Button
+              </button>
+              <button
+                className="mc-btn mc-btn--primary"
                 onClick={() => setTanqueDialogOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 Nuevo Tanque
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -1188,12 +1266,12 @@ export default function LogisticaInventarioPage() {
               <CardContent className="text-center py-12">
                 <Droplet className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500 text-lg">No hay tanques registrados</p>
-                <Button
+                <button
+                  className="mc-btn mc-btn--primary mt-4"
                   onClick={() => setTanqueDialogOpen(true)}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700"
                 >
                   Crear Primer Tanque
-                </Button>
+                </button>
               </CardContent>
             </Card>
           )}
@@ -1203,13 +1281,13 @@ export default function LogisticaInventarioPage() {
         <TabsContent value="silos" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Gestión de Silos</h2>
-            <Button
+            <button
+              className="mc-btn mc-btn--primary"
               onClick={() => setSiloDialogOpen(true)}
-              className="bg-amber-600 hover:bg-amber-700"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nuevo Silo
-            </Button>
+            </button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1273,27 +1351,74 @@ export default function LogisticaInventarioPage() {
               <CardContent className="text-center py-12">
                 <Warehouse className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500 text-lg">No hay silos registrados</p>
-                <Button
+                <button
+                  className="mc-btn mc-btn--primary mt-4"
                   onClick={() => setSiloDialogOpen(true)}
-                  className="mt-4 bg-amber-600 hover:bg-amber-700"
                 >
                   Crear Primer Silo
-                </Button>
+                </button>
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
         {/* TAB: REPORTES */}
-        <TabsContent value="reportes" className="space-y-4">
-          <h2 className="text-xl font-semibold">Reportes y Análisis</h2>
+        <TabsContent value="reportes" className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold">Reportes y Análisis</h2>
+            <p className="text-sm text-gray-500">
+              Panorama logístico del establecimiento en tiempo real
+            </p>
+          </div>
+
+          {/* KPIs ejecutivos */}
+          <div className="grid g-cols-4">
+            <KPI
+              label="Valor de inventario"
+              value={`$${valorTotalInventario.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+              delta={`${totalStocks} insumos`}
+              trend="up"
+              icon="package"
+            />
+            <KPI
+              label="Stock bajo"
+              value={String(stocksConAlerta)}
+              delta={stocksConAlerta > 0 ? "Requiere reposición" : "Todo en nivel"}
+              trend={stocksConAlerta > 0 ? "warn" : "up"}
+              icon="alert-triangle"
+              warn={stocksConAlerta > 0}
+            />
+            <KPI
+              label="Transferencias pendientes"
+              value={String(transferencias.filter((t) => t.estado === "Pendiente").length)}
+              delta={`${transferencias.length} totales`}
+              trend="up"
+              icon="truck"
+            />
+            <KPI
+              label="Alertas críticas"
+              value={String(
+                alertas.filter((a) => a.severidad === "Crítica" && a.estado === "Activa").length
+              )}
+              delta={`${alertas.filter((a) => a.estado === "Activa").length} activas`}
+              trend={
+                alertas.filter((a) => a.severidad === "Crítica" && a.estado === "Activa").length > 0
+                  ? "warn"
+                  : "up"
+              }
+              icon="bell"
+              warn={
+                alertas.filter((a) => a.severidad === "Crítica" && a.estado === "Activa").length > 0
+              }
+            />
+          </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Gráfico de Stock por Categoría */}
+            {/* Stock por categoría */}
             <Card>
               <CardHeader>
-                <CardTitle>Stock por Categoría</CardTitle>
-                <CardDescription>Distribución de insumos</CardDescription>
+                <CardTitle>Stock por categoría</CardTitle>
+                <CardDescription>Cantidad de insumos registrados</CardDescription>
               </CardHeader>
               <CardContent>
                 {stocks.length > 0 ? (
@@ -1305,28 +1430,32 @@ export default function LogisticaInventarioPage() {
                           return acc;
                         }, {} as Record<string, number>)
                       ).map(([categoria, cantidad]) => ({ categoria, cantidad }))}
+                      margin={{ top: 8, right: 12, left: -16, bottom: 0 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="categoria" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="cantidad" fill="#2c6bb8" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" vertical={false} />
+                      <XAxis dataKey="categoria" tick={{ fontSize: 12, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }}
+                        cursor={{ fill: "rgba(94,119,51,0.06)" }}
+                      />
+                      <Bar dataKey="cantidad" fill="#5e7733" radius={[6, 6, 0, 0]} maxBarSize={48} name="Insumos" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">Sin datos</div>
+                  <div className="text-center py-16 text-gray-400 text-sm">Sin datos de stock</div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Valor de Inventario */}
+            {/* Valor de inventario por categoría */}
             <Card>
               <CardHeader>
-                <CardTitle>Valor de Inventario</CardTitle>
-                <CardDescription>Por categoría (USD)</CardDescription>
+                <CardTitle>Valor de inventario</CardTitle>
+                <CardDescription>Distribución por categoría (USD)</CardDescription>
               </CardHeader>
               <CardContent>
-                {stocks.length > 0 ? (
+                {valorTotalInventario > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -1336,16 +1465,19 @@ export default function LogisticaInventarioPage() {
                               (acc[stock.categoria] || 0) + (stock.valorStock || 0);
                             return acc;
                           }, {} as Record<string, number>)
-                        ).map(([name, value]) => ({ name, value }))}
+                        )
+                          .filter(([, value]) => value > 0)
+                          .map(([name, value]) => ({ name, value }))}
                         cx="50%"
                         cy="50%"
+                        innerRadius={55}
+                        outerRadius={95}
+                        paddingAngle={2}
                         labelLine={false}
                         label={(props: any) => {
-                            const { name, percent } = props;
-                            return `${name}: ${(percent * 100).toFixed(0)}%`;
+                          const { name, percent } = props;
+                          return `${name}: ${(percent * 100).toFixed(0)}%`;
                         }}
-                        outerRadius={80}
-                        fill="#768f44"
                         dataKey="value"
                       >
                         {Object.keys(
@@ -1356,31 +1488,112 @@ export default function LogisticaInventarioPage() {
                         ).map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
-                            fill={
-                              ["#2c6bb8", "#5e7733", "#d9a538", "#c93434", "#64748b"][
-                                index % 5
-                              ]
-                            }
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
                           />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip
+                        formatter={(v: any) => `$${Number(v).toLocaleString("es-AR")}`}
+                        contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">Sin datos</div>
+                  <div className="text-center py-16 text-gray-400 text-sm">
+                    Sin valor de inventario registrado
+                  </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Estado de Alertas */}
+            {/* Materias primas: stock vs mínimo */}
             <Card>
               <CardHeader>
-                <CardTitle>Estado de Alertas</CardTitle>
-                <CardDescription>Distribución por severidad</CardDescription>
+                <CardTitle>Materias primas: stock vs. mínimo</CardTitle>
+                <CardDescription>Control de existencias para ganadería</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                {materiasPrimas.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart
+                      data={materiasPrimas.map((m) => ({
+                        nombre: m.nombre,
+                        Stock: m.stockActual,
+                        Mínimo: m.stockMinimo,
+                      }))}
+                      margin={{ top: 8, right: 12, left: -16, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" vertical={false} />
+                      <XAxis dataKey="nombre" tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} cursor={{ fill: "rgba(94,119,51,0.06)" }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="Stock" fill="#5e7733" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                      <Bar dataKey="Mínimo" fill="#d9a538" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-16 text-gray-400 text-sm">
+                    Sin materias primas registradas
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Combustible: nivel de tanques */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Nivel de combustible</CardTitle>
+                <CardDescription>Ocupación de tanques</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {tanques.length > 0 ? (
+                  <div className="space-y-4 pt-2">
+                    {tanques.map((tanque) => (
+                      <div key={tanque.id}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-700">
+                            {tanque.nombre}
+                            <span className="text-gray-400 font-normal ml-1">
+                              · {tanque.tipoCombustible}
+                            </span>
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {tanque.nivelActual.toLocaleString("es-AR")} /{" "}
+                            {tanque.capacidadTotal.toLocaleString("es-AR")} L
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-3">
+                          <div
+                            className={`h-3 rounded-full ${
+                              tanque.alertaNivelBajo
+                                ? "bg-red-500"
+                                : tanque.porcentaje < 35
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                            }`}
+                            style={{ width: `${Math.min(tanque.porcentaje, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 text-gray-400 text-sm">
+                    Sin tanques registrados
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Estado de alertas */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Estado de alertas</CardTitle>
+                <CardDescription>Distribución por severidad (activas)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 pt-2">
                   {["Crítica", "Alta", "Media", "Baja"].map((severidad) => {
                     const count = alertas.filter(
                       (a) => a.severidad === severidad && a.estado === "Activa"
@@ -1391,10 +1604,10 @@ export default function LogisticaInventarioPage() {
                     return (
                       <div key={severidad}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">{severidad}</span>
+                          <span className="text-sm font-medium text-gray-700">{severidad}</span>
                           <span className="text-sm text-gray-500">{count}</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-gray-100 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full ${getSeveridadColor(severidad)}`}
                             style={{ width: `${porcentaje}%` }}
@@ -1403,28 +1616,33 @@ export default function LogisticaInventarioPage() {
                       </div>
                     );
                   })}
+                  {alertas.filter((a) => a.estado === "Activa").length === 0 && (
+                    <p className="text-center py-8 text-gray-400 text-sm">
+                      Sin alertas activas
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Capacidad de Silos */}
+            {/* Capacidad de silos */}
             <Card>
               <CardHeader>
-                <CardTitle>Capacidad de Silos</CardTitle>
-                <CardDescription>Ocupación actual</CardDescription>
+                <CardTitle>Capacidad de silos</CardTitle>
+                <CardDescription>Ocupación actual de granos</CardDescription>
               </CardHeader>
               <CardContent>
                 {silos.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4 pt-2">
                     {silos.map((silo) => (
                       <div key={silo.id}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium">{silo.nombre}</span>
+                          <span className="text-sm font-medium text-gray-700">{silo.nombre}</span>
                           <span className="text-sm text-gray-500">
                             {silo.porcentaje.toFixed(0)}%
                           </span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div className="w-full bg-gray-100 rounded-full h-3">
                           <div
                             className={`h-3 rounded-full ${
                               silo.porcentaje > 80
@@ -1433,51 +1651,20 @@ export default function LogisticaInventarioPage() {
                                 ? "bg-yellow-500"
                                 : "bg-green-500"
                             }`}
-                            style={{ width: `${silo.porcentaje}%` }}
+                            style={{ width: `${Math.min(silo.porcentaje, 100)}%` }}
                           />
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">Sin silos registrados</div>
+                  <div className="text-center py-16 text-gray-400 text-sm">
+                    Sin silos registrados
+                  </div>
                 )}
               </CardContent>
             </Card>
           </div>
-
-          {/* Resumen Ejecutivo */}
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-            <CardHeader>
-              <CardTitle>Resumen Ejecutivo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-4">
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <p className="text-sm text-gray-600 mb-1">Valor Total Inventario</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    ${valorTotalInventario.toFixed(0)}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <p className="text-sm text-gray-600 mb-1">Items con Stock Bajo</p>
-                  <p className="text-2xl font-bold text-orange-600">{stocksConAlerta}</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <p className="text-sm text-gray-600 mb-1">Transferencias Pendientes</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {transferencias.filter((t) => t.estado === "Pendiente").length}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <p className="text-sm text-gray-600 mb-1">Alertas Críticas</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {alertas.filter((a) => a.severidad === "Crítica" && a.estado === "Activa").length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 
@@ -1625,9 +1812,9 @@ export default function LogisticaInventarioPage() {
               <Button type="button" variant="outline" onClick={() => setStockDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+              <button type="submit" className="mc-btn mc-btn--primary">
                 Crear Insumo
-              </Button>
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1769,9 +1956,9 @@ export default function LogisticaInventarioPage() {
               <Button type="button" variant="outline" onClick={() => setLoteDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <button type="submit" className="mc-btn mc-btn--primary">
                 Crear Lote y Actualizar Stock
-              </Button>
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1921,9 +2108,9 @@ export default function LogisticaInventarioPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
+              <button type="submit" className="mc-btn mc-btn--primary">
                 Agregar Repuesto
-              </Button>
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -2020,9 +2207,9 @@ export default function LogisticaInventarioPage() {
               <Button type="button" variant="outline" onClick={() => setTanqueDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+              <button type="submit" className="mc-btn mc-btn--primary">
                 Crear Tanque
-              </Button>
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -2160,9 +2347,9 @@ export default function LogisticaInventarioPage() {
               <Button type="button" variant="outline" onClick={() => setSiloDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
+              <button type="submit" className="mc-btn mc-btn--primary">
                 Crear Silo
-              </Button>
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -2332,9 +2519,321 @@ export default function LogisticaInventarioPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700">
+              <button type="submit" className="mc-btn mc-btn--primary">
                 Agregar Materia Prima
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Nueva Transferencia */}
+      <Dialog open={transferenciaDialogOpen} onOpenChange={setTransferenciaDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <form onSubmit={handleCreateTransferencia}>
+            <DialogHeader>
+              <DialogTitle>Nueva Transferencia</DialogTitle>
+              <DialogDescription>
+                Registro de transferencia interna o externa de insumos/productos
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo *</Label>
+                  <Select
+                    value={transferenciaForm.tipo}
+                    onValueChange={(value) =>
+                      setTransferenciaForm({ ...transferenciaForm, tipo: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Interna">Interna</SelectItem>
+                      <SelectItem value="Externa">Externa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Subtipo</Label>
+                  <Select
+                    value={transferenciaForm.subtipo}
+                    onValueChange={(value) =>
+                      setTransferenciaForm({ ...transferenciaForm, subtipo: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EntreEstablecimientos">Entre establecimientos</SelectItem>
+                      <SelectItem value="EntreDepositos">Entre depósitos</SelectItem>
+                      <SelectItem value="Venta">Venta</SelectItem>
+                      <SelectItem value="Compra">Compra</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Origen *</Label>
+                  <Input
+                    placeholder="Campo Norte"
+                    value={transferenciaForm.origen}
+                    onChange={(e) =>
+                      setTransferenciaForm({ ...transferenciaForm, origen: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Destino *</Label>
+                  <Input
+                    placeholder="Campo Sur"
+                    value={transferenciaForm.destino}
+                    onChange={(e) =>
+                      setTransferenciaForm({ ...transferenciaForm, destino: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Fecha de solicitud</Label>
+                  <Input
+                    type="date"
+                    value={transferenciaForm.fechaSolicitud}
+                    onChange={(e) =>
+                      setTransferenciaForm({ ...transferenciaForm, fechaSolicitud: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Remito</Label>
+                  <Input
+                    placeholder="R-0001"
+                    value={transferenciaForm.remito}
+                    onChange={(e) =>
+                      setTransferenciaForm({ ...transferenciaForm, remito: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Responsable origen</Label>
+                  <Input
+                    value={transferenciaForm.responsableOrigen}
+                    onChange={(e) =>
+                      setTransferenciaForm({
+                        ...transferenciaForm,
+                        responsableOrigen: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Responsable destino</Label>
+                  <Input
+                    value={transferenciaForm.responsableDestino}
+                    onChange={(e) =>
+                      setTransferenciaForm({
+                        ...transferenciaForm,
+                        responsableDestino: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observaciones</Label>
+                <Input
+                  value={transferenciaForm.observaciones}
+                  onChange={(e) =>
+                    setTransferenciaForm({ ...transferenciaForm, observaciones: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTransferenciaDialogOpen(false)}
+              >
+                Cancelar
               </Button>
+              <button type="submit" className="mc-btn mc-btn--primary">
+                Crear Transferencia
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Registrar Carga de Combustible */}
+      <Dialog open={cargaCombustibleDialogOpen} onOpenChange={setCargaCombustibleDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <form onSubmit={handleCreateCargaCombustible}>
+            <DialogHeader>
+              <DialogTitle>Registrar Carga de Combustible</DialogTitle>
+              <DialogDescription>
+                Carga a tanque o despacho a maquinaria con actualización de nivel
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tanque *</Label>
+                  <Select
+                    value={cargaCombustibleForm.tanqueId}
+                    onValueChange={(value) =>
+                      setCargaCombustibleForm({ ...cargaCombustibleForm, tanqueId: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tanque" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tanques.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.nombre} ({t.tipoCombustible})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo de carga *</Label>
+                  <Select
+                    value={cargaCombustibleForm.tipoCarga}
+                    onValueChange={(value) =>
+                      setCargaCombustibleForm({ ...cargaCombustibleForm, tipoCarga: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CargaTanque">Carga a tanque (ingreso)</SelectItem>
+                      <SelectItem value="CargaMaquina">Despacho a máquina (egreso)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Litros *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="500"
+                    value={cargaCombustibleForm.litros}
+                    onChange={(e) =>
+                      setCargaCombustibleForm({ ...cargaCombustibleForm, litros: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Precio por litro (USD)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="1.20"
+                    value={cargaCombustibleForm.precioLitro}
+                    onChange={(e) =>
+                      setCargaCombustibleForm({
+                        ...cargaCombustibleForm,
+                        precioLitro: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              {cargaCombustibleForm.tipoCarga === "CargaMaquina" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>ID Maquinaria</Label>
+                    <Input
+                      placeholder="(opcional)"
+                      value={cargaCombustibleForm.maquinaId}
+                      onChange={(e) =>
+                        setCargaCombustibleForm({
+                          ...cargaCombustibleForm,
+                          maquinaId: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Horómetro actual</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={cargaCombustibleForm.horometroActual}
+                      onChange={(e) =>
+                        setCargaCombustibleForm({
+                          ...cargaCombustibleForm,
+                          horometroActual: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Responsable</Label>
+                  <Input
+                    value={cargaCombustibleForm.responsable}
+                    onChange={(e) =>
+                      setCargaCombustibleForm({
+                        ...cargaCombustibleForm,
+                        responsable: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Observaciones</Label>
+                  <Input
+                    value={cargaCombustibleForm.observaciones}
+                    onChange={(e) =>
+                      setCargaCombustibleForm({
+                        ...cargaCombustibleForm,
+                        observaciones: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCargaCombustibleDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <button
+                type="submit"
+                className="mc-btn mc-btn--primary"
+                disabled={!cargaCombustibleForm.tanqueId}
+              >
+                Registrar Carga
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>
