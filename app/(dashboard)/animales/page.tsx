@@ -15,8 +15,10 @@ type AnimalRow = {
   sexo: string;
   edad: string;
   peso: string;
+  pesoNum?: number;
   estado: string;
   lote: string;
+  fechaAlta?: string;
   demo?: boolean;
 };
 
@@ -30,7 +32,12 @@ const DEMO_ANIMALES: AnimalRow[] = [
   { id: "UY-412008902", caravana: "256", categoria: "Vaquillona", raza: "Angus", sexo: "H", edad: "20 meses", peso: "402 kg", estado: "Preñada", lote: "Tropa A", demo: true },
 ];
 
+type EventoSanitario = { tipo: string; fecha: string; tropa?: string; n?: number; estado?: string };
+
 const TABS = ["Resumen", "Ganado", "Peso", "Nutrición", "Reproducción", "Sanidad", "Timeline"];
+
+// Paleta por categoría/tropa para los gráficos de composición
+const CAT_COLOR = ["var(--mc-green-600)", "var(--mc-green-500)", "var(--mc-gold-500)", "var(--mc-amber)", "var(--mc-green-800)", "var(--mc-slate-500)", "var(--mc-blue)"];
 
 export default function AnimalesPage() {
   return (
@@ -49,6 +56,7 @@ function AnimalesInner() {
   const [tab, setTab] = useState(initialTab);
   const [animales, setAnimales] = useState<AnimalRow[]>(demo(DEMO_ANIMALES, []));
   const [totalReal, setTotalReal] = useState<number | null>(null);
+  const [eventosSanitarios, setEventosSanitarios] = useState<EventoSanitario[]>([]);
   const [altaOpen, setAltaOpen] = useState(searchParams.get("modal") === "nuevo");
   const [altaForm, setAltaForm] = useState({
     caravana: "", senasa: "", categoria: "Vaca", raza: "Hereford", sexo: "Hembra",
@@ -62,19 +70,44 @@ function AnimalesInner() {
         if (!Array.isArray(d) || d.length === 0) return;
         setTotalReal(d.length);
         setAnimales(
-          d.map((a: { id: string; caravana: string; tipo?: string; raza?: string; sexo?: string; fechaNacimiento?: string; estado?: string; registrosPeso?: { peso: number }[] }) => ({
-            dbId: a.id,
-            id: a.id.slice(-11).toUpperCase(),
-            caravana: a.caravana,
-            categoria: a.tipo || "Vacuno",
-            raza: a.raza || "—",
-            sexo: a.sexo === "Hembra" ? "H" : "M",
-            edad: a.fechaNacimiento ? `${Math.max(0, Math.floor((Date.now() - new Date(a.fechaNacimiento).getTime()) / (365 * 86400000)))} años` : "—",
-            peso: a.registrosPeso?.[0]?.peso ? `${a.registrosPeso[0].peso} kg` : "—",
-            estado: a.estado === "Activo" ? "Saludable" : a.estado || "Saludable",
-            lote: "Tropa A",
-          }))
+          d.map((a: { id: string; caravana: string; tipo?: string; raza?: string; sexo?: string; fechaNacimiento?: string; estado?: string; registrosPeso?: { peso: number }[]; tropa?: string; lote?: { nombre: string }; createdAt?: string }) => {
+            const pesoNum = a.registrosPeso?.[0]?.peso;
+            return {
+              dbId: a.id,
+              id: a.id.slice(-11).toUpperCase(),
+              caravana: a.caravana,
+              categoria: a.tipo || "Vacuno",
+              raza: a.raza || "—",
+              sexo: a.sexo === "Hembra" ? "H" : "M",
+              edad: a.fechaNacimiento ? `${Math.max(0, Math.floor((Date.now() - new Date(a.fechaNacimiento).getTime()) / (365 * 86400000)))} años` : "—",
+              peso: pesoNum ? `${pesoNum} kg` : "—",
+              pesoNum: pesoNum ?? undefined,
+              estado: a.estado === "Activo" ? "Saludable" : a.estado || "Saludable",
+              lote: a.tropa || a.lote?.nombre || "Sin tropa",
+              fechaAlta: a.createdAt || a.fechaNacimiento,
+            };
+          })
         );
+      })
+      .catch(() => {});
+
+    fetch("/api/eventos-sanitarios")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!Array.isArray(d)) return;
+        const futuros = d
+          .map((e: { tipo?: string; nombre?: string; fechaProgramada?: string; fecha?: string; tropa?: string; cantidadAnimales?: number; estado?: string }) => ({
+            tipo: e.tipo || e.nombre || "Evento sanitario",
+            fechaRaw: e.fechaProgramada || e.fecha || "",
+            tropa: e.tropa || "",
+            n: e.cantidadAnimales,
+            estado: e.estado || "",
+          }))
+          .filter((e) => e.fechaRaw)
+          .sort((a, b) => new Date(a.fechaRaw).getTime() - new Date(b.fechaRaw).getTime())
+          .slice(0, 5)
+          .map((e) => ({ ...e, fecha: new Date(e.fechaRaw).toLocaleDateString("es-AR", { day: "numeric", month: "short" }) }));
+        setEventosSanitarios(futuros);
       })
       .catch(() => {});
   }, []);
@@ -154,8 +187,8 @@ function AnimalesInner() {
           </>
         }
       />
-      <Tabs tabs={TABS} active={tab} onChange={setTab} warnTabs={["Sanidad"]} />
-      {tab === "Resumen" && <AnimResumen total={total} onVerSanidad={() => setTab("Sanidad")} />}
+      <Tabs tabs={TABS} active={tab} onChange={setTab} />
+      {tab === "Resumen" && <AnimResumen total={total} animales={animales} eventosSanitarios={eventosSanitarios} onVerSanidad={() => setTab("Sanidad")} />}
       {tab === "Ganado" && (
         <AnimGanado
           animales={animales}
@@ -241,44 +274,42 @@ function AnimalesInner() {
 }
 
 /* ============ TAB RESUMEN (Figma) ============ */
-function AnimResumen({ total, onVerSanidad }: { total: number; onVerSanidad: () => void }) {
+function AnimResumen({ total, animales, eventosSanitarios, onVerSanidad }: { total: number; animales: AnimalRow[]; eventosSanitarios: EventoSanitario[]; onVerSanidad: () => void }) {
+  const conPeso = animales.filter((a) => a.pesoNum != null);
+  const pesoProm = conPeso.length ? Math.round(conPeso.reduce((s, a) => s + (a.pesoNum || 0), 0) / conPeso.length) : null;
+  const prenadas = animales.filter((a) => a.estado === "Preñada").length;
+  const hembras = animales.filter((a) => a.sexo === "H").length;
+  const prenezPct = hembras > 0 ? Math.round((prenadas / hembras) * 100) : null;
+  const enTrat = animales.filter((a) => a.estado === "En tratamiento").length;
+
+  // Evolución del rodeo: cabezas acumuladas por mes de alta (últimos 12 meses)
+  const evolucion = (() => {
+    const conFecha = animales.filter((a) => a.fechaAlta).map((a) => new Date(a.fechaAlta as string).getTime()).sort((a, b) => a - b);
+    if (conFecha.length === 0) return [] as { label: string; n: number }[];
+    const now = new Date();
+    const puntos: { label: string; n: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const fin = new Date(now.getFullYear(), now.getMonth() - i + 1, 0).getTime();
+      const n = conFecha.filter((t) => t <= fin).length;
+      puntos.push({ label: new Date(now.getFullYear(), now.getMonth() - i, 1).toLocaleDateString("es-AR", { month: "short" }), n });
+    }
+    return puntos;
+  })();
+
   return (
     <>
       <div className="grid g-cols-4">
-        <KPI label="Cabezas totales" value={total.toLocaleString("es-AR")} delta={demo("+24 últimos 30d", "—")} trend="up" icon="cow" accent />
-        <KPI label="Peso promedio" value={demo("412 kg", "—")} delta={demo("+8 kg vs mes ant.", "—")} trend="up" icon="scale" />
-        <KPI label="Preñez general" value={demo("78%", "—")} delta={demo("Tacto parcial", "—")} trend="up" icon="heart" />
-        <KPI label="Sanidad pendiente" value={demo("32", "0")} delta={demo("Vacunación aftosa", "—")} trend="warn" icon="syringe" warn />
+        <KPI label="Cabezas totales" value={total.toLocaleString("es-AR")} delta={`${animales.length} registradas`} trend="up" icon="cow" accent />
+        <KPI label="Peso promedio" value={pesoProm ? `${pesoProm} kg` : "—"} delta={conPeso.length ? `${conPeso.length} con pesada` : "Sin pesadas"} trend="up" icon="scale" />
+        <KPI label="Preñez general" value={prenezPct != null ? `${prenezPct}%` : "—"} delta={hembras ? `${prenadas}/${hembras} hembras` : "—"} trend="up" icon="heart" />
+        <KPI label="En tratamiento" value={String(enTrat)} delta={enTrat ? "requieren atención" : "rodeo sano"} trend="warn" icon="syringe" warn />
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
-        <ComposicionRodeo />
+        <ComposicionRodeo animales={animales} />
         <div className="mc-card">
           <div className="mc-card__head"><div className="mc-card__title">Tropas activas</div></div>
-          <div className="col gap-8">
-            {demo([
-              { tropa: "Tropa A", cat: "Cría", n: 412, ubi: "Potrero 3 – La Esperanza", color: "var(--mc-green-600)" },
-              { tropa: "Tropa B", cat: "Engorde", n: 325, ubi: "Potrero 7 – Don Ramón", color: "var(--mc-orange-600)" },
-              { tropa: "Tropa C", cat: "Destete", n: 284, ubi: "Potrero 2 – La Esperanza", color: "var(--mc-amber)" },
-              { tropa: "Tropa D", cat: "Toros", n: 32, ubi: "Potrero 1 – Don Ramón", color: "var(--mc-green-800)" },
-            ], [] as { tropa: string; cat: string; n: number; ubi: string; color: string }[]).map((t) => (
-              <div key={t.tropa} style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: t.color + "22", color: t.color, display: "grid", placeItems: "center", fontFamily: "var(--ff-display)", fontSize: 20 }}>
-                  {t.tropa.slice(-1)}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div className="font-semi" style={{ color: "var(--mc-ink)" }}>
-                    {t.tropa} · <span className="text-muted" style={{ fontWeight: 400 }}>{t.cat}</span>
-                  </div>
-                  <div className="text-xs text-muted">{t.ubi}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div className="font-semi font-mono" style={{ color: "var(--mc-ink)" }}>{t.n}</div>
-                  <div className="text-xs text-muted">cabezas</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Tropas animales={animales} />
         </div>
       </div>
 
@@ -286,27 +317,32 @@ function AnimResumen({ total, onVerSanidad }: { total: number; onVerSanidad: () 
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Evolución del rodeo (12 meses)</div>
-            <span className="mc-badge mc-badge--green">+3.2%</span>
+            {evolucion.length > 0 && <span className="mc-badge mc-badge--green">{evolucion[evolucion.length - 1].n} cab.</span>}
           </div>
-          <div style={{ height: 180, position: "relative" }}>
-            <svg viewBox="0 0 400 180" width="100%" height="100%" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="rodeoGrad" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0" stopColor="#4a5e29" stopOpacity="0.25" />
-                  <stop offset="1" stopColor="#4a5e29" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {[30, 60, 90, 120, 150].map((y) => <line key={y} x1="0" y1={y} x2="400" y2={y} stroke="#e6e8e4" />)}
-              <path d="M0,120 L50,115 L100,108 L150,100 L200,95 L250,88 L300,75 L350,68 L400,60 L400,180 L0,180 Z" fill="url(#rodeoGrad)" />
-              <path d="M0,120 L50,115 L100,108 L150,100 L200,95 L250,88 L300,75 L350,68 L400,60" fill="none" stroke="#4a5e29" strokeWidth="2.5" />
-              {[0, 50, 100, 150, 200, 250, 300, 350, 400].map((x, i) => (
-                <circle key={i} cx={x} cy={[120, 115, 108, 100, 95, 88, 75, 68, 60][i]} r="3.5" fill="white" stroke="#4a5e29" strokeWidth="2" />
-              ))}
-            </svg>
-          </div>
-          <div className="row" style={{ justifyContent: "space-between", fontSize: 10, color: "var(--mc-text-3)", fontFamily: "var(--ff-mono)" }}>
-            {["May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic", "Ene", "Feb", "Mar", "Abr"].map((m) => <span key={m}>{m}</span>)}
-          </div>
+          {evolucion.length === 0 ? (
+            <div className="mc-empty"><div className="mc-empty__icon"><Icon name="cow" size={22} /></div>Sin altas registradas. La evolución del rodeo se grafica a medida que registrás animales.</div>
+          ) : (() => {
+            const W = 400, H = 180, maxN = Math.max(...evolucion.map((e) => e.n), 1);
+            const X = (i: number) => (evolucion.length === 1 ? W / 2 : (i / (evolucion.length - 1)) * W);
+            const Y = (n: number) => 170 - (n / maxN) * 150;
+            const linePts = evolucion.map((e, i) => `${X(i)},${Y(e.n)}`).join(" ");
+            return (
+              <>
+                <div style={{ height: 180, position: "relative" }}>
+                  <svg viewBox="0 0 400 180" width="100%" height="100%" preserveAspectRatio="none">
+                    <defs><linearGradient id="rodeoGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#4a5e29" stopOpacity="0.25" /><stop offset="1" stopColor="#4a5e29" stopOpacity="0" /></linearGradient></defs>
+                    {[30, 60, 90, 120, 150].map((y) => <line key={y} x1="0" y1={y} x2="400" y2={y} stroke="#e6e8e4" />)}
+                    <polygon points={`0,170 ${linePts} 400,170`} fill="url(#rodeoGrad)" />
+                    <polyline points={linePts} fill="none" stroke="#4a5e29" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+                    {evolucion.map((e, i) => <circle key={i} cx={X(i)} cy={Y(e.n)} r="3.5" fill="white" stroke="#4a5e29" strokeWidth="2" />)}
+                  </svg>
+                </div>
+                <div className="row" style={{ justifyContent: "space-between", fontSize: 10, color: "var(--mc-text-3)", fontFamily: "var(--ff-mono)" }}>
+                  {evolucion.map((e, i) => <span key={i}>{e.label}</span>)}
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         <div className="mc-card">
@@ -314,42 +350,47 @@ function AnimResumen({ total, onVerSanidad }: { total: number; onVerSanidad: () 
             <div className="mc-card__title">Próximos eventos sanitarios</div>
             <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onVerSanidad}>Ver todos</button>
           </div>
-          <div className="mc-feed">
-            {demo(
-              <>
-                <FeedRow ic="syringe" tone="red" title="Vacunación aftosa 2ª dosis" meta="Tropa A · 148 animales" time="Hoy" />
-                <FeedRow ic="heart" tone="orange" title="Tacto preñez" meta="Tropa A · 186 vaquillonas" time="25 abr" />
-                <FeedRow ic="scale" tone="" title="Pesada mensual" meta="Todo el rodeo" time="30 abr" />
-                <FeedRow ic="syringe" tone="blue" title="Desparasitación" meta="Tropa C · terneros" time="03 may" />
-              </>,
-              <div className="text-sm text-muted">Sin eventos sanitarios programados.</div>
-            )}
-          </div>
+          {eventosSanitarios.length === 0 ? (
+            <div className="mc-empty"><div className="mc-empty__icon"><Icon name="syringe" size={22} /></div>Sin eventos sanitarios programados.</div>
+          ) : (
+            <div className="mc-feed">
+              {eventosSanitarios.map((e, i) => (
+                <FeedRow key={i} ic="syringe" tone={i === 0 ? "red" : i === 1 ? "orange" : "blue"} title={e.tipo} meta={`${e.tropa || "Rodeo"}${e.n ? ` · ${e.n} animales` : ""}`} time={e.fecha} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
   );
 }
 
-function ComposicionRodeo() {
+function Tropas({ animales }: { animales: AnimalRow[] }) {
+  const grupos = Array.from(animales.reduce((m, a) => m.set(a.lote, (m.get(a.lote) || 0) + 1), new Map<string, number>()).entries()).sort((a, b) => b[1] - a[1]);
+  if (grupos.length === 0) return <div className="mc-empty"><div className="mc-empty__icon"><Icon name="cow" size={20} /></div>Sin tropas. Registrá animales y asignales una tropa.</div>;
+  return (
+    <div className="col gap-8">
+      {grupos.map(([tropa, n], i) => (
+        <div key={tropa} style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10, display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: CAT_COLOR[i % CAT_COLOR.length] + "22", color: CAT_COLOR[i % CAT_COLOR.length], display: "grid", placeItems: "center", fontFamily: "var(--ff-display)", fontSize: 18 }}>
+            <Icon name="cow" size={18} />
+          </div>
+          <div style={{ flex: 1 }}><div className="font-semi" style={{ color: "var(--mc-ink)" }}>{tropa}</div></div>
+          <div style={{ textAlign: "right" }}><div className="font-semi font-mono" style={{ color: "var(--mc-ink)" }}>{n}</div><div className="text-xs text-muted">cabezas</div></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ComposicionRodeo({ animales }: { animales: AnimalRow[] }) {
   const [modo, setModo] = useState<"cat" | "tropa">("cat");
-  const vacio = [] as { cat: string; n: number; pct: number; color: string }[];
-  const porCategoria = demo([
-    { cat: "Vacas", n: 412, pct: 32, color: "var(--mc-green-600)" },
-    { cat: "Vaquillonas", n: 186, pct: 14, color: "var(--mc-green-500)" },
-    { cat: "Novillos", n: 325, pct: 25, color: "var(--mc-orange-500)" },
-    { cat: "Terneros", n: 284, pct: 22, color: "var(--mc-amber)" },
-    { cat: "Toros", n: 32, pct: 3, color: "var(--mc-green-800)" },
-    { cat: "Rechazo", n: 45, pct: 4, color: "var(--mc-text-3)" },
-  ], vacio);
-  const porTropa = demo([
-    { cat: "Tropa A", n: 412, pct: 32, color: "var(--mc-green-600)" },
-    { cat: "Tropa B", n: 325, pct: 25, color: "var(--mc-orange-600)" },
-    { cat: "Tropa C", n: 284, pct: 22, color: "var(--mc-amber)" },
-    { cat: "Tropa D", n: 32, pct: 3, color: "var(--mc-green-800)" },
-    { cat: "Sin tropa", n: 231, pct: 18, color: "var(--mc-text-3)" },
-  ], vacio);
-  const data = modo === "cat" ? porCategoria : porTropa;
+  const data = (() => {
+    const key = modo === "cat" ? (a: AnimalRow) => a.categoria : (a: AnimalRow) => a.lote;
+    const m = animales.reduce((acc, a) => acc.set(key(a), (acc.get(key(a)) || 0) + 1), new Map<string, number>());
+    const tot = animales.length || 1;
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(([cat, n], i) => ({ cat, n, pct: Math.round((n / tot) * 100), color: CAT_COLOR[i % CAT_COLOR.length] }));
+  })();
   return (
     <div className="mc-card">
       <div className="mc-card__head">
@@ -359,25 +400,29 @@ function ComposicionRodeo() {
           <button className={modo === "tropa" ? "is-on" : ""} onClick={() => setModo("tropa")}>Por tropa</button>
         </div>
       </div>
-      <div className="grid g-cols-3 gap-16">
-        {data.map((c) => (
-          <div key={c.cat} style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10 }}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div>
-                <div className="text-xs text-muted">{c.cat}</div>
-                <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", lineHeight: 1, marginTop: 4 }}>{c.n}</div>
+      {data.length === 0 ? (
+        <div className="mc-empty"><div className="mc-empty__icon"><Icon name="cow" size={22} /></div>Sin animales registrados. La composición se completa al dar de alta el rodeo.</div>
+      ) : (
+        <div className="grid g-cols-3 gap-16">
+          {data.map((c) => (
+            <div key={c.cat} style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10 }}>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div>
+                  <div className="text-xs text-muted">{c.cat}</div>
+                  <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", lineHeight: 1, marginTop: 4 }}>{c.n}</div>
+                </div>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: c.color + "22", color: c.color, display: "grid", placeItems: "center" }}>
+                  <Icon name="cow" size={16} />
+                </div>
               </div>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: c.color + "22", color: c.color, display: "grid", placeItems: "center" }}>
-                <Icon name="cow" size={16} />
+              <div className="mc-prog mt-8">
+                <div className="mc-prog__bar" style={{ width: `${c.pct}%`, background: c.color }}></div>
               </div>
+              <div className="text-xs text-muted mt-4">{c.pct}% del rodeo</div>
             </div>
-            <div className="mc-prog mt-8">
-              <div className="mc-prog__bar" style={{ width: `${c.pct * 3}%`, background: c.color }}></div>
-            </div>
-            <div className="text-xs text-muted mt-4">{c.pct}% del rodeo</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -614,32 +659,52 @@ function AnimPeso({ animales, toast }: { animales: AnimalRow[]; toast: ReturnTyp
     }
   };
 
+  const pesoPorTropa = (() => {
+    const m = new Map<string, { sum: number; n: number }>();
+    animales.filter((a) => a.pesoNum != null).forEach((a) => { const g = m.get(a.lote) || { sum: 0, n: 0 }; g.sum += a.pesoNum as number; g.n++; m.set(a.lote, g); });
+    return Array.from(m.entries()).map(([tropa, g]) => ({ tropa, prom: Math.round(g.sum / g.n), n: g.n })).sort((a, b) => b.prom - a.prom);
+  })();
+
   return (
     <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
       <div className="mc-card">
-        <div className="mc-card__head"><div className="mc-card__title">Evolución de peso por tropa</div></div>
-        <div style={{ height: 240, position: "relative" }}>
-          <svg viewBox="0 0 400 220" width="100%" height="100%" preserveAspectRatio="none">
-            {[30, 80, 130, 180].map((y) => <line key={y} x1="0" y1={y} x2="400" y2={y} stroke="#e6e8e4" />)}
-            <path d="M0,160 C60,155 120,140 180,130 C240,120 300,105 400,85" fill="none" stroke="#5e7733" strokeWidth="3" />
-            <path d="M0,140 C60,135 120,130 180,120 C240,110 300,95 400,70" fill="none" stroke="#D45812" strokeWidth="3" />
-            <path d="M0,180 C60,170 120,160 180,150 C240,140 300,125 400,110" fill="none" stroke="#c48410" strokeWidth="3" />
-          </svg>
-          <div className="row gap-16" style={{ position: "absolute", top: 8, left: 8 }}>
-            <div className="row gap-4 text-xs"><span style={{ width: 10, height: 3, background: "var(--mc-green-600)", borderRadius: 2 }}></span>Tropa A</div>
-            <div className="row gap-4 text-xs"><span style={{ width: 10, height: 3, background: "var(--mc-orange-600)", borderRadius: 2 }}></span>Tropa B</div>
-            <div className="row gap-4 text-xs"><span style={{ width: 10, height: 3, background: "var(--mc-amber)", borderRadius: 2 }}></span>Tropa C</div>
-          </div>
-        </div>
-        <div className="grid g-cols-3 gap-8 mt-8">
-          {[{ t: "Tropa A", v: "468 kg", d: "12" }, { t: "Tropa B", v: "510 kg", d: "18" }, { t: "Tropa C", v: "145 kg", d: "24" }].map((r) => (
-            <div key={r.t} style={{ padding: 10, background: "var(--mc-surface-2)", borderRadius: 8 }}>
-              <div className="text-xs text-muted">{r.t}</div>
-              <div className="font-semi" style={{ fontSize: 16, color: "var(--mc-ink)" }}>{r.v}</div>
-              <div className="text-xs" style={{ color: "var(--mc-green-700)" }}>+{r.d} kg últ. mes</div>
+        <div className="mc-card__head"><div className="mc-card__title">Peso promedio por tropa</div></div>
+        {pesoPorTropa.length === 0 ? (
+          <div className="mc-empty"><div className="mc-empty__icon"><Icon name="scale" size={22} /></div>Sin pesadas registradas. Registrá pesos y el promedio por tropa se grafica acá.</div>
+        ) : (() => {
+          const maxP = Math.max(...pesoPorTropa.map((t) => t.prom), 1);
+          const W = 400, H = 220, padL = 36, padB = 28, padT = 12, n = pesoPorTropa.length;
+          const band = (W - padL) / n, bw = Math.min(46, band * 0.5);
+          const Y = (v: number) => padT + (H - padT - padB) * (1 - v / maxP);
+          return (
+            <div style={{ height: 240, position: "relative" }}>
+              <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+                {[0, 0.25, 0.5, 0.75, 1].map((p, i) => { const y = Y(maxP * p); return (<g key={i}><line x1={padL} y1={y} x2={W} y2={y} stroke="var(--mc-line)" strokeDasharray={p === 0 ? "0" : "2,3"} /><text x={padL - 6} y={y + 3} fontSize="9" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">{Math.round(maxP * p)}</text></g>); })}
+                {pesoPorTropa.map((t, i) => {
+                  const cx = padL + band * i + band / 2;
+                  return (
+                    <g key={i}>
+                      <rect x={cx - bw / 2} y={Y(t.prom)} width={bw} height={Y(0) - Y(t.prom)} rx="4" fill={CAT_COLOR[i % CAT_COLOR.length]} />
+                      <text x={cx} y={Y(t.prom) - 5} fontSize="10" fontFamily="var(--ff-mono)" fontWeight="700" fill="var(--mc-ink)" textAnchor="middle">{t.prom}</text>
+                      <text x={cx} y={H - 8} fontSize="10" fontFamily="var(--ff-ui)" fill="var(--mc-text-2)" textAnchor="middle">{t.tropa}</text>
+                    </g>
+                  );
+                })}
+              </svg>
             </div>
-          ))}
-        </div>
+          );
+        })()}
+        {pesoPorTropa.length > 0 && (
+          <div className="grid g-cols-3 gap-8 mt-8">
+            {pesoPorTropa.slice(0, 3).map((r, i) => (
+              <div key={r.tropa} style={{ padding: 10, background: "var(--mc-surface-2)", borderRadius: 8 }}>
+                <div className="text-xs text-muted">{r.tropa}</div>
+                <div className="font-semi" style={{ fontSize: 16, color: CAT_COLOR[i % CAT_COLOR.length] }}>{r.prom} kg</div>
+                <div className="text-xs text-muted">{r.n} con pesada</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mc-card">

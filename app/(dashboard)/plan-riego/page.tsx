@@ -3,7 +3,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Icon, KPI, useToast, PageHeader, SubTabs } from "@/components/mc";
 import BalanceHidrico, { type PuntoBalance, type SugerenciaIA } from "@/components/plan-riego/BalanceHidrico";
-import AguaUlt30Dias, { type EventoAgua } from "@/components/plan-riego/AguaUlt30Dias";
+import AguaUlt30Dias from "@/components/plan-riego/AguaUlt30Dias";
 import RegistrarRiegoModal, { type RegistroRiego } from "@/components/plan-riego/RegistrarRiegoModal";
 
 /* ============================================================
@@ -44,10 +44,11 @@ function PlanRiegoInner() {
 
   const [dias, setDias] = useState<ClimaDia[] | null>(null);
   const [s0, setS0] = useState(65); // humedad de suelo inicial estimada (%)
+  const [tieneCampo, setTieneCampo] = useState<boolean | null>(null); // null=cargando
 
-  const [eventos, setEventos] = useState<EventoAgua[]>([]);
-  const [lluviaMm, setLluviaMm] = useState(0);
-  const [riegoMm, setRiegoMm] = useState(0);
+  // Datos crudos para el card "Agua últ. N días" (filtrables por período)
+  const [lluvias, setLluvias] = useState<{ t: number; mm: number; lugar: string }[]>([]);
+  const [riegos, setRiegos] = useState<{ t: number; mm: number; estado: string; ia: boolean }[]>([]);
   const [histMm, setHistMm] = useState<number | null>(null);
 
   // Lote activo + clima + histórico
@@ -60,40 +61,33 @@ function PlanRiegoInner() {
       const loc = Array.isArray(d) ? d.find((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud) : null;
       const lote = Array.isArray(d) && d.length > 0 ? d[0] : null;
       if (lote) { setLoteId((p) => p || lote.id); setLoteNombre(lote.nombre || "tu campo"); if (lote.cultivo) setCultivo(lote.cultivo); }
-      const q = loc ? `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}` : "";
+      // El balance hídrico requiere un lote con ubicación (para el clima de ese punto)
+      if (!loc) { setTieneCampo(false); return; }
+      setTieneCampo(true);
+      const q = `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}`;
       fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => {
         if (Array.isArray(c?.dias)) setDias(c.dias.map((x: { nombre: string; num: number; esHoy: boolean; et0: number; mm: number }) => ({ nombre: x.nombre, num: x.num, esHoy: x.esHoy, et0: x.et0, mm: x.mm })));
       }).catch(() => {});
       fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistMm(h.promedioMensual[new Date().getMonth()]); }).catch(() => {});
-    }).catch(() => {});
+    }).catch(() => setTieneCampo(false));
   }, []);
 
-  // Lluvia registrada (últ. 30 días) → estima humedad inicial + total lluvia + eventos
+  // Lluvia + riego reales (crudos, últimos 30 días) → se filtran por período en el card
   useEffect(() => {
     const hace30 = Date.now() - 30 * 86400000;
     fetch("/api/registro-pluviometrico").then((r) => (r.ok ? r.json() : [])).then((d) => {
       if (!Array.isArray(d)) return;
       const recientes = d.filter((r: { fecha: string }) => new Date(r.fecha).getTime() >= hace30);
-      const totalLluvia = Math.round(recientes.reduce((s: number, r: { milimetros: number }) => s + (r.milimetros || 0), 0));
-      setLluviaMm(totalLluvia);
+      setLluvias(recientes.map((r: { fecha: string; milimetros: number; lote?: { nombre: string } }) => ({ t: new Date(r.fecha).getTime(), mm: r.milimetros || 0, lugar: r.lote?.nombre || "" })));
       // humedad inicial estimada por lluvia de los últimos 7 días
       const hace7 = Date.now() - 7 * 86400000;
       const lluvia7 = recientes.filter((r: { fecha: string }) => new Date(r.fecha).getTime() >= hace7).reduce((s: number, r: { milimetros: number }) => s + (r.milimetros || 0), 0);
       setS0(Math.max(35, Math.min(92, Math.round(50 + (lluvia7 / AWC) * 100))));
-      const evLluvia: EventoAgua[] = recientes.slice(0, 6).map((r: { fecha: string; milimetros: number; lote?: { nombre: string } }) => ({
-        tipo: "Lluvia", fecha: new Date(r.fecha).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" }), icon: "droplet", color: "#3aa6d9", val: `+${Math.round(r.milimetros)} mm`, status: r.lote?.nombre || "",
-      }));
-      setEventos((prev) => mezclarEventos(prev, evLluvia));
     }).catch(() => {});
 
     fetch("/api/eventos-riego").then((r) => (r.ok ? r.json() : [])).then((d) => {
       if (!Array.isArray(d)) return;
-      const totalRiego = Math.round(d.reduce((s: number, e: { laminaAplicada?: number }) => s + (e.laminaAplicada || 0), 0));
-      setRiegoMm(totalRiego);
-      const evRiego: EventoAgua[] = d.slice(0, 6).map((e: { fechaProgramada: string; laminaAplicada?: number; estado?: string; observaciones?: string }) => ({
-        tipo: "Riego", fecha: new Date(e.fechaProgramada).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" }), icon: "droplet", color: "#768f44", val: `+${Math.round(e.laminaAplicada || 0)} mm`, status: e.estado || "", iaIcon: (e.observaciones || "").toLowerCase().includes("ia"),
-      }));
-      setEventos((prev) => mezclarEventos(prev, evRiego));
+      setRiegos(d.map((e: { fechaProgramada: string; laminaAplicada?: number; estado?: string; observaciones?: string }) => ({ t: new Date(e.fechaProgramada).getTime(), mm: e.laminaAplicada || 0, estado: e.estado || "", ia: (e.observaciones || "").toLowerCase().includes("ia") })));
     }).catch(() => {});
   }, []);
 
@@ -126,7 +120,6 @@ function PlanRiegoInner() {
 
   const costoEvento = sugerencias.reduce((s, x) => s + x.costoUSD, 0);
   const aguaUtilMm = Math.round((s0 / 100) * AWC);
-  const totalMm = lluviaMm + riegoMm;
 
   const postEvento = useCallback(async (mm: number, fecha: string, observaciones: string) => {
     if (!planRiegoId) return false;
@@ -139,19 +132,18 @@ function PlanRiegoInner() {
   const aprobarOrden = useCallback(async () => {
     if (sugerencias.length === 0) { toast.show("No hay riego sugerido por ahora", "err"); return; }
     for (const s of sugerencias) await postEvento(s.mm, s.fecha, s.motivo);
-    setEventos((prev) => [...sugerencias.map((s) => ({ tipo: "Riego programado", fecha: s.fecha, icon: "droplet", color: "#768f44", val: `+${s.mm} mm`, status: "Programado" })), ...prev]);
-    setRiegoMm((m) => m + sugerencias.reduce((s, x) => s + x.mm, 0));
+    setRiegos((prev) => [...sugerencias.map((s) => ({ t: Date.now(), mm: s.mm, estado: "Programado", ia: false })), ...prev]);
     toast.show("Orden de riego aprobada");
   }, [sugerencias, postEvento, toast]);
 
   const registrar = useCallback(async (r: RegistroRiego) => {
     await postEvento(r.mm, r.fecha, r.observaciones);
-    setEventos((prev) => [{ tipo: r.fuente === "ia" ? "Riego IA" : "Riego manual", fecha: `${r.fecha} · ${r.metodo}`, icon: "droplet", color: "#768f44", val: `+${r.mm} mm`, status: r.fuente === "ia" ? "ejecutado" : "Reporte manual", iaIcon: r.fuente === "ia" }, ...prev]);
-    setRiegoMm((m) => m + r.mm);
+    setRiegos((prev) => [{ t: Date.now(), mm: r.mm, estado: r.fuente === "ia" ? "ejecutado" : "Reporte manual", ia: r.fuente === "ia" }, ...prev]);
     toast.show(r.fuente === "ia" ? "Riego IA confirmado" : "Registro manual guardado");
   }, [postEvento, toast]);
 
-  const cargando = dias === null;
+  const sinCampo = tieneCampo === false;
+  const cargandoBalance = tieneCampo === null || (tieneCampo === true && dias === null);
   const estadoHidrico = s0 >= 50 ? "Bien hidratado" : s0 >= 35 ? "Déficit controlado" : "Estrés hídrico";
 
   return (
@@ -167,11 +159,11 @@ function PlanRiegoInner() {
       />
 
       <div className="grid g-cols-5">
-        <KPI label="Estado Hídrico" value={<span style={{ color: s0 >= 50 ? "var(--mc-green-700)" : "var(--mc-amber)" }}>{estadoHidrico}</span>} delta={<span className="row gap-4" style={{ alignItems: "center" }}><Icon name="droplet" size={12} />{loteNombre}</span>} trend="up" icon="droplet" accent />
-        <KPI label="Agua Útil (estimada)" value={`${s0}%`} delta={`${aguaUtilMm} mm disponibles`} trend="up" icon="activity" />
-        <KPI label="Consumo Diario (ETc)" value={etcDia ? `${etcDia} mm/día` : "—"} delta={`${cultivo} · Kc ${KC[cultivo] || 1.05}`} trend="up" icon="thermometer" />
-        <KPI label="Próximo Riego" value={proximo ? proximo.fecha : "—"} delta={proximo ? `+${proximo.mm} mm sugeridos` : "Sin riego necesario"} trend="up" icon="calendar" />
-        <KPI label="Costo Proyectado" value={`$${costoEvento}`} delta="Energía + insumo" trend="up" icon="dollar" />
+        <KPI label="Estado Hídrico" value={sinCampo ? "—" : <span style={{ color: s0 >= 50 ? "var(--mc-green-700)" : "var(--mc-amber)" }}>{estadoHidrico}</span>} delta={sinCampo ? "Sin lote" : <span className="row gap-4" style={{ alignItems: "center" }}><Icon name="droplet" size={12} />{loteNombre}</span>} trend="up" icon="droplet" accent />
+        <KPI label="Agua Útil (estimada)" value={sinCampo ? "—" : `${s0}%`} delta={sinCampo ? "—" : `${aguaUtilMm} mm disponibles`} trend="up" icon="activity" />
+        <KPI label="Consumo Diario (ETc)" value={!sinCampo && etcDia ? `${etcDia} mm/día` : "—"} delta={sinCampo ? "—" : `${cultivo} · Kc ${KC[cultivo] || 1.05}`} trend="up" icon="thermometer" />
+        <KPI label="Próximo Riego" value={proximo ? proximo.fecha : "—"} delta={sinCampo ? "—" : proximo ? `+${proximo.mm} mm sugeridos` : "Sin riego necesario"} trend="up" icon="calendar" />
+        <KPI label="Costo Proyectado" value={sinCampo ? "—" : `$${costoEvento}`} delta="Energía + insumo" trend="up" icon="dollar" />
       </div>
 
       <SubTabs tabs={["Inicio"]} active={sub} onChange={setSub} />
@@ -185,21 +177,14 @@ function PlanRiegoInner() {
           onEstrategiaCommit={() => {}}
           costoEvento={costoEvento}
           onAprobar={aprobarOrden}
-          cargando={cargando}
+          cargando={cargandoBalance}
           subtitle={`Próximos ${balance.length || 7} días · ${loteNombre} · ${cultivo}`}
           aguaUtilMm={aguaUtilMm}
         />
-        <AguaUlt30Dias eventos={eventos} totalMm={totalMm} lluviaMm={lluviaMm} riegoMm={riegoMm} histMm={histMm} />
+        <AguaUlt30Dias lluvias={lluvias} riegos={riegos} histMm={histMm} />
       </div>
     </div>
   );
 }
 
 function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
-
-// Mezcla eventos de lluvia + riego ordenados por recencia (mantiene los recién agregados)
-function mezclarEventos(prev: EventoAgua[], nuevos: EventoAgua[]): EventoAgua[] {
-  const enSesion = prev.filter((e) => e.status === "Programado" || e.status === "ejecutado" || e.status === "Reporte manual");
-  const combinados = [...enSesion, ...nuevos];
-  return combinados.slice(0, 8);
-}
