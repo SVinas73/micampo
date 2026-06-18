@@ -1,35 +1,27 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Icon, KPI, useToast, PageHeader, SubTabs } from "@/components/mc";
 import BalanceHidrico, { type PuntoBalance, type SugerenciaIA } from "@/components/plan-riego/BalanceHidrico";
 import AguaUlt30Dias, { type EventoAgua } from "@/components/plan-riego/AguaUlt30Dias";
 import RegistrarRiegoModal, { type RegistroRiego } from "@/components/plan-riego/RegistrarRiegoModal";
-import { demo } from "@/lib/demo";
 
-/* ============ Datos demo (Figma) ============ */
-const BALANCE_DEMO: PuntoBalance[] = [
-  { dia: "HOY 22", sinRiego: 82, conRiego: 82 },
-  { dia: "JUE 23", sinRiego: 70, conRiego: 72 },
-  { dia: "VIE 24", sinRiego: 58, conRiego: 62 },
-  { dia: "SÁB 25", sinRiego: 38, conRiego: 78 },
-  { dia: "DOM 26", sinRiego: 22, conRiego: 68 },
-  { dia: "LUN 27", sinRiego: 12, conRiego: 82 },
-  { dia: "MAR 28", sinRiego: 5, conRiego: 70 },
-];
+/* ============================================================
+   Plan de Riego — balance hídrico REAL.
+   El balance se proyecta con datos reales: ET0 (evapotranspiración)
+   y lluvia del pronóstico (Open-Meteo, /api/clima), partiendo de una
+   humedad de suelo estimada por la lluvia reciente registrada. Los
+   eventos de "Agua últ. 30 días" son reales (riegos + lluvias).
+   La IA (optimización) se conectará después; hoy el modelo es
+   determinístico y agronómico.
+   ============================================================ */
 
-const SUGERENCIAS_DEMO: SugerenciaIA[] = [
-  { fecha: "2025-09-25", mm: 15, motivo: "Humedad proyectada cae a 22% sin riego (estrés severo)", costoUSD: 225 },
-  { fecha: "2025-09-27", mm: 15, motivo: "Balance hídrico negativo proyectado en 5 días", costoUSD: 225 },
-];
+type ClimaDia = { nombre: string; num: number; esHoy: boolean; et0: number; mm: number };
 
-const EVENTOS_DEMO: EventoAgua[] = [
-  { tipo: "Riego Variable (IA)", fecha: "Ayer, 04:00 AM", icon: "droplet", color: "#3aa6d9", val: "+12 mm", status: "ejecutado", iaIcon: true },
-  { tipo: "Lluvia Fuerte", fecha: "Jueves 21, PM", icon: "droplet", color: "#3aa6d9", val: "+45 mm", status: "Reporte Manual" },
-  { tipo: "Fertirriego", fecha: "Lunes 18", icon: "leaf", color: "#768f44", val: "+10 mm", status: "Aplicación Urea" },
-  { tipo: "Llovizna", fecha: "Sábado 16", icon: "droplet", color: "#3aa6d9", val: "+5 mm", status: "" },
-  { tipo: "Riego IA", fecha: "Miércoles 13", icon: "droplet", color: "#3aa6d9", val: "+15 mm", status: "", iaIcon: true },
-];
+// Coeficiente de cultivo (Kc) aproximado por cultivo (etapa media)
+const KC: Record<string, number> = { Maíz: 1.15, Soja: 1.1, Trigo: 1.05, Girasol: 1.0, Alfalfa: 1.2, Sorgo: 1.05, Cebada: 1.0 };
+const AWC = 120; // mm de agua útil en el perfil (suelo franco, ~1 m)
+const COSTO_MM = 12; // USD/mm (energía + insumo)
 
 export default function PlanRiegoPage() {
   return (
@@ -44,132 +36,123 @@ function PlanRiegoInner() {
   const [sub, setSub] = useState("Inicio");
   const [riegoOpen, setRiegoOpen] = useState(false);
 
-  const [balance, setBalance] = useState<PuntoBalance[]>(demo(BALANCE_DEMO, []));
-  const [sugerencias, setSugerencias] = useState<SugerenciaIA[]>(demo(SUGERENCIAS_DEMO, []));
-  const [estrategia, setEstrategia] = useState(75);
-  const [costoEvento, setCostoEvento] = useState(demo(450, 0));
-  const [cargando, setCargando] = useState(false);
-
-  const [eventos, setEventos] = useState<EventoAgua[]>(demo(EVENTOS_DEMO, []));
+  const [estrategia, setEstrategia] = useState(70);
   const [planRiegoId, setPlanRiegoId] = useState<string | null>(null);
   const [loteId, setLoteId] = useState<string | null>(null);
+  const [loteNombre, setLoteNombre] = useState<string>("tu campo");
+  const [cultivo, setCultivo] = useState<string>("Maíz");
 
-  // Plan de riego activo (para el planRiegoId del POST de eventos) y lote.
+  const [dias, setDias] = useState<ClimaDia[] | null>(null);
+  const [s0, setS0] = useState(65); // humedad de suelo inicial estimada (%)
+
+  const [eventos, setEventos] = useState<EventoAgua[]>([]);
+  const [lluviaMm, setLluviaMm] = useState(0);
+  const [riegoMm, setRiegoMm] = useState(0);
+  const [histMm, setHistMm] = useState<number | null>(null);
+
+  // Lote activo + clima + histórico
   useEffect(() => {
-    fetch("/api/planes-riego")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0) {
-          setPlanRiegoId(d[0].id ?? null);
-          if (d[0].loteId) setLoteId(d[0].loteId);
-        }
-      })
-      .catch(() => {});
+    fetch("/api/planes-riego").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (Array.isArray(d) && d.length > 0) { setPlanRiegoId(d[0].id ?? null); if (d[0].loteId) setLoteId(d[0].loteId); }
+    }).catch(() => {});
 
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0 && !loteId) setLoteId(d[0].id ?? null);
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      const loc = Array.isArray(d) ? d.find((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud) : null;
+      const lote = Array.isArray(d) && d.length > 0 ? d[0] : null;
+      if (lote) { setLoteId((p) => p || lote.id); setLoteNombre(lote.nombre || "tu campo"); if (lote.cultivo) setCultivo(lote.cultivo); }
+      const q = loc ? `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}` : "";
+      fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => {
+        if (Array.isArray(c?.dias)) setDias(c.dias.map((x: { nombre: string; num: number; esHoy: boolean; et0: number; mm: number }) => ({ nombre: x.nombre, num: x.num, esHoy: x.esHoy, et0: x.et0, mm: x.mm })));
+      }).catch(() => {});
+      fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistMm(h.promedioMensual[new Date().getMonth()]); }).catch(() => {});
+    }).catch(() => {});
   }, []);
 
-  const analizar = useCallback(
-    async (estr: number) => {
-      setCargando(true);
-      try {
-        const res = await fetch("/api/riego-ia/analizar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ loteId, cultivo: "Maíz", etapaFenologica: "Vegetativo", estrategia: estr }),
-        });
-        if (res.ok) {
-          const d = await res.json();
-          if (Array.isArray(d?.balanceProyectado) && d.balanceProyectado.length > 0) setBalance(d.balanceProyectado);
-          if (Array.isArray(d?.sugerencias) && d.sugerencias.length > 0) setSugerencias(d.sugerencias);
-          if (typeof d?.costoEvento === "number") setCostoEvento(d.costoEvento);
-        }
-      } catch {
-        /* mantiene demo */
-      } finally {
-        setCargando(false);
-      }
-    },
-    [loteId],
-  );
-
-  // Analiza al montar (y cuando se conoce el lote).
-  const montado = useRef(false);
+  // Lluvia registrada (últ. 30 días) → estima humedad inicial + total lluvia + eventos
   useEffect(() => {
-    if (montado.current) return;
-    montado.current = true;
-    analizar(estrategia);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analizar]);
+    const hace30 = Date.now() - 30 * 86400000;
+    fetch("/api/registro-pluviometrico").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d)) return;
+      const recientes = d.filter((r: { fecha: string }) => new Date(r.fecha).getTime() >= hace30);
+      const totalLluvia = Math.round(recientes.reduce((s: number, r: { milimetros: number }) => s + (r.milimetros || 0), 0));
+      setLluviaMm(totalLluvia);
+      // humedad inicial estimada por lluvia de los últimos 7 días
+      const hace7 = Date.now() - 7 * 86400000;
+      const lluvia7 = recientes.filter((r: { fecha: string }) => new Date(r.fecha).getTime() >= hace7).reduce((s: number, r: { milimetros: number }) => s + (r.milimetros || 0), 0);
+      setS0(Math.max(35, Math.min(92, Math.round(50 + (lluvia7 / AWC) * 100))));
+      const evLluvia: EventoAgua[] = recientes.slice(0, 6).map((r: { fecha: string; milimetros: number; lote?: { nombre: string } }) => ({
+        tipo: "Lluvia", fecha: new Date(r.fecha).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" }), icon: "droplet", color: "#3aa6d9", val: `+${Math.round(r.milimetros)} mm`, status: r.lote?.nombre || "",
+      }));
+      setEventos((prev) => mezclarEventos(prev, evLluvia));
+    }).catch(() => {});
 
-  // POST de un evento de riego (común a aprobar orden y modal).
-  const postEvento = useCallback(
-    async (mm: number, fecha: string, observaciones: string) => {
-      if (!planRiegoId) return false;
-      try {
-        const res = await fetch("/api/eventos-riego", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            planRiegoId,
-            fechaProgramada: fecha,
-            laminaAplicada: mm,
-            estado: "Programado",
-            observaciones,
-          }),
-        });
-        return res.ok;
-      } catch {
-        return false;
+    fetch("/api/eventos-riego").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d)) return;
+      const totalRiego = Math.round(d.reduce((s: number, e: { laminaAplicada?: number }) => s + (e.laminaAplicada || 0), 0));
+      setRiegoMm(totalRiego);
+      const evRiego: EventoAgua[] = d.slice(0, 6).map((e: { fechaProgramada: string; laminaAplicada?: number; estado?: string; observaciones?: string }) => ({
+        tipo: "Riego", fecha: new Date(e.fechaProgramada).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" }), icon: "droplet", color: "#768f44", val: `+${Math.round(e.laminaAplicada || 0)} mm`, status: e.estado || "", iaIcon: (e.observaciones || "").toLowerCase().includes("ia"),
+      }));
+      setEventos((prev) => mezclarEventos(prev, evRiego));
+    }).catch(() => {});
+  }, []);
+
+  // Cálculo determinístico del balance hídrico (real: ET0 + lluvia)
+  const { balance, sugerencias, etcDia, proximo } = useMemo(() => {
+    if (!dias || dias.length === 0) {
+      return { balance: [] as PuntoBalance[], sugerencias: [] as SugerenciaIA[], etcDia: 0, proximo: null as SugerenciaIA | null };
+    }
+    const kc = KC[cultivo] || 1.05;
+    const mmEvento = Math.round(10 + (estrategia / 100) * 12);
+    const umbral = 40;
+    let sSin = s0, sCon = s0;
+    const bal: PuntoBalance[] = [];
+    const sugs: SugerenciaIA[] = [];
+    dias.forEach((d, i) => {
+      const etc = (d.et0 || 4) * kc;
+      const deltaPct = (((d.mm || 0) - etc) / AWC) * 100;
+      sSin = clamp(sSin + deltaPct, 0, 100);
+      let cs = clamp(sCon + deltaPct, 0, 100);
+      if (i > 0 && cs < umbral) {
+        cs = clamp(cs + (mmEvento / AWC) * 100, 0, 100);
+        sugs.push({ fecha: `${d.nombre} ${d.num}`, mm: mmEvento, motivo: `Humedad proyectada cae a ${Math.round(sSin)}% sin riego`, costoUSD: Math.round(mmEvento * COSTO_MM) });
       }
-    },
-    [planRiegoId],
-  );
+      sCon = cs;
+      bal.push({ dia: `${d.esHoy ? "HOY" : d.nombre.toUpperCase()} ${d.num}`, sinRiego: Math.round(sSin), conRiego: Math.round(cs) });
+    });
+    const etc0 = Math.round((dias[0].et0 || 4) * kc * 10) / 10;
+    return { balance: bal, sugerencias: sugs, etcDia: etc0, proximo: sugs[0] || null };
+  }, [dias, estrategia, s0, cultivo]);
+
+  const costoEvento = sugerencias.reduce((s, x) => s + x.costoUSD, 0);
+  const aguaUtilMm = Math.round((s0 / 100) * AWC);
+  const totalMm = lluviaMm + riegoMm;
+
+  const postEvento = useCallback(async (mm: number, fecha: string, observaciones: string) => {
+    if (!planRiegoId) return false;
+    try {
+      const res = await fetch("/api/eventos-riego", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planRiegoId, fechaProgramada: new Date().toISOString(), laminaAplicada: mm, estado: "Programado", observaciones }) });
+      return res.ok;
+    } catch { return false; }
+  }, [planRiegoId]);
 
   const aprobarOrden = useCallback(async () => {
-    for (const s of sugerencias) {
-      await postEvento(s.mm, s.fecha, s.motivo);
-    }
-    setEventos((prev) => [
-      ...sugerencias.map((s) => ({
-        tipo: "Riego IA (Aprobado)",
-        fecha: s.fecha,
-        icon: "droplet",
-        color: "#3aa6d9",
-        val: `+${s.mm} mm`,
-        status: "Programado",
-        iaIcon: true,
-      })),
-      ...prev,
-    ]);
+    if (sugerencias.length === 0) { toast.show("No hay riego sugerido por ahora", "err"); return; }
+    for (const s of sugerencias) await postEvento(s.mm, s.fecha, s.motivo);
+    setEventos((prev) => [...sugerencias.map((s) => ({ tipo: "Riego programado", fecha: s.fecha, icon: "droplet", color: "#768f44", val: `+${s.mm} mm`, status: "Programado" })), ...prev]);
+    setRiegoMm((m) => m + sugerencias.reduce((s, x) => s + x.mm, 0));
     toast.show("Orden de riego aprobada");
   }, [sugerencias, postEvento, toast]);
 
-  const registrar = useCallback(
-    async (r: RegistroRiego) => {
-      await postEvento(r.mm, r.fecha, r.observaciones);
-      setEventos((prev) => [
-        {
-          tipo: r.fuente === "ia" ? "Riego IA" : "Riego Manual",
-          fecha: `${r.fecha} · ${r.metodo}`,
-          icon: "droplet",
-          color: "#3aa6d9",
-          val: `+${r.mm} mm`,
-          status: r.fuente === "ia" ? "ejecutado" : "Reporte Manual",
-          iaIcon: r.fuente === "ia",
-        },
-        ...prev,
-      ]);
-      toast.show(r.fuente === "ia" ? "Riego IA confirmado" : "Registro manual guardado");
-    },
-    [postEvento, toast],
-  );
+  const registrar = useCallback(async (r: RegistroRiego) => {
+    await postEvento(r.mm, r.fecha, r.observaciones);
+    setEventos((prev) => [{ tipo: r.fuente === "ia" ? "Riego IA" : "Riego manual", fecha: `${r.fecha} · ${r.metodo}`, icon: "droplet", color: "#768f44", val: `+${r.mm} mm`, status: r.fuente === "ia" ? "ejecutado" : "Reporte manual", iaIcon: r.fuente === "ia" }, ...prev]);
+    setRiegoMm((m) => m + r.mm);
+    toast.show(r.fuente === "ia" ? "Riego IA confirmado" : "Registro manual guardado");
+  }, [postEvento, toast]);
+
+  const cargando = dias === null;
+  const estadoHidrico = s0 >= 50 ? "Bien hidratado" : s0 >= 35 ? "Déficit controlado" : "Estrés hídrico";
 
   return (
     <div className="col gap-20">
@@ -179,20 +162,16 @@ function PlanRiegoInner() {
       <PageHeader
         crumbs={["Agronomía", "Plan de Riego"]}
         title="Plan de Riego"
-        subtitle="Balance hídrico proyectado, sugerencias de IA y registro de riegos."
-        actions={
-          <button className="mc-btn mc-btn--primary" onClick={() => setRiegoOpen(true)}>
-            <Icon name="plus" size={14} />Registrar Riego
-          </button>
-        }
+        subtitle="Balance hídrico proyectado con datos reales de clima y lluvia, y registro de riegos."
+        actions={<button className="mc-btn mc-btn--primary" onClick={() => setRiegoOpen(true)}><Icon name="plus" size={14} />Registrar Riego</button>}
       />
 
       <div className="grid g-cols-5">
-        <KPI label="Estado Hídrico" value={demo<React.ReactNode>(<span style={{ color: "var(--mc-green-700)" }}>Bien Hidratado</span>, "—")} delta={demo<React.ReactNode>(<span className="row gap-4" style={{ alignItems: "center" }}><Icon name="check" size={12} />Lotes en confort</span>, "—")} trend="up" icon="droplet" accent />
-        <KPI label="Agua Útil (Tanque)" value={demo("45%", "—")} delta={demo("120 mm disponibles", "—")} trend="up" icon="activity" />
-        <KPI label="Consumo Diario (ETo)" value={demo("6 mm/día", "—")} delta={demo("Maíz V6 · K=1.1", "—")} trend="up" icon="thermometer" />
-        <KPI label="Próximo Riego IA" value={demo("24/09 5:00", "—")} delta={demo("+15 mm sugeridos", "—")} trend="up" icon="calendar" ia />
-        <KPI label="Costo Proyectado" value={demo("$12/mm", "—")} delta={demo("Energía + insumo", "—")} trend="up" icon="dollar" />
+        <KPI label="Estado Hídrico" value={<span style={{ color: s0 >= 50 ? "var(--mc-green-700)" : "var(--mc-amber)" }}>{estadoHidrico}</span>} delta={<span className="row gap-4" style={{ alignItems: "center" }}><Icon name="droplet" size={12} />{loteNombre}</span>} trend="up" icon="droplet" accent />
+        <KPI label="Agua Útil (estimada)" value={`${s0}%`} delta={`${aguaUtilMm} mm disponibles`} trend="up" icon="activity" />
+        <KPI label="Consumo Diario (ETc)" value={etcDia ? `${etcDia} mm/día` : "—"} delta={`${cultivo} · Kc ${KC[cultivo] || 1.05}`} trend="up" icon="thermometer" />
+        <KPI label="Próximo Riego" value={proximo ? proximo.fecha : "—"} delta={proximo ? `+${proximo.mm} mm sugeridos` : "Sin riego necesario"} trend="up" icon="calendar" />
+        <KPI label="Costo Proyectado" value={`$${costoEvento}`} delta="Energía + insumo" trend="up" icon="dollar" />
       </div>
 
       <SubTabs tabs={["Inicio"]} active={sub} onChange={setSub} />
@@ -203,13 +182,24 @@ function PlanRiegoInner() {
           sugerencias={sugerencias}
           estrategia={estrategia}
           onEstrategia={setEstrategia}
-          onEstrategiaCommit={(v) => analizar(v)}
+          onEstrategiaCommit={() => {}}
           costoEvento={costoEvento}
           onAprobar={aprobarOrden}
           cargando={cargando}
+          subtitle={`Próximos ${balance.length || 7} días · ${loteNombre} · ${cultivo}`}
+          aguaUtilMm={aguaUtilMm}
         />
-        <AguaUlt30Dias eventos={eventos} />
+        <AguaUlt30Dias eventos={eventos} totalMm={totalMm} lluviaMm={lluviaMm} riegoMm={riegoMm} histMm={histMm} />
       </div>
     </div>
   );
+}
+
+function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
+
+// Mezcla eventos de lluvia + riego ordenados por recencia (mantiene los recién agregados)
+function mezclarEventos(prev: EventoAgua[], nuevos: EventoAgua[]): EventoAgua[] {
+  const enSesion = prev.filter((e) => e.status === "Programado" || e.status === "ejecutado" || e.status === "Reporte manual");
+  const combinados = [...enSesion, ...nuevos];
+  return combinados.slice(0, 8);
 }

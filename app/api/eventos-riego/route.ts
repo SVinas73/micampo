@@ -3,6 +3,26 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const desde = new Date();
+    desde.setDate(desde.getDate() - 30);
+    const eventos = await prisma.eventoRiego.findMany({
+      where: { userId: session.user.id, fechaProgramada: { gte: desde } },
+      orderBy: { fechaProgramada: "desc" },
+      take: 50,
+    });
+    return NextResponse.json(eventos);
+  } catch (error) {
+    console.error("Error al listar eventos de riego:", error);
+    return NextResponse.json({ error: "Error al listar eventos" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);

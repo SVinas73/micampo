@@ -381,8 +381,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 /* ---------- Sidebar ---------- */
 .mc-sb {
   background:
-    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(180deg, #2f4022 0%, #243018 58%, #1d2814 100%);
+    radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(180deg, #46603a 0%, #3a4f2e 58%, #324428 100%);
   background-size: 18px 18px, 100% 100%;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   padding: 18px 14px;
