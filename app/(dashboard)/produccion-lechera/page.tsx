@@ -148,7 +148,7 @@ export default function ProduccionLecheraPage() {
           </Select>
           <Button
             onClick={generarPrediccion}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-[#5e7733] hover:bg-[#4a5e29] text-white"
             disabled={generandoPrediccion || resumen.totalRegistros < 7}
           >
             {generandoPrediccion ? (

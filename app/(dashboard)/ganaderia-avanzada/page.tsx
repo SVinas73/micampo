@@ -580,13 +580,13 @@ function GanaderiaAvanzadaPage() {
         <TabsContent value="salud" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Diagnósticos de Salud</h2>
-            <Button
+            <button
               onClick={() => setDiagnosticoDialogOpen(true)}
-              className="bg-red-600 hover:bg-red-700"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nuevo Diagnóstico
-            </Button>
+            </button>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
