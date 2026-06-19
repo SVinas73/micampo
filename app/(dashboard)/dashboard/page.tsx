@@ -17,6 +17,19 @@ import { Icon, Modal, Field, useToast } from "@/components/mc";
 
 const MC_OLIVE = "#5e7733", MC_OLIVE_L = "#8ea65a", MC_GOLD = "#d9a538", MC_GOLD_D = "#c08a22";
 
+type BriefItem = {
+  severidad: "alta" | "media" | "baja";
+  icono: string;
+  titulo: string;
+  detalle: string;
+  impacto?: string;
+  accion: string;
+  ruta: string;
+};
+type BriefData = { fecha: string; generadoPorIA: boolean; resumen: string; items: BriefItem[] };
+
+const SEV_COLOR: Record<string, string> = { alta: "#c93434", media: "#d9a538", baja: "#5e7733" };
+
 const capitalizar = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; presion: number; deltaT: number; aptoPulverizacion: boolean; icono: string; descripcion: string };
@@ -398,6 +411,73 @@ const QUICK_ACTS: { icon: string; label: string; href?: string; action?: "labor"
   { icon: "book", label: "Análisis suelo", href: "/campo-digital?tab=Cultivos&sub=Análisis de Suelo" },
 ];
 
+function BriefDia({ brief, cargando, onIr }: { brief: BriefData | null; cargando: boolean; onIr: (ruta: string) => void }) {
+  return (
+    <div className="mc-card" style={{ overflow: "hidden", padding: 0 }}>
+      <div className="mc-card__head" style={{ padding: "16px 20px 12px", borderBottom: "1px solid var(--mc-line)" }}>
+        <div>
+          <div className="mc-card__eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 18, height: 18, borderRadius: 5, background: "#5e7733", color: "#fff", display: "grid", placeItems: "center" }}>
+              <Icon name="sparkles" size={11} />
+            </span>
+            Brief del día{brief?.generadoPorIA ? " · IA" : ""}
+          </div>
+          <div className="mc-card__title mt-4">Tu día en MiCampo</div>
+        </div>
+        {brief && <span className="mc-badge mc-badge--neutral"><span className="mc-badge__dot" />{brief.items.length} prioridad(es)</span>}
+      </div>
+
+      <div style={{ padding: "12px 20px 16px" }}>
+        {cargando ? (
+          <div className="text-sm text-muted" style={{ padding: "8px 0" }}>Analizando tu establecimiento…</div>
+        ) : !brief || brief.items.length === 0 ? (
+          <div className="row" style={{ gap: 10, alignItems: "center", padding: "8px 0" }}>
+            <span style={{ width: 32, height: 32, borderRadius: 9, background: "#eef1e6", color: "#5e7733", display: "grid", placeItems: "center" }}>
+              <Icon name="check" size={16} />
+            </span>
+            <div className="text-sm" style={{ color: "var(--mc-text-2)" }}>
+              {brief?.resumen || "Todo en orden: sin prioridades urgentes para hoy."}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="text-sm" style={{ color: "var(--mc-text-2)", marginBottom: 12 }}>{brief.resumen}</div>
+            <div className="col" style={{ gap: 8 }}>
+              {brief.items.map((it, i) => (
+                <button
+                  key={i}
+                  onClick={() => onIr(it.ruta)}
+                  style={{
+                    display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 12px", width: "100%", textAlign: "left",
+                    border: "1px solid var(--mc-line)", borderLeft: `3px solid ${SEV_COLOR[it.severidad] || "#5e7733"}`,
+                    borderRadius: 10, background: "var(--mc-surface)", cursor: "pointer",
+                  }}
+                >
+                  <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: (SEV_COLOR[it.severidad] || "#5e7733") + "1a", color: SEV_COLOR[it.severidad] || "#5e7733", display: "grid", placeItems: "center" }}>
+                    <Icon name={it.icono} size={15} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <span className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13.5 }}>{it.titulo}</span>
+                      {it.impacto && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 999, background: "#fbeaea", color: "#c93434" }}>{it.impacto}</span>
+                      )}
+                    </div>
+                    <div className="text-xs" style={{ color: "var(--mc-text-2)", marginTop: 2 }}>{it.detalle}</div>
+                    <div className="text-xs" style={{ color: "#5e7733", marginTop: 4, display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
+                      <Icon name="arrowRight" size={11} />{it.accion}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function InicioPage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -413,6 +493,16 @@ export default function InicioPage() {
   const [climaLugar, setClimaLugar] = useState("Tu campo");
   const [laboresPend, setLaboresPend] = useState(0);
   const [laboresAtr, setLaboresAtr] = useState(0);
+  const [brief, setBrief] = useState<BriefData | null>(null);
+  const [briefCargando, setBriefCargando] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/brief")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setBrief(d))
+      .catch(() => {})
+      .finally(() => setBriefCargando(false));
+  }, []);
 
   useEffect(() => {
     fetch("/api/dashboard/inicio").then((r) => (r.ok ? r.json() : null)).then((d) => {
@@ -547,6 +637,9 @@ export default function InicioPage() {
         </div>
         <span className="mc-badge mc-badge--green" style={{ padding: "6px 12px" }}><span className="mc-badge__dot" />Campaña 2025/26 en curso</span>
       </div>
+
+      {/* Brief del día — prioridades proactivas */}
+      <BriefDia brief={brief} cargando={briefCargando} onIr={(ruta) => router.push(ruta)} />
 
       {/* KPIs */}
       <div className="grid g-cols-5">
