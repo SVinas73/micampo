@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-    url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 // Usuario
@@ -4514,4 +4514,19 @@ model ComplianceEUDR {
   @@index([numeroDeclaracion])
   @@index([producto])
   @@index([estado])
+}
+
+/// Caché de salidas de IA (control de costo y trazabilidad de qué recomendó el modelo).
+/// userId escalar (sin relación formal) para no acoplar al modelo User.
+model Insight {
+  id        String   @id @default(cuid())
+  userId    String
+  clave     String // identificador de caché, ej "brief:2026-06-19"
+  tipo      String // brief, copiloto, analisis, vision, etc.
+  contenido String // JSON serializado de la salida de IA
+  modelo    String? // modelo usado
+  createdAt DateTime @default(now())
+
+  @@index([userId, clave])
+  @@index([userId, tipo])
 }

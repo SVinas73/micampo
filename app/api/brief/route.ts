@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropic, IA_MODEL, parseJsonTolerante } from "@/lib/ia";
+import { getInsight, saveInsight } from "@/lib/insight";
 
 export const maxDuration = 45;
 
@@ -145,9 +146,22 @@ export async function GET() {
       });
     }
 
-    // ---- Enriquecer con IA (opcional) ----
+    // ---- Enriquecer con IA (opcional, con caché diario por usuario) ----
     const anthropic = getAnthropic();
     if (anthropic) {
+      // Clave de caché: por usuario, por día y por la "firma" de las señales del día.
+      const firma = items.map((it) => `${it.icono}:${it.titulo}`).join("|");
+      const claveCache = `brief:${hoy.toISOString().split("T")[0]}:${firma.length}`;
+      const cacheado = await getInsight<{ resumen: string; items: Item[] }>(userId, claveCache, 240);
+      if (cacheado?.items?.length) {
+        return NextResponse.json({
+          fecha: hoy.toISOString(),
+          generadoPorIA: true,
+          resumen: cacheado.resumen,
+          items: cacheado.items,
+          cacheado: true,
+        });
+      }
       try {
         const contexto = {
           finanzasMes: { ingresos, gastos, margen: ingresos - gastos },
@@ -168,11 +182,12 @@ export async function GET() {
         const text = res.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
         const parsed = parseJsonTolerante<{ resumen: string; items: Item[] }>(text);
         if (parsed?.items?.length) {
+          const salida = { resumen: parsed.resumen, items: parsed.items.slice(0, 5) };
+          await saveInsight(userId, claveCache, "brief", salida, IA_MODEL);
           return NextResponse.json({
             fecha: hoy.toISOString(),
             generadoPorIA: true,
-            resumen: parsed.resumen,
-            items: parsed.items.slice(0, 5),
+            ...salida,
           });
         }
       } catch (e) {
