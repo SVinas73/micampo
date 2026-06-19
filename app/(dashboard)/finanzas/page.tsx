@@ -52,6 +52,8 @@ import {
   Cell,
   LineChart,
   Line,
+  AreaChart,
+  Area,
 } from "recharts";
 import { Icon, KPI } from "@/components/mc";
 
@@ -158,6 +160,19 @@ export default function FinanzasPage() {
   const [contratistas, setContratistas] = useState<any[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Reportes (vista en pantalla)
+  const hoy = new Date();
+  const [reporteDesde, setReporteDesde] = useState(
+    `${hoy.getFullYear()}-01-01`
+  );
+  const [reporteHasta, setReporteHasta] = useState(
+    hoy.toISOString().split("T")[0]
+  );
+  const [estadoResultados, setEstadoResultados] = useState<any>(null);
+  const [flujoCaja, setFlujoCaja] = useState<any>(null);
+  const [balance, setBalance] = useState<any>(null);
+  const [reportesLoading, setReportesLoading] = useState(false);
 
   // Dialogs principales
   const [comprobanteDialogOpen, setComprobanteDialogOpen] = useState(false);
@@ -342,6 +357,11 @@ export default function FinanzasPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    cargarReportes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reporteDesde, reporteHasta]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1161,14 +1181,37 @@ export default function FinanzasPage() {
   // HANDLERS: REPORTES Y EXPORTACIONES
   // ============================================
 
+  const cargarReportes = async () => {
+    try {
+      setReportesLoading(true);
+      const qs = `fechaInicio=${reporteDesde}&fechaFin=${reporteHasta}`;
+      const [erRes, fcRes, balRes] = await Promise.all([
+        fetch(`/api/reportes/estado-resultados?${qs}`),
+        fetch(`/api/reportes/flujo-caja?${qs}`),
+        fetch(`/api/reportes/balance?fecha=${reporteHasta}`),
+      ]);
+      if (erRes.ok) setEstadoResultados(await erRes.json());
+      if (fcRes.ok) setFlujoCaja(await fcRes.json());
+      if (balRes.ok) setBalance(await balRes.json());
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setReportesLoading(false);
+    }
+  };
+
   const handleGenerarEstadoResultados = async () => {
     try {
       setActionLoading(true);
-      const response = await fetch("/api/reportes/estado-resultados");
+      const response = await fetch(
+        `/api/reportes/estado-resultados?fechaInicio=${reporteDesde}&fechaFin=${reporteHasta}`
+      );
       if (response.ok) {
         const data = await response.json();
         const { generateEstadoResultadosPDF } = await import("@/lib/pdf-generator");
         generateEstadoResultadosPDF(data);
+      } else {
+        alert("No se pudo generar el reporte");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -1181,11 +1224,15 @@ export default function FinanzasPage() {
   const handleGenerarFlujoCaja = async () => {
     try {
       setActionLoading(true);
-      const response = await fetch("/api/reportes/flujo-caja");
+      const response = await fetch(
+        `/api/reportes/flujo-caja?fechaInicio=${reporteDesde}&fechaFin=${reporteHasta}`
+      );
       if (response.ok) {
         const data = await response.json();
         const { generateFlujoCajaPDF } = await import("@/lib/pdf-generator");
         generateFlujoCajaPDF(data);
+      } else {
+        alert("No se pudo generar el reporte");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -1198,11 +1245,13 @@ export default function FinanzasPage() {
   const handleGenerarBalance = async () => {
     try {
       setActionLoading(true);
-      const response = await fetch("/api/reportes/balance");
+      const response = await fetch(`/api/reportes/balance?fecha=${reporteHasta}`);
       if (response.ok) {
         const data = await response.json();
         const { generateBalancePDF } = await import("@/lib/pdf-generator");
         generateBalancePDF(data);
+      } else {
+        alert("No se pudo generar el reporte");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -1236,6 +1285,16 @@ export default function FinanzasPage() {
     try {
       const { exportToExcel } = await import("@/lib/pdf-generator");
       exportToExcel(activosFijos, "activos-fijos");
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error al exportar");
+    }
+  };
+
+  const handleExportarCuentas = async () => {
+    try {
+      const { exportToExcel } = await import("@/lib/pdf-generator");
+      exportToExcel(cuentasPorPagar, "cuentas-por-pagar");
     } catch (error) {
       console.error("Error:", error);
       alert("Error al exportar");
@@ -1400,12 +1459,12 @@ export default function FinanzasPage() {
         </TabsList>
 
         {/* TAB: DASHBOARD */}
-        <TabsContent value="dashboard" className="space-y-4">
+        <TabsContent value="dashboard" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Costos por Categoría</CardTitle>
                 <CardDescription>Distribución de gastos del mes</CardDescription>
+                <CardTitle>Costos por categoría</CardTitle>
               </CardHeader>
               <CardContent>
                 {dashboardData && dashboardData.costosPorCategoria.length > 0 ? (
@@ -1415,90 +1474,87 @@ export default function FinanzasPage() {
                         data={dashboardData.costosPorCategoria}
                         cx="50%"
                         cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={2}
                         labelLine={false}
                         label={({ payload }: any) =>
-                          `${payload.categoria}: $${payload.monto.toFixed(0)}`
+                          `${payload.categoria}: $${Number(payload.monto).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
                         }
-                        outerRadius={80}
-                        fill="#768f44"
                         dataKey="monto"
+                        nameKey="categoria"
                       >
                         {dashboardData.costosPorCategoria.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={(v: any) => `$${Number(v).toLocaleString("es-AR")}`} contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} />
                     </RechartsPieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">Sin datos</div>
+                  <div className="text-center py-16 text-gray-400 text-sm">Sin gastos registrados este mes</div>
                 )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Top Márgenes por Lote</CardTitle>
                 <CardDescription>Lotes más rentables</CardDescription>
+                <CardTitle>Top márgenes por lote</CardTitle>
               </CardHeader>
               <CardContent>
                 {dashboardData && dashboardData.margenesPorLote.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={dashboardData.margenesPorLote.slice(0, 5)} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis
-                        dataKey="detalles.loteNombre"
-                        type="category"
-                        width={100}
-                      />
-                      <Tooltip />
-                      <Bar dataKey="porcentajeMargen" fill="#5e7733" />
+                    <BarChart
+                      data={dashboardData.margenesPorLote.slice(0, 5).map((m: any) => ({
+                        nombre: m.referenciaNombre,
+                        margen: m.porcentajeMargen,
+                      }))}
+                      layout="vertical"
+                      margin={{ top: 0, right: 24, left: 8, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 12, fill: "#6b6760" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+                      <YAxis dataKey="nombre" type="category" width={110} tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                      <Tooltip formatter={(v: any) => `${Number(v).toFixed(1)}%`} contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} cursor={{ fill: "rgba(94,119,51,0.06)" }} />
+                      <Bar dataKey="margen" fill="#5e7733" radius={[0, 6, 6, 0]} maxBarSize={28} name="Margen" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">Sin datos</div>
+                  <div className="text-center py-16 text-gray-400 text-sm">Sin márgenes calculados por lote</div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200">
-            <CardHeader>
-              <CardTitle className="text-orange-900">Alertas Financieras</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {dashboardData && (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="bg-white p-4 rounded-lg border border-red-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-5 w-5 text-red-600" />
-                      <p className="font-medium text-red-900">Cuentas Vencidas</p>
-                    </div>
-                    <p className="text-2xl font-bold text-red-600">
-                      {dashboardData.alertas.cuentasVencidas}
-                    </p>
-                    <p className="text-sm text-red-700">
-                      Total: ${dashboardData.alertas.montoVencido.toFixed(0)}
-                    </p>
-                  </div>
-
-                  <div className="bg-white p-4 rounded-lg border border-orange-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="h-5 w-5 text-orange-600" />
-                      <p className="font-medium text-orange-900">Cuentas por Cobrar</p>
-                    </div>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {dashboardData.alertas.cuentasPorCobrar}
-                    </p>
-                    <p className="text-sm text-orange-700">
-                      Total: ${dashboardData.alertas.montoPorCobrar.toFixed(0)}
-                    </p>
-                  </div>
+          {dashboardData && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  <p className="font-medium text-red-900">Cuentas vencidas</p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <p className="text-3xl font-bold text-red-600">
+                  {dashboardData.alertas.cuentasVencidas}
+                </p>
+                <p className="text-sm text-red-700 mt-1">
+                  Total: ${dashboardData.alertas.montoVencido.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-[#e6c98a] bg-[#fbf4e3] p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-5 w-5 text-[#b8851f]" />
+                  <p className="font-medium text-[#7a5a14]">Cuentas por cobrar</p>
+                </div>
+                <p className="text-3xl font-bold text-[#b8851f]">
+                  {dashboardData.alertas.cuentasPorCobrar}
+                </p>
+                <p className="text-sm text-[#9a7218] mt-1">
+                  Total: ${dashboardData.alertas.montoPorCobrar.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* TAB: COMPROBANTES - MEJORADO */}
@@ -1506,24 +1562,23 @@ export default function FinanzasPage() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Comprobantes</h2>
             <div className="flex gap-2">
-              <Button
+              <button
                 onClick={() => setOcrDialogOpen(true)}
-                variant="outline"
-                className="bg-purple-600 text-white hover:bg-purple-700"
+                className="mc-btn mc-btn--secondary"
               >
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4" />
                 Cargar con OCR
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => {
                   setIsEditing(false);
                   setComprobanteDialogOpen(true);
                 }}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="mc-btn mc-btn--primary"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 Nuevo Manual
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -1689,25 +1744,24 @@ export default function FinanzasPage() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Activos Fijos</h2>
             <div className="flex gap-2">
-              <Button
+              <button
                 onClick={calcularDepreciacion}
-                variant="outline"
-                className="bg-orange-600 text-white hover:bg-orange-700"
+                className="mc-btn mc-btn--secondary"
                 disabled={actionLoading}
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-4 w-4" />
                 Depreciar Mes Actual
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => {
                   setIsEditing(false);
                   setActivoDialogOpen(true);
                 }}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="mc-btn mc-btn--primary"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 Nuevo Activo
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -1797,7 +1851,7 @@ export default function FinanzasPage() {
                     setIsEditing(false);
                     setActivoDialogOpen(true);
                   }}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700"
+                  className="mt-4"
                 >
                   Crear Primer Activo
                 </Button>
@@ -1810,13 +1864,13 @@ export default function FinanzasPage() {
         <TabsContent value="facturas" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Facturas Emitidas</h2>
-            <Button
+            <button
               onClick={() => setFacturaDialogOpen(true)}
-              className="bg-green-600 hover:bg-green-700"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nueva Factura
-            </Button>
+            </button>
           </div>
 
           <Card>
@@ -1904,13 +1958,13 @@ export default function FinanzasPage() {
         <TabsContent value="cuentas" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Cuentas por Pagar</h2>
-            <Button
+            <button
               onClick={() => setCuentaDialogOpen(true)}
-              className="bg-red-600 hover:bg-red-700"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nueva Cuenta
-            </Button>
+            </button>
           </div>
 
           <Card>
@@ -2016,16 +2070,16 @@ export default function FinanzasPage() {
         <TabsContent value="empleados" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Gestión de Empleados</h2>
-            <Button
+            <button
               onClick={() => {
                 setIsEditing(false);
                 setEmpleadoDialogOpen(true);
               }}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nuevo Empleado
-            </Button>
+            </button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -2127,7 +2181,7 @@ export default function FinanzasPage() {
                     setIsEditing(false);
                     setEmpleadoDialogOpen(true);
                   }}
-                  className="mt-4 bg-purple-600 hover:bg-purple-700"
+                  className="mt-4"
                 >
                   Agregar Primer Empleado
                 </Button>
@@ -2169,13 +2223,13 @@ export default function FinanzasPage() {
         <TabsContent value="monedas" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Tipos de Cambio</h2>
-            <Button
+            <button
               onClick={() => setTipoCambioDialogOpen(true)}
-              className="bg-green-600 hover:bg-green-700"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Registrar Tipo de Cambio
-            </Button>
+            </button>
           </div>
 
           <Card>
@@ -2251,14 +2305,13 @@ export default function FinanzasPage() {
         <TabsContent value="margenes" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Márgenes Brutos en Tiempo Real</h2>
-            <Button
+            <button
               onClick={fetchData}
-              variant="outline"
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="mc-btn mc-btn--secondary"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4" />
               Actualizar
-            </Button>
+            </button>
           </div>
 
           {dashboardData && (
@@ -2370,120 +2423,315 @@ export default function FinanzasPage() {
         </TabsContent>
 
         {/* TAB: REPORTES - MEJORADO */}
-        <TabsContent value="reportes" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Reportes Profesionales</h2>
+        <TabsContent value="reportes" className="space-y-6">
+          {/* Encabezado + selector de período */}
+          <div className="flex flex-wrap justify-between items-end gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">Reportes Profesionales</h2>
+              <p className="text-sm text-gray-500">
+                Estado de resultados, flujo de caja y balance general en tiempo real
+              </p>
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">Desde</Label>
+                <Input
+                  type="date"
+                  value={reporteDesde}
+                  onChange={(e) => setReporteDesde(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">Hasta</Label>
+                <Input
+                  type="date"
+                  value={reporteHasta}
+                  onChange={(e) => setReporteHasta(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <button
+                className="mc-btn mc-btn--secondary"
+                onClick={cargarReportes}
+                disabled={reportesLoading}
+              >
+                <RefreshCw className={`h-4 w-4 ${reportesLoading ? "animate-spin" : ""}`} />
+                Actualizar
+              </button>
+            </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            <Card className="border-2 border-blue-200 hover:border-blue-400 cursor-pointer">
-              <CardHeader>
+          {/* ESTADO DE RESULTADOS */}
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <CardDescription>Período seleccionado</CardDescription>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
+                  <FileText className="h-5 w-5 text-[#5e7733]" />
                   Estado de Resultados
                 </CardTitle>
-                <CardDescription>Ingresos y gastos por período</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  onClick={handleGenerarEstadoResultados}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  Generar PDF
-                </Button>
-              </CardContent>
-            </Card>
+              </div>
+              <button
+                className="mc-btn mc-btn--primary"
+                onClick={handleGenerarEstadoResultados}
+                disabled={actionLoading}
+              >
+                <Download className="h-4 w-4" />
+                PDF
+              </button>
+            </CardHeader>
+            <CardContent>
+              {estadoResultados ? (
+                <div className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Ingresos totales</p>
+                      <p className="text-2xl font-bold text-[#5e7733]">
+                        ${estadoResultados.ingresos.total.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Gastos totales</p>
+                      <p className="text-2xl font-bold text-[#c93434]">
+                        ${estadoResultados.gastos.total.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Utilidad neta</p>
+                      <p className={`text-2xl font-bold ${estadoResultados.resultado.utilidadNeta >= 0 ? "text-[#5e7733]" : "text-[#c93434]"}`}>
+                        ${estadoResultados.resultado.utilidadNeta.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Margen {estadoResultados.resultado.margenNeto.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
 
-            <Card className="border-2 border-green-200 hover:border-green-400 cursor-pointer">
-              <CardHeader>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div>
+                      <p className="text-sm font-medium mb-2">Ingresos por categoría</p>
+                      {estadoResultados.ingresos.porCategoria.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={240}>
+                          <BarChart data={estadoResultados.ingresos.porCategoria} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" vertical={false} />
+                            <XAxis dataKey="categoria" tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 12, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                            <Tooltip formatter={(v: any) => `$${Number(v).toLocaleString("es-AR")}`} contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} cursor={{ fill: "rgba(94,119,51,0.06)" }} />
+                            <Bar dataKey="monto" fill="#5e7733" radius={[6, 6, 0, 0]} maxBarSize={48} name="Ingresos" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-[240px] flex items-center justify-center text-gray-400 text-sm">Sin ingresos en el período</div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium mb-2">Gastos por categoría</p>
+                      {estadoResultados.gastos.porCategoria.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={240}>
+                          <RechartsPieChart>
+                            <Pie
+                              data={estadoResultados.gastos.porCategoria}
+                              dataKey="monto"
+                              nameKey="categoria"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={85}
+                              paddingAngle={2}
+                              label={(p: any) => `${p.categoria}: ${p.porcentaje.toFixed(0)}%`}
+                              labelLine={false}
+                            >
+                              {estadoResultados.gastos.porCategoria.map((_: any, i: number) => (
+                                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(v: any) => `$${Number(v).toLocaleString("es-AR")}`} contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-[240px] flex items-center justify-center text-gray-400 text-sm">Sin gastos en el período</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-10 text-gray-400 text-sm">
+                  {reportesLoading ? "Cargando…" : "Sin datos para el período seleccionado"}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* FLUJO DE CAJA */}
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <CardDescription>Evolución mensual</CardDescription>
                 <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-green-600" />
+                  <BarChart3 className="h-5 w-5 text-[#5e7733]" />
                   Flujo de Caja
                 </CardTitle>
-                <CardDescription>Movimientos de efectivo</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  onClick={handleGenerarFlujoCaja}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  Generar PDF
-                </Button>
-              </CardContent>
-            </Card>
+              </div>
+              <button
+                className="mc-btn mc-btn--primary"
+                onClick={handleGenerarFlujoCaja}
+                disabled={actionLoading}
+              >
+                <Download className="h-4 w-4" />
+                PDF
+              </button>
+            </CardHeader>
+            <CardContent>
+              {flujoCaja && flujoCaja.flujoMensual.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Ingresos</p>
+                      <p className="text-xl font-bold text-[#5e7733]">${flujoCaja.resumen.totalIngresos.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Egresos</p>
+                      <p className="text-xl font-bold text-[#c93434]">${flujoCaja.resumen.totalEgresos.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Flujo neto</p>
+                      <p className={`text-xl font-bold ${flujoCaja.resumen.flujoNetoTotal >= 0 ? "text-[#5e7733]" : "text-[#c93434]"}`}>${flujoCaja.resumen.flujoNetoTotal.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Saldo final</p>
+                      <p className="text-xl font-bold text-[#2c6bb8]">${flujoCaja.resumen.saldoFinal.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</p>
+                    </div>
+                  </div>
 
-            <Card className="border-2 border-purple-200 hover:border-purple-400 cursor-pointer">
-              <CardHeader>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={flujoCaja.flujoMensual} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="gradSaldo" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#5e7733" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#5e7733" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" vertical={false} />
+                      <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                      <Tooltip formatter={(v: any) => `$${Number(v).toLocaleString("es-AR")}`} contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="ingresos" fill="#5e7733" radius={[4, 4, 0, 0]} maxBarSize={28} name="Ingresos" />
+                      <Bar dataKey="egresos" fill="#d9a538" radius={[4, 4, 0, 0]} maxBarSize={28} name="Egresos" />
+                      <Area type="monotone" dataKey="saldoAcumulado" stroke="#2c6bb8" strokeWidth={2} fill="url(#gradSaldo)" name="Saldo acumulado" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="text-center py-10 text-gray-400 text-sm">
+                  {reportesLoading ? "Cargando…" : "Sin movimientos de caja en el período"}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* BALANCE GENERAL */}
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <CardDescription>Foto al {formatDate(reporteHasta)}</CardDescription>
                 <CardTitle className="flex items-center gap-2">
-                  <PieChart className="h-5 w-5 text-purple-600" />
+                  <PieChart className="h-5 w-5 text-[#5e7733]" />
                   Balance General
                 </CardTitle>
-                <CardDescription>Activos, pasivos y patrimonio</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  onClick={handleGenerarBalance}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  Generar PDF
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+              <button
+                className="mc-btn mc-btn--primary"
+                onClick={handleGenerarBalance}
+                disabled={actionLoading}
+              >
+                <Download className="h-4 w-4" />
+                PDF
+              </button>
+            </CardHeader>
+            <CardContent>
+              {balance ? (
+                <div className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Total activos</p>
+                      <p className="text-2xl font-bold text-[#5e7733]">${balance.activos.total.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Total pasivos</p>
+                      <p className="text-2xl font-bold text-[#c93434]">${balance.pasivos.total.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</p>
+                    </div>
+                    <div className="rounded-xl border border-[#eceae3] bg-[#faf9f6] p-4">
+                      <p className="text-xs text-gray-500">Patrimonio neto</p>
+                      <p className="text-2xl font-bold text-[#2c6bb8]">${balance.patrimonio.total.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</p>
+                    </div>
+                  </div>
 
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart
+                      layout="vertical"
+                      data={[
+                        { concepto: "Efectivo y bancos", monto: balance.activos.corrientes.efectivoBancos },
+                        { concepto: "Cuentas por cobrar", monto: balance.activos.corrientes.cuentasPorCobrar },
+                        { concepto: "Inventarios", monto: balance.activos.corrientes.inventarios },
+                        { concepto: "Activos fijos", monto: balance.activos.noCoorrientes.activosFijos },
+                        { concepto: "Cuentas por pagar", monto: balance.pasivos.corrientes.cuentasPorPagar },
+                      ]}
+                      margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                      <YAxis type="category" dataKey="concepto" width={130} tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                      <Tooltip formatter={(v: any) => `$${Number(v).toLocaleString("es-AR")}`} contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} cursor={{ fill: "rgba(94,119,51,0.06)" }} />
+                      <Bar dataKey="monto" radius={[0, 6, 6, 0]} maxBarSize={26}>
+                        {["#5e7733", "#768f44", "#8aa353", "#2c6bb8", "#c93434"].map((c, i) => (
+                          <Cell key={i} fill={c} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  <div className={`flex items-center gap-2 text-sm rounded-lg p-3 ${balance.verificacion.balanceado ? "bg-[#eef1e6] text-[#5e7733]" : "bg-red-50 text-red-600"}`}>
+                    {balance.verificacion.balanceado ? (
+                      <><CheckCircle className="h-4 w-4" /> Balance cuadrado: Activos = Pasivos + Patrimonio</>
+                    ) : (
+                      <><AlertCircle className="h-4 w-4" /> Diferencia de ${Math.abs(balance.verificacion.diferencia).toLocaleString("es-AR")}</>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-10 text-gray-400 text-sm">
+                  {reportesLoading ? "Cargando…" : "Sin datos de balance"}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Exportación CSV */}
           <Card>
             <CardHeader>
-              <CardTitle>Exportación de Datos</CardTitle>
-              <CardDescription>Descarga información en diferentes formatos</CardDescription>
+              <CardDescription>Descarga la información detallada en CSV</CardDescription>
+              <CardTitle>Exportación de datos</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
               <div className="grid gap-3 md:grid-cols-2">
-                <Button
-                  variant="outline"
-                  className="justify-start"
-                  onClick={handleExportarTransacciones}
-                >
-                  <Download className="h-4 w-4 mr-2" />
+                <button className="mc-btn mc-btn--secondary justify-start" onClick={handleExportarTransacciones}>
+                  <Download className="h-4 w-4" />
                   Transacciones (CSV)
-                </Button>
-                <Button
-                  variant="outline"
-                  className="justify-start"
-                  onClick={handleExportarActivos}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Activos Fijos (CSV)
-                </Button>
-                <Button
-                  variant="outline"
-                  className="justify-start"
-                  onClick={handleExportarEmpleados}
-                >
-                  <Download className="h-4 w-4 mr-2" />
+                </button>
+                <button className="mc-btn mc-btn--secondary justify-start" onClick={handleExportarActivos}>
+                  <Download className="h-4 w-4" />
+                  Activos fijos (CSV)
+                </button>
+                <button className="mc-btn mc-btn--secondary justify-start" onClick={handleExportarEmpleados}>
+                  <Download className="h-4 w-4" />
                   Empleados (CSV)
-                </Button>
-                <Button variant="outline" className="justify-start">
-                  <Download className="h-4 w-4 mr-2" />
-                  Cuentas por Pagar (CSV)
-                </Button>
+                </button>
+                <button className="mc-btn mc-btn--secondary justify-start" onClick={handleExportarCuentas}>
+                  <Download className="h-4 w-4" />
+                  Cuentas por pagar (CSV)
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -2493,16 +2741,16 @@ export default function FinanzasPage() {
         <TabsContent value="roles" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Gestión de Roles y Permisos</h2>
-            <Button
+            <button
               onClick={() => {
                 setIsEditing(false);
                 setRolDialogOpen(true);
               }}
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nuevo Rol
-            </Button>
+            </button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -2597,7 +2845,7 @@ export default function FinanzasPage() {
                     setIsEditing(false);
                     setRolDialogOpen(true);
                   }}
-                  className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+                  className="mt-4"
                 >
                   Crear Primer Rol
                 </Button>
@@ -2610,16 +2858,16 @@ export default function FinanzasPage() {
         <TabsContent value="contratistas" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Portal de Contratistas</h2>
-            <Button
+            <button
               onClick={() => {
                 setIsEditing(false);
                 setContratistaDialogOpen(true);
               }}
-              className="bg-orange-600 hover:bg-orange-700"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nuevo Contratista
-            </Button>
+            </button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -2720,7 +2968,7 @@ export default function FinanzasPage() {
                     setIsEditing(false);
                     setContratistaDialogOpen(true);
                   }}
-                  className="mt-4 bg-orange-600 hover:bg-orange-700"
+                  className="mt-4"
                 >
                   Agregar Primer Contratista
                 </Button>
@@ -2768,7 +3016,7 @@ export default function FinanzasPage() {
             <Button
               onClick={handleOCRUpload}
               disabled={!ocrFile || ocrLoading}
-              className="w-full bg-purple-600 hover:bg-purple-700"
+              className="w-full"
             >
               {ocrLoading ? (
                 <>
@@ -2911,7 +3159,7 @@ export default function FinanzasPage() {
                   <Button type="button" variant="outline" onClick={() => setOcrDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={actionLoading}>
+                  <Button type="submit" disabled={actionLoading}>
                     {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                     Guardar Comprobante
                   </Button>
@@ -3088,7 +3336,7 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {isEditing ? "Actualizar" : "Crear Comprobante"}
               </Button>
@@ -3245,7 +3493,7 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {isEditing ? "Actualizar" : "Crear Activo"}
               </Button>
@@ -3406,7 +3654,7 @@ export default function FinanzasPage() {
               <Button type="button" variant="outline" onClick={() => setFacturaDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Crear Factura
               </Button>
@@ -3530,7 +3778,7 @@ export default function FinanzasPage() {
               <Button type="button" variant="outline" onClick={() => setCuentaDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-red-600 hover:bg-red-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Crear Cuenta
               </Button>
@@ -3708,7 +3956,7 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-purple-600 hover:bg-purple-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {isEditing ? "Actualizar" : "Crear Empleado"}
               </Button>
@@ -3795,7 +4043,7 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Registrar
               </Button>
@@ -3899,11 +4147,6 @@ export default function FinanzasPage() {
               </Button>
               <Button
                 type="submit"
-                className={
-                  selectedItem?.tipo === "factura"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }
                 disabled={actionLoading}
               >
                 {actionLoading ? (
@@ -4015,7 +4258,7 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {isEditing ? "Actualizar" : "Crear Rol"}
               </Button>
@@ -4131,7 +4374,7 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {isEditing ? "Actualizar" : "Crear Contratista"}
               </Button>
@@ -4239,7 +4482,7 @@ export default function FinanzasPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Asignar Trabajo
               </Button>
@@ -4484,7 +4727,7 @@ export default function FinanzasPage() {
               <Button type="button" variant="outline" onClick={() => setHorasDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-purple-600 hover:bg-purple-700" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -4700,7 +4943,6 @@ export default function FinanzasPage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-green-600 hover:bg-green-700"
                 disabled={actionLoading}
               >
                 {actionLoading ? (
@@ -4773,7 +5015,6 @@ export default function FinanzasPage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700"
                 disabled={actionLoading}
               >
                 {actionLoading ? (
