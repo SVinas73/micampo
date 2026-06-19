@@ -265,9 +265,9 @@ export default function TrazabilidadPage() {
                 <Button type="button" variant="outline" onClick={() => setRegistroDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-green-600 hover:bg-green-700">
+                <button type="submit" className="mc-btn mc-btn--primary">
                   Registrar en Blockchain
-                </Button>
+                </button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -509,9 +509,9 @@ export default function TrazabilidadPage() {
               <Button type="button" variant="outline" onClick={() => setEtapaDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+              <button type="submit" className="mc-btn mc-btn--primary">
                 Registrar Etapa
-              </Button>
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>
