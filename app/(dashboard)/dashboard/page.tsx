@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Icon, Modal, Field, useToast } from "@/components/mc";
+import { motion } from "framer-motion";
+import { Icon, Modal, Field, useToast, AnimatedNumber, Sparkline } from "@/components/mc";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
 
@@ -163,29 +164,40 @@ function RindeBars() {
 }
 
 /* ---------- Tarjeta resumen con gradiente (campo / gastos) ---------- */
-function SummaryCard({ tone, eyebrow, value, sub, badge, icon, onVer }: {
-  tone: "field" | "gold"; eyebrow: string; value: string; sub: string; badge?: string; icon: string; onVer?: () => void;
+function SummaryCard({ tone, eyebrow, value, sub, badge, icon, onVer, spark }: {
+  tone: "field" | "gold"; eyebrow: string; value: string; sub: string; badge?: string; icon: string; onVer?: () => void; spark?: number[];
 }) {
   const isGold = tone === "gold";
   const bg = isGold ? "linear-gradient(135deg, #e9b94a 0%, #d9a538 100%)" : "var(--mc-field-grad)";
   const fg = isGold ? "#3a2a06" : "#fff";
   return (
-    <div style={{ position: "relative", borderRadius: "var(--r-lg)", padding: "20px 22px", background: bg, color: fg, overflow: "hidden", minHeight: 124, display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "var(--sh-md)" }}>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+      whileHover={{ y: -3 }}
+      style={{ position: "relative", borderRadius: "var(--r-lg)", padding: "20px 22px", background: bg, color: fg, overflow: "hidden", minHeight: 124, display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "var(--sh-md)" }}
+    >
       <div style={{ position: "absolute", right: -20, top: -20, opacity: 0.16 }}><Icon name={icon} size={120} /></div>
+      {spark && spark.some((v) => v > 0) && (
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, opacity: 0.5 }}>
+          <Sparkline data={spark} color={isGold ? "#3a2a06" : "#ffffff"} width={520} height={46} />
+        </div>
+      )}
       <div className="row" style={{ justifyContent: "space-between", position: "relative" }}>
         <div className="row gap-8" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.02em" }}><Icon name={icon} size={16} />{eyebrow}</div>
         {badge && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999, background: isGold ? "rgba(58,42,6,0.16)" : "rgba(255,255,255,0.18)" }}>{badge}</span>}
       </div>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-end", position: "relative" }}>
         <div>
-          <div style={{ fontFamily: "var(--ff-display)", fontSize: 40, lineHeight: 1, letterSpacing: "-0.02em" }}>{value}</div>
+          <div style={{ fontFamily: "var(--ff-display)", fontSize: 40, lineHeight: 1, letterSpacing: "-0.02em" }}><AnimatedNumber value={value} /></div>
           <div style={{ fontSize: 12, opacity: 0.82, marginTop: 4 }}>{sub}</div>
         </div>
         <button onClick={onVer} className="mc-icon-btn mc-icon-btn--circle" style={{ width: 38, height: 38, background: isGold ? "#3a2a06" : "rgba(255,255,255,0.16)", border: isGold ? "none" : "1px solid rgba(255,255,255,0.3)", color: isGold ? "#e9b94a" : "#fff" }}>
           <Icon name="arrowRight" size={17} />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -647,17 +659,24 @@ export default function InicioPage() {
 
       {/* KPIs */}
       <div className="grid g-cols-5">
-        {kpis.map((k) => {
+        {kpis.map((k, i) => {
           const cls = k.tone === "accent" ? "mc-kpi mc-kpi--accent" : k.tone === "warn" ? "mc-kpi mc-kpi--warn" : "mc-kpi";
           const tcls = k.trend === "down" ? "mc-kpi__delta--down" : k.trend === "warn" ? "mc-kpi__delta--warn" : "mc-kpi__delta--up";
           const tIcon = k.trend === "down" ? "arrowDown" : k.trend === "warn" ? "alert" : "arrowUp";
           return (
-            <div className={cls} key={k.key}>
+            <motion.div
+              className={cls}
+              key={k.key}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: i * 0.05, ease: [0.2, 0.8, 0.2, 1] }}
+              whileHover={{ y: -2 }}
+            >
               <span className="mc-kpi__glyph"><Icon name={k.icon} size={14} /></span>
               <div className="mc-kpi__label">{k.label}</div>
-              <div className="mc-kpi__value">{k.value}</div>
+              <div className="mc-kpi__value"><AnimatedNumber value={k.value} /></div>
               <div className={`mc-kpi__delta ${k.delta === "—" ? "" : tcls}`}>{k.delta === "—" ? null : <Icon name={tIcon} size={12} />}{k.delta}</div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
@@ -665,7 +684,7 @@ export default function InicioPage() {
       {/* Tarjetas resumen */}
       <div className="grid g-cols-2">
         <SummaryCard tone="field" icon="leaf" eyebrow="Estado general de campos" value="Sin datos" sub="Cargá tus lotes para ver el análisis" onVer={() => router.push("/campo-digital?tab=Detección de Enfermedades (IA)")} />
-        <SummaryCard tone="gold" icon="dollar" eyebrow="Gastos del mes" value={`$${gasTot.toFixed(1)}M`} sub={`Margen bruto est. $${Math.max(0, ingTot - gasTot).toFixed(1)}M`} onVer={() => router.push("/finanzas")} />
+        <SummaryCard tone="gold" icon="dollar" eyebrow="Gastos del mes" value={`$${gasTot.toFixed(1)}M`} sub={`Margen bruto est. $${Math.max(0, ingTot - gasTot).toFixed(1)}M`} spark={bal.gastos} onVer={() => router.push("/finanzas")} />
       </div>
 
       {/* Clima + agenda | Salud lotes + suelo */}
