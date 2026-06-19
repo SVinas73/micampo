@@ -665,6 +665,39 @@ export default function SostenibilidadPage() {
     });
   };
 
+  const handleDescargarReporte = (reporte: any) => {
+    const filas: [string, string | number][] = [
+      ["Período", reporte.periodo],
+      ["Tipo de reporte", reporte.tipoReporte],
+      ["Número de reporte", reporte.numeroReporte || "—"],
+      ["Estado", reporte.estado],
+      ["Fecha inicio", formatDate(reporte.fechaInicio)],
+      ["Fecha fin", formatDate(reporte.fechaFin)],
+      ["Total productos", reporte.totalProductos],
+      ["Total hectáreas", reporte.totalHectareas],
+      ["Total litros", reporte.totalLitros],
+      ["Total kilos", reporte.totalKilos],
+      ["Herbicidas", reporte.herbicidas],
+      ["Insecticidas", reporte.insecticidas],
+      ["Fungicidas", reporte.fungicidas],
+      ["Banda Ia", reporte.bandaIa],
+      ["Banda Ib", reporte.bandaIb],
+      ["Banda II", reporte.bandaII],
+    ];
+    const escapar = (v: string | number) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const contenido = ["Campo,Valor", ...filas.map((f) => f.map(escapar).join(","))].join("\n");
+    const blob = new Blob(["﻿" + contenido], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `reporte-agroquimicos-${reporte.periodo}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // ============================================
   // HANDLERS - CERTIFICACIONES
   // ============================================
@@ -1115,10 +1148,10 @@ export default function SostenibilidadPage() {
               <h2 className="text-2xl font-bold">Huella de Carbono</h2>
               <p className="text-gray-600">Cálculo automático de emisiones de GEI</p>
             </div>
-            <Button onClick={() => setHuellaDialogOpen(true)} className="bg-green-600">
-              <Plus className="h-4 w-4 mr-2" />
+            <button onClick={() => setHuellaDialogOpen(true)} className="mc-btn mc-btn--primary">
+              <Plus className="h-4 w-4" />
               Calcular Nuevo Período
-            </Button>
+            </button>
           </div>
 
           {/* Lista de Huellas Calculadas */}
@@ -1220,10 +1253,10 @@ export default function SostenibilidadPage() {
               <h2 className="text-2xl font-bold">Recetas Agronómicas</h2>
               <p className="text-gray-600">Prescripción legal de agroquímicos</p>
             </div>
-            <Button onClick={() => setRecetaDialogOpen(true)} className="bg-blue-600">
-              <Plus className="h-4 w-4 mr-2" />
+            <button onClick={() => setRecetaDialogOpen(true)} className="mc-btn mc-btn--primary">
+              <Plus className="h-4 w-4" />
               Nueva Receta
-            </Button>
+            </button>
           </div>
 
           {/* Filtros por Estado */}
@@ -1341,7 +1374,6 @@ export default function SostenibilidadPage() {
                       {receta.estado === "Pendiente" && (
                         <Button
                           size="sm"
-                          className="bg-green-600"
                           onClick={() => handleAprobarReceta(receta.id)}
                           disabled={actionLoading}
                         >
@@ -1393,10 +1425,10 @@ export default function SostenibilidadPage() {
               <h2 className="text-2xl font-bold">Reportes de Agroquímicos</h2>
               <p className="text-gray-600">Informes para autoridades (SENASA, MinAgro, etc.)</p>
             </div>
-            <Button onClick={() => setReporteDialogOpen(true)} className="bg-purple-600">
-              <Plus className="h-4 w-4 mr-2" />
+            <button onClick={() => setReporteDialogOpen(true)} className="mc-btn mc-btn--primary">
+              <Plus className="h-4 w-4" />
               Generar Reporte
-            </Button>
+            </button>
           </div>
 
           {/* Lista de Reportes */}
@@ -1554,7 +1586,6 @@ export default function SostenibilidadPage() {
                     {reporte.estado === "Borrador" && (
                       <Button
                         size="sm"
-                        className="bg-blue-600"
                         onClick={() => handleEnviarReporte(reporte.id)}
                         disabled={actionLoading}
                       >
@@ -1562,7 +1593,11 @@ export default function SostenibilidadPage() {
                         Enviar
                       </Button>
                     )}
-                    <Button size="sm" variant="outline">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDescargarReporte(reporte)}
+                    >
                       <Download className="h-4 w-4" />
                     </Button>
                   </div>
@@ -1594,13 +1629,13 @@ export default function SostenibilidadPage() {
               <h2 className="text-2xl font-bold">Certificaciones de Sostenibilidad</h2>
               <p className="text-gray-600">GLOBALG.A.P., Organic, Rainforest Alliance, etc.</p>
             </div>
-            <Button
+            <button
               onClick={() => setCertificacionDialogOpen(true)}
-              className="bg-yellow-600"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nueva Certificación
-            </Button>
+            </button>
           </div>
 
           {/* Lista de Certificaciones */}
@@ -1763,10 +1798,10 @@ export default function SostenibilidadPage() {
                 Reglamento UE 2023/1115 - Productos libres de deforestación
               </p>
             </div>
-            <Button onClick={() => setEudrDialogOpen(true)} className="bg-orange-600">
-              <Plus className="h-4 w-4 mr-2" />
+            <button onClick={() => setEudrDialogOpen(true)} className="mc-btn mc-btn--primary">
+              <Plus className="h-4 w-4" />
               Nueva Declaración
-            </Button>
+            </button>
           </div>
 
           {/* Info EUDR */}
@@ -2036,7 +2071,7 @@ export default function SostenibilidadPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -2451,7 +2486,7 @@ export default function SostenibilidadPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -2554,7 +2589,7 @@ export default function SostenibilidadPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-purple-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -2649,7 +2684,7 @@ export default function SostenibilidadPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-yellow-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -2785,7 +2820,7 @@ export default function SostenibilidadPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-yellow-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -2935,7 +2970,7 @@ export default function SostenibilidadPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-orange-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
