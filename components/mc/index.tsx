@@ -1,10 +1,15 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import { Icon } from "./Icon";
+import { AnimatedNumber } from "./AnimatedNumber";
+import { Sparkline } from "./Sparkline";
 
 export { Icon, ICONS } from "./Icon";
 export type { IconName } from "./Icon";
+export { AnimatedNumber } from "./AnimatedNumber";
+export { Sparkline } from "./Sparkline";
 
 /* ============ IA BADGE (Figma ✦) ============ */
 export function IABadge() {
@@ -147,6 +152,8 @@ export function KPI({
   accent,
   warn,
   ia,
+  spark,
+  sparkColor,
   children,
 }: {
   label: string;
@@ -157,13 +164,22 @@ export function KPI({
   accent?: boolean;
   warn?: boolean;
   ia?: boolean;
+  spark?: number[];
+  sparkColor?: string;
   children?: React.ReactNode;
 }) {
   const cls = accent ? "mc-kpi mc-kpi--accent" : warn ? "mc-kpi mc-kpi--warn" : "mc-kpi";
   const tcls =
     trend === "up" ? "mc-kpi__delta--up" : trend === "down" ? "mc-kpi__delta--down" : "mc-kpi__delta--warn";
   return (
-    <div className={cls} style={ia ? { borderColor: "#FF9D00", boxShadow: "0 0 0 1px #FF9D0044" } : undefined}>
+    <motion.div
+      className={cls}
+      style={ia ? { borderColor: "#FF9D00", boxShadow: "0 0 0 1px #FF9D0044" } : undefined}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
+      whileHover={{ y: -2 }}
+    >
       {children}
       {ia ? (
         <span className="mc-kpi__glyph" style={{ background: "transparent" }}>
@@ -177,14 +193,19 @@ export function KPI({
         )
       )}
       <div className="mc-kpi__label">{label}</div>
-      <div className="mc-kpi__value">{value}</div>
+      <div className="mc-kpi__value"><AnimatedNumber value={value} /></div>
       {delta && (
         <div className={`mc-kpi__delta ${tcls}`}>
           {trend && <Icon name={trend === "down" ? "arrowDown" : trend === "warn" ? "alert" : "arrowUp"} size={12} />}
           {delta}
         </div>
       )}
-    </div>
+      {spark && spark.length > 1 && (
+        <div style={{ marginTop: 8 }}>
+          <Sparkline data={spark} color={sparkColor || (trend === "down" ? "#c93434" : "#5e7733")} />
+        </div>
+      )}
+    </motion.div>
   );
 }
 
