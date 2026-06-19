@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import Anthropic from "@anthropic-ai/sdk";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+import { getAnthropic, IA_VISION_MODEL } from "@/lib/ia";
 
 // Tipo permitido por Anthropic SDK
 type AnthropicMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
@@ -47,9 +43,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const anthropic = getAnthropic();
+    if (!anthropic) {
+      return NextResponse.json(
+        { error: "El OCR con IA requiere configurar ANTHROPIC_API_KEY", simulado: true },
+        { status: 503 }
+      );
+    }
+
     // Llamar a Claude Vision para OCR
     const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: IA_VISION_MODEL,
       max_tokens: 4096,
       messages: [
         {

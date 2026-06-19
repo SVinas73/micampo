@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+import { getAnthropic, IA_MODEL } from "@/lib/ia";
 
 export async function POST(request: Request) {
   try {
@@ -54,9 +50,17 @@ export async function POST(request: Request) {
       a.fecha.localeCompare(b.fecha)
     );
 
+    const anthropic = getAnthropic();
+    if (!anthropic) {
+      return NextResponse.json(
+        { error: "La predicción con IA requiere configurar ANTHROPIC_API_KEY", simulado: true },
+        { status: 503 }
+      );
+    }
+
     // Llamar a Claude para predicción
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: IA_MODEL,
       max_tokens: 2000,
       messages: [
         {
