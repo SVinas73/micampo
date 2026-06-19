@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropic, IA_MODEL } from "@/lib/ia";
+import { resumenEconomicoLotes } from "@/lib/economia";
 
 export const maxDuration = 60;
 
@@ -65,6 +66,12 @@ const TOOLS = [
     name: "produccion_lechera_reciente",
     description:
       "Producción lechera de los últimos registros (litros y fecha). Usalo para preguntas de tambo o producción de leche.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "economia_por_lote",
+    description:
+      "Economía de cada lote: ingresos, costos, margen, costo/ha y margen/ha (USD). Usalo para preguntas de rentabilidad por lote, '¿qué lote me da más/menos margen?' o decisiones de inversión por hectárea.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
@@ -192,6 +199,27 @@ async function ejecutarTool(name: string, input: any, userId: string): Promise<a
       });
       return {
         registros: registros.map((r: any) => ({ fecha: r.fecha, litros: r.litrosTotales ?? r.litros ?? null })),
+      };
+    }
+    case "economia_por_lote": {
+      const eco = await resumenEconomicoLotes(userId);
+      const conDatos = eco.filter((l) => l.fuente !== "sin-datos");
+      const ordenados = [...conDatos].sort((a, b) => a.margenPorHa - b.margenPorHa);
+      return {
+        lotesConDatos: conDatos.length,
+        lotes: eco.map((l) => ({
+          nombre: l.nombre,
+          cultivo: l.cultivo,
+          hectareas: l.hectareas,
+          ingresos: Math.round(l.ingresos),
+          costos: Math.round(l.costos),
+          margen: Math.round(l.margen),
+          costoPorHa: Math.round(l.costoPorHa),
+          margenPorHa: Math.round(l.margenPorHa),
+          fuente: l.fuente,
+        })),
+        peorMargenPorHa: ordenados[0]?.nombre || null,
+        mejorMargenPorHa: ordenados[ordenados.length - 1]?.nombre || null,
       };
     }
     case "buscar_animal": {
