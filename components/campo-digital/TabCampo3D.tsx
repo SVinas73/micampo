@@ -15,18 +15,29 @@ const Campo3D = dynamic(() => import("@/components/campo-digital/Campo3D"), {
   ),
 });
 
+type EconLite = { margenPorHa: number; costoPorHa: number; margen: number; fuente: string };
+
 export default function TabCampo3D() {
   const [lotes, setLotes] = useState<LoteUI[]>([]);
+  const [economia, setEconomia] = useState<Record<string, EconLite>>({});
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows) => {
+    Promise.all([
+      fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/economia/lotes").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ])
+      .then(([rows, eco]) => {
         if (Array.isArray(rows) && rows.length) setLotes(mapLotesApi(rows));
         else setLotes([]);
+        if (eco?.lotes) {
+          const map: Record<string, EconLite> = {};
+          eco.lotes.forEach((l: any) => {
+            map[l.loteId] = { margenPorHa: l.margenPorHa, costoPorHa: l.costoPorHa, margen: l.margen, fuente: l.fuente };
+          });
+          setEconomia(map);
+        }
       })
-      .catch(() => setLotes([]))
       .finally(() => setCargando(false));
   }, []);
 
@@ -64,7 +75,7 @@ export default function TabCampo3D() {
             </div>
           ) : (
             <>
-              <Campo3D lotes={lotes} />
+              <Campo3D lotes={lotes} economia={economia} />
               {conGeo === 0 && (
                 <div className="text-xs text-muted" style={{ marginTop: 10 }}>
                   Tus lotes todavía no tienen geometría dibujada: se muestran como parcelas en grilla.

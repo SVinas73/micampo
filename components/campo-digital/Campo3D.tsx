@@ -6,7 +6,9 @@ import { OrbitControls, Html, Grid } from "@react-three/drei";
 import * as THREE from "three";
 import type { LoteUI } from "@/components/campo-digital/lotes-data";
 
-type Metrica = "superficie" | "salud" | "plano";
+type Metrica = "superficie" | "salud" | "margen" | "costo" | "plano";
+
+export type EconLite = { margenPorHa: number; costoPorHa: number; margen: number; fuente: string };
 
 const EXTENT = 72; // tamaño objetivo de la escena en unidades
 
@@ -16,6 +18,15 @@ function ndviColor(n: number): string {
   if (v < 0.5) return "#c93434";
   if (v < 0.65) return "#d9a538";
   if (v < 0.78) return "#8aa353";
+  return "#5e7733";
+}
+
+// Calor económico: 0 = peor (rojo), 1 = mejor (verde)
+function ecoColor(t: number): string {
+  const v = Math.max(0, Math.min(1, t));
+  if (v < 0.25) return "#c93434";
+  if (v < 0.5) return "#d98a38";
+  if (v < 0.72) return "#d9a538";
   return "#5e7733";
 }
 
@@ -68,24 +79,35 @@ function proyectar(lotes: LoteUI[]): Plot[] {
   return plots;
 }
 
-function alturaDe(l: LoteUI, metrica: Metrica, maxHa: number): number {
+function alturaDe(l: LoteUI, metrica: Metrica, maxHa: number, econ: EconLite | undefined, maxMargen: number, maxCosto: number): number {
   if (metrica === "plano") return 0.5;
   if (metrica === "salud") return 0.6 + (l.ndvi || 0) * 8;
+  if (metrica === "margen") return 0.6 + (econ ? (Math.max(0, econ.margenPorHa) / (maxMargen || 1)) * 8 : 0);
+  if (metrica === "costo") return 0.6 + (econ ? (econ.costoPorHa / (maxCosto || 1)) * 8 : 0);
   return 0.6 + ((l.ha || 0) / (maxHa || 1)) * 8;
 }
 
-function colorDe(l: LoteUI, metrica: Metrica): string {
+function colorDe(l: LoteUI, metrica: Metrica, econ: EconLite | undefined, maxMargen: number, maxCosto: number): string {
   if (metrica === "salud") return l.ndvi > 0 ? ndviColor(l.ndvi) : "#9b968a";
+  if (metrica === "margen") {
+    if (!econ || econ.fuente === "sin-datos") return "#b8b2a3";
+    if (econ.margenPorHa < 0) return "#a12727";
+    return ecoColor(maxMargen > 0 ? econ.margenPorHa / maxMargen : 0);
+  }
+  if (metrica === "costo") {
+    if (!econ || econ.fuente === "sin-datos") return "#b8b2a3";
+    return ecoColor(maxCosto > 0 ? 1 - econ.costoPorHa / maxCosto : 0); // menos costo = mejor (verde)
+  }
   if (l.vacio || !l.cultivo) return "#b8b2a3";
   return l.cultivoColor || "#5e7733";
 }
 
-function LotePlot({ plot, metrica, maxHa, activo, onClick }: {
-  plot: Plot; metrica: Metrica; maxHa: number; activo: boolean; onClick: () => void;
+function LotePlot({ plot, metrica, maxHa, econ, maxMargen, maxCosto, activo, onClick }: {
+  plot: Plot; metrica: Metrica; maxHa: number; econ: EconLite | undefined; maxMargen: number; maxCosto: number; activo: boolean; onClick: () => void;
 }) {
   const [hover, setHover] = useState(false);
-  const altura = alturaDe(plot.lote, metrica, maxHa);
-  const color = colorDe(plot.lote, metrica);
+  const altura = alturaDe(plot.lote, metrica, maxHa, econ, maxMargen, maxCosto);
+  const color = colorDe(plot.lote, metrica, econ, maxMargen, maxCosto);
 
   const geometry = useMemo(() => {
     if (plot.ring && plot.ring.length >= 3) {
@@ -134,16 +156,22 @@ function LotePlot({ plot, metrica, maxHa, activo, onClick }: {
   );
 }
 
-export default function Campo3D({ lotes }: { lotes: LoteUI[] }) {
+export default function Campo3D({ lotes, economia }: { lotes: LoteUI[]; economia?: Record<string, EconLite> }) {
   const [metrica, setMetrica] = useState<Metrica>("superficie");
   const [sel, setSel] = useState<string | null>(null);
   const plots = useMemo(() => proyectar(lotes), [lotes]);
   const maxHa = useMemo(() => Math.max(1, ...lotes.map((l) => l.ha || 0)), [lotes]);
+  const econOf = (l: LoteUI): EconLite | undefined => (economia && l.dbId ? economia[l.dbId] : undefined);
+  const maxMargen = useMemo(() => Math.max(1, ...Object.values(economia || {}).map((e) => Math.max(0, e.margenPorHa))), [economia]);
+  const maxCosto = useMemo(() => Math.max(1, ...Object.values(economia || {}).map((e) => e.costoPorHa)), [economia]);
+  const hayEconomia = economia && Object.keys(economia).length > 0;
   const loteSel = lotes.find((l) => l.id === sel);
+  const econSel = loteSel ? econOf(loteSel) : undefined;
 
   const METRICAS: { k: Metrica; label: string }[] = [
     { k: "superficie", label: "Superficie" },
     { k: "salud", label: "Salud (NDVI)" },
+    ...(hayEconomia ? ([{ k: "margen", label: "Margen/ha" }, { k: "costo", label: "Costo/ha" }] as { k: Metrica; label: string }[]) : []),
     { k: "plano", label: "Plano" },
   ];
 
@@ -172,11 +200,19 @@ export default function Campo3D({ lotes }: { lotes: LoteUI[] }) {
             <div style={{ fontWeight: 700, color: "#2a281f" }}>{loteSel.name}</div>
             <div style={{ color: "#6b6760", marginTop: 3 }}>{loteSel.ha} ha · {loteSel.cultivo || "sin cultivo"}</div>
             {loteSel.ndvi > 0 && <div style={{ color: "#6b6760" }}>NDVI {loteSel.ndvi.toFixed(2)}</div>}
+            {econSel && econSel.fuente !== "sin-datos" && (
+              <div style={{ marginTop: 4, paddingTop: 4, borderTop: "1px solid #ece9e1" }}>
+                <div style={{ color: econSel.margenPorHa >= 0 ? "#5e7733" : "#c93434", fontWeight: 700 }}>
+                  Margen {econSel.margenPorHa >= 0 ? "+" : ""}${Math.round(econSel.margenPorHa).toLocaleString("es-AR")}/ha
+                </div>
+                <div style={{ color: "#6b6760" }}>Costo ${Math.round(econSel.costoPorHa).toLocaleString("es-AR")}/ha</div>
+              </div>
+            )}
             {loteSel.estadio && loteSel.estadio !== "—" && <div style={{ color: "#6b6760" }}>{loteSel.estadio}</div>}
           </>
         ) : (
           <div style={{ color: "#6b6760" }}>
-            {metrica === "salud" ? "La altura y el color muestran el NDVI por lote." : metrica === "superficie" ? "La altura representa la superficie del lote." : "Vista plana del parcelario."}
+            {metrica === "salud" ? "Altura y color = NDVI por lote." : metrica === "superficie" ? "La altura representa la superficie del lote." : metrica === "margen" ? "Altura y color = margen por hectárea (verde mejor, rojo peor)." : metrica === "costo" ? "Color = costo por hectárea (verde más barato, rojo más caro)." : "Vista plana del parcelario."}
             <div style={{ marginTop: 6, color: "#9b968a", fontSize: 11 }}>Click en un lote para ver su detalle · arrastrá para rotar</div>
           </div>
         )}
@@ -193,6 +229,9 @@ export default function Campo3D({ lotes }: { lotes: LoteUI[] }) {
             plot={p}
             metrica={metrica}
             maxHa={maxHa}
+            econ={econOf(p.lote)}
+            maxMargen={maxMargen}
+            maxCosto={maxCosto}
             activo={sel === p.lote.id}
             onClick={() => setSel(p.lote.id)}
           />
