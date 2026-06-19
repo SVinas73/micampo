@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Icon, Modal, Field, useToast } from "@/components/mc";
+import { CapturaRapida } from "@/components/CapturaRapida";
+import { BenchmarkCard } from "@/components/BenchmarkCard";
 
 /* ============================================================
    MiCampo — Inicio (dashboard)
@@ -485,6 +487,7 @@ export default function InicioPage() {
 
   const [kpiValues, setKpiValues] = useState<Record<string, Partial<KpiCfg>>>({});
   const [laborModal, setLaborModal] = useState(false);
+  const [capturaOpen, setCapturaOpen] = useState(false);
   const [lotes, setLotes] = useState<{ id: string; nombre: string }[]>([]);
   const [laborForm, setLaborForm] = useState({ tipo: "Pulverización", loteId: "", fecha: new Date().toISOString().slice(0, 10) });
   const [balance, setBalance] = useState<{ meses: string[]; ingresos: number[]; gastos: number[] } | null>(null);
@@ -624,6 +627,7 @@ export default function InicioPage() {
         <div className="row" style={{ marginLeft: "auto", gap: 8 }}>
           <button className="mc-icon-btn" title="Notificaciones"><Icon name="bell" size={16} /></button>
           <button className="mc-btn mc-btn--secondary" onClick={descargarReporte}><Icon name="download" size={15} />Reporte semanal</button>
+          <button className="mc-btn mc-btn--secondary" onClick={() => setCapturaOpen(true)}><Icon name="camera" size={15} />Cargar por voz</button>
           <button className="mc-btn mc-btn--primary" onClick={() => setLaborModal(true)}><Icon name="plus" size={15} />Nueva labor</button>
         </div>
       </div>
@@ -700,6 +704,9 @@ export default function InicioPage() {
         <CropDistribution cultivos={cultivosData} />
       </div>
 
+      {/* Benchmark anónimo */}
+      <BenchmarkCard />
+
       {/* Actividades | Alertas */}
       <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 14 }}>
         <Actividades onVerTodo={() => router.push("/campo-digital?tab=Labores")} />
@@ -718,6 +725,9 @@ export default function InicioPage() {
           ))}
         </div>
       </div>
+
+      {/* Captura rápida por voz / lenguaje natural */}
+      <CapturaRapida open={capturaOpen} onClose={() => setCapturaOpen(false)} />
 
       {/* Modal Nueva Labor */}
       <Modal
