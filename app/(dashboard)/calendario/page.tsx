@@ -36,38 +36,27 @@ const toISO = (d: Date) =>
 
 const isoOf = (raw: string) => (raw ? raw.slice(0, 10) : "");
 
-/* ============ Eventos demo del mes actual ============ */
-function eventosDemo(base: Date): Evento[] {
-  const y = base.getFullYear();
-  const m = base.getMonth();
-  const day = (d: number) => toISO(new Date(y, m, d));
-  return [
-    { id: "d1", cat: "labor", titulo: "Siembra Lote 3", fechaISO: day(4) },
-    { id: "d2", cat: "labor", titulo: "Pulverización N1", fechaISO: day(9) },
-    { id: "d3", cat: "sanidad", titulo: "Vacunación Aftosa", fechaISO: day(12) },
-    { id: "d4", cat: "riego", titulo: "Riego Sector A", fechaISO: day(16) },
-    { id: "d5", cat: "labor", titulo: "Cosecha Maíz E1", fechaISO: day(22) },
-    { id: "d6", cat: "clima", titulo: "Alerta de heladas", fechaISO: day(26) },
-  ];
-}
-
 export default function CalendarioPage() {
   const toast = useToast();
-  const [cursor, setCursor] = useState(() => new Date(2026, 5, 1));
+  const [cursor, setCursor] = useState(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  });
   const [vista, setVista] = useState("Mes");
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [filtros, setFiltros] = useState<Record<Categoria, boolean>>({ labor: true, sanidad: true, riego: true, clima: true });
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [diaSel, setDiaSel] = useState<string | null>(null);
-  const [usandoDemo, setUsandoDemo] = useState(false);
+  const [cargando, setCargando] = useState(true);
 
-  /* ---- Carga en paralelo de todas las fuentes ---- */
-  useEffect(() => {
+  /* ---- Carga en paralelo de todas las fuentes reales ---- */
+  const cargarEventos = React.useCallback(() => {
     const getJson = (url: string) =>
       fetch(url)
         .then((r) => (r.ok ? r.json() : []))
         .catch(() => []);
 
+    setCargando(true);
     Promise.all([
       getJson("/api/labores"),
       getJson("/api/eventos-sanitarios"),
@@ -105,33 +94,22 @@ export default function CalendarioPage() {
           evs.push({ id: `cli-${c.id || i}`, cat: "clima", titulo: c.titulo || c.tipo || "Alerta climática", fechaISO: isoOf(c.fechaInicio) });
         });
       }
-
-      if (evs.length === 0) {
-        setUsandoDemo(true);
-        setEventos(eventosDemo(new Date(2026, 5, 1)));
-      } else {
-        setEventos(evs);
-      }
+      setEventos(evs);
+      setCargando(false);
     });
 
     getJson("/api/lotes").then((d) => {
       if (Array.isArray(d) && d.length > 0) {
         setLotes(d.map((l: any) => ({ id: l.id, nombre: l.nombre })));
       } else {
-        setLotes([
-          { id: "demo-1", nombre: "Lote 1" },
-          { id: "demo-2", nombre: "Lote 2" },
-          { id: "demo-3", nombre: "Lote 3" },
-        ]);
+        setLotes([]);
       }
     });
   }, []);
 
-  /* ---- Si se cambia de mes y estamos en demo, regenerar eventos del mes visible ---- */
   useEffect(() => {
-    if (usandoDemo) setEventos(eventosDemo(cursor));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cursor.getFullYear(), cursor.getMonth()]);
+    cargarEventos();
+  }, [cargarEventos]);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -178,23 +156,20 @@ export default function CalendarioPage() {
   const crearLabor = async () => {
     if (!diaSel) return;
     const lote = lotes[laborForm.loteIdx];
-    const nuevo: Evento = {
-      id: `lab-new-${Date.now()}`,
-      cat: "labor",
-      titulo: `${laborForm.tipo}${lote?.nombre ? ` · ${lote.nombre}` : ""}`,
-      fechaISO: diaSel,
-    };
+    if (!lote) {
+      toast.show("Necesitás un lote para agendar la labor. Creá uno en Campo Digital.", "err");
+      return;
+    }
     try {
-      if (lote && !lote.id.startsWith("demo-")) {
-        await fetch("/api/labores", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tipo: laborForm.tipo, fecha: diaSel, loteId: lote.id }),
-        }).catch(() => {});
-      }
-      setEventos((prev) => [...prev, nuevo]);
+      const res = await fetch("/api/labores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: laborForm.tipo, fecha: diaSel, loteId: lote.id }),
+      });
+      if (!res.ok) throw new Error();
       toast.show(`Labor "${laborForm.tipo}" agendada`);
       setDiaSel(null);
+      cargarEventos();
     } catch {
       toast.show("No se pudo crear la labor", "err");
     }
@@ -203,6 +178,15 @@ export default function CalendarioPage() {
   const toggleCat = (c: Categoria) => setFiltros((prev) => ({ ...prev, [c]: !prev[c] }));
 
   const eventosDiaSel = diaSel ? eventos.filter((e) => e.fechaISO === diaSel) : [];
+
+  /* ---- Próximos eventos (desde hoy, ordenados) ---- */
+  const proximos = useMemo(() => {
+    const hoyISO = toISO(hoy);
+    return eventosFiltrados
+      .filter((e) => e.fechaISO >= hoyISO)
+      .sort((a, b) => a.fechaISO.localeCompare(b.fechaISO))
+      .slice(0, 6);
+  }, [eventosFiltrados, hoy]);
 
   return (
     <div className="col gap-20">
@@ -303,6 +287,65 @@ export default function CalendarioPage() {
         )}
       </div>
 
+      {/* Próximos eventos */}
+      <div className="mc-card">
+        <div className="mc-card__head">
+          <div className="mc-card__title">Próximos eventos</div>
+          <span className="mc-badge mc-badge--neutral">
+            <span className="mc-badge__dot"></span>{proximos.length} agendado(s)
+          </span>
+        </div>
+        {cargando ? (
+          <div className="text-sm text-muted" style={{ padding: "12px 0" }}>Cargando agenda…</div>
+        ) : proximos.length === 0 ? (
+          <div className="mc-empty">
+            <div className="mc-empty__icon"><Icon name="calendar" size={22} /></div>
+            <div className="mc-empty__title">Sin eventos próximos</div>
+            <div className="mc-empty__text">
+              Las labores, eventos sanitarios, riegos y alertas climáticas que cargues en sus
+              módulos aparecerán acá automáticamente.
+            </div>
+          </div>
+        ) : (
+          <div className="col gap-8">
+            {proximos.map((e) => {
+              const cat = CATS.find((c) => c.key === e.cat);
+              const d = new Date(e.fechaISO + "T12:00:00");
+              const esHoy = e.fechaISO === toISO(hoy);
+              return (
+                <button
+                  key={e.id}
+                  onClick={() => setDiaSel(e.fechaISO)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
+                    border: "1px solid var(--mc-line)", borderRadius: 10, background: "var(--mc-surface)",
+                    cursor: "pointer", textAlign: "left", width: "100%",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 44, flexShrink: 0, textAlign: "center", lineHeight: 1.1,
+                      color: COLOR[e.cat],
+                    }}
+                  >
+                    <div style={{ fontSize: 18, fontWeight: 700 }} className="font-mono">{d.getDate()}</div>
+                    <div className="text-xs" style={{ textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      {MESES[d.getMonth()].slice(0, 3)}
+                    </div>
+                  </div>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: COLOR[e.cat], flexShrink: 0 }}></span>
+                  <div style={{ flex: 1 }}>
+                    <div className="font-semi" style={{ color: "var(--mc-ink)" }}>{e.titulo}</div>
+                    <div className="text-xs text-muted">{cat?.label}</div>
+                  </div>
+                  {esHoy && <span className="mc-badge mc-badge--green"><span className="mc-badge__dot"></span>Hoy</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Modal del día */}
       <Modal
         open={!!diaSel}
@@ -312,7 +355,7 @@ export default function CalendarioPage() {
         footer={
           <>
             <button className="mc-btn mc-btn--ghost" onClick={() => setDiaSel(null)}>Cerrar</button>
-            <button className="mc-btn mc-btn--primary" onClick={crearLabor}>
+            <button className="mc-btn mc-btn--primary" onClick={crearLabor} disabled={lotes.length === 0}>
               <Icon name="plus" size={14} />Nueva labor
             </button>
           </>
@@ -339,18 +382,24 @@ export default function CalendarioPage() {
 
         <div style={{ borderTop: "1px solid var(--mc-line)", marginTop: 14, paddingTop: 14 }}>
           <div className="font-semi mb-8" style={{ color: "var(--mc-ink)", fontSize: 13 }}>Agendar nueva labor</div>
-          <div className="grid g-cols-2 gap-12">
-            <Field label="Tipo">
-              <select className="mc-select" value={laborForm.tipo} onChange={(e) => setLaborForm({ ...laborForm, tipo: e.target.value })}>
-                {["Siembra", "Pulverización", "Fertilización", "Riego", "Cosecha", "Monitoreo"].map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </Field>
-            <Field label="Lote">
-              <select className="mc-select" value={laborForm.loteIdx} onChange={(e) => setLaborForm({ ...laborForm, loteIdx: parseInt(e.target.value) })}>
-                {lotes.map((l, i) => <option key={l.id} value={i}>{l.nombre}</option>)}
-              </select>
-            </Field>
-          </div>
+          {lotes.length === 0 ? (
+            <div className="text-sm text-muted">
+              No tenés lotes cargados. Creá uno en Campo Digital para poder agendar labores.
+            </div>
+          ) : (
+            <div className="grid g-cols-2 gap-12">
+              <Field label="Tipo">
+                <select className="mc-select" value={laborForm.tipo} onChange={(e) => setLaborForm({ ...laborForm, tipo: e.target.value })}>
+                  {["Siembra", "Pulverización", "Fertilización", "Riego", "Cosecha", "Monitoreo"].map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </Field>
+              <Field label="Lote">
+                <select className="mc-select" value={laborForm.loteIdx} onChange={(e) => setLaborForm({ ...laborForm, loteIdx: parseInt(e.target.value) })}>
+                  {lotes.map((l, i) => <option key={l.id} value={i}>{l.nombre}</option>)}
+                </select>
+              </Field>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
