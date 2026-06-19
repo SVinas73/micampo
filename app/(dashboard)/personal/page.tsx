@@ -360,6 +360,13 @@ function TabEquipo({
               </td>
             </tr>
           ))}
+          {empleados.length === 0 && (
+            <tr>
+              <td colSpan={6} style={{ textAlign: "center", padding: "32px", color: "var(--mc-text-3)" }}>
+                No hay empleados registrados. Agregá el primero con “Nuevo empleado”.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -443,6 +450,13 @@ function TabHoras({
                 </td>
               </tr>
             ))}
+            {tareas.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ textAlign: "center", padding: "32px", color: "var(--mc-text-3)" }}>
+                  No hay tareas asignadas. Asigná la primera con “Asignar tarea”.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -510,7 +524,7 @@ function TabPagos({
     metodo: "Transferencia",
   });
 
-  const registrar = () => {
+  const registrar = async () => {
     const emp = empleados[form.empleadoIdx];
     const bruto = parseFloat(form.bruto) || emp?.salario || 0;
     if (!bruto) {
@@ -518,11 +532,34 @@ function TabPagos({
       return;
     }
     const neto = Math.round(bruto * 0.87);
+
+    if (emp?.dbId) {
+      try {
+        const res = await fetch(`/api/empleados/${emp.dbId}/pagos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            periodo: form.periodo,
+            fechaPago: new Date().toISOString(),
+            salarioBase: bruto,
+            horasExtra: 0,
+            bonificaciones: 0,
+            deducciones: bruto - neto,
+            moneda: "USD",
+            metodoPago: form.metodo,
+          }),
+        });
+        if (!res.ok) throw new Error();
+      } catch {
+        toast.show("No se pudo guardar el pago", "err");
+        return;
+      }
+    }
+
     setPagos((prev) => [
       { empleado: emp?.nombre || "—", periodo: form.periodo, bruto, neto, metodo: form.metodo, estado: "Pagado" },
       ...prev,
     ]);
-    // No existe ruta /api/pagos-salario dedicada; persistencia mejor-esfuerzo.
     toast.show(`Pago registrado para ${emp?.nombre || "el empleado"}`);
     setModal(false);
     setForm({ ...form, bruto: "" });
@@ -553,6 +590,13 @@ function TabPagos({
               </td>
             </tr>
           ))}
+          {pagos.length === 0 && (
+            <tr>
+              <td colSpan={6} style={{ textAlign: "center", padding: "32px", color: "var(--mc-text-3)" }}>
+                No hay pagos registrados. Liquidá el primero con “Registrar pago”.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
 
@@ -662,6 +706,13 @@ function TabContratistas({
               </td>
             </tr>
           ))}
+          {contratistas.length === 0 && (
+            <tr>
+              <td colSpan={5} style={{ textAlign: "center", padding: "32px", color: "var(--mc-text-3)" }}>
+                No hay contratistas registrados. Agregá el primero con “Nuevo contratista”.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
 
