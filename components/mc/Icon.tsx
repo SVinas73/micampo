@@ -104,4 +104,5 @@ export const ICONS = {
   send: <><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></>,
   save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></>,
   bug: <><circle cx="12" cy="13" r="5"/><path d="M12 8V5"/><path d="M8 5l1.5 2"/><path d="M16 5l-1.5 2"/><path d="M7 13H3"/><path d="M21 13h-4"/><path d="M7.5 16.5L4 19"/><path d="M16.5 16.5L20 19"/></>,
+  sparkles: <><path d="M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 14l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/></>,
 } as const;

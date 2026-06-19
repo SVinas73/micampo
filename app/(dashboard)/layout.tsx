@@ -4,6 +4,16 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@/components/mc/Icon";
+import { Copiloto } from "@/components/Copiloto";
+
+// Etiqueta legible del módulo actual para dar contexto al copiloto
+function moduloLabel(pathname: string): string {
+  const hit = SEARCH_INDEX.find((s) => {
+    const base = s.href.split("?")[0];
+    return base !== "/dashboard" ? pathname.startsWith(base) : pathname === base;
+  });
+  return hit?.label || "MiCampo";
+}
 
 type NavChild = { id: string; label: string; href: string; disabled?: boolean };
 type NavItem = {
@@ -137,7 +147,7 @@ function moduloDeRuta(pathname: string): string {
   return "general";
 }
 
-function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CommandPalette({ open, onClose, onAskCopilot }: { open: boolean; onClose: () => void; onAskCopilot: (q: string) => void }) {
   const [q, setQ] = useState("");
   const router = useRouter();
   const results = useMemo(() => {
@@ -151,6 +161,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
   }, [open]);
 
   if (!open) return null;
+  const term = q.trim();
   return (
     <div className="mc-modal-backdrop" style={{ alignItems: "flex-start", paddingTop: "12vh", display: "flex", justifyContent: "center" }} onClick={onClose}>
       <div className="mc-modal" style={{ width: "min(560px, 92vw)" }} onClick={(e) => e.stopPropagation()}>
@@ -160,13 +171,18 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
             autoFocus
             className="mc-input"
             style={{ border: "none", boxShadow: "none", padding: 0, fontSize: 15 }}
-            placeholder="Buscar pantallas, módulos..."
+            placeholder="Buscar pantallas o preguntar al copiloto..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && results[0]) {
-                router.push(results[0].href);
-                onClose();
+              if (e.key === "Enter") {
+                if (results[0]) {
+                  router.push(results[0].href);
+                  onClose();
+                } else if (term) {
+                  onAskCopilot(term);
+                  onClose();
+                }
               }
               if (e.key === "Escape") onClose();
             }}
@@ -174,8 +190,23 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
           <kbd style={{ fontFamily: "var(--ff-mono)", fontSize: 10, padding: "2px 6px", background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)", borderRadius: 4 }}>esc</kbd>
         </div>
         <div style={{ maxHeight: 360, overflowY: "auto", padding: 6 }}>
-          {results.length === 0 && (
-            <div style={{ padding: 24, textAlign: "center", color: "var(--mc-text-3)", fontSize: 13 }}>Sin resultados para “{q}”</div>
+          {term && (
+            <button
+              onClick={() => {
+                onAskCopilot(term);
+                onClose();
+              }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, textAlign: "left", cursor: "pointer", background: "#eef1e6", marginBottom: 4 }}
+            >
+              <span style={{ width: 26, height: 26, borderRadius: 7, background: "#5e7733", color: "#fff", display: "grid", placeItems: "center" }}>
+                <Icon name="sparkles" size={13} />
+              </span>
+              <span style={{ flex: 1, fontSize: 13.5, color: "var(--mc-ink)" }}>Preguntar al Copiloto: “{term}”</span>
+              <span style={{ fontSize: 11, color: "var(--mc-text-3)" }}>IA</span>
+            </button>
+          )}
+          {results.length === 0 && !term && (
+            <div style={{ padding: 24, textAlign: "center", color: "var(--mc-text-3)", fontSize: 13 }}>Sin resultados</div>
           )}
           {results.map((r) => (
             <button
@@ -280,6 +311,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const [openGroups, setOpenGroups] = useState<string[]>(["agronomia"]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [tweaksOpen, setTweaksOpen] = useState(false);
+  const [copilotoOpen, setCopilotoOpen] = useState(false);
+  const [copilotoSeed, setCopilotoSeed] = useState<string | null>(null);
+
+  const askCopilot = useCallback((q: string) => {
+    setCopilotoSeed(q);
+    setCopilotoOpen(true);
+  }, []);
 
   // Abrir el grupo que contiene la ruta activa
   useEffect(() => {
@@ -451,8 +489,15 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
       <main className="mc-main" data-modulo={moduloDeRuta(pathname)}>{children}</main>
 
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onAskCopilot={askCopilot} />
       <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)} />
+      <Copiloto
+        open={copilotoOpen}
+        setOpen={setCopilotoOpen}
+        seed={copilotoSeed}
+        onSeedConsumed={() => setCopilotoSeed(null)}
+        modulo={moduloLabel(pathname)}
+      />
     </div>
   );
 }
