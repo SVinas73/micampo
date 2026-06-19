@@ -271,8 +271,18 @@ export async function POST(request: Request) {
     const modulo: string | undefined = body.modulo;
 
     const anthropic = getAnthropic();
+    const encoder = new TextEncoder();
+
+    // Sin clave: streameamos igual la respuesta orientativa, para una sola lógica en el front.
     if (!anthropic) {
-      return NextResponse.json(respuestaSimulada(historial[historial.length - 1]?.content || ""));
+      const { reply } = respuestaSimulada(historial[historial.length - 1]?.content || "");
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(reply));
+          controller.close();
+        },
+      });
+      return new Response(stream, { headers: { "Content-Type": "text/plain; charset=utf-8", "X-Simulado": "1" } });
     }
 
     const messages: any[] = historial.map((m) => ({ role: m.role, content: m.content }));
@@ -280,51 +290,50 @@ export async function POST(request: Request) {
       ? `${SYSTEM}\n\nContexto: el usuario está viendo la pantalla "${modulo}".`
       : SYSTEM;
 
-    let reply = "";
-    const herramientasUsadas: string[] = [];
-
-    for (let i = 0; i < 6; i++) {
-      const res = await anthropic.messages.create({
-        model: IA_MODEL,
-        max_tokens: 1500,
-        system: systemPrompt,
-        tools: TOOLS as any,
-        messages,
-      });
-
-      if (res.stop_reason === "tool_use") {
-        messages.push({ role: "assistant", content: res.content });
-        const toolResults: any[] = [];
-        for (const block of res.content) {
-          if (block.type === "tool_use") {
-            herramientasUsadas.push(block.name);
-            let result: any;
-            try {
-              result = await ejecutarTool(block.name, block.input, userId);
-            } catch (e) {
-              result = { error: "No se pudo obtener el dato" };
-            }
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: block.id,
-              content: JSON.stringify(result),
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for (let i = 0; i < 6; i++) {
+            const s = anthropic.messages.stream({
+              model: IA_MODEL,
+              max_tokens: 1500,
+              system: systemPrompt,
+              tools: TOOLS as any,
+              messages,
             });
+            // Los tokens de texto fluyen al cliente apenas llegan.
+            s.on("text", (t: string) => controller.enqueue(encoder.encode(t)));
+            const final = await s.finalMessage();
+
+            if (final.stop_reason === "tool_use") {
+              messages.push({ role: "assistant", content: final.content });
+              const toolResults: any[] = [];
+              for (const block of final.content as any[]) {
+                if (block.type === "tool_use") {
+                  let result: any;
+                  try {
+                    result = await ejecutarTool(block.name, block.input, userId);
+                  } catch {
+                    result = { error: "No se pudo obtener el dato" };
+                  }
+                  toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) });
+                }
+              }
+              messages.push({ role: "user", content: toolResults });
+              continue; // sigue la próxima ronda (su texto también se streamea)
+            }
+            break; // turno final ya streameado
           }
+        } catch (e) {
+          console.error("Error en stream copiloto:", e);
+          controller.enqueue(encoder.encode("\n\nHubo un problema procesando la consulta."));
+        } finally {
+          controller.close();
         }
-        messages.push({ role: "user", content: toolResults });
-        continue;
-      }
+      },
+    });
 
-      reply = res.content
-        .filter((b: any) => b.type === "text")
-        .map((b: any) => b.text)
-        .join("\n")
-        .trim();
-      break;
-    }
-
-    if (!reply) reply = "No pude completar el análisis. Reformulá la pregunta, por favor.";
-    return NextResponse.json({ reply, herramientas: [...new Set(herramientasUsadas)], simulado: false });
+    return new Response(stream, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
   } catch (error) {
     console.error("Error en copiloto:", error);
     return NextResponse.json({ error: "Error al procesar la consulta" }, { status: 500 });
