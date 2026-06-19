@@ -32,6 +32,10 @@ const NAV: { section: string; items: NavItem[] }[] = [
     items: [{ id: "inicio", label: "Inicio", icon: "dashboard", type: "single", href: "/dashboard" }],
   },
   {
+    section: "Inteligencia",
+    items: [{ id: "analitica", label: "Analítica IA", icon: "chart", type: "single", href: "/analitica" }],
+  },
+  {
     section: "Producción",
     items: [
       {
@@ -77,6 +81,8 @@ const NAV: { section: string; items: NavItem[] }[] = [
 // Índice de búsqueda del palette ⌘K: todas las pantallas navegables
 const SEARCH_INDEX: { label: string; href: string; group: string }[] = [
   { label: "Inicio", href: "/dashboard", group: "General" },
+  { label: "Analítica IA", href: "/analitica", group: "Inteligencia" },
+  { label: "Campo 3D", href: "/campo-digital?tab=Campo 3D", group: "Agronomía" },
   { label: "Campo Digital", href: "/campo-digital", group: "Agronomía" },
   { label: "Lotes", href: "/campo-digital?tab=Lotes", group: "Agronomía" },
   { label: "Labores", href: "/campo-digital?tab=Labores", group: "Agronomía" },
