@@ -44,16 +44,38 @@ export function Copiloto({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: nuevos, modulo }),
       });
-      const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.reply || data.error || "No pude responder en este momento." },
-      ]);
+
+      if (!res.body) {
+        const data = await res.json().catch(() => ({}));
+        setMessages((prev) => [...prev, { role: "assistant", content: data.reply || data.error || "No pude responder." }]);
+        return;
+      }
+
+      // Inserta una burbuja vacía y la va completando con el stream
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      setCargando(false);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acumulado = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acumulado += decoder.decode(value, { stream: true });
+        setMessages((prev) => {
+          const copia = [...prev];
+          copia[copia.length - 1] = { role: "assistant", content: acumulado };
+          return copia;
+        });
+      }
+      if (!acumulado.trim()) {
+        setMessages((prev) => {
+          const copia = [...prev];
+          copia[copia.length - 1] = { role: "assistant", content: "No pude completar el análisis. Reformulá la pregunta, por favor." };
+          return copia;
+        });
+      }
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Hubo un problema de conexión. Probá de nuevo en un momento." },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Hubo un problema de conexión. Probá de nuevo en un momento." }]);
     } finally {
       setCargando(false);
     }
