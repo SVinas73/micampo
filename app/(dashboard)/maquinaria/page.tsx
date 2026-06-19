@@ -262,6 +262,29 @@ interface EficienciaMaquinaria {
 }
 
 // ============================================
+// UTILIDADES
+// ============================================
+
+const MAQ_CHART_COLORS = ["#5e7733", "#d9a538", "#2c6bb8", "#c93434", "#64748b", "#8a6d3b", "#46603a"];
+
+function exportarCSV(nombre: string, columnas: string[], filas: (string | number)[][]) {
+  const escapar = (v: string | number) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const contenido = [columnas, ...filas]
+    .map((fila) => fila.map(escapar).join(","))
+    .join("\n");
+  const blob = new Blob(["﻿" + contenido], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${nombre}-${new Date().toISOString().split("T")[0]}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
 
@@ -1040,10 +1063,10 @@ export default function MaquinariaPage() {
             Sistema completo de gestión, mantenimiento y monitoreo
           </p>
         </div>
-        <Button onClick={() => setMaquinariaDialogOpen(true)} className="bg-blue-600">
-          <Plus className="h-4 w-4 mr-2" />
+        <button onClick={() => setMaquinariaDialogOpen(true)} className="mc-btn mc-btn--primary">
+          <Plus className="h-4 w-4" />
           Nueva Maquinaria
-        </Button>
+        </button>
       </div>
 
       {/* KPIs Dashboard */}
@@ -1583,7 +1606,7 @@ export default function MaquinariaPage() {
               <h2 className="text-2xl font-bold">Mantenimiento Preventivo</h2>
               <p className="text-gray-600">Alertas por horas de motor y fechas programadas</p>
             </div>
-            <Button
+            <button
               onClick={() => {
                 if (selectedMaquinaria) {
                   setAlertaDialogOpen(true);
@@ -1591,11 +1614,11 @@ export default function MaquinariaPage() {
                   alert("Selecciona una maquinaria primero");
                 }
               }}
-              className="bg-orange-600"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Nueva Alerta
-            </Button>
+            </button>
           </div>
 
           {/* Selector de Maquinaria */}
@@ -1792,7 +1815,7 @@ export default function MaquinariaPage() {
               <h2 className="text-2xl font-bold">Mantenimiento Predictivo</h2>
               <p className="text-gray-600">Sensores IoT que detectan fallas antes de que ocurran</p>
             </div>
-            <Button
+            <button
               onClick={() => {
                 if (selectedMaquinaria) {
                   setSensorDialogOpen(true);
@@ -1800,11 +1823,11 @@ export default function MaquinariaPage() {
                   alert("Selecciona una maquinaria primero");
                 }
               }}
-              className="bg-purple-600"
+              className="mc-btn mc-btn--primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Registrar Lectura
-            </Button>
+            </button>
           </div>
 
           {/* Selector de Maquinaria */}
@@ -2016,10 +2039,10 @@ export default function MaquinariaPage() {
               <h2 className="text-2xl font-bold">Órdenes de Taller</h2>
               <p className="text-gray-600">Gestión digital de reparaciones mecánicas</p>
             </div>
-            <Button onClick={() => setOrdenDialogOpen(true)} className="bg-blue-600">
-              <Plus className="h-4 w-4 mr-2" />
+            <button onClick={() => setOrdenDialogOpen(true)} className="mc-btn mc-btn--primary">
+              <Plus className="h-4 w-4" />
               Nueva Orden
-            </Button>
+            </button>
           </div>
 
           {/* Resumen */}
@@ -2269,14 +2292,14 @@ export default function MaquinariaPage() {
               <p className="text-gray-600">Monitoreo de manejo y seguridad</p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => setOperadorDialogOpen(true)} variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
+              <button onClick={() => setOperadorDialogOpen(true)} className="mc-btn mc-btn--secondary">
+                <Plus className="h-4 w-4" />
                 Nuevo Operador
-              </Button>
-              <Button onClick={() => setEvaluacionDialogOpen(true)} className="bg-green-600">
-                <Plus className="h-4 w-4 mr-2" />
+              </button>
+              <button onClick={() => setEvaluacionDialogOpen(true)} className="mc-btn mc-btn--primary">
+                <Plus className="h-4 w-4" />
                 Nueva Evaluación
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -2485,7 +2508,7 @@ export default function MaquinariaPage() {
         {/* ============================================ */}
         {/* TAB 8: DASHBOARD GENERAL */}
         {/* ============================================ */}
-        <TabsContent value="reportes" className="space-y-4">
+        <TabsContent value="reportes" className="space-y-6">
           <div>
             <h2 className="text-2xl font-bold">Dashboard General</h2>
             <p className="text-gray-600">Resumen completo del módulo de maquinaria</p>
@@ -2493,57 +2516,123 @@ export default function MaquinariaPage() {
 
           {dashboard && (
             <>
-              {/* Gráfico: Distribución por Tipo */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Distribución de Maquinaria por Tipo</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    {dashboard.distribucionTipos && dashboard.distribucionTipos.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={dashboard.distribucionTipos}
-                            dataKey="cantidad"
-                            nameKey="tipo"
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={80}
-                            label
+              {/* Resumen operativo */}
+              <div className="grid g-cols-4">
+                <KPI
+                  label="Flota total"
+                  value={String(dashboard.kpis?.totalMaquinarias ?? maquinarias.length)}
+                  delta={`${maquinarias.filter((m) => m.estado === "Operativa").length} operativas`}
+                  trend="up"
+                  icon="truck"
+                  accent
+                />
+                <KPI
+                  label="En taller"
+                  value={String(maquinarias.filter((m) => m.estado === "EnReparacion" || m.estado === "Mantenimiento").length)}
+                  delta={`${dashboard.ordenesTaller?.abiertas ?? ordenesTaller.filter((o) => o.estado !== "Completada").length} órdenes abiertas`}
+                  trend="up"
+                  icon="wrench"
+                />
+                <KPI
+                  label="Horas motor totales"
+                  value={maquinarias.reduce((s, m) => s + (m.horasMotor || 0), 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                  delta="Acumuladas"
+                  trend="up"
+                  icon="activity"
+                />
+                <KPI
+                  label="Costo de taller"
+                  value={`$${ordenesTaller.reduce((s, o) => s + (o.costoTotal || 0), 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+                  delta={`${ordenesTaller.length} órdenes`}
+                  trend="up"
+                  icon="dollar"
+                />
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Gráfico: Distribución por Tipo */}
+                <Card>
+                  <CardHeader>
+                    <CardDescription>Composición de la flota</CardDescription>
+                    <CardTitle>Distribución por tipo</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-72">
+                      {dashboard.distribucionTipos && dashboard.distribucionTipos.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={dashboard.distribucionTipos}
+                              dataKey="cantidad"
+                              nameKey="tipo"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={55}
+                              outerRadius={95}
+                              paddingAngle={2}
+                              label={(p: any) => `${p.tipo}: ${p.cantidad}`}
+                              labelLine={false}
+                            >
+                              {dashboard.distribucionTipos.map((entry: any, index: number) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={MAQ_CHART_COLORS[index % MAQ_CHART_COLORS.length]}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-gray-400 text-sm">No hay maquinaria registrada</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Estado de la flota */}
+                <Card>
+                  <CardHeader>
+                    <CardDescription>Disponibilidad operativa</CardDescription>
+                    <CardTitle>Estado de la flota</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-72">
+                      {maquinarias.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={Object.entries(
+                              maquinarias.reduce((acc, m) => {
+                                acc[m.estado] = (acc[m.estado] || 0) + 1;
+                                return acc;
+                              }, {} as Record<string, number>)
+                            ).map(([estado, cantidad]) => ({ estado, cantidad }))}
+                            margin={{ top: 8, right: 12, left: -16, bottom: 0 }}
                           >
-                            {dashboard.distribucionTipos.map((entry: any, index: number) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={
-                                  [
-                                    "#2c6bb8",
-                                    "#5e7733",
-                                    "#d9a538",
-                                    "#c93434",
-                                    "#64748b",
-                                  ][index % 5]
-                                }
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-gray-500">No hay datos disponibles</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" vertical={false} />
+                            <XAxis dataKey="estado" tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#6b6760" }} axisLine={false} tickLine={false} />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }} cursor={{ fill: "rgba(94,119,51,0.06)" }} />
+                            <Bar dataKey="cantidad" fill="#5e7733" radius={[6, 6, 0, 0]} maxBarSize={56} name="Maquinarias" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-gray-400 text-sm">Sin datos</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Top 5 Maquinarias por Horas */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Top 5 Maquinarias por Horas Motor</CardTitle>
+                  <CardDescription>Mayor uso acumulado</CardDescription>
+                  <CardTitle>Top 5 maquinarias por horas motor</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -2551,39 +2640,39 @@ export default function MaquinariaPage() {
                       dashboard.topMaquinarias.map((maq: any, index: number) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded"
+                          className="flex items-center justify-between p-3 bg-[#faf9f6] rounded-lg border border-[#eceae3]"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
+                            <span className="text-xl font-bold text-[#bcb8ad] w-8">#{index + 1}</span>
                             <div>
                               <p className="font-semibold">{maq.codigo}</p>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-gray-500">
                                 {maq.marca} {maq.modelo}
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold text-blue-600">
+                            <p className="text-xl font-bold text-[#5e7733]">
                               {maq.horasMotor.toFixed(0)}
                             </p>
-                            <p className="text-sm text-gray-600">horas</p>
+                            <p className="text-xs text-gray-500">horas motor</p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <p className="text-gray-500 text-center py-4">No hay datos disponibles</p>
+                      <p className="text-gray-400 text-sm text-center py-6">No hay datos disponibles</p>
                     )}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Resumen de Alertas Críticas */}
-              {dashboard.alertas && dashboard.alertas.ultimas && dashboard.alertas.ultimas.length > 0 && (
+              {dashboard.alertas && dashboard.alertas.ultimas && dashboard.alertas.ultimas.filter((a: any) => a.prioridad === "Crítica").length > 0 && (
                 <Card className="border-red-200 bg-red-50">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-red-700">
                       <AlertTriangle className="h-5 w-5" />
-                      Alertas Críticas Activas
+                      Alertas críticas activas
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -2594,12 +2683,12 @@ export default function MaquinariaPage() {
                         .map((alerta: any) => (
                           <div
                             key={alerta.id}
-                            className="flex items-center justify-between p-3 bg-white rounded border border-red-200"
+                            className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200"
                           >
                             <div>
                               <p className="font-semibold text-red-900">{alerta.titulo}</p>
                               <p className="text-sm text-gray-600">
-                                {alerta.maquinaria.codigo} - {alerta.categoria}
+                                {alerta.maquinaria?.codigo} - {alerta.categoria}
                               </p>
                             </div>
                             <Badge className="bg-red-600">Crítica</Badge>
@@ -2613,23 +2702,76 @@ export default function MaquinariaPage() {
               {/* Exportar Reportes */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Exportar Reportes</CardTitle>
-                  <CardDescription>Descarga información detallada</CardDescription>
+                  <CardDescription>Descarga información detallada en CSV</CardDescription>
+                  <CardTitle>Exportar reportes</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Button variant="outline" className="w-full">
-                      <Download className="h-4 w-4 mr-2" />
-                      Reporte de Flota
-                    </Button>
-                    <Button variant="outline" className="w-full">
-                      <Download className="h-4 w-4 mr-2" />
-                      Reporte de Mantenimiento
-                    </Button>
-                    <Button variant="outline" className="w-full">
-                      <Download className="h-4 w-4 mr-2" />
-                      Reporte de Costos
-                    </Button>
+                    <button
+                      className="mc-btn mc-btn--secondary w-full justify-center"
+                      disabled={maquinarias.length === 0}
+                      onClick={() =>
+                        exportarCSV(
+                          "flota-maquinaria",
+                          ["Código", "Tipo", "Marca", "Modelo", "Patente", "Horas motor", "Estado"],
+                          maquinarias.map((m) => [
+                            m.codigo,
+                            m.tipo,
+                            m.marca,
+                            m.modelo,
+                            m.patente || "",
+                            m.horasMotor?.toFixed(0) ?? "0",
+                            m.estado,
+                          ])
+                        )
+                      }
+                    >
+                      <Download className="h-4 w-4" />
+                      Reporte de flota
+                    </button>
+                    <button
+                      className="mc-btn mc-btn--secondary w-full justify-center"
+                      disabled={ordenesTaller.length === 0}
+                      onClick={() =>
+                        exportarCSV(
+                          "mantenimiento",
+                          ["N° Orden", "Maquinaria", "Tipo", "Prioridad", "Estado", "Fecha ingreso", "Mecánico"],
+                          ordenesTaller.map((o) => [
+                            o.numeroOrden,
+                            o.maquinaria?.codigo || "",
+                            o.tipo,
+                            o.prioridad,
+                            o.estado,
+                            o.fechaIngreso ? new Date(o.fechaIngreso).toLocaleDateString("es-AR") : "",
+                            o.mecanicoAsignado || "",
+                          ])
+                        )
+                      }
+                    >
+                      <Download className="h-4 w-4" />
+                      Reporte de mantenimiento
+                    </button>
+                    <button
+                      className="mc-btn mc-btn--secondary w-full justify-center"
+                      disabled={ordenesTaller.length === 0}
+                      onClick={() =>
+                        exportarCSV(
+                          "costos-taller",
+                          ["N° Orden", "Maquinaria", "Repuestos", "Mano de obra", "Otros", "Total"],
+                          ordenesTaller.map((o) => [
+                            o.numeroOrden,
+                            o.maquinaria?.codigo || "",
+                            (o.costoRepuestos || 0).toFixed(2),
+                            (o.costoManoObra || 0).toFixed(2),
+                            (o.otrosCostos || 0).toFixed(2),
+                            (o.costoTotal || 0).toFixed(2),
+                          ])
+                        )
+                      }
+                    >
+                      <Download className="h-4 w-4" />
+                      Reporte de costos
+                    </button>
                   </div>
                 </CardContent>
               </Card>
@@ -2837,7 +2979,7 @@ export default function MaquinariaPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -2985,7 +3127,7 @@ export default function MaquinariaPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -3109,7 +3251,7 @@ export default function MaquinariaPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -3256,7 +3398,7 @@ export default function MaquinariaPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -3405,7 +3547,7 @@ export default function MaquinariaPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-orange-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -3603,7 +3745,7 @@ export default function MaquinariaPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-purple-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -3791,7 +3933,7 @@ export default function MaquinariaPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-blue-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -4092,7 +4234,7 @@ export default function MaquinariaPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-green-600" disabled={actionLoading}>
+              <Button type="submit" disabled={actionLoading}>
                 {actionLoading ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
