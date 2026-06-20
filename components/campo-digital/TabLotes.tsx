@@ -27,6 +27,7 @@ import {
   AgregarCampoModal, EliminarCampoModal, EditarLoteModal, NuevaTareaModal,
   type AgregarCampoData, type EditarLoteData, type NuevaTareaData,
 } from "./lotes-Modales";
+import { LoteOverlay } from "./LoteOverlay";
 
 /* ========== TAB LOTES (Figma CDLotes) ========== */
 export default function TabLotes() {
@@ -316,45 +317,42 @@ function LotesMapa({
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null }));
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: selected ? "360px 1fr" : "1fr", gap: 14, alignItems: "stretch" }}>
-      {selected && (
-        <LoteFichaTecnica
-          lote={selected}
-          onClose={() => onSelect(null)}
-          onNota={() => onNota(selected)}
-          onEditar={() => onEditar(selected)}
-          onTarea={() => onTarea(selected)}
+    <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)", gap: 12, flexWrap: "wrap" }}>
+        <div className="mc-seg">
+          {["NDVI", "Satélite", "Cultivos"].map((l) => (
+            <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
+          ))}
+        </div>
+        <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Dibujá tu lote con la herramienta de polígono (arriba a la derecha del mapa) · tocá un lote para ver su ficha</div>
+      </div>
+      <div style={{ height: 640, position: "relative" }}>
+        <MapaNDVI
+          lotes={lotesGeo}
+          selectedId={selected?.id ?? null}
+          layer={layer}
+          onSelect={(id) => onSelect(lotes.find((l) => l.id === id) || null)}
+          onDrawn={onDrawn}
         />
-      )}
-
-      <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)", gap: 12, flexWrap: "wrap" }}>
-          <div className="mc-seg">
-            {["NDVI", "Satélite", "Cultivos"].map((l) => (
-              <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
+        {selected && (
+          <LoteOverlay
+            lote={selected}
+            onClose={() => onSelect(null)}
+            onNota={() => onNota(selected)}
+            onEditar={() => onEditar(selected)}
+            onTarea={() => onTarea(selected)}
+          />
+        )}
+        {legend.length > 0 && !selected && (
+          <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 500, background: "rgba(255,255,255,0.95)", padding: "10px 14px", borderRadius: 10, fontSize: 12, display: "flex", gap: 14, flexWrap: "wrap", boxShadow: "var(--sh-md)" }}>
+            {legend.map((l) => (
+              <div key={l.label} className="row gap-4">
+                <span style={{ width: 12, height: 12, background: l.color, borderRadius: 3 }}></span>
+                {l.label}
+              </div>
             ))}
           </div>
-          <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Dibujá tu lote con la herramienta de polígono (arriba a la derecha del mapa)</div>
-        </div>
-        <div style={{ height: 600, position: "relative" }}>
-          <MapaNDVI
-            lotes={lotesGeo}
-            selectedId={selected?.id ?? null}
-            layer={layer}
-            onSelect={(id) => onSelect(lotes.find((l) => l.id === id) || null)}
-            onDrawn={onDrawn}
-          />
-          {legend.length > 0 && (
-            <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 500, background: "rgba(255,255,255,0.95)", padding: "10px 14px", borderRadius: 10, fontSize: 12, display: "flex", gap: 14, flexWrap: "wrap", boxShadow: "var(--sh-md)" }}>
-              {legend.map((l) => (
-                <div key={l.label} className="row gap-4">
-                  <span style={{ width: 12, height: 12, background: l.color, borderRadius: 3 }}></span>
-                  {l.label}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
