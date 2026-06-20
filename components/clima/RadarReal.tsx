@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
+import { Icon } from "@/components/mc";
 
 type Frame = { time: number; path: string };
 
@@ -17,10 +18,12 @@ export default function RadarReal({ lat, lon, marcador = false }: { lat: number;
   const mapRef = useRef<L.Map | null>(null);
   const hostRef = useRef<string>("https://tilecache.rainviewer.com");
   const framesRef = useRef<Frame[]>([]);
+  const pastLenRef = useRef(0);
   const layersRef = useRef<Record<number, L.TileLayer>>({});
   const [playing, setPlaying] = useState(true);
   const [idx, setIdx] = useState(0);
   const [ts, setTs] = useState<string>("");
+  const [esPronostico, setEsPronostico] = useState(false);
   const idxRef = useRef(0);
 
   // Init mapa + carga de frames de RainViewer
@@ -45,6 +48,7 @@ export default function RadarReal({ lat, lon, marcador = false }: { lat: number;
         hostRef.current = data.host || "https://tilecache.rainviewer.com";
         const past: Frame[] = data?.radar?.past || [];
         const now: Frame[] = data?.radar?.nowcast || [];
+        pastLenRef.current = past.length;
         framesRef.current = [...past, ...now];
         if (framesRef.current.length) {
           idxRef.current = Math.max(0, past.length - 1); // arranca en el más reciente observado
@@ -64,11 +68,13 @@ export default function RadarReal({ lat, lon, marcador = false }: { lat: number;
     if (!map || !frames.length) return;
     const f = frames[i];
     if (!layersRef.current[i]) {
+      // color scheme 4 (Universal Blue → Red), smooth=1, snow=1
       layersRef.current[i] = L.tileLayer(`${hostRef.current}${f.path}/256/{z}/{x}/{y}/4/1_1.png`, { opacity: 0, maxNativeZoom: 9, maxZoom: 19, tileSize: 256 });
       layersRef.current[i].addTo(map);
     }
-    Object.entries(layersRef.current).forEach(([k, lyr]) => lyr.setOpacity(Number(k) === i ? 0.7 : 0));
+    Object.entries(layersRef.current).forEach(([k, lyr]) => lyr.setOpacity(Number(k) === i ? 0.82 : 0));
     setTs(new Date(f.time * 1000).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }));
+    setEsPronostico(i >= pastLenRef.current);
   };
 
   // Animación
@@ -89,13 +95,32 @@ export default function RadarReal({ lat, lon, marcador = false }: { lat: number;
   return (
     <div style={{ position: "relative", height: 300 }}>
       <div ref={ref} style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
-      <div style={{ position: "absolute", left: 12, bottom: 12, right: 12, zIndex: 500, display: "flex", alignItems: "center", gap: 10, background: "rgba(16,20,14,0.82)", color: "#fff", padding: "8px 12px", borderRadius: 999, backdropFilter: "blur(6px)" }}>
-        <button onClick={() => setPlaying((p) => !p)} style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--mc-green-600)", color: "#fff", border: "none", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 }}>
-          {playing ? "❙❙" : "▶"}
+
+      {/* Estado: observado / pronóstico */}
+      <div style={{ position: "absolute", top: 12, left: 12, zIndex: 500, display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 700, color: "#fff", background: esPronostico ? "rgba(217,165,56,0.92)" : "rgba(58,147,184,0.92)", backdropFilter: "blur(6px)", boxShadow: "0 2px 10px rgba(0,0,0,0.25)" }}>
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#fff" }} />
+        {esPronostico ? "Pronóstico (nowcast)" : "Observado"} · {ts || "—"}
+      </div>
+
+      {/* Leyenda de intensidad */}
+      <div style={{ position: "absolute", top: 12, right: 12, zIndex: 500, padding: "7px 10px", borderRadius: 12, background: "rgba(16,20,14,0.78)", color: "#fff", backdropFilter: "blur(6px)", boxShadow: "0 2px 10px rgba(0,0,0,0.25)" }}>
+        <div style={{ fontSize: 9.5, fontWeight: 700, opacity: 0.8, marginBottom: 4, letterSpacing: "0.04em" }}>INTENSIDAD</div>
+        <div style={{ width: 130, height: 7, borderRadius: 999, background: "linear-gradient(90deg, #9fd6f0 0%, #3a93d6 35%, #2c4fb8 60%, #7e3fbf 80%, #c93434 100%)" }} />
+        <div className="row" style={{ justifyContent: "space-between", fontSize: 9, opacity: 0.85, marginTop: 3 }}>
+          <span>Llovizna</span><span>Lluvia</span><span>Tormenta</span>
+        </div>
+      </div>
+
+      {/* Control de reproducción */}
+      <div style={{ position: "absolute", left: 12, bottom: 12, right: 12, zIndex: 500, display: "flex", alignItems: "center", gap: 11, background: "rgba(16,20,14,0.80)", color: "#fff", padding: "8px 12px", borderRadius: 14, backdropFilter: "blur(8px)", boxShadow: "0 4px 16px rgba(0,0,0,0.28)" }}>
+        <button onClick={() => setPlaying((p) => !p)} title={playing ? "Pausar" : "Reproducir"} style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--mc-green-600)", color: "#fff", border: "none", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 }}>
+          <Icon name={playing ? "pause" : "play"} size={15} />
         </button>
-        <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>Radar de lluvia · {ts || "—"}</span>
-        <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.25)", borderRadius: 999, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${((idx + 1) / total) * 100}%`, background: "#5fb6e5", borderRadius: 999, transition: "width .3s" }} />
+        <span style={{ fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap" }}>{ts || "—"}</span>
+        <div style={{ flex: 1, height: 5, background: "rgba(255,255,255,0.22)", borderRadius: 999, overflow: "hidden", position: "relative" }}>
+          {/* marca de "ahora" (fin de observado) */}
+          {total > 1 && <span style={{ position: "absolute", left: `${(pastLenRef.current / total) * 100}%`, top: -2, bottom: -2, width: 2, background: "rgba(255,255,255,0.6)" }} />}
+          <div style={{ height: "100%", width: `${((idx + 1) / total) * 100}%`, background: esPronostico ? "#d9a538" : "#5fb6e5", borderRadius: 999, transition: "width .3s" }} />
         </div>
       </div>
     </div>
