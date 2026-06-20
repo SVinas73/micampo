@@ -36,6 +36,7 @@
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
     "lucide-react": "^0.555.0",
+    "maplibre-gl": "^4.7.1",
     "next": "^16.2.9",
     "next-auth": "^4.24.13",
     "prisma": "5.22.0",
