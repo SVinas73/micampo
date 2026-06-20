@@ -161,7 +161,7 @@ export default function TabDeteccion() {
       <SubTabs tabs={["Información", "Análisis (IA)"]} active={sub} onChange={setSub} />
 
       {sub === "Información" && <EnfermedadesInfo alertas={alertas} onAgregar={agregarALabores} />}
-      {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} onAgregar={() => toast.show("Tratamiento agregado a Labores")} />}
+      {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} />}
     </>
   );
 }
@@ -353,22 +353,32 @@ function Probabilidades() {
   );
 }
 
-/* ========== SUBTAB ANÁLISIS IA (Figma EnfermedadesAnalisisIA) ========== */
+/* ========== SUBTAB ANÁLISIS IA — visión real (foto del lote → diagnóstico) ========== */
 function EnfermedadesAnalisisIA({
-  fileRef, lotes, toast, onAgregar,
+  fileRef, lotes, toast,
 }: {
   fileRef: React.RefObject<HTMLInputElement | null>;
   lotes: { id?: string; nombre: string; cultivo?: string }[];
   toast: ReturnType<typeof useToast>;
-  onAgregar: () => void;
 }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [modo, setModo] = useState<"Cajas" | "Mapa de Calor" | "Alto Contraste">("Cajas");
   const [analizando, setAnalizando] = useState(false);
   const [resultado, setResultado] = useState<Analisis | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loteId, setLoteId] = useState("");
+  const [creandoLabor, setCreandoLabor] = useState(false);
+
+  useEffect(() => {
+    if (!loteId && lotes.find((l) => l.id)) setLoteId(lotes.find((l) => l.id)!.id!);
+  }, [lotes, loteId]);
+
+  const loteSel = lotes.find((l) => l.id === loteId);
 
   const analizar = (file: File) => {
     setAnalizando(true);
+    setError(null);
+    setResultado(null);
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
@@ -377,18 +387,51 @@ function EnfermedadesAnalisisIA({
         const res = await fetch("/api/deteccion-enfermedades/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: dataUrl, mediaType: file.type, cultivo: lotes[0]?.cultivo }),
+          body: JSON.stringify({ image: dataUrl, mediaType: file.type, loteId, cultivo: loteSel?.cultivo }),
         });
         const d = await res.json();
-        setResultado(d);
-        if (d.simulado) toast.show("Análisis demo (configurá ANTHROPIC_API_KEY para IA real)");
-        else toast.show(`Detección completada: ${d.enfermedad} (${d.confianzaGlobal}%)`);
+        if (!res.ok || d.error) {
+          setError(d.error || "No se pudo analizar la imagen");
+        } else {
+          setResultado(d);
+          toast.show(`Detección: ${d.enfermedad} (${d.confianzaGlobal}%)`);
+        }
       } catch {
-        toast.show("No se pudo analizar la imagen", "err");
+        setError("No se pudo analizar la imagen");
       }
       setAnalizando(false);
     };
     reader.readAsDataURL(file);
+  };
+
+  const agregarLabor = async () => {
+    if (!resultado) return;
+    if (!loteId) {
+      toast.show("Elegí el lote de la foto antes de guardar", "err");
+      return;
+    }
+    setCreandoLabor(true);
+    try {
+      const res = await fetch("/api/labores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo: "Pulverización",
+          fecha: new Date().toISOString().split("T")[0],
+          loteId,
+          descripcion: `Tratamiento ${resultado.enfermedad} — ${resultado.recomendacion.producto}`,
+          observaciones: `Detección IA (${resultado.confianzaGlobal}% conf.) · ${resultado.recomendacion.dosis} · ${resultado.recomendacion.costoEstimadoHa} · ${resultado.recomendacion.ventanaAplicacion}`,
+          estado: "Programada",
+          prioridad: resultado.severidad === "Alta" ? "Urgente" : "Normal",
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.show("Tratamiento agendado en Labores");
+    } catch {
+      toast.show("No se pudo crear la labor", "err");
+    } finally {
+      setCreandoLabor(false);
+    }
   };
 
   const datos = resultado;
@@ -399,6 +442,7 @@ function EnfermedadesAnalisisIA({
         ref={fileRef}
         type="file"
         accept="image/*"
+        capture="environment"
         style={{ display: "none" }}
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -407,82 +451,100 @@ function EnfermedadesAnalisisIA({
       />
       <div className="mc-card ia-card">
         <div className="mc-card__head">
-          <div className="mc-card__title">Detección</div>
-          <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => fileRef.current?.click()}>
-            <Icon name="upload" size={12} />Cargar Imagen
-          </button>
+          <div className="mc-card__title">Detección por foto</div>
+          <div className="row gap-8" style={{ alignItems: "center" }}>
+            {lotes.some((l) => l.id) && (
+              <select
+                className="mc-select"
+                style={{ padding: "5px 8px", fontSize: 12, maxWidth: 150 }}
+                value={loteId}
+                onChange={(e) => setLoteId(e.target.value)}
+              >
+                <option value="">Lote…</option>
+                {lotes.filter((l) => l.id).map((l) => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+              </select>
+            )}
+            <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => fileRef.current?.click()}>
+              <Icon name="camera" size={12} />{imgUrl ? "Cambiar" : "Foto"}
+            </button>
+          </div>
         </div>
-        <div style={{ position: "relative", width: "100%", aspectRatio: "16/10", background: imgUrl ? "#000" : "linear-gradient(135deg, #768f44, #5fae62)", borderRadius: 10, overflow: "hidden" }}>
-          {imgUrl ? (
+
+        {imgUrl ? (
+          <div style={{ position: "relative", width: "100%", aspectRatio: "16/10", background: "#000", borderRadius: 10, overflow: "hidden" }}>
             <img src={imgUrl} alt="Lote analizado" style={{ width: "100%", height: "100%", objectFit: "cover", filter: modo === "Alto Contraste" ? "contrast(1.6) saturate(1.5)" : "none" }} />
-          ) : (
-            <>
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, #768f44 0%, #6db870 50%, #5fae62 100%)" }}></div>
-              <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox="0 0 400 250" preserveAspectRatio="none">
-                <line x1="200" y1="0" x2="200" y2="250" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
-                {[40, 80, 120, 160, 200].map((y) => (
-                  <g key={y}>
-                    <line x1="200" y1={y} x2="60" y2={y - 10} stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
-                    <line x1="200" y1={y} x2="340" y2={y - 10} stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
-                  </g>
-                ))}
-              </svg>
-            </>
-          )}
-
-          {analizando && (
-            <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.4)", color: "white", fontWeight: 600 }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ width: 36, height: 36, border: "3px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", margin: "0 auto 10px", animation: "mcspin 0.8s linear infinite" }}></div>
-                Analizando con IA...
+            {analizando && (
+              <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.45)", color: "white", fontWeight: 600 }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ width: 36, height: 36, border: "3px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", margin: "0 auto 10px", animation: "mcspin 0.8s linear infinite" }}></div>
+                  Analizando con IA…
+                </div>
               </div>
+            )}
+            {datos && !analizando && datos.lesiones.map((b, i) => {
+              if (modo === "Cajas") {
+                return <div key={i} style={{ position: "absolute", left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%`, border: "2px solid #ff6b1a", borderRadius: 3, background: "rgba(255,107,26,0.12)" }} title={`${b.etiqueta} · ${b.confianza}%`} />;
+              }
+              if (modo === "Mapa de Calor") {
+                return <div key={i} style={{ position: "absolute", left: `${(b.x - 0.03) * 100}%`, top: `${(b.y - 0.03) * 100}%`, width: `${(b.w + 0.06) * 100}%`, height: `${(b.h + 0.06) * 100}%`, borderRadius: "50%", background: `radial-gradient(circle, rgba(255,40,0,${0.4 + b.confianza / 300}) 0%, rgba(255,150,0,0.3) 50%, transparent 75%)` }} />;
+              }
+              return null;
+            })}
+          </div>
+        ) : (
+          <button
+            onClick={() => fileRef.current?.click()}
+            style={{ width: "100%", aspectRatio: "16/10", border: "2px dashed var(--mc-line)", borderRadius: 10, background: "var(--mc-surface-2)", cursor: "pointer", display: "grid", placeItems: "center", color: "var(--mc-text-2)" }}
+          >
+            <div style={{ textAlign: "center" }}>
+              <Icon name="camera" size={30} />
+              <div className="text-sm" style={{ marginTop: 8, fontWeight: 600 }}>Sacá o cargá una foto de la planta</div>
+              <div className="text-xs text-muted mt-4">La IA detecta la enfermedad, marca las lesiones y te sugiere el tratamiento.</div>
             </div>
-          )}
+          </button>
+        )}
 
-          {datos && !analizando && datos.lesiones.map((b, i) => {
-            if (modo === "Cajas") {
-              return <div key={i} style={{ position: "absolute", left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%`, border: "2px solid #ff6b1a", borderRadius: 3, background: "rgba(255,107,26,0.12)" }} title={`${b.etiqueta} · ${b.confianza}%`} />;
-            }
-            if (modo === "Mapa de Calor") {
-              return <div key={i} style={{ position: "absolute", left: `${(b.x - 0.03) * 100}%`, top: `${(b.y - 0.03) * 100}%`, width: `${(b.w + 0.06) * 100}%`, height: `${(b.h + 0.06) * 100}%`, borderRadius: "50%", background: `radial-gradient(circle, rgba(255,40,0,${0.4 + b.confianza / 300}) 0%, rgba(255,150,0,0.3) 50%, transparent 75%)` }} />;
-            }
-            return null;
-          })}
-        </div>
-        <div className="row gap-8 mt-12" style={{ justifyContent: "center" }}>
-          {(["Cajas", "Mapa de Calor", "Alto Contraste"] as const).map((m) => (
-            <button key={m} className={`mc-btn mc-btn--sm ${modo === m ? "mc-btn--slate" : "mc-btn--secondary"}`} onClick={() => setModo(m)}>{m}</button>
-          ))}
-        </div>
-        {!imgUrl && <div className="text-xs text-muted mt-8" style={{ textAlign: "center" }}>Cargá una imagen del lote para detectar enfermedades con IA.</div>}
+        {datos && imgUrl && (
+          <div className="row gap-8 mt-12" style={{ justifyContent: "center" }}>
+            {(["Cajas", "Mapa de Calor", "Alto Contraste"] as const).map((m) => (
+              <button key={m} className={`mc-btn mc-btn--sm ${modo === m ? "mc-btn--slate" : "mc-btn--secondary"}`} onClick={() => setModo(m)}>{m}</button>
+            ))}
+          </div>
+        )}
+        {error && <div className="text-xs mt-8" style={{ textAlign: "center", color: "var(--mc-red)" }}>{error}</div>}
       </div>
 
       <div className="col gap-14">
         <div className="mc-card ia-card">
-          <div className="mc-card__head"><div className="mc-card__title">Resultados del Analisis:</div><IABadge /></div>
-          <div className="row gap-16" style={{ alignItems: "center" }}>
-            <DonutConfianza pct={datos?.confianzaGlobal ?? 96} />
-            <div style={{ flex: 1 }}>
-              <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 16 }}>
-                {datos?.enfermedad ?? "Roya Común"}{" "}
-                <span style={{ fontStyle: "italic", color: "var(--mc-text-2)", fontSize: 13 }}>({datos?.nombreCientifico ?? "Puccinia sorghi"})</span>
-              </div>
-              <span className="mc-badge mc-badge--amber mt-4">⬤ Severidad {datos?.severidad ?? "Media"}</span>
-              <div className="col gap-4 mt-12">
-                {(datos?.lesiones ?? [{ etiqueta: "Lesión A (Foco Principal)", confianza: 98 }, { etiqueta: "Lesión B (Esporulación)", confianza: 92 }, { etiqueta: "Lesión C (Inicial)", confianza: 85 }]).slice(0, 3).map((l, i) => (
-                  <div key={i} className="row gap-6" style={{ alignItems: "center", fontSize: 12 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--mc-orange-500)" }}></span>
-                    <span>{l.etiqueta} - <span className="font-semi">{l.confianza}%</span></span>
-                  </div>
-                ))}
-              </div>
-              {(datos?.lesiones.length ?? 8) > 3 && (
-                <button className="mc-btn mc-btn--ghost mc-btn--sm mt-8" style={{ padding: 0, color: "var(--mc-green-700)", textDecoration: "underline" }}>
-                  Ver {(datos?.lesiones.length ?? 8) - 3} detecciones más...
-                </button>
-              )}
+          <div className="mc-card__head"><div className="mc-card__title">Resultado del análisis</div><IABadge /></div>
+          {!datos ? (
+            <div className="mc-empty" style={{ minHeight: 140 }}>
+              <div className="mc-empty__icon"><Icon name="eye" size={20} /></div>
+              <div className="mc-empty__text">El diagnóstico de la IA va a aparecer acá cuando analices una foto.</div>
             </div>
-          </div>
+          ) : (
+            <div className="row gap-16" style={{ alignItems: "center" }}>
+              <DonutConfianza pct={datos.confianzaGlobal} />
+              <div style={{ flex: 1 }}>
+                <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 16 }}>
+                  {datos.enfermedad}{" "}
+                  {datos.nombreCientifico && <span style={{ fontStyle: "italic", color: "var(--mc-text-2)", fontSize: 13 }}>({datos.nombreCientifico})</span>}
+                </div>
+                <span className={`mc-badge mt-4 ${datos.severidad === "Alta" ? "mc-badge--red" : datos.severidad === "Media" ? "mc-badge--amber" : "mc-badge--green"}`}>⬤ Severidad {datos.severidad}</span>
+                <div className="col gap-4 mt-12">
+                  {datos.lesiones.slice(0, 3).map((l, i) => (
+                    <div key={i} className="row gap-6" style={{ alignItems: "center", fontSize: 12 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--mc-orange-500)" }}></span>
+                      <span>{l.etiqueta} - <span className="font-semi">{l.confianza}%</span></span>
+                    </div>
+                  ))}
+                </div>
+                {datos.lesiones.length > 3 && (
+                  <div className="text-xs text-muted mt-8">+{datos.lesiones.length - 3} lesiones detectadas (marcadas en la imagen).</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mc-card ia-card">
@@ -491,37 +553,44 @@ function EnfermedadesAnalisisIA({
               <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--mc-green-100)", display: "grid", placeItems: "center", color: "var(--mc-green-700)" }}>
                 <Icon name="flask" size={15} />
               </div>
-              <div className="mc-card__title">Recomendacion</div>
+              <div className="mc-card__title">Recomendación</div>
             </div>
             <IABadge />
           </div>
-          <div className="text-xs text-muted">Estrategia de Control Sugerida</div>
-          <div className="font-semi mt-4" style={{ color: "var(--mc-ink)", fontSize: 16 }}>{datos?.recomendacion.producto ?? "Fungicida (Triazol + Estrob.)"}</div>
-          <div className="text-xs text-muted">Tratamiento Prioritario</div>
-          <div className="grid g-cols-3 gap-8 mt-12">
-            <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ fontSize: 16 }}><Icon name="droplet" size={16} /></div>
-              <div className="text-xs text-muted">Dosis</div>
-              <div className="font-semi text-sm">{datos?.recomendacion.dosis ?? "400 cc/Ha"}</div>
+          {!datos ? (
+            <div className="mc-empty" style={{ minHeight: 140 }}>
+              <div className="mc-empty__icon"><Icon name="flask" size={20} /></div>
+              <div className="mc-empty__text">La estrategia de control y su costo por hectárea van a aparecer acá.</div>
             </div>
-            <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ fontSize: 16 }}><Icon name="sun" size={16} /></div>
-              <div className="text-xs text-muted">Venta Óptima</div>
-              <div className="font-semi text-sm">{datos?.recomendacion.ventanaAplicacion ?? "Próx. 4hs"}</div>
-            </div>
-            <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ display: "flex", justifyContent: "center" }}><Icon name="dollar" size={16} /></div>
-              <div className="text-xs text-muted">Costo Estimado</div>
-              <div className="font-semi text-sm">{datos?.recomendacion.costoEstimadoHa ?? "$28/Ha"}</div>
-            </div>
-          </div>
-          <div className="text-xs mt-8" style={{ padding: 8, background: "var(--mc-green-50)", borderRadius: 6, color: "var(--mc-text)" }}>
-            <span className="font-semi" style={{ color: "var(--mc-green-700)" }}>Análisis IA:</span> {datos?.analisis ?? "Eficacia contra la roya en ensayos de campo. La combinación Triazol + Estrobilurina ofrece control preventivo, curativo y antirresistencia."}
-          </div>
-          {datos && (
-            <button className="mc-btn mc-btn--primary mc-btn--sm mt-12" style={{ width: "100%", justifyContent: "center" }} onClick={onAgregar}>
-              <Icon name="plus" size={12} />Agregar tratamiento a Labores
-            </button>
+          ) : (
+            <>
+              <div className="text-xs text-muted">Estrategia de control sugerida</div>
+              <div className="font-semi mt-4" style={{ color: "var(--mc-ink)", fontSize: 16 }}>{datos.recomendacion.producto}</div>
+              <div className="grid g-cols-3 gap-8 mt-12">
+                <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
+                  <div style={{ fontSize: 16 }}><Icon name="droplet" size={16} /></div>
+                  <div className="text-xs text-muted">Dosis</div>
+                  <div className="font-semi text-sm">{datos.recomendacion.dosis}</div>
+                </div>
+                <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
+                  <div style={{ fontSize: 16 }}><Icon name="sun" size={16} /></div>
+                  <div className="text-xs text-muted">Ventana</div>
+                  <div className="font-semi text-sm">{datos.recomendacion.ventanaAplicacion}</div>
+                </div>
+                <div style={{ padding: 8, background: "var(--mc-surface-2)", borderRadius: 8, textAlign: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "center" }}><Icon name="dollar" size={16} /></div>
+                  <div className="text-xs text-muted">Costo</div>
+                  <div className="font-semi text-sm">{datos.recomendacion.costoEstimadoHa}</div>
+                </div>
+              </div>
+              <div className="text-xs mt-8" style={{ padding: 8, background: "var(--mc-green-50)", borderRadius: 6, color: "var(--mc-text)" }}>
+                <span className="font-semi" style={{ color: "var(--mc-green-700)" }}>Análisis IA:</span> {datos.analisis}
+              </div>
+              <button className="mc-btn mc-btn--primary mc-btn--sm mt-12" style={{ width: "100%", justifyContent: "center" }} onClick={agregarLabor} disabled={creandoLabor || !loteId}>
+                <Icon name="plus" size={12} />{creandoLabor ? "Agendando…" : "Agregar tratamiento a Labores"}
+              </button>
+              {!loteId && <div className="text-xs text-muted mt-4" style={{ textAlign: "center" }}>Elegí el lote arriba para poder agendar.</div>}
+            </>
           )}
         </div>
       </div>

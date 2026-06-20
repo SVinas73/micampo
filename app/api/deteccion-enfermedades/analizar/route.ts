@@ -30,32 +30,6 @@ interface AnalisisDeteccion {
   simulado?: boolean;
 }
 
-// Análisis demo determinístico (fiel a los datos del Figma) cuando no hay IA.
-const DEMO: AnalisisDeteccion = {
-  enfermedad: "Roya Común",
-  nombreCientifico: "Puccinia sorghi",
-  confianzaGlobal: 96,
-  severidad: "Media",
-  lesiones: [
-    { etiqueta: "Lesión A (Foco Principal)", confianza: 98, x: 0.25, y: 0.3, w: 0.12, h: 0.08 },
-    { etiqueta: "Lesión B (Esporulación)", confianza: 92, x: 0.5, y: 0.25, w: 0.1, h: 0.07 },
-    { etiqueta: "Lesión C (Inicial)", confianza: 85, x: 0.35, y: 0.5, w: 0.14, h: 0.1 },
-    { etiqueta: "Lesión D", confianza: 81, x: 0.6, y: 0.55, w: 0.12, h: 0.08 },
-    { etiqueta: "Lesión E", confianza: 78, x: 0.45, y: 0.7, w: 0.11, h: 0.07 },
-    { etiqueta: "Lesión F", confianza: 74, x: 0.7, y: 0.35, w: 0.1, h: 0.07 },
-    { etiqueta: "Lesión G", confianza: 71, x: 0.3, y: 0.8, w: 0.13, h: 0.09 },
-  ],
-  recomendacion: {
-    producto: "Fungicida (Triazol + Estrob.)",
-    dosis: "400 cc/Ha",
-    ventanaAplicacion: "Próx. 4 hs",
-    costoEstimadoHa: "$28/Ha",
-  },
-  analisis:
-    "Eficacia contra la roya en ensayos de campo. La combinación Triazol + Estrobilurina ofrece control preventivo, curativo y antiestrés.",
-  simulado: true,
-};
-
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -66,11 +40,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { image, mediaType, cultivo } = body as { image?: string; mediaType?: string; loteId?: string; cultivo?: string };
 
-    const anthropic = getAnthropic();
+    if (!image) {
+      return NextResponse.json({ error: "No se proporcionó imagen" }, { status: 400 });
+    }
 
-    // Sin API key → respuesta demo determinística (sistema 100% funcional).
-    if (!anthropic || !image) {
-      return NextResponse.json(DEMO);
+    const anthropic = getAnthropic();
+    if (!anthropic) {
+      return NextResponse.json(
+        { error: "La detección con IA requiere configurar ANTHROPIC_API_KEY", simulado: true },
+        { status: 503 }
+      );
     }
 
     const mt: AnthropicMediaType =
@@ -112,12 +91,12 @@ Las coordenadas x,y,w,h son relativas (0-1) respecto al tamaño de la imagen y d
     const parsed = parseJsonTolerante<AnalisisDeteccion>(text);
 
     if (!parsed) {
-      return NextResponse.json(DEMO);
+      return NextResponse.json({ error: "No se pudo interpretar la imagen. Probá con otra foto." }, { status: 422 });
     }
 
     return NextResponse.json({ ...parsed, simulado: false });
   } catch (error) {
     console.error("Error en análisis de detección:", error);
-    return NextResponse.json(DEMO);
+    return NextResponse.json({ error: "Error al analizar la imagen" }, { status: 500 });
   }
 }
