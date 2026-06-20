@@ -11,9 +11,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const establecimientoId = searchParams.get("establecimientoId");
+
     const lotes = await prisma.lote.findMany({
       where: {
         userId: session.user.id,
+        ...(establecimientoId ? { establecimientoId } : {}),
       },
       orderBy: {
         createdAt: "desc",
@@ -38,14 +42,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { 
-      nombre, 
-      hectareas, 
+    const {
+      nombre,
+      hectareas,
       cultivo,
       coordenadas,
       centroLatitud,
       centroLongitud,
       perimetro,
+      establecimientoId,
     } = await request.json();
 
     if (!nombre || !hectareas) {
@@ -64,6 +69,7 @@ export async function POST(request: Request) {
         centroLatitud: centroLatitud ? parseFloat(centroLatitud) : null,
         centroLongitud: centroLongitud ? parseFloat(centroLongitud) : null,
         perimetro: perimetro ? parseFloat(perimetro) : null,
+        establecimientoId: establecimientoId || null,
         userId: session.user.id,
       },
     });

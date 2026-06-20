@@ -186,6 +186,8 @@ model Lote {
   perimetro               Float?
   userId                  String
   user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  establecimientoId       String?
+  establecimiento         Establecimiento?           @relation(fields: [establecimientoId], references: [id], onDelete: SetNull)
   siembras                Siembra[]
   cosechas                Cosecha[]
   emisionesCarbono        EmisionCarbono[] // ← NUEVO
@@ -3476,6 +3478,7 @@ model Establecimiento {
 
   // Relaciones
   maquinarias Maquinaria[]
+  lotes       Lote[]
 
   // NUEVAS RELACIONES SOSTENIBILIDAD:
   huellasCarbono       HuellaCarbono[]
