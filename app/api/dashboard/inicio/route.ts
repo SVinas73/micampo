@@ -30,13 +30,8 @@ export async function GET(req: Request) {
     });
 
     const totalLitros = registrosLecheros.reduce((sum, r) => sum + r.litrosTotales, 0);
-    let litrosDiariosPromedio =
+    const litrosDiariosPromedio =
       registrosLecheros.length > 0 ? totalLitros / registrosLecheros.length : 0;
-
-    // Datos de prueba si no hay registros
-    if (litrosDiariosPromedio === 0) {
-      litrosDiariosPromedio = 20.32; // Valor de prueba
-    }
 
     // ============================================
     // 2. ALERTAS ACTIVAS (críticas y altas)
@@ -52,16 +47,12 @@ export async function GET(req: Request) {
     // ============================================
     // 3. TRATAMIENTOS ACTIVOS (últimos 30 días)
     // ============================================
-    let tratamientosActivos = await prisma.eventoSanitario.count({
+    const tratamientosActivos = await prisma.eventoSanitario.count({
       where: {
         userId,
         fecha: { gte: hace30Dias },
       },
     });
-
-    if (tratamientosActivos === 0) {
-      tratamientosActivos = 8; // Valor de prueba
-    }
 
     // ============================================
     // 4. PRODUCCIÓN MES ACTUAL
@@ -74,11 +65,7 @@ export async function GET(req: Request) {
       _sum: { litrosTotales: true },
     });
 
-    let produccionTotal = produccionMesActual._sum.litrosTotales || 0;
-
-    if (produccionTotal === 0) {
-      produccionTotal = 30512; // Valor de prueba
-    }
+    const produccionTotal = produccionMesActual._sum.litrosTotales || 0;
 
     // ============================================
     // 5. BALANCE MES ACTUAL
@@ -103,11 +90,7 @@ export async function GET(req: Request) {
 
     const totalIngresos = parseFloat((ingresos._sum.monto || 0).toString());
     const totalGastos = parseFloat((gastos._sum.monto || 0).toString());
-    let balanceMesActual = totalIngresos - totalGastos;
-
-    if (balanceMesActual === 0) {
-      balanceMesActual = 10500; // Valor de prueba
-    }
+    const balanceMesActual = totalIngresos - totalGastos;
 
     // ============================================
     // 6. PRONÓSTICO CLIMÁTICO (7 días)
@@ -155,25 +138,6 @@ export async function GET(req: Request) {
       console.error("Error al obtener clima:", error);
     }
 
-    // Datos de prueba si no hay pronóstico
-    if (pronostico.length === 0) {
-      const dias = ["Jue", "Vie", "Sáb", "Dom", "Lun", "Mar", "Mié"];
-      for (let i = 0; i < 7; i++) {
-        const fecha = new Date();
-        fecha.setDate(fecha.getDate() + i);
-        pronostico.push({
-          fecha: fecha.toISOString(),
-          dia: `${dias[i]} ${fecha.getDate() < 10 ? "0" : ""}${fecha.getDate()} Dic`,
-          tempMax: Math.floor(Math.random() * 8) + 28,
-          tempMin: Math.floor(Math.random() * 5) + 16,
-          probabilidadLluvia: Math.floor(Math.random() * 70),
-          viento: Math.floor(Math.random() * 15) + 15,
-          direccionViento: "SE",
-          condicion: Math.random() > 0.7 ? "lluvia" : "despejado",
-        });
-      }
-    }
-
     // ============================================
     // 7. TAREAS PROGRAMADAS
     // ============================================
@@ -198,27 +162,11 @@ export async function GET(req: Request) {
       take: 7,
     });
 
-    let tareas = tareasProgramadas.map((t) => ({
+    const tareas = tareasProgramadas.map((t) => ({
       fecha: t.fechaVencimiento?.toISOString() || "",
       titulo: t.titulo,
       tipo: t.prioridad === "Urgente" || t.prioridad === "Alta" ? "urgente" : "normal",
     }));
-
-    // Datos de prueba si no hay tareas
-    if (tareas.length === 0) {
-      tareas = [
-        {
-          fecha: pronostico[0]?.fecha || hoy.toISOString(),
-          titulo: "Sembrar Lote 3",
-          tipo: "normal",
-        },
-        {
-          fecha: pronostico[4]?.fecha || hoy.toISOString(),
-          titulo: "Retirar Conaprole",
-          tipo: "urgente",
-        },
-      ];
-    }
 
     // ============================================
     // 8. GRÁFICO FINANCIERO (12 meses)
@@ -259,14 +207,6 @@ export async function GET(req: Request) {
       };
     });
 
-    // Datos de prueba si no hay transacciones
-    if (datosPorMes.every((m) => m.ingresos === 0 && m.gastos === 0)) {
-      datosPorMes.forEach((mes, index) => {
-        mes.ingresos = Math.floor(Math.random() * 40000) + 60000;
-        mes.gastos = Math.floor(Math.random() * 20000) + 30000;
-      });
-    }
-
     // Calcular balance promedio
     const totalIngresosAño = datosPorMes.reduce((sum, m) => sum + m.ingresos, 0);
     const totalGastosAño = datosPorMes.reduce((sum, m) => sum + m.gastos, 0);
@@ -299,6 +239,8 @@ export async function GET(req: Request) {
         alertasActivas,
         tratamientosActivos,
         produccionMesActual: Math.round(produccionTotal),
+        ingresosMesActual: Math.round(totalIngresos),
+        gastosMesActual: Math.round(totalGastos),
         balanceMesActual: Math.round(balanceMesActual),
       },
       pronostico,

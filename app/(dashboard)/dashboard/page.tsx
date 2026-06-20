@@ -202,7 +202,9 @@ function SummaryCard({ tone, eyebrow, value, sub, badge, icon, onVer, spark }: {
 }
 
 /* ---------- Clima de hoy + pronóstico 7 días + agenda semanal ---------- */
-function ClimaSemana({ onVerAgenda, clima, lugar }: { onVerAgenda: () => void; clima: ClimaData | null; lugar: string }) {
+function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVerAgenda: () => void; clima: ClimaData | null; lotes: { id: string; nombre: string }[]; selectedId: string; onSelect: (id: string) => void }) {
+  const loteSel = lotes.find((l) => l.id === selectedId);
+  const lugar = loteSel?.nombre || "Ubicación principal";
   const a = clima?.actual ?? null;
   const days = (clima?.dias ?? []).map((d) => ({ name: d.nombre, num: d.num, isToday: d.esHoy, ic: d.icono, max: d.max, min: d.min, mm: d.mm, wind: `${d.viento} km/h` }));
   const hoyFecha = new Date().toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
@@ -226,8 +228,22 @@ function ClimaSemana({ onVerAgenda, clima, lugar }: { onVerAgenda: () => void; c
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ background: "var(--mc-field-grad)", color: "white", padding: "18px 22px 20px" }}>
-        <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontSize: 10, opacity: 0.78, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>{lugar} · {hoyFecha}</div>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+          <div className="row" style={{ gap: 8, alignItems: "center" }}>
+            <Icon name="map" size={13} />
+            {lotes.length > 1 ? (
+              <select
+                value={selectedId}
+                onChange={(e) => onSelect(e.target.value)}
+                style={{ background: "rgba(255,255,255,0.16)", color: "white", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 8, padding: "3px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", maxWidth: 180 }}
+              >
+                {lotes.map((l) => <option key={l.id} value={l.id} style={{ color: "#2a281f" }}>{l.nombre}</option>)}
+              </select>
+            ) : (
+              <span style={{ fontSize: 10.5, opacity: 0.82, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>{lugar}</span>
+            )}
+            <span style={{ fontSize: 10.5, opacity: 0.7 }}>· {hoyFecha}</span>
+          </div>
           <div style={{ fontSize: 11, opacity: 0.9, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>{a?.descripcion ?? "Cargando…"}</div>
         </div>
         <div className="row" style={{ alignItems: "stretch", gap: 14 }}>
@@ -505,7 +521,8 @@ export default function InicioPage() {
   const [balance, setBalance] = useState<{ meses: string[]; ingresos: number[]; gastos: number[] } | null>(null);
   const [cultivos, setCultivos] = useState<{ label: string; ha: string; pct: number; color: string }[] | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
-  const [climaLugar, setClimaLugar] = useState("Tu campo");
+  const [lotesClima, setLotesClima] = useState<{ id: string; nombre: string; lat: number; lon: number }[]>([]);
+  const [loteClimaId, setLoteClimaId] = useState<string>("");
   const [laboresPend, setLaboresPend] = useState(0);
   const [laboresAtr, setLaboresAtr] = useState(0);
   const [brief, setBrief] = useState<BriefData | null>(null);
@@ -523,7 +540,13 @@ export default function InicioPage() {
     fetch("/api/dashboard/inicio").then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (!d?.metricas) return;
       const v: Record<string, Partial<KpiCfg>> = {};
-      if (d.metricas.balanceMesActual) v.ingresosMes = { value: `$${Math.round(d.metricas.balanceMesActual).toLocaleString("es-AR")}` };
+      const ing = d.metricas.ingresosMesActual ?? 0;
+      const bal = d.metricas.balanceMesActual ?? 0;
+      v.ingresosMes = {
+        value: `$${Math.round(ing).toLocaleString("es-AR")}`,
+        delta: ing > 0 ? `Balance $${Math.round(bal).toLocaleString("es-AR")}` : "Sin ingresos este mes",
+        trend: bal >= 0 ? "up" : "down",
+      };
       setKpiValues((p) => ({ ...p, ...v }));
     }).catch(() => {});
 
@@ -568,15 +591,24 @@ export default function InicioPage() {
     }).catch(() => {});
   }, []);
 
-  // Clima real (Open-Meteo) — usa el centroide de un lote del usuario si existe
+  // Lotes con coordenadas, para elegir de cuál ver el clima real (Open-Meteo)
   useEffect(() => {
     fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).then((d) => {
-      const loc = Array.isArray(d) ? d.find((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud) : null;
-      if (loc?.nombre) setClimaLugar(String(loc.nombre));
-      const q = loc ? `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}` : "";
-      return fetch(`/api/clima${q}`);
-    }).then((r) => (r && r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
+      const conCoords = Array.isArray(d)
+        ? d.filter((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud)
+            .map((l: { id: string; nombre: string; centroLatitud: number; centroLongitud: number }) => ({ id: l.id, nombre: l.nombre, lat: l.centroLatitud, lon: l.centroLongitud }))
+        : [];
+      setLotesClima(conCoords);
+      if (conCoords.length > 0) setLoteClimaId((prev) => prev || conCoords[0].id);
+    }).catch(() => {});
   }, []);
+
+  // Clima real del lote seleccionado (o ubicación por defecto si no hay lotes con coords)
+  useEffect(() => {
+    const lote = lotesClima.find((l) => l.id === loteClimaId);
+    const q = lote ? `?lat=${lote.lat}&lon=${lote.lon}` : "";
+    fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
+  }, [loteClimaId, lotesClima]);
 
   const kpis = useMemo(() => KPIS_BASE.map((k) => ({ ...k, ...(kpiValues[k.key] || {}) })), [kpiValues]);
 
@@ -689,7 +721,7 @@ export default function InicioPage() {
 
       {/* Clima + agenda | Salud lotes + suelo */}
       <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 14 }}>
-        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} lugar={climaLugar} />
+        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} lotes={lotesClima} selectedId={loteClimaId} onSelect={setLoteClimaId} />
         <div className="col gap-16"><FieldHealth /><SoilHealth /></div>
       </div>
 
