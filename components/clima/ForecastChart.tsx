@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Icon } from "@/components/mc";
+import { weatherTone } from "./weatherTone";
 
 export type DayForecast = {
   d: string;
@@ -58,6 +59,7 @@ export function ForecastChart({
         {days.map((d, i) => {
           const isToday = i === 0;
           const sp = spray[d.vent];
+          const tone = weatherTone(d.ic);
           return (
             <div
               key={i}
@@ -66,7 +68,7 @@ export function ForecastChart({
                 padding: "10px 4px 14px",
                 textAlign: "center",
                 borderRight: i < N - 1 ? "1px solid var(--mc-line)" : "none",
-                background: isToday ? "rgba(79,157,82,0.05)" : "transparent",
+                background: `linear-gradient(180deg, ${tone.soft} 0%, transparent 46%)`,
                 minHeight: 290,
                 display: "flex",
                 flexDirection: "column",
@@ -88,14 +90,18 @@ export function ForecastChart({
               </div>
               <div
                 style={{
-                  fontSize: 32,
-                  lineHeight: 1,
-                  marginTop: 6,
+                  width: 46,
+                  height: 46,
+                  marginTop: 8,
+                  borderRadius: "50%",
+                  background: tone.grad,
+                  color: "#fff",
                   display: "grid",
                   placeItems: "center",
+                  boxShadow: `0 4px 12px ${tone.ring}`,
                 }}
               >
-                <Icon name={d.ic} size={30} />
+                <Icon name={d.ic} size={26} />
               </div>
               <div style={{ flex: 1, minHeight: 174 }} />
               <div

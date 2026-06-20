@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Icon, Modal, Field, useToast, AnimatedNumber, Sparkline } from "@/components/mc";
 import { useLoteScope } from "@/components/LoteScope";
+import { weatherTone } from "@/components/clima/weatherTone";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
 
@@ -249,7 +250,9 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
         </div>
         <div className="row" style={{ alignItems: "stretch", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 18, borderRight: "1px solid rgba(255,255,255,0.22)" }}>
-            <Icon name={a?.icono ?? "cloud"} size={38} />
+            <span style={{ width: 60, height: 60, borderRadius: "50%", background: weatherTone(a?.icono ?? "cloud").grad, color: "#fff", display: "grid", placeItems: "center", boxShadow: "0 6px 16px rgba(0,0,0,0.22)", flexShrink: 0 }}>
+              <Icon name={a?.icono ?? "cloud"} size={34} />
+            </span>
             <div className="col" style={{ gap: 0 }}>
               <span style={{ fontFamily: "var(--ff-display)", fontSize: 56, lineHeight: 0.92, fontWeight: 600 }}>{a ? `${a.temperatura}°` : "—"}</span>
               <span style={{ fontSize: 11, opacity: 0.78, letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600, marginTop: 2 }}>Ahora</span>
@@ -266,16 +269,21 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
 
       <div style={{ position: "relative", borderBottom: "1px solid var(--mc-line)", background: "var(--mc-surface)" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
-          {days.map((d, i) => (
-            <div key={i} style={{ padding: "10px 4px", textAlign: "center", borderRight: i < 6 ? "1px solid var(--mc-line)" : "none", background: d.isToday ? "var(--mc-green-50)" : "transparent", minHeight: 168 }}>
+          {days.map((d, i) => {
+            const tone = weatherTone(d.ic);
+            return (
+            <div key={i} style={{ padding: "10px 4px", textAlign: "center", borderRight: i < 6 ? "1px solid var(--mc-line)" : "none", background: d.isToday ? "var(--mc-green-50)" : `linear-gradient(180deg, ${tone.soft} 0%, transparent 44%)`, minHeight: 168 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: d.isToday ? "var(--mc-green-700)" : "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{d.name}</div>
               <div style={{ fontSize: 10, color: d.isToday ? "var(--mc-green-700)" : "var(--mc-text-2)", fontWeight: 600, marginTop: 1 }}>{d.num}</div>
-              <div style={{ marginTop: 6, display: "grid", placeItems: "center", color: "var(--mc-text-2)" }}><Icon name={d.ic} size={26} /></div>
+              <div style={{ marginTop: 6, display: "flex", justifyContent: "center" }}>
+                <span style={{ width: 38, height: 38, borderRadius: "50%", background: tone.grad, color: "#fff", display: "grid", placeItems: "center", boxShadow: `0 3px 9px ${tone.ring}` }}><Icon name={d.ic} size={20} /></span>
+              </div>
               <div style={{ height: 80 }} />
               {d.mm > 0 ? <div style={{ fontSize: 11, color: "var(--mc-blue)", fontWeight: 700, fontFamily: "var(--ff-mono)" }}>{d.mm}mm</div> : <div style={{ height: 17 }} />}
               <div style={{ fontSize: 9, color: "var(--mc-text-3)", marginTop: 2, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px" }}>{d.wind}</div>
             </div>
-          ))}
+            );
+          })}
         </div>
         <svg style={{ position: "absolute", top: 70, left: 0, width: "100%", height: 80, pointerEvents: "none" }} viewBox="0 0 700 80" preserveAspectRatio="none">
           <defs>
