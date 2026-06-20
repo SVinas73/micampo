@@ -20,6 +20,7 @@ import {
 } from "@/components/clima/ClimaModales";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
 
 const TABS = ["Inicio", "Alertas", "Registro de Lluvias"];
 
@@ -183,6 +184,21 @@ function ClimaInner() {
     setEditLluvia(null);
   };
 
+  const eliminarLluvia = async (row: LluviaRow) => {
+    if (!confirm("¿Eliminar este registro de lluvia?")) return;
+    if (row.id) {
+      try {
+        const res = await fetch(`/api/registro-pluviometrico/${row.id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error();
+      } catch {
+        toast.show("No se pudo eliminar el registro", "err");
+        return;
+      }
+    }
+    setLluvias((prev) => prev.filter((x) => x !== row));
+    toast.show("Registro de lluvia eliminado");
+  };
+
   const guardarAlerta = async (r: AlertaResult) => {
     let realId: string | undefined;
     const fechaISO = new Date(`${r.fecha}T${r.hora || "00:00"}`).toISOString();
@@ -286,7 +302,7 @@ function ClimaInner() {
       {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -33.3} lon={clima?.ubicacion?.lon ?? -61.5} marcador={tieneCampo} />}
       {tab === "Alertas" && <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />}
       {tab === "Registro de Lluvias" && (
-        <ClimaLluvias lluvias={lluvias} historico={histLluvia} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} />
+        <ClimaLluvias lluvias={lluvias} historico={histLluvia} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} onEliminar={eliminarLluvia} />
       )}
 
       <Modal
@@ -505,11 +521,13 @@ function ClimaLluvias({
   historico,
   onRegistrar,
   onEditar,
+  onEliminar,
 }: {
   lluvias: LluviaRow[];
   historico: { promedioMensual: number[]; promedioAnual: number } | null;
   onRegistrar: () => void;
   onEditar: (r: LluviaRow) => void;
+  onEliminar: (r: LluviaRow) => void;
 }) {
   const [scope, setScope] = useState<"30d" | "mensual" | "anual">("mensual");
   const monthLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -534,7 +552,6 @@ function ClimaLluvias({
     scope === "anual" && historico ? yearsBack.map(() => historico.promedioAnual) :
     [];
   const labels = scope === "30d" ? null : scope === "mensual" ? monthLabels : yearLabels;
-  const max = Math.max(...dataset, ...histset, 1);
 
   // Resumen
   const acumuladoAnio = Math.round(conFecha.filter((x) => x.d.getFullYear() === anioActual).reduce((s, x) => s + x.mm, 0));
@@ -605,50 +622,35 @@ function ClimaLluvias({
         {dataset.every((v) => v === 0) && histset.length === 0 ? (
           <div className="mc-empty"><div className="mc-empty__icon"><Icon name="droplet" size={22} /></div>Sin lluvias registradas en este período. Cargá un registro y el acumulado se grafica acá.</div>
         ) : (
-        <svg viewBox="0 0 1000 280" width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
-          {[0, 0.25, 0.5, 0.75, 1].map((t, i) => {
-            const y = 30 + 220 * (1 - t);
-            return (
-              <g key={i}>
-                <line x1="40" y1={y} x2="980" y2={y} stroke="var(--mc-line)" strokeDasharray={i === 0 ? "0" : "2,3"} />
-                <text x="34" y={y + 3} fontSize="11" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">{Math.round(max * t)}</text>
-              </g>
-            );
-          })}
-          {dataset.map((v, i) => {
-            const bw = 940 / dataset.length;
-            const x = 40 + i * bw + 2;
-            const bh = v > 0 ? (v / max) * 220 : 0;
-            const y = 30 + 220 - bh;
-            return (
-              <g key={i}>
-                {bh > 0 && <rect x={x} y={y} width={bw - 4} height={bh} fill="var(--mc-blue)" rx="2" opacity="0.75" />}
-                {labels && <text x={x + bw / 2} y={270} fontSize="11" fontFamily="var(--ff-ui)" fill="var(--mc-text-2)" textAnchor="middle">{labels[i]}</text>}
-              </g>
-            );
-          })}
-          <polyline
-            fill="none"
-            stroke="var(--mc-text-3)"
-            strokeWidth="2"
-            strokeDasharray="5,4"
-            opacity="0.8"
-            points={histset
-              .map((v, i) => {
-                const bw = 940 / histset.length;
-                const x = 40 + i * bw + bw / 2;
-                const y = 30 + 220 - (v / max) * 220;
-                return `${x},${y}`;
-              })
-              .join(" ")}
-          />
-          {histset.map((v, i) => {
-            const bw = 940 / histset.length;
-            const x = 40 + i * bw + bw / 2;
-            const y = 30 + 220 - (v / max) * 220;
-            return <circle key={i} cx={x} cy={y} r="3" fill="var(--mc-text-3)" opacity="0.7" />;
-          })}
-        </svg>
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart
+            data={dataset.map((v, i) => ({
+              label: labels ? labels[i] : `${i + 1}`,
+              mm: Math.round(v * 10) / 10,
+              hist: histset.length > 0 ? Math.round((histset[i] ?? 0) * 10) / 10 : null,
+            }))}
+            margin={{ top: 12, right: 12, left: -12, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient id="gradLluvia" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#2c6bb8" stopOpacity={0.95} />
+                <stop offset="100%" stopColor="#5aa0e0" stopOpacity={0.7} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e0" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} interval={scope === "30d" ? 4 : 0} />
+            <YAxis tick={{ fontSize: 11, fill: "#6b6760" }} axisLine={false} tickLine={false} width={42} tickFormatter={(v) => `${v}`} />
+            <Tooltip
+              contentStyle={{ borderRadius: 12, border: "1px solid #e7e5e0", fontSize: 13 }}
+              cursor={{ fill: "rgba(44,107,184,0.07)" }}
+              formatter={(val: any, name: string) => [`${val} mm`, name === "mm" ? "Registrado" : "Histórico"]}
+            />
+            <Bar dataKey="mm" fill="url(#gradLluvia)" radius={[5, 5, 0, 0]} maxBarSize={46} name="mm" />
+            {histset.length > 0 && (
+              <Line type="monotone" dataKey="hist" stroke="#9b968a" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: "#9b968a" }} name="hist" />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
         )}
       </div>
 
@@ -660,10 +662,13 @@ function ClimaLluvias({
           </button>
         </div>
         <div className="col gap-8">
+          {lluvias.length === 0 && (
+            <div className="mc-empty"><div className="mc-empty__icon"><Icon name="droplet" size={22} /></div>Todavía no registraste lluvias. Tocá “Registrar Lluvia” para cargar el primer evento.</div>
+          )}
           {lluvias.map((r, i) => (
             <div
               key={i}
-              style={{ padding: "10px 14px", border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "170px 1fr 1.5fr auto auto", gap: 16, alignItems: "center" }}
+              style={{ padding: "10px 14px", border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "170px 1fr 1.5fr auto auto auto", gap: 16, alignItems: "center" }}
             >
               <div className="font-mono text-sm" style={{ color: "var(--mc-ink)" }}>{r.fecha}</div>
               <div className="text-sm" style={{ color: "var(--mc-text)" }}>{r.lugar}</div>
@@ -682,6 +687,9 @@ function ClimaLluvias({
               </div>
               <button className="mc-icon-btn" onClick={() => onEditar(r)} title="Editar registro">
                 <Icon name="edit" size={13} />
+              </button>
+              <button className="mc-icon-btn" onClick={() => onEliminar(r)} title="Eliminar registro" style={{ color: "var(--mc-red)" }}>
+                <Icon name="trash" size={13} />
               </button>
             </div>
           ))}
