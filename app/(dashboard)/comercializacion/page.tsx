@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { KPI } from "@/components/mc";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,50 +219,11 @@ export default function ComercializacionPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Contratos Activos
-            </CardTitle>
-            <FileText className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{contratosPendientes.length}</div>
-            <p className="text-xs text-gray-500 mt-1">Pendientes de entrega</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Total Ventas
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalVentas)}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Contratos de venta</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Total Compras
-            </CardTitle>
-            <Package className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(totalCompras)}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Contratos de compra</p>
-          </CardContent>
-        </Card>
+      {/* Stats Cards (unificadas .mc-kpi) */}
+      <div className="grid g-cols-3">
+        <KPI label="Contratos activos" value={String(contratosPendientes.length)} delta="Pendientes de entrega" trend="up" icon="book" accent />
+        <KPI label="Total ventas" value={formatCurrency(totalVentas)} delta="Contratos de venta" trend="up" icon="dollar" />
+        <KPI label="Total compras" value={formatCurrency(totalCompras)} delta="Contratos de compra" trend="down" icon="box" />
       </div>
 
       <Tabs defaultValue="contratos" className="space-y-4">

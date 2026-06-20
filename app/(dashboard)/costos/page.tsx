@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { KPI } from "@/components/mc";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,66 +287,11 @@ export default function CostosPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Costos Totales
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              ${totalCostos.toLocaleString()}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Lotes + Animales</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Costos Agrícolas
-            </CardTitle>
-            <TrendingDown className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${totalCostosLote.toLocaleString()}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">{costosLote.length} registros</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Costos Ganaderos
-            </CardTitle>
-            <TrendingDown className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${totalCostosAnimal.toLocaleString()}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">{costosAnimal.length} registros</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Margen Promedio
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${margenPromedio >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {margenPromedio.toFixed(1)}%
-            </div>
-            <p className="text-xs text-gray-500 mt-1">{margenes.length} cálculos</p>
-          </CardContent>
-        </Card>
+      <div className="grid g-cols-4">
+        <KPI label="Costos totales" value={`$${totalCostos.toLocaleString("es-AR")}`} delta="Lotes + Animales" trend="down" icon="dollar" accent />
+        <KPI label="Costos agrícolas" value={`$${totalCostosLote.toLocaleString("es-AR")}`} delta={`${costosLote.length} registros`} trend="down" icon="leaf" />
+        <KPI label="Costos ganaderos" value={`$${totalCostosAnimal.toLocaleString("es-AR")}`} delta={`${costosAnimal.length} registros`} trend="down" icon="cow" />
+        <KPI label="Margen promedio" value={`${margenPromedio.toFixed(1)}%`} delta={`${margenes.length} cálculos`} trend={margenPromedio >= 0 ? "up" : "down"} icon="activity" />
       </div>
 
       <Tabs defaultValue="lotes" className="space-y-4">
