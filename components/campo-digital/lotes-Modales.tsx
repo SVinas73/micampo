@@ -179,23 +179,25 @@ export function AgregarCampoModal({
 
 /* ========== ELIMINAR CAMPO (destructivo) ========== */
 export function EliminarCampoModal({
-  campos,
+  lotes,
+  initialId,
   onClose,
   onConfirm,
 }: {
-  campos: { nombre: string; lotes: number }[];
+  lotes: { id: string; nombre: string; ha?: number; cultivo?: string | null }[];
+  initialId?: string;
   onClose: () => void;
-  onConfirm: (campo: string) => Promise<void> | void;
+  onConfirm: (id: string) => Promise<void> | void;
 }) {
-  const [campo, setCampo] = useState(campos[0]?.nombre ?? "");
+  const [loteId, setLoteId] = useState(initialId && lotes.some((l) => l.id === initialId) ? initialId : lotes[0]?.id ?? "");
   const [confirmado, setConfirmado] = useState(false);
   const [borrando, setBorrando] = useState(false);
-  const seleccionado = campos.find((c) => c.nombre === campo) || campos[0];
+  const seleccionado = lotes.find((l) => l.id === loteId) || lotes[0];
 
   const eliminar = async () => {
-    if (!confirmado || borrando || !campo) return;
+    if (!confirmado || borrando || !loteId) return;
     setBorrando(true);
-    await onConfirm(campo);
+    await onConfirm(loteId);
     setBorrando(false);
   };
 
@@ -207,9 +209,9 @@ export function EliminarCampoModal({
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 6, letterSpacing: ".06em", textTransform: "uppercase" }}>Acción irreversible</div>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", display: "flex", alignItems: "center", gap: 10 }}>
-              <Icon name="alert" size={26} /> Eliminar Establecimiento
+              <Icon name="alert" size={26} /> Eliminar Lote
             </div>
-            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>Esta acción borrará todos los datos asociados</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>Se borrará el lote elegido y sus datos asociados</div>
           </div>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, width: 34, height: 34, cursor: "pointer", color: "#fff", fontSize: 17, display: "grid", placeItems: "center", flexShrink: 0 }}>
             <Icon name="x" size={15} />
@@ -218,37 +220,42 @@ export function EliminarCampoModal({
 
         {/* Body */}
         <div style={{ padding: "22px 28px", overflowY: "auto", flex: 1 }}>
-          <Section icon="map" title="Establecimiento">
-            <label style={lbl}>Seleccione el campo a eliminar</label>
-            <select value={campo} onChange={(e) => { setCampo(e.target.value); setConfirmado(false); }} style={inp}>
-              {campos.map((c) => (
-                <option key={c.nombre}>{c.nombre}</option>
-              ))}
-            </select>
-          </Section>
+          {lotes.length === 0 ? (
+            <div style={{ fontSize: 14, color: "var(--mc-text-2)" }}>No hay lotes para eliminar.</div>
+          ) : (
+            <>
+              <Section icon="map" title="Lote">
+                <label style={lbl}>Seleccioná el lote a eliminar</label>
+                <select value={loteId} onChange={(e) => { setLoteId(e.target.value); setConfirmado(false); }} style={inp}>
+                  {lotes.map((l) => (
+                    <option key={l.id} value={l.id}>{l.nombre}{l.ha ? ` · ${Math.round(l.ha)} ha` : ""}{l.cultivo ? ` · ${l.cultivo}` : ""}</option>
+                  ))}
+                </select>
+              </Section>
 
-          <div style={{ background: "#fef2f2", border: "1.5px solid #fca5a5", borderRadius: 10, padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <Icon name="alert" size={18} style={{ flexShrink: 0 }} />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "#b91c1c", marginBottom: 4 }}>¡Acción irreversible!</div>
-              <div style={{ fontSize: 13, color: "#7f1d1d", lineHeight: 1.5 }}>
-                Al eliminar <strong>{campo}</strong>, se borrarán también sus{" "}
-                <strong>{seleccionado?.lotes ?? 0} Lotes</strong>, el historial de lluvias y los registros de cosecha.
+              <div style={{ background: "#fef2f2", border: "1.5px solid #fca5a5", borderRadius: 10, padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <Icon name="alert" size={18} style={{ flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#b91c1c", marginBottom: 4 }}>¡Acción irreversible!</div>
+                  <div style={{ fontSize: 13, color: "#7f1d1d", lineHeight: 1.5 }}>
+                    Al eliminar <strong>{seleccionado?.nombre}</strong> se borrarán también sus labores, registros y datos asociados.
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: "var(--mc-ink)", padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1.5px solid #e2e8f0" }}>
-            <input type="checkbox" checked={confirmado} onChange={(e) => setConfirmado(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#c93434", cursor: "pointer" }} />
-            Soy consciente de que perderé los datos
-          </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: "var(--mc-ink)", padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1.5px solid #e2e8f0" }}>
+                <input type="checkbox" checked={confirmado} onChange={(e) => setConfirmado(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#c93434", cursor: "pointer" }} />
+                Soy consciente de que perderé los datos
+              </label>
+            </>
+          )}
         </div>
 
         {/* Footer */}
         <div style={{ padding: "16px 28px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
           <button className="mc-btn mc-btn--secondary" onClick={onClose}>Cancelar</button>
           <button
-            disabled={!confirmado || borrando}
+            disabled={!confirmado || borrando || lotes.length === 0}
             onClick={eliminar}
             className="mc-btn"
             style={{ background: confirmado ? "#c93434" : "#fca5a5", color: "#fff", border: "none", cursor: confirmado ? "pointer" : "not-allowed" }}

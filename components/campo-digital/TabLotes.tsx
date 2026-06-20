@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
+import { useLoteScope } from "@/components/LoteScope";
 import { useSetHeaderActions } from "./ActionsContext";
 import {
   LOTES_INICIALES, mapLotesApi, fechaCorta,
@@ -31,11 +32,11 @@ import {
 export default function TabLotes() {
   const searchParams = useSearchParams();
   const toast = useToast();
+  const { loteIdsEnScope, esTodos, recargar, establecimientos, establecimientoActivo } = useLoteScope();
   const [lotes, setLotes] = useState<LoteUI[]>(demo(LOTES_INICIALES, []));
   const [selected, setSelected] = useState<LoteUI | null>(null);
   const [view, setView] = useState<"mapa" | "lista">("mapa");
   const [layer, setLayer] = useState("NDVI");
-  const [campoFiltro, setCampoFiltro] = useState("Todos");
   const [showAgregar, setShowAgregar] = useState(searchParams.get("modal") === "nuevo");
   const [showEliminar, setShowEliminar] = useState(false);
   const [showFiltros, setShowFiltros] = useState(false);
@@ -68,25 +69,20 @@ export default function TabLotes() {
     []
   );
 
-  const campos = useMemo(() => {
-    const m = new Map<string, number>();
-    lotes.forEach((l) => m.set(l.campo, (m.get(l.campo) || 0) + 1));
-    return Array.from(m.entries()).map(([nombre, n]) => ({ nombre, lotes: n }));
-  }, [lotes]);
-
-  const visibles = useMemo(
-    () =>
-      lotes.filter(
-        (l) =>
-          (campoFiltro === "Todos" || l.campo === campoFiltro) &&
-          (filtroCultivo === "Todos" || l.cultivo === filtroCultivo)
-      ),
-    [lotes, campoFiltro, filtroCultivo]
+  // Lotes dentro del alcance global (establecimiento + lote)
+  const enScope = useMemo(
+    () => (esTodos ? lotes : lotes.filter((l) => loteIdsEnScope.includes(l.dbId || l.id))),
+    [lotes, loteIdsEnScope, esTodos]
   );
 
-  const totalHa = lotes.reduce((s, l) => s + l.ha, 0);
-  const sembradas = lotes.filter((l) => !l.vacio).reduce((s, l) => s + l.ha, 0);
-  const sinAsignar = lotes.filter((l) => l.vacio);
+  const visibles = useMemo(
+    () => enScope.filter((l) => filtroCultivo === "Todos" || l.cultivo === filtroCultivo),
+    [enScope, filtroCultivo]
+  );
+
+  const totalHa = enScope.reduce((s, l) => s + l.ha, 0);
+  const sembradas = enScope.filter((l) => !l.vacio).reduce((s, l) => s + l.ha, 0);
+  const sinAsignar = enScope.filter((l) => l.vacio);
 
   /* ---- Acciones conectadas ---- */
   const crearCampo = async (data: AgregarCampoData) => {
@@ -116,22 +112,25 @@ export default function TabLotes() {
         },
       ]);
       setDibujado(null);
-      toast.show(geom ? `Lote "${data.nombre}" agregado al mapa` : `Establecimiento "${data.nombre}" creado`);
+      toast.show(geom ? `Lote "${data.nombre}" agregado al mapa` : `Lote "${data.nombre}" creado`);
       setShowAgregar(false);
+      recargar(); // refresca el selector global de lotes
     } catch {
       toast.show("No se pudo crear el establecimiento", "err");
     }
   };
 
-  const eliminarCampo = async (campo: string) => {
-    const afectados = lotes.filter((l) => l.campo === campo);
-    for (const l of afectados) {
-      if (l.dbId) await fetch(`/api/lotes/${l.dbId}`, { method: "DELETE" }).catch(() => {});
+  const eliminarLote = async (id: string) => {
+    const lote = lotes.find((l) => (l.dbId || l.id) === id);
+    if (lote?.dbId) {
+      const res = await fetch(`/api/lotes/${lote.dbId}`, { method: "DELETE" }).catch(() => null);
+      if (!res || !res.ok) { toast.show("No se pudo eliminar el lote", "err"); return; }
     }
-    setLotes((prev) => prev.filter((l) => l.campo !== campo));
-    setSelected(null);
-    toast.show(`Campo "${campo}" eliminado definitivamente`);
+    setLotes((prev) => prev.filter((l) => (l.dbId || l.id) !== id));
+    setSelected((s) => (s && (s.dbId || s.id) === id ? null : s));
+    toast.show(`Lote "${lote?.name || ""}" eliminado definitivamente`);
     setShowEliminar(false);
+    recargar(); // refresca el selector global
   };
 
   const guardarEdicion = async (data: EditarLoteData) => {
@@ -187,7 +186,14 @@ export default function TabLotes() {
     <>
       {toast.node}
       {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} />}
-      {showEliminar && <EliminarCampoModal campos={campos} onClose={() => setShowEliminar(false)} onConfirm={eliminarCampo} />}
+      {showEliminar && (
+        <EliminarCampoModal
+          lotes={enScope.map((l) => ({ id: l.dbId || l.id, nombre: l.name, ha: l.ha, cultivo: l.cultivo }))}
+          initialId={selected ? selected.dbId || selected.id : undefined}
+          onClose={() => setShowEliminar(false)}
+          onConfirm={eliminarLote}
+        />
+      )}
       {editLote && <EditarLoteModal lote={editLote} onClose={() => setEditLote(null)} onConfirm={guardarEdicion} />}
       {tareaLote && <NuevaTareaModal lote={tareaLote} onClose={() => setTareaLote(null)} onConfirm={crearTarea} />}
       {(notaLote || comentarioGeneral) && (
@@ -199,8 +205,8 @@ export default function TabLotes() {
       )}
 
       <div className="grid g-cols-5">
-        <KPI label="Total de campos" value={String(campos.length)} delta={campos.map((c) => c.nombre).slice(0, 2).join(" + ") || "—"} trend="up" icon="map" accent />
-        <KPI label="Total de lotes" value={String(lotes.length)} delta={demo("+2 esta campaña", "—")} trend="up" icon="sprout" />
+        <KPI label="Establecimientos" value={String(establecimientos.length)} delta={establecimientoActivo ? establecimientoActivo.nombre : "Todos"} trend="up" icon="building" accent />
+        <KPI label="Lotes en vista" value={String(enScope.length)} delta={esTodos ? `${lotes.length} en total` : "Filtrado"} trend="up" icon="sprout" />
         <KPI label="Total de hectáreas" value={`${Math.round(totalHa)} Ha`} delta={`${Math.round(sembradas)} sembradas`} trend="up" icon="activity" />
         <KPI label="Lotes sin asignar" value={String(sinAsignar.length)} delta={sinAsignar.map((l) => l.name).slice(0, 2).join(" + ") || "Ninguno"} trend="warn" icon="alert" />
         <KPI label="Marcadores" value={demo("14", "0")} delta="Pozos, silos, casas" trend="up" icon="target" />
@@ -216,11 +222,9 @@ export default function TabLotes() {
               <Icon name="list" size={13} /> Vista Lista
             </button>
           </div>
-          <div className="mc-seg">
-            {["Todos", ...campos.map((c) => c.nombre)].map((c) => (
-              <button key={c} className={campoFiltro === c ? "is-on" : ""} onClick={() => setCampoFiltro(c)}>{c}</button>
-            ))}
-          </div>
+          <span className="mc-badge mc-badge--neutral" style={{ alignSelf: "center" }}>
+            <Icon name="building" size={11} />{establecimientoActivo ? establecimientoActivo.nombre : "Todos los establecimientos"}
+          </span>
         </div>
         <div className="row gap-8" style={{ position: "relative" }}>
           <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setShowFiltros(!showFiltros)}>
