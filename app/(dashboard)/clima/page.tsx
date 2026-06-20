@@ -19,6 +19,7 @@ import {
   type AlertaResult,
 } from "@/components/clima/ClimaModales";
 import { demo } from "@/lib/demo";
+import { useLoteScope } from "@/components/LoteScope";
 
 const TABS = ["Inicio", "Alertas", "Registro de Lluvias"];
 
@@ -52,6 +53,7 @@ function ClimaInner() {
   const searchParams = useSearchParams();
   const toast = useToast();
 
+  const { lotes: scopeLotes, loteActivo } = useLoteScope();
   const initialTab = TABS.includes(searchParams.get("tab") || "") ? (searchParams.get("tab") as string) : "Inicio";
   const [tab, setTab] = useState(initialTab);
   const [showLluvia, setShowLluvia] = useState(searchParams.get("modal") === "lluvia");
@@ -66,20 +68,24 @@ function ClimaInner() {
   const [tieneCampo, setTieneCampo] = useState(false);
   const [histLluvia, setHistLluvia] = useState<{ promedioMensual: number[]; promedioAnual: number } | null>(null);
 
+  // Lotes del alcance global para los modales (registrar lluvia, etc.)
   useEffect(() => {
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0)
-          setLotes(d.map((l: { id: string; nombre: string; hectareas: number }) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas })));
-        const loc = Array.isArray(d) ? d.find((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud) : null;
-        if (loc) setTieneCampo(true);
-        const q = loc ? `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}` : "";
-        fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
-        fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistLluvia(h); }).catch(() => {});
-      })
-      .catch(() => {});
+    if (scopeLotes.length > 0) setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0 })));
+  }, [scopeLotes]);
 
+  // Clima real del lote activo (o el primero con coordenadas si "Todos")
+  useEffect(() => {
+    const target = (loteActivo && loteActivo.centroLatitud && loteActivo.centroLongitud)
+      ? loteActivo
+      : scopeLotes.find((l) => l.centroLatitud && l.centroLongitud) || null;
+    if (target) setTieneCampo(true); else setTieneCampo(false);
+    const q = target ? `?lat=${target.centroLatitud}&lon=${target.centroLongitud}` : "";
+    fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
+    fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistLluvia(h); }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loteActivo?.id, scopeLotes]);
+
+  useEffect(() => {
     fetch("/api/registro-pluviometrico")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {

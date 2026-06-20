@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon, KPI, Modal, Field, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
+import { useLoteScope } from "@/components/LoteScope";
 import { useSetHeaderActions } from "./ActionsContext";
 import { NuevaOrdenLaborModal, type OrdenLabor } from "./labores-Wizard";
 
@@ -70,7 +71,13 @@ const TIPO_ICON: Record<string, { icon: string; color: string }> = {
 /* ========== TAB LABORES (Figma CDLabores) ========== */
 export default function TabLabores() {
   const toast = useToast();
-  const [labores, setLabores] = useState<LaborUI[]>(demo(DEMO_LABORES, []));
+  const { lotes: scopeLotes, loteActivo } = useLoteScope();
+  const [laboresRaw, setLabores] = useState<LaborUI[]>(demo(DEMO_LABORES, []));
+  // Filtra las labores por el lote activo del alcance global
+  const labores = useMemo(
+    () => (loteActivo ? laboresRaw.filter((l) => l.loteId === loteActivo.id) : laboresRaw),
+    [laboresRaw, loteActivo]
+  );
   const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number; tag?: string }[]>(demo([
     { nombre: "Lote 4 - La Loma", ha: 75, tag: "Rastrojo de Maiz" },
     { nombre: "Lote 5 - El Bajo", ha: 50, tag: "Barbecho Químico" },
@@ -126,14 +133,12 @@ export default function TabLabores() {
         );
       })
       .catch(() => {});
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0)
-          setLotes(d.map((l: { id: string; nombre: string; hectareas: number; cultivo?: string }) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas, tag: l.cultivo || "Disponible" })));
-      })
-      .catch(() => {});
   }, []);
+
+  // Lotes para el dropdown — del alcance global
+  useEffect(() => {
+    if (scopeLotes.length > 0) setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0, tag: l.cultivo || "Disponible" })));
+  }, [scopeLotes]);
 
   useSetHeaderActions(
     <button className="mc-btn mc-btn--primary" onClick={() => setWizardOpen(true)}>

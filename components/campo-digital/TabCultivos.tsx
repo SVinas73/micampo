@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, Modal, Field, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
+import { useLoteScope } from "@/components/LoteScope";
 import { useSetHeaderActions } from "./ActionsContext";
 import { NuevaSiembraModal, NuevaCosechaModal, type SiembraData, type CosechaData } from "./cultivos-Modales";
 
@@ -54,6 +55,7 @@ const PLANES_IA_DEMO: PlanIA[] = [
 export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const searchParams = useSearchParams();
   const toast = useToast();
+  const { lotes: scopeLotes } = useLoteScope();
   const subParam = searchParams.get("sub");
   const [sub, setSub] = useState(
     initialSub || (subParam && ["Estados", "Planificador de Siembra (IA)", "Análisis de Suelo"].includes(subParam) ? subParam : "Estados")
@@ -69,26 +71,20 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [distribucion, setDistribucion] = useState<DistCultivo[]>([]);
 
   useEffect(() => {
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (!Array.isArray(d)) return;
-        if (d.length > 0)
-          setLotes(d.map((l: { id: string; nombre: string; hectareas: number }) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas })));
-        // Distribución real por cultivo (0 si no hay lotes con cultivo sembrado)
-        const porCultivo = new Map<string, number>();
-        d.forEach((l: { cultivo?: string; hectareas?: number }) => {
-          if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0));
-        });
-        const tot = Array.from(porCultivo.values()).reduce((s, v) => s + v, 0) || 1;
-        setDistribucion(
-          Array.from(porCultivo.entries())
-            .sort((a, b) => b[1] - a[1])
-            .map(([nombre, ha]) => ({ nombre, ha: Math.round(ha), pct: Math.round((ha / tot) * 100), color: CULTIVO_COLOR[nombre] || "#5e7733", icon: CULTIVO_ICON[nombre] || "leaf" }))
-        );
-      })
-      .catch(() => {});
-  }, []);
+    const d = scopeLotes;
+    if (d.length > 0) setLotes(d.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0 })));
+    // Distribución real por cultivo (0 si no hay lotes con cultivo sembrado)
+    const porCultivo = new Map<string, number>();
+    d.forEach((l) => {
+      if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0));
+    });
+    const tot = Array.from(porCultivo.values()).reduce((s, v) => s + v, 0) || 1;
+    setDistribucion(
+      Array.from(porCultivo.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([nombre, ha]) => ({ nombre, ha: Math.round(ha), pct: Math.round((ha / tot) * 100), color: CULTIVO_COLOR[nombre] || "#5e7733", icon: CULTIVO_ICON[nombre] || "leaf" }))
+    );
+  }, [scopeLotes]);
 
   /* ---- Header actions según sub-tab (Figma) ---- */
   useSetHeaderActions(

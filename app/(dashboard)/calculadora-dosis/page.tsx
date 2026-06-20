@@ -14,6 +14,7 @@ import {
 } from "@/components/calculadora/types";
 import { PRESETS, HISTORIAL_DEMO, CONFIG_VACIA } from "@/components/calculadora/presets";
 import { demo } from "@/lib/demo";
+import { useLoteScope } from "@/components/LoteScope";
 import {
   caldoTotal,
   cargas,
@@ -42,6 +43,7 @@ function CalculadoraInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
+  const { lotes: scopeLotes } = useLoteScope();
 
   const initialTab = TABS.includes(searchParams.get("tab") || "")
     ? (searchParams.get("tab") as string)
@@ -58,17 +60,10 @@ function CalculadoraInner() {
     if (t && TABS.includes(t)) setTab(t);
   }, [searchParams]);
 
-  // carga de lotes para el select
+  // lotes para el select — del alcance global (campo/lote activo)
   useEffect(() => {
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (Array.isArray(d) && d.length) {
-          setLotes(d.map((l: { id: string; nombre: string; hectareas: number }) => ({ id: l.id, nombre: l.nombre, hectareas: l.hectareas })));
-        }
-      })
-      .catch(() => {});
-  }, []);
+    setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, hectareas: l.hectareas || 0 })));
+  }, [scopeLotes]);
 
   // carga de historial real
   useEffect(() => {

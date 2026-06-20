@@ -99,6 +99,7 @@ export default function TabLotes() {
           centroLatitud: geom?.centro.lat ?? null,
           centroLongitud: geom?.centro.lng ?? null,
           perimetro: geom?.perimetro ?? null,
+          establecimientoId: establecimientoActivo?.id ?? null,
         }),
       });
       let dbId: string | undefined;
@@ -623,7 +624,7 @@ function LotesListaDetallada({
             return (
               <div key={i} className="mc-lotes-list__row" onClick={() => onVer(l)}>
                 <div>
-                  <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>{l.campo}</div>
+                  <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>{l.cultivo || "Sin cultivo"}</div>
                   <div className="row gap-4 mt-4" style={{ alignItems: "center" }}>
                     <Icon name="map" size={14} style={{ color: "var(--mc-red)" }} />
                     <span className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 14 }}>{l.id.replace("L-0", "Lote ")} - {l.name}</span>
