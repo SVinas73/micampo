@@ -18,19 +18,19 @@ const dir = (deg: number) => DIRS[Math.round(deg / 22.5) % 16];
 
 const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
-function wmo(code: number): { icon: string; desc: string } {
-  if (code === 0) return { icon: "sun", desc: "Despejado" };
-  if (code === 1) return { icon: "sun", desc: "Mayormente despejado" };
-  if (code === 2) return { icon: "cloud", desc: "Parcialmente nublado" };
-  if (code === 3) return { icon: "cloud", desc: "Nublado" };
-  if (code === 45 || code === 48) return { icon: "cloud", desc: "Niebla" };
-  if (code >= 51 && code <= 57) return { icon: "droplet", desc: "Llovizna" };
-  if (code >= 61 && code <= 67) return { icon: "droplet", desc: "Lluvia" };
-  if (code >= 71 && code <= 77) return { icon: "cloud", desc: "Nieve" };
-  if (code >= 80 && code <= 82) return { icon: "droplet", desc: "Chubascos" };
-  if (code === 85 || code === 86) return { icon: "cloud", desc: "Chubascos de nieve" };
-  if (code >= 95) return { icon: "droplet", desc: "Tormenta" };
-  return { icon: "cloud", desc: "—" };
+function wmo(code: number): { icon: string; desc: string; cond: string } {
+  if (code === 0) return { icon: "sun", desc: "Despejado", cond: "sun" };
+  if (code === 1) return { icon: "sun", desc: "Mayormente despejado", cond: "sun" };
+  if (code === 2) return { icon: "cloud", desc: "Parcialmente nublado", cond: "partly" };
+  if (code === 3) return { icon: "cloud", desc: "Nublado", cond: "cloud" };
+  if (code === 45 || code === 48) return { icon: "cloud", desc: "Niebla", cond: "fog" };
+  if (code >= 51 && code <= 57) return { icon: "droplet", desc: "Llovizna", cond: "rain" };
+  if (code >= 61 && code <= 67) return { icon: "droplet", desc: "Lluvia", cond: "rain" };
+  if (code >= 71 && code <= 77) return { icon: "cloud", desc: "Nieve", cond: "snow" };
+  if (code >= 80 && code <= 82) return { icon: "droplet", desc: "Chubascos", cond: "rain" };
+  if (code === 85 || code === 86) return { icon: "cloud", desc: "Chubascos de nieve", cond: "snow" };
+  if (code >= 95) return { icon: "droplet", desc: "Tormenta", cond: "storm" };
+  return { icon: "cloud", desc: "—", cond: "cloud" };
 }
 
 // ΔT (delta-T) = temperatura − temperatura de bulbo húmedo (Stull 2011).
@@ -98,6 +98,7 @@ export async function GET(request: Request) {
       deltaT: dT,
       aptoPulverizacion: aptoPulver,
       icono: cw.icon,
+      cond: cw.cond,
       descripcion: cw.desc,
     };
 
@@ -111,6 +112,7 @@ export async function GET(request: Request) {
         num: fecha.getDate(),
         esHoy: i === 0,
         icono: w.icon,
+        cond: w.cond,
         desc: w.desc,
         max: Math.round(d.temperature_2m_max[i]),
         min: Math.round(d.temperature_2m_min[i]),

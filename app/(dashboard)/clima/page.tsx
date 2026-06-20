@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Icon, KPI, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
 import { ForecastChart, type DayForecast } from "@/components/clima/ForecastChart";
 import { weatherTone } from "@/components/clima/weatherTone";
+import { AnimatedWeatherIcon } from "@/components/clima/AnimatedWeatherIcon";
 import { VentanaPulverizacion, type HoraPulver } from "@/components/clima/VentanaPulverizacion";
 
 const RadarReal = dynamic(() => import("@/components/clima/RadarReal"), {
@@ -25,15 +26,15 @@ import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianG
 
 const TABS = ["Inicio", "Alertas", "Registro de Lluvias"];
 
-type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; deltaT: number; aptoPulverizacion: boolean; icono: string; descripcion: string };
-type ClimaDia = { nombre: string; num: number; esHoy: boolean; icono: string; max: number; min: number; mm: number; probLluvia: number; viento: number };
+type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; deltaT: number; aptoPulverizacion: boolean; icono: string; cond?: string; descripcion: string };
+type ClimaDia = { nombre: string; num: number; esHoy: boolean; icono: string; cond?: string; desc?: string; max: number; min: number; mm: number; probLluvia: number; viento: number };
 type ClimaData = { actual: ClimaActual; dias: ClimaDia[]; horas?: HoraPulver[]; ubicacion?: { nombre?: string; lat?: number; lon?: number } };
 
 // Aptitud de pulverización por día (a partir del viento máximo del día)
 const ventDeViento = (v: number): "ok" | "warn" | "bad" => (v <= 15 ? "ok" : v <= 25 ? "warn" : "bad");
 function climaADias(clima: ClimaData | null): DayForecast[] {
   if (!clima) return [];
-  return clima.dias.map((d) => ({ d: `${d.esHoy ? "HOY" : d.nombre.toUpperCase()} ${d.num}`, num: d.num, ic: d.icono, max: d.max, min: d.min, mm: d.mm, vent: ventDeViento(d.viento) }));
+  return clima.dias.map((d) => ({ d: d.esHoy ? "Hoy" : d.nombre, num: d.num, ic: d.icono, cond: (d as any).cond, desc: (d as any).desc, viento: d.viento, max: d.max, min: d.min, mm: d.mm, vent: ventDeViento(d.viento) }));
 }
 
 const DEMO_LOTES: LoteOpt[] = [
@@ -345,10 +346,9 @@ function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marca
       {actual && (
         <div className="mc-card" style={{ padding: 0, overflow: "hidden", border: "none" }}>
           <div style={{ background: tone.grad, color: "#fff", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, position: "relative" }}>
-            <div style={{ position: "absolute", right: -10, top: -20, opacity: 0.18 }}><Icon name={actual.icono} size={140} /></div>
             <div style={{ display: "flex", alignItems: "center", gap: 18, position: "relative" }}>
-              <span style={{ width: 70, height: 70, borderRadius: "50%", background: "rgba(255,255,255,0.22)", display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(0,0,0,0.18)", flexShrink: 0 }}>
-                <Icon name={actual.icono} size={40} />
+              <span style={{ width: 84, height: 84, borderRadius: "50%", background: "rgba(255,255,255,0.20)", display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(0,0,0,0.18)", flexShrink: 0 }}>
+                <AnimatedWeatherIcon cond={actual.cond || actual.icono} size={62} />
               </span>
               <div>
                 <div style={{ fontSize: 11, opacity: 0.85, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>Ahora · {lugar}</div>

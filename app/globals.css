@@ -2176,3 +2176,24 @@ a:focus-visible {
 /* Caja de selectores de alcance (campo + lote) en el sidebar */
 .mc-sb__scopebox { display: flex; flex-direction: column; gap: 6px; margin: 8px 12px 4px; }
 .mc-sb__scopebox .mc-sb__scope { margin: 0; }
+
+/* ===================== Íconos de clima animados ===================== */
+.wx { display: inline-block; line-height: 0; }
+.wx svg { display: block; overflow: visible; }
+@keyframes wx-spin { to { transform: rotate(360deg); } }
+@keyframes wx-pulse { 0%, 100% { transform: scale(1); opacity: 0.95; } 50% { transform: scale(1.07); opacity: 1; } }
+@keyframes wx-drift { 0%, 100% { transform: translateX(-1.4px); } 50% { transform: translateX(1.4px); } }
+@keyframes wx-drop { 0% { transform: translateY(-3px); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(13px); opacity: 0; } }
+@keyframes wx-flake { 0% { transform: translateY(-3px) rotate(0deg); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(13px) rotate(120deg); opacity: 0; } }
+@keyframes wx-flash { 0%, 88%, 100% { opacity: 0.35; } 90%, 96% { opacity: 1; } 93% { opacity: 0.5; } }
+@keyframes wx-fog { 0%, 100% { transform: translateX(-2px); opacity: 0.65; } 50% { transform: translateX(2px); opacity: 1; } }
+.wx-rays { animation: wx-spin 22s linear infinite; transform-origin: 32px 26px; }
+.wx-suncore { animation: wx-pulse 3.4s ease-in-out infinite; transform-origin: 32px 26px; transform-box: fill-box; }
+.wx-cloud { animation: wx-drift 5s ease-in-out infinite; }
+.wx-drop { animation: wx-drop 1.5s ease-in infinite; }
+.wx-flake { animation: wx-flake 2.4s linear infinite; }
+.wx-bolt { animation: wx-flash 3.2s ease-in-out infinite; }
+.wx-fogline { animation: wx-fog 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .wx-rays, .wx-suncore, .wx-cloud, .wx-drop, .wx-flake, .wx-bolt, .wx-fogline { animation: none; }
+}
