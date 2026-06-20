@@ -5,6 +5,23 @@ import { useRouter, usePathname } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@/components/mc/Icon";
 import { Copiloto } from "@/components/Copiloto";
+import { LoteScopeProvider, useLoteScope } from "@/components/LoteScope";
+
+function LoteSelectorSidebar() {
+  const { lotes, loteId, setLoteId } = useLoteScope();
+  if (lotes.length === 0) return null;
+  return (
+    <div className="mc-sb__scope">
+      <Icon name="map" size={13} />
+      <select value={loteId} onChange={(e) => setLoteId(e.target.value)} aria-label="Lote activo">
+        <option value="todos">Todos los lotes</option>
+        {lotes.map((l) => (
+          <option key={l.id} value={l.id}>{l.nombre}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 // Etiqueta legible del módulo actual para dar contexto al copiloto
 function moduloLabel(pathname: string): string {
@@ -405,6 +422,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     setOpenGroups((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
 
   return (
+    <LoteScopeProvider>
     <div className="mc-app">
       <aside className="mc-sb">
         <div className="mc-sb__brand">
@@ -418,6 +436,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <span style={{ fontSize: 12.5 }}>Buscar animales, lotes...</span>
           <kbd>⌘K</kbd>
         </div>
+
+        <LoteSelectorSidebar />
 
         {NAV.map((section) => (
           <div className="mc-sb__section" key={section.section}>
@@ -509,5 +529,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         modulo={moduloLabel(pathname)}
       />
     </div>
+    </LoteScopeProvider>
   );
 }

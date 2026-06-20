@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Icon, Modal, Field, useToast, AnimatedNumber, Sparkline } from "@/components/mc";
+import { useLoteScope } from "@/components/LoteScope";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
 
@@ -521,8 +522,7 @@ export default function InicioPage() {
   const [balance, setBalance] = useState<{ meses: string[]; ingresos: number[]; gastos: number[] } | null>(null);
   const [cultivos, setCultivos] = useState<{ label: string; ha: string; pct: number; color: string }[] | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
-  const [lotesClima, setLotesClima] = useState<{ id: string; nombre: string; lat: number; lon: number }[]>([]);
-  const [loteClimaId, setLoteClimaId] = useState<string>("");
+  const { lotes: scopeLotes, loteActivo, setLoteId: setScopeLoteId } = useLoteScope();
   const [laboresPend, setLaboresPend] = useState(0);
   const [laboresAtr, setLaboresAtr] = useState(0);
   const [brief, setBrief] = useState<BriefData | null>(null);
@@ -591,24 +591,21 @@ export default function InicioPage() {
     }).catch(() => {});
   }, []);
 
-  // Lotes con coordenadas, para elegir de cuál ver el clima real (Open-Meteo)
-  useEffect(() => {
-    fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).then((d) => {
-      const conCoords = Array.isArray(d)
-        ? d.filter((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud)
-            .map((l: { id: string; nombre: string; centroLatitud: number; centroLongitud: number }) => ({ id: l.id, nombre: l.nombre, lat: l.centroLatitud, lon: l.centroLongitud }))
-        : [];
-      setLotesClima(conCoords);
-      if (conCoords.length > 0) setLoteClimaId((prev) => prev || conCoords[0].id);
-    }).catch(() => {});
-  }, []);
+  // Lotes con coordenadas (del scope global), para el clima real (Open-Meteo)
+  const lotesClima = useMemo(
+    () => scopeLotes.filter((l) => l.centroLatitud && l.centroLongitud).map((l) => ({ id: l.id, nombre: l.nombre, lat: l.centroLatitud!, lon: l.centroLongitud! })),
+    [scopeLotes]
+  );
+  // Lote para el clima: el activo del selector global (si tiene coords) o el primero con coords
+  const loteClima = useMemo(() => {
+    if (loteActivo && loteActivo.centroLatitud && loteActivo.centroLongitud) return lotesClima.find((l) => l.id === loteActivo.id) || null;
+    return lotesClima[0] || null;
+  }, [loteActivo, lotesClima]);
 
-  // Clima real del lote seleccionado (o ubicación por defecto si no hay lotes con coords)
   useEffect(() => {
-    const lote = lotesClima.find((l) => l.id === loteClimaId);
-    const q = lote ? `?lat=${lote.lat}&lon=${lote.lon}` : "";
+    const q = loteClima ? `?lat=${loteClima.lat}&lon=${loteClima.lon}` : "";
     fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
-  }, [loteClimaId, lotesClima]);
+  }, [loteClima?.id]);
 
   const kpis = useMemo(() => KPIS_BASE.map((k) => ({ ...k, ...(kpiValues[k.key] || {}) })), [kpiValues]);
 
@@ -721,7 +718,7 @@ export default function InicioPage() {
 
       {/* Clima + agenda | Salud lotes + suelo */}
       <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 14 }}>
-        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} lotes={lotesClima} selectedId={loteClimaId} onSelect={setLoteClimaId} />
+        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} lotes={lotesClima} selectedId={loteClima?.id || ""} onSelect={setScopeLoteId} />
         <div className="col gap-16"><FieldHealth /><SoilHealth /></div>
       </div>
 
