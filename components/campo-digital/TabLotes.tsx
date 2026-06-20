@@ -12,12 +12,12 @@ import {
   type LoteUI,
 } from "./lotes-data";
 
-// Mapa satelital real (Leaflet) — solo en cliente
-const MapaNDVI = dynamic(() => import("./MapaNDVI"), {
+// Mapa satelital con terreno 3D (MapLibre GL) — solo en cliente
+const MapaNDVI = dynamic(() => import("./MapaLibre"), {
   ssr: false,
   loading: () => (
-    <div style={{ height: 600, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
-      Cargando mapa satelital…
+    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
+      Cargando mapa 3D…
     </div>
   ),
 });
