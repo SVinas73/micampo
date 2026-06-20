@@ -5,6 +5,7 @@ import { Icon, KPI, useToast, PageHeader, SubTabs } from "@/components/mc";
 import BalanceHidrico, { type PuntoBalance, type SugerenciaIA } from "@/components/plan-riego/BalanceHidrico";
 import AguaUlt30Dias from "@/components/plan-riego/AguaUlt30Dias";
 import RegistrarRiegoModal, { type RegistroRiego } from "@/components/plan-riego/RegistrarRiegoModal";
+import { useLoteScope } from "@/components/LoteScope";
 
 /* ============================================================
    Plan de Riego — balance hídrico REAL.
@@ -51,26 +52,39 @@ function PlanRiegoInner() {
   const [riegos, setRiegos] = useState<{ t: number; mm: number; estado: string; ia: boolean }[]>([]);
   const [histMm, setHistMm] = useState<number | null>(null);
 
-  // Lote activo + clima + histórico
+  const { loteActivo, lotes: scopeLotes } = useLoteScope();
+
+  // Lote objetivo: el activo del selector global, o el primero con coordenadas si "Todos"
+  const loteObjetivo = useMemo(() => {
+    if (loteActivo) return loteActivo;
+    return scopeLotes.find((l) => l.centroLatitud && l.centroLongitud) || scopeLotes[0] || null;
+  }, [loteActivo, scopeLotes]);
+
+  // Lote activo + clima + histórico (se re-evalúa al cambiar el lote global)
   useEffect(() => {
+    const lote = loteObjetivo;
+    if (!lote) { setTieneCampo(scopeLotes.length === 0 ? false : null); return; }
+    setLoteId(lote.id);
+    setLoteNombre(lote.nombre || "tu campo");
+    if (lote.cultivo) setCultivo(lote.cultivo);
+
+    // Plan de riego de ESE lote (si existe)
     fetch("/api/planes-riego").then((r) => (r.ok ? r.json() : [])).then((d) => {
-      if (Array.isArray(d) && d.length > 0) { setPlanRiegoId(d[0].id ?? null); if (d[0].loteId) setLoteId(d[0].loteId); }
+      const planes = Array.isArray(d) ? d : [];
+      const plan = planes.find((p: { loteId?: string }) => p.loteId === lote.id) || null;
+      setPlanRiegoId(plan?.id ?? null);
     }).catch(() => {});
 
-    fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).then((d) => {
-      const loc = Array.isArray(d) ? d.find((l: { centroLatitud?: number; centroLongitud?: number }) => l.centroLatitud && l.centroLongitud) : null;
-      const lote = Array.isArray(d) && d.length > 0 ? d[0] : null;
-      if (lote) { setLoteId((p) => p || lote.id); setLoteNombre(lote.nombre || "tu campo"); if (lote.cultivo) setCultivo(lote.cultivo); }
-      // El balance hídrico requiere un lote con ubicación (para el clima de ese punto)
-      if (!loc) { setTieneCampo(false); return; }
-      setTieneCampo(true);
-      const q = `?lat=${loc.centroLatitud}&lon=${loc.centroLongitud}`;
-      fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => {
-        if (Array.isArray(c?.dias)) setDias(c.dias.map((x: { nombre: string; num: number; esHoy: boolean; et0: number; mm: number }) => ({ nombre: x.nombre, num: x.num, esHoy: x.esHoy, et0: x.et0, mm: x.mm })));
-      }).catch(() => {});
-      fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistMm(h.promedioMensual[new Date().getMonth()]); }).catch(() => {});
-    }).catch(() => setTieneCampo(false));
-  }, []);
+    // El balance hídrico requiere coordenadas (clima de ese punto)
+    if (!lote.centroLatitud || !lote.centroLongitud) { setTieneCampo(false); return; }
+    setTieneCampo(true);
+    const q = `?lat=${lote.centroLatitud}&lon=${lote.centroLongitud}`;
+    fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => {
+      if (Array.isArray(c?.dias)) setDias(c.dias.map((x: { nombre: string; num: number; esHoy: boolean; et0: number; mm: number }) => ({ nombre: x.nombre, num: x.num, esHoy: x.esHoy, et0: x.et0, mm: x.mm })));
+    }).catch(() => {});
+    fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistMm(h.promedioMensual[new Date().getMonth()]); }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loteObjetivo?.id]);
 
   // Lluvia + riego reales (crudos, últimos 30 días) → se filtran por período en el card
   useEffect(() => {
