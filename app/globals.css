@@ -380,10 +380,15 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* ---------- Sidebar ---------- */
 .mc-sb {
-  background:
-    radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(180deg, #46603a 0%, #3a4f2e 58%, #324428 100%);
-  background-size: 18px 18px, 100% 100%;
+  background-color: #324428;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(46, 60, 36, 0.80) 0%, rgba(40, 54, 32, 0.86) 52%, rgba(34, 46, 28, 0.92) 100%),
+    url("/sidebar.jpg");
+  background-size: 18px 18px, 100% 100%, cover;
+  background-position: 0 0, center, center;
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-attachment: fixed, fixed, fixed;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   padding: 18px 14px;
   display: flex;
