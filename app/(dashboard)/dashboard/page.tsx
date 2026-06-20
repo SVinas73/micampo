@@ -536,6 +536,23 @@ export default function InicioPage() {
       .finally(() => setBriefCargando(false));
   }, []);
 
+  // Hectáreas, cultivos y lotes del modal — derivados del alcance global (campo/lote)
+  useEffect(() => {
+    if (scopeLotes.length === 0) return;
+    const totalHa = scopeLotes.reduce((s, l) => s + (l.hectareas || 0), 0);
+    setKpiValues((p) => ({ ...p, hectareas: { value: `${Math.round(totalHa).toLocaleString("es-AR")} Ha`, delta: `${scopeLotes.length} ${scopeLotes.length === 1 ? "lote" : "lotes"}` } }));
+    setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre })));
+    const colores: Record<string, string> = { Trigo: "#d9a538", Maíz: "#c08a22", Soja: "#8ea65a", Cebada: "#5e7733", Alfalfa: "#aabd76", Girasol: "#e8b94a", Sorgo: "#c08a22" };
+    const porCultivo = new Map<string, number>();
+    scopeLotes.forEach((l) => { if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0)); });
+    if (porCultivo.size > 0) {
+      const tot = Array.from(porCultivo.values()).reduce((s, v) => s + v, 0) || 1;
+      setCultivos(Array.from(porCultivo.entries()).sort((a, b) => b[1] - a[1]).map(([nombre, ha]) => ({ label: nombre, ha: `${Math.round(ha)} Ha`, pct: Math.round((ha / tot) * 100), color: colores[nombre] || "#7d8a76" })));
+    } else {
+      setCultivos([]);
+    }
+  }, [scopeLotes]);
+
   useEffect(() => {
     fetch("/api/dashboard/inicio").then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (!d?.metricas) return;
@@ -548,20 +565,6 @@ export default function InicioPage() {
         trend: bal >= 0 ? "up" : "down",
       };
       setKpiValues((p) => ({ ...p, ...v }));
-    }).catch(() => {});
-
-    fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).then((d) => {
-      if (!Array.isArray(d) || d.length === 0) return;
-      const totalHa = d.reduce((s: number, l: { hectareas?: number }) => s + (l.hectareas || 0), 0);
-      setKpiValues((p) => ({ ...p, hectareas: { value: `${Math.round(totalHa).toLocaleString("es-AR")} Ha`, delta: `${d.length} lotes` } }));
-      setLotes(d.map((l: { id: string; nombre: string }) => ({ id: l.id, nombre: l.nombre })));
-      const colores: Record<string, string> = { Trigo: "#d9a538", Maíz: "#c08a22", Soja: "#8ea65a", Cebada: "#5e7733", Alfalfa: "#aabd76", Girasol: "#e8b94a", Sorgo: "#c08a22" };
-      const porCultivo = new Map<string, number>();
-      d.forEach((l: { cultivo?: string; hectareas?: number }) => { if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0)); });
-      if (porCultivo.size > 0) {
-        const tot = Array.from(porCultivo.values()).reduce((s, v) => s + v, 0) || 1;
-        setCultivos(Array.from(porCultivo.entries()).sort((a, b) => b[1] - a[1]).map(([nombre, ha]) => ({ label: nombre, ha: `${Math.round(ha)} Ha`, pct: Math.round((ha / tot) * 100), color: colores[nombre] || "#7d8a76" })));
-      }
     }).catch(() => {});
 
     fetch("/api/animales").then((r) => (r.ok ? r.json() : [])).then((d) => {

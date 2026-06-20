@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Icon } from "@/components/mc";
 import { mapLotesApi, type LoteUI } from "@/components/campo-digital/lotes-data";
+import { useLoteScope } from "@/components/LoteScope";
 
 // El motor 3D (three.js) solo en cliente y bajo demanda
 const Campo3D = dynamic(() => import("@/components/campo-digital/Campo3D"), {
@@ -18,7 +19,8 @@ const Campo3D = dynamic(() => import("@/components/campo-digital/Campo3D"), {
 type EconLite = { margenPorHa: number; costoPorHa: number; margen: number; fuente: string };
 
 export default function TabCampo3D() {
-  const [lotes, setLotes] = useState<LoteUI[]>([]);
+  const { loteIdsEnScope, esTodos } = useLoteScope();
+  const [todos, setTodos] = useState<LoteUI[]>([]);
   const [economia, setEconomia] = useState<Record<string, EconLite>>({});
   const [cargando, setCargando] = useState(true);
 
@@ -28,8 +30,8 @@ export default function TabCampo3D() {
       fetch("/api/economia/lotes").then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
       .then(([rows, eco]) => {
-        if (Array.isArray(rows) && rows.length) setLotes(mapLotesApi(rows));
-        else setLotes([]);
+        if (Array.isArray(rows) && rows.length) setTodos(mapLotesApi(rows));
+        else setTodos([]);
         if (eco?.lotes) {
           const map: Record<string, EconLite> = {};
           eco.lotes.forEach((l: any) => {
@@ -40,6 +42,12 @@ export default function TabCampo3D() {
       })
       .finally(() => setCargando(false));
   }, []);
+
+  // Respeta el alcance global (establecimiento + lote)
+  const lotes = useMemo(
+    () => (esTodos ? todos : todos.filter((l) => loteIdsEnScope.includes(l.dbId || l.id))),
+    [todos, loteIdsEnScope, esTodos]
+  );
 
   const totalHa = lotes.reduce((s, l) => s + (l.ha || 0), 0);
   const conGeo = lotes.filter((l) => l.geojson?.coordinates?.[0]?.length).length;

@@ -90,6 +90,7 @@ export async function PATCH(
       centroLatitud,
       centroLongitud,
       perimetro,
+      establecimientoId,
     } = await request.json();
 
     const updated = await prisma.lote.update({
@@ -98,6 +99,7 @@ export async function PATCH(
         ...(nombre !== undefined && { nombre }),
         ...(hectareas !== undefined && { hectareas: parseFloat(hectareas) }),
         ...(cultivo !== undefined && { cultivo }),
+        ...(establecimientoId !== undefined && { establecimientoId: establecimientoId || null }),
         ...(coordenadas !== undefined && {
           coordenadas: coordenadas ? JSON.stringify(coordenadas) : null,
         }),

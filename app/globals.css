@@ -2167,3 +2167,7 @@ a:focus-visible {
 .mc-sb__scope select option {
   color: #2a281f;
 }
+
+/* Caja de selectores de alcance (campo + lote) en el sidebar */
+.mc-sb__scopebox { display: flex; flex-direction: column; gap: 6px; margin: 8px 12px 4px; }
+.mc-sb__scopebox .mc-sb__scope { margin: 0; }

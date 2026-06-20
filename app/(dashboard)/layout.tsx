@@ -8,17 +8,32 @@ import { Copiloto } from "@/components/Copiloto";
 import { LoteScopeProvider, useLoteScope } from "@/components/LoteScope";
 
 function LoteSelectorSidebar() {
-  const { lotes, loteId, setLoteId } = useLoteScope();
-  if (lotes.length === 0) return null;
+  const { establecimientos, establecimientoId, setEstablecimientoId, lotes, loteId, setLoteId } = useLoteScope();
+  if (lotes.length === 0 && establecimientos.length === 0) return null;
   return (
-    <div className="mc-sb__scope">
-      <Icon name="map" size={13} />
-      <select value={loteId} onChange={(e) => setLoteId(e.target.value)} aria-label="Lote activo">
-        <option value="todos">Todos los lotes</option>
-        {lotes.map((l) => (
-          <option key={l.id} value={l.id}>{l.nombre}</option>
-        ))}
-      </select>
+    <div className="mc-sb__scopebox">
+      {establecimientos.length > 0 && (
+        <div className="mc-sb__scope">
+          <Icon name="building" size={13} />
+          <select value={establecimientoId} onChange={(e) => setEstablecimientoId(e.target.value)} aria-label="Establecimiento activo">
+            <option value="todos">Todos los establecimientos</option>
+            {establecimientos.map((e) => (
+              <option key={e.id} value={e.id}>{e.nombre}{e.lotesCount != null ? ` (${e.lotesCount})` : ""}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {lotes.length > 0 && (
+        <div className="mc-sb__scope">
+          <Icon name="map" size={13} />
+          <select value={loteId} onChange={(e) => setLoteId(e.target.value)} aria-label="Lote activo">
+            <option value="todos">Todos los lotes</option>
+            {lotes.map((l) => (
+              <option key={l.id} value={l.id}>{l.nombre}</option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }
@@ -46,7 +61,10 @@ type NavItem = {
 const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "General",
-    items: [{ id: "inicio", label: "Inicio", icon: "dashboard", type: "single", href: "/dashboard" }],
+    items: [
+      { id: "inicio", label: "Inicio", icon: "dashboard", type: "single", href: "/dashboard" },
+      { id: "establecimientos", label: "Establecimientos", icon: "building", type: "single", href: "/establecimientos" },
+    ],
   },
   {
     section: "Inteligencia",
@@ -101,6 +119,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
 // Índice de búsqueda del palette ⌘K: todas las pantallas navegables
 const SEARCH_INDEX: { label: string; href: string; group: string }[] = [
   { label: "Inicio", href: "/dashboard", group: "General" },
+  { label: "Establecimientos", href: "/establecimientos", group: "General" },
   { label: "Analítica IA", href: "/analitica", group: "Inteligencia" },
   { label: "Visión IA", href: "/vision", group: "Inteligencia" },
   { label: "Campo 3D", href: "/campo-digital?tab=Campo 3D", group: "Agronomía" },
