@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { KPI } from "@/components/mc";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -276,58 +277,11 @@ export default function ConciliacionBancariaPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Cuentas Activas
-            </CardTitle>
-            <Landmark className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCuentas}</div>
-            <p className="text-xs text-gray-500 mt-1">Bancos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Extractos
-            </CardTitle>
-            <FileText className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalExtractos}</div>
-            <p className="text-xs text-gray-500 mt-1">Registrados</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Sin Conciliar
-            </CardTitle>
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{extractosNoConciliados}</div>
-            <p className="text-xs text-gray-500 mt-1">Pendientes</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Diferencias
-            </CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{conciliacionesPendientes}</div>
-            <p className="text-xs text-gray-500 mt-1">Con diferencias</p>
-          </CardContent>
-        </Card>
+      <div className="grid g-cols-4">
+        <KPI label="Cuentas activas" value={String(totalCuentas)} delta="Bancos" trend="up" icon="building" accent />
+        <KPI label="Extractos" value={String(totalExtractos)} delta="Registrados" trend="up" icon="book" />
+        <KPI label="Sin conciliar" value={String(extractosNoConciliados)} delta="Pendientes" trend="warn" icon="alert" warn={extractosNoConciliados > 0} />
+        <KPI label="Diferencias" value={String(conciliacionesPendientes)} delta="Con diferencias" trend="warn" icon="alert" warn={conciliacionesPendientes > 0} />
       </div>
 
       <Tabs defaultValue="cuentas" className="space-y-4">
