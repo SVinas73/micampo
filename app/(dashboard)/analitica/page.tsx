@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Icon, KPI, PageHeader } from "@/components/mc";
+import { useLoteScope } from "@/components/LoteScope";
 import type { Punto3D } from "@/components/Grafica3D";
 
 const Grafica3D = dynamic(() => import("@/components/Grafica3D"), {
@@ -35,7 +36,17 @@ export default function AnaliticaPage() {
       .finally(() => setCargando(false));
   }, []);
 
-  const ds = datasets.find((d) => d.id === activo);
+  const { lotes: scopeLotes, esTodos } = useLoteScope();
+  // El dataset por-lote (margen) respeta el alcance global de campo/lote
+  const ds = useMemo(() => {
+    const base = datasets.find((d) => d.id === activo);
+    if (!base) return undefined;
+    if (base.id === "margenPorLote" && !esTodos) {
+      const nombres = new Set(scopeLotes.map((l) => l.nombre));
+      return { ...base, datos: base.datos.filter((p) => nombres.has(p.label)) };
+    }
+    return base;
+  }, [datasets, activo, scopeLotes, esTodos]);
 
   const analizar = async () => {
     if (!ds) return;

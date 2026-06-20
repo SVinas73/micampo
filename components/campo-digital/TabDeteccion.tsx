@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
+import { useLoteScope } from "@/components/LoteScope";
 import { useSetHeaderActions } from "./ActionsContext";
 import { ReportarPlagaModal } from "./deteccion-ReportarModal";
 
@@ -53,19 +54,13 @@ export default function TabDeteccion() {
   const toast = useToast();
   const [sub, setSub] = useState("Información");
   const [reportarOpen, setReportarOpen] = useState(searchParams.get("modal") === "reportar");
-  const [lotes, setLotes] = useState<{ id?: string; nombre: string; cultivo?: string }[]>([]);
+  // Lotes del alcance global (respeta el establecimiento/lote activo)
+  const { lotes: scopeLotes } = useLoteScope();
+  const lotes = useMemo(() => scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo ?? undefined })), [scopeLotes]);
   const [alertas, setAlertas] = useState<AlertaInfo[]>(demo(ALERTAS_DEMO, []));
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0)
-          setLotes(d.map((l: { id: string; nombre: string; cultivo?: string }) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo })));
-      })
-      .catch(() => {});
-
     fetch("/api/deteccion-enfermedades")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
