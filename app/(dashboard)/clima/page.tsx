@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
 import { ForecastChart, type DayForecast } from "@/components/clima/ForecastChart";
+import { weatherTone } from "@/components/clima/weatherTone";
 import { VentanaPulverizacion, type HoraPulver } from "@/components/clima/VentanaPulverizacion";
 
 const RadarReal = dynamic(() => import("@/components/clima/RadarReal"), {
@@ -299,7 +300,7 @@ function ClimaInner() {
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
 
-      {tab === "Inicio" && <ClimaInicio onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -33.3} lon={clima?.ubicacion?.lon ?? -61.5} marcador={tieneCampo} />}
+      {tab === "Inicio" && <ClimaInicio actual={clima?.actual ?? null} onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -33.3} lon={clima?.ubicacion?.lon ?? -61.5} marcador={tieneCampo} />}
       {tab === "Alertas" && <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />}
       {tab === "Registro de Lluvias" && (
         <ClimaLluvias lluvias={lluvias} historico={histLluvia} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} onEliminar={eliminarLluvia} />
@@ -337,9 +338,40 @@ function ClimaInner() {
 }
 
 /* ================= TAB INICIO ================= */
-function ClimaInicio({ onVerDetalle, dias, lugar, horas, lat, lon, marcador }: { onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string; horas: HoraPulver[]; lat: number; lon: number; marcador: boolean }) {
+function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marcador }: { actual: ClimaActual | null; onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string; horas: HoraPulver[]; lat: number; lon: number; marcador: boolean }) {
+  const tone = weatherTone(actual?.icono ?? "cloud");
   return (
     <>
+      {actual && (
+        <div className="mc-card" style={{ padding: 0, overflow: "hidden", border: "none" }}>
+          <div style={{ background: tone.grad, color: "#fff", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, position: "relative" }}>
+            <div style={{ position: "absolute", right: -10, top: -20, opacity: 0.18 }}><Icon name={actual.icono} size={140} /></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 18, position: "relative" }}>
+              <span style={{ width: 70, height: 70, borderRadius: "50%", background: "rgba(255,255,255,0.22)", display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(0,0,0,0.18)", flexShrink: 0 }}>
+                <Icon name={actual.icono} size={40} />
+              </span>
+              <div>
+                <div style={{ fontSize: 11, opacity: 0.85, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>Ahora · {lugar}</div>
+                <div style={{ fontFamily: "var(--ff-display)", fontSize: 52, fontWeight: 700, lineHeight: 1 }}>{actual.temperatura}°</div>
+                <div style={{ fontSize: 13, opacity: 0.92, fontWeight: 600 }}>{actual.descripcion} · Sensación {actual.sensacion}°</div>
+              </div>
+            </div>
+            <div className="row" style={{ gap: 10, position: "relative", flexWrap: "wrap" }}>
+              {[
+                { icon: "droplet", label: "Humedad", val: `${actual.humedad}%` },
+                { icon: "wind", label: "Viento", val: `${actual.viento} km/h ${actual.vientoDir}` },
+                { icon: "thermometer", label: "Rocío", val: `${actual.rocio}°` },
+                { icon: "activity", label: "Delta T", val: `${actual.deltaT}${actual.aptoPulverizacion ? " · apto" : ""}` },
+              ].map((m) => (
+                <div key={m.label} style={{ background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 12, padding: "8px 12px", minWidth: 92, backdropFilter: "blur(2px)" }}>
+                  <div className="row gap-6" style={{ alignItems: "center", fontSize: 11, opacity: 0.85, fontWeight: 600 }}><Icon name={m.icon} size={12} />{m.label}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2, whiteSpace: "nowrap" }}>{m.val}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mc-card">
         <div className="mc-card__head">
           <div>
@@ -502,6 +534,9 @@ function ClimaAlertas({ alertas, onGestionar }: { alertas: AlertaRow[]; onGestio
       <Section title="Críticos" seccion="critical" accentColor="var(--mc-red)" />
       <Section title="Alertas" seccion="warning" accentColor="var(--mc-amber)" />
       <Section title="Informativos" seccion="info" accentColor="var(--mc-blue)" />
+      {alertas.length === 0 && (
+        <div className="mc-empty"><div className="mc-empty__icon"><Icon name="shieldCheck" size={22} /></div>Sin alertas climáticas activas. Las que registres o detecte el sistema van a aparecer acá.</div>
+      )}
     </div>
   );
 }
