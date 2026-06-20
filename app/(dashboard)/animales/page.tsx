@@ -774,6 +774,25 @@ function AnimNutricion({ toast }: { toast: ReturnType<typeof useToast> }) {
   ], [] as { tropa: string; ing: string; kg: string; costo: string }[]));
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ tropa: "Tropa A", ing: "", kg: "", costo: "" });
+  const [costoTotalDia, setCostoTotalDia] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/raciones")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!Array.isArray(d) || d.length === 0) return;
+        setRaciones(
+          d.map((r: any) => ({
+            tropa: r.nombre || "Ración",
+            ing: r.descripcion || "—",
+            kg: r.materiaSeca ? `${r.materiaSeca} kg MS/cab` : "—",
+            costo: r.costoTotal ? `$${Math.round(r.costoTotal)}/cab` : "—",
+          }))
+        );
+        setCostoTotalDia(d.reduce((s: number, r: any) => s + (r.costoTotal || 0), 0));
+      })
+      .catch(() => {});
+  }, []);
 
   const crear = async () => {
     if (!form.ing) {
@@ -798,10 +817,10 @@ function AnimNutricion({ toast }: { toast: ReturnType<typeof useToast> }) {
     <div className="col gap-16">
       {/* KPIs */}
       <div className="grid g-cols-4 gap-16">
-        <KPI label="Raciones activas" value={String(raciones.length)} delta={demo("4 tropas alimentadas", "—")} trend="up" icon="leaf" accent />
-        <KPI label="Consumo diario" value={demo("12.4 t MS", "—")} delta={demo("Pradera + silaje", "—")} trend="up" icon="truck" />
-        <KPI label="Costo alimentación / día" value={demo("$184,500", "—")} delta={demo("$144/cabeza", "—")} trend="up" icon="dollar" />
-        <KPI label="GDP promedio" value={demo("0.92 kg/d", "—")} delta={demo("+0.08 vs mes pasado", "—")} trend="up" icon="arrowUp" />
+        <KPI label="Raciones activas" value={String(raciones.length)} delta={raciones.length ? `${raciones.length} ${raciones.length === 1 ? "tropa" : "tropas"}` : "Sin raciones"} trend="up" icon="leaf" accent />
+        <KPI label="Costo alimentación / día" value={costoTotalDia > 0 ? `$${Math.round(costoTotalDia).toLocaleString("es-AR")}` : "—"} delta={raciones.length ? "Suma de raciones" : "—"} trend="up" icon="dollar" />
+        <KPI label="Costo prom. / cabeza" value={costoTotalDia > 0 && raciones.length ? `$${Math.round(costoTotalDia / raciones.length).toLocaleString("es-AR")}` : "—"} delta="Por ración" trend="up" icon="truck" />
+        <KPI label="Ingredientes distintos" value={String(new Set(raciones.map((r) => r.ing).filter((x) => x && x !== "—")).size)} delta="En el plan" trend="up" icon="leaf" />
       </div>
 
       <div className="grid g-cols-2 gap-16">
@@ -1047,6 +1066,44 @@ function AnimSanidad({
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ ev: "", prod: "", cat: "Todo el rodeo", dosis: "", fecha: new Date().toISOString().slice(0, 10), caravana: "" });
 
+  // Datos reales de eventos sanitarios
+  useEffect(() => {
+    fetch("/api/eventos-sanitarios")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!Array.isArray(d) || d.length === 0) return;
+        const toneByEstado = (e: string) => (e === "Completada" || e === "Aplicada" ? "green" : e === "Hoy" || e === "Vencida" ? "red" : "amber");
+        setPlan(
+          d
+            .map((e: any) => {
+              const f = e.fechaProgramada || e.fecha;
+              return {
+                ev: e.tipo || e.descripcion || e.nombre || "Evento sanitario",
+                prod: e.producto || "—",
+                cat: e.categoria || e.tropa || "—",
+                dosis: e.dosis || "—",
+                fechaRaw: f || "",
+                fecha: f ? new Date(f).toLocaleDateString("es-AR") : "—",
+                n: String(e.cantidadAnimales ?? 1),
+                estado: e.estado || "Programada",
+                tone: toneByEstado(e.estado || "Programada"),
+              };
+            })
+            .sort((a: any, b: any) => new Date(b.fechaRaw).getTime() - new Date(a.fechaRaw).getTime())
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  // KPIs reales
+  const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0);
+  const hace30 = Date.now() - 30 * 86400000;
+  const pendientes = plan.filter((p: any) => p.estado !== "Completada" && p.estado !== "Aplicada").length;
+  const aplicadas30 = plan.filter((p: any) => (p.estado === "Completada" || p.estado === "Aplicada") && p.fechaRaw && new Date(p.fechaRaw).getTime() >= hace30).length;
+  const enTratamiento = plan.filter((p: any) => p.estado === "EnTratamiento" || p.estado === "En tratamiento").length;
+  const muertos = animales.filter((a) => /muert/i.test(a.estado || "")).length;
+  const mortalidad = animales.length > 0 ? ((muertos / animales.length) * 100).toFixed(1) : "0";
+
   const crear = async () => {
     if (!form.ev || !form.prod) {
       toast.show("Completá evento y producto", "err");
@@ -1075,10 +1132,10 @@ function AnimSanidad({
   return (
     <div className="col gap-16">
       <div className="grid g-cols-4">
-        <KPI label="Pendientes" value={demo("32", "0")} delta={demo("Vacuna aftosa + desparasit.", "—")} trend="warn" icon="syringe" warn />
-        <KPI label="Aplicadas últ. 30d" value={demo("248", "0")} delta={demo("Cobertura 91%", "—")} trend="up" icon="check" accent />
-        <KPI label="En tratamiento" value={demo("4", "0")} delta={demo("3 Tropa A · 1 Tropa B", "—")} trend="warn" icon="heart" />
-        <KPI label="Mortalidad anual" value={demo("1.8%", "—")} delta={demo("Por debajo del objetivo", "—")} trend="up" icon="activity" />
+        <KPI label="Pendientes" value={String(pendientes)} delta={pendientes > 0 ? "Por aplicar" : "Al día"} trend="warn" icon="syringe" warn />
+        <KPI label="Aplicadas últ. 30d" value={String(aplicadas30)} delta="Últimos 30 días" trend="up" icon="check" accent />
+        <KPI label="En tratamiento" value={String(enTratamiento)} delta={enTratamiento > 0 ? "Seguimiento activo" : "Ninguno"} trend="warn" icon="heart" />
+        <KPI label="Mortalidad" value={`${mortalidad}%`} delta={`${muertos} de ${animales.length}`} trend="up" icon="activity" />
       </div>
 
       <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -1171,9 +1228,46 @@ function AnimSanidad({
 }
 
 /* ============ TAB TIMELINE (Figma) ============ */
+type TimelineEvent = { fecha: string; hora: string; tipo: string; titulo: string; meta: string; tone: string; ts: number };
 function AnimTimeline() {
   const [filtro, setFiltro] = useState("Todo");
-  const events = demo([
+  const [reales, setReales] = useState<TimelineEvent[]>([]);
+
+  useEffect(() => {
+    const fmt = (iso: string) => {
+      const d = new Date(iso);
+      return { fecha: d.toLocaleDateString("es-AR"), hora: d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }), ts: d.getTime() };
+    };
+    Promise.all([
+      fetch("/api/eventos-sanitarios").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/registro-peso").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/eventos-reproductivos").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/movimientos-animales").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([san, peso, repro, mov]) => {
+      const evs: TimelineEvent[] = [];
+      (Array.isArray(san) ? san : []).forEach((e: any) => {
+        const f = e.fecha || e.fechaProgramada; if (!f) return;
+        const t = fmt(f);
+        evs.push({ ...t, tipo: "Sanidad", titulo: e.descripcion || e.tipo || "Evento sanitario", meta: [e.producto, e.dosis].filter(Boolean).join(" · ") || "—", tone: "green" });
+      });
+      (Array.isArray(peso) ? peso : []).forEach((p: any) => {
+        if (!p.fecha) return; const t = fmt(p.fecha);
+        evs.push({ ...t, tipo: "Peso", titulo: `Pesaje${p.animal?.caravana ? ` · ${p.animal.caravana}` : ""}`, meta: `${p.peso} kg${p.gananciaPromedioDiaria ? ` · GDP ${p.gananciaPromedioDiaria} kg/d` : ""}`, tone: "" });
+      });
+      (Array.isArray(repro) ? repro : []).forEach((e: any) => {
+        const f = e.fecha; if (!f) return; const t = fmt(f);
+        evs.push({ ...t, tipo: "Reproducción", titulo: e.tipo || "Evento reproductivo", meta: e.resultado || e.observaciones || "—", tone: "" });
+      });
+      (Array.isArray(mov) ? mov : []).forEach((m: any) => {
+        const f = m.fecha; if (!f) return; const t = fmt(f);
+        evs.push({ ...t, tipo: "Movimiento", titulo: m.tipo || "Movimiento", meta: [m.origen, m.destino].filter(Boolean).join(" → ") || "—", tone: "blue" });
+      });
+      evs.sort((a, b) => b.ts - a.ts);
+      setReales(evs);
+    });
+  }, []);
+
+  const eventsDemo = demo([
     { fecha: "18/04/2026", hora: "09:30", tipo: "Sanidad", titulo: "Vacunación aftosa aplicada", meta: "Tropa A · 148 animales · Dr. M. López", tone: "green" },
     { fecha: "15/04/2026", hora: "14:00", tipo: "Peso", titulo: "Pesada mensual Tropa B", meta: "325 animales · peso prom. 510 kg (+18)", tone: "" },
     { fecha: "12/04/2026", hora: "08:00", tipo: "Nutrición", titulo: "Cambio de ración Tropa C", meta: "De suplemento a grano maíz + núcleo", tone: "amber" },
@@ -1183,6 +1277,7 @@ function AnimTimeline() {
     { fecha: "02/04/2026", hora: "07:45", tipo: "Parto", titulo: "Parto normal", meta: "Vaca 0088 · ternero macho 38 kg", tone: "green" },
     { fecha: "28/03/2026", hora: "—", tipo: "Ingreso", titulo: "Ingreso de 24 vaquillonas", meta: "Compra Remate Liniers", tone: "" },
   ], [] as { fecha: string; hora: string; tipo: string; titulo: string; meta: string; tone: string }[]);
+  const events = reales.length > 0 ? reales : eventsDemo;
   const map: Record<string, string[]> = {
     Todo: [],
     Sanidad: ["Sanidad"],
@@ -1202,6 +1297,9 @@ function AnimTimeline() {
         </div>
       </div>
       <div className="mc-timeline">
+        {visibles.length === 0 && (
+          <div className="mc-empty"><div className="mc-empty__icon"><Icon name="timeline" size={22} /></div>Sin actividad registrada todavía. Los eventos sanitarios, pesajes, reproducción y movimientos van a aparecer acá.</div>
+        )}
         {visibles.map((e, i) => (
           <div key={i} className="mc-tl-item" style={{ gridTemplateColumns: "24px 1fr auto auto", gap: 14 }}>
             <span className={`mc-tl-item__dot mc-tl-item__dot--${e.tone === "blue" ? "blue" : e.tone === "red" ? "red" : e.tone === "amber" ? "warn" : ""}`}></span>
