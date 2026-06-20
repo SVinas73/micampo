@@ -216,7 +216,7 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
   const allTemps = days.flatMap((d) => [d.max, d.min]);
   const tempLow = allTemps.length ? Math.min(...allTemps) - 2 : 8;
   const tempHigh = allTemps.length ? Math.max(...allTemps) + 2 : 32;
-  const tY = (t: number) => 60 * (1 - (t - tempLow) / (tempHigh - tempLow || 1)) + 6;
+  const tY = (t: number) => 34 * (1 - (t - tempLow) / (tempHigh - tempLow || 1)) + 38;
 
   const InfoCell = ({ icon, big, sub, highlight }: { icon: string; big: React.ReactNode; sub: string; highlight?: boolean }) => (
     <div style={{ padding: "12px 14px", borderRight: "1px solid rgba(255,255,255,0.12)", background: highlight ? "rgba(255,255,255,0.10)" : "transparent", display: "flex", alignItems: "center", gap: 10 }}>
@@ -286,22 +286,22 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
             );
           })}
         </div>
-        <svg style={{ position: "absolute", top: 70, left: 0, width: "100%", height: 80, pointerEvents: "none" }} viewBox="0 0 700 80" preserveAspectRatio="none">
+        <svg style={{ position: "absolute", top: 80, left: 0, width: "100%", height: 80, pointerEvents: "none" }} viewBox="0 0 700 80" preserveAspectRatio="none">
           <defs>
             <linearGradient id="cl-max" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c08a22" stopOpacity="0.16" /><stop offset="100%" stopColor="#c08a22" stopOpacity="0" /></linearGradient>
             <linearGradient id="cl-min" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3a93b8" stopOpacity="0.12" /><stop offset="100%" stopColor="#3a93b8" stopOpacity="0" /></linearGradient>
           </defs>
           <polygon points={`50,80 ${days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")} 650,80`} fill="url(#cl-max)" />
           <polygon points={`50,80 ${days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} 650,80`} fill="url(#cl-min)" />
-          <polyline fill="none" stroke="#c08a22" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" points={days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")} />
-          <polyline fill="none" stroke="#3a93b8" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" points={days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} />
-          {days.map((d, i) => { const x = i * 100 + 50; return (<g key={i}><circle cx={x} cy={tY(d.max)} r="5" fill="#c08a22" stroke="white" strokeWidth="1.8" /><circle cx={x} cy={tY(d.min)} r="4.5" fill="#3a93b8" stroke="white" strokeWidth="1.6" /></g>); })}
+          <polyline fill="none" stroke="#c08a22" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" points={days.map((d, i) => `${i * 100 + 50},${tY(d.max)}`).join(" ")} />
+          <polyline fill="none" stroke="#3a93b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" points={days.map((d, i) => `${i * 100 + 50},${tY(d.min)}`).join(" ")} />
+          {days.map((d, i) => { const x = i * 100 + 50; return (<g key={i}><circle cx={x} cy={tY(d.max)} r="3" fill="#c08a22" stroke="white" strokeWidth="1.2" /><circle cx={x} cy={tY(d.min)} r="2.8" fill="#3a93b8" stroke="white" strokeWidth="1.1" /></g>); })}
         </svg>
-        <div style={{ position: "absolute", top: 70, left: 0, width: "100%", height: 80, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", pointerEvents: "none" }}>
+        <div style={{ position: "absolute", top: 80, left: 0, width: "100%", height: 80, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", pointerEvents: "none" }}>
           {days.map((d, i) => (
             <div key={i} style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: `${tY(d.max) - 18}px`, fontFamily: "var(--ff-mono)", fontSize: 12, fontWeight: 800, color: "var(--mc-ink)", whiteSpace: "nowrap" }}>{d.max}°</span>
-              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: `${tY(d.min) + 8}px`, fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 700, color: "var(--mc-text-2)", whiteSpace: "nowrap" }}>{d.min}°</span>
+              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: `${tY(d.max) - 16}px`, fontFamily: "var(--ff-mono)", fontSize: 12, fontWeight: 800, color: "var(--mc-ink)", whiteSpace: "nowrap" }}>{d.max}°</span>
+              <span style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", top: `${tY(d.min) + 6}px`, fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 700, color: "var(--mc-text-2)", whiteSpace: "nowrap" }}>{d.min}°</span>
             </div>
           ))}
         </div>
@@ -314,7 +314,7 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
         </div>
         <div style={{ position: "relative" }}>
           <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", pointerEvents: "none", zIndex: 0 }}>
-            {days.map((d, i) => <div key={i} style={{ borderRight: i < 6 ? "1px dashed rgba(0,0,0,0.06)" : "none", background: d.isToday ? "var(--mc-green-50)" : "transparent" }} />)}
+            {days.map((d, i) => <div key={i} style={{ borderRight: i < 6 ? "1px dashed rgba(0,0,0,0.06)" : "none", background: "transparent" }} />)}
           </div>
           <div style={{ position: "relative", zIndex: 1, minHeight: 26 }}>
             {rows.length === 0 && <div style={{ fontSize: 11, color: "var(--mc-text-3)", padding: "5px 2px" }}>Sin eventos esta semana.</div>}
