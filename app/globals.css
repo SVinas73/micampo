@@ -2237,3 +2237,9 @@ a:focus-visible {
   transition: background 0.15s;
 }
 .mc-lote-marker:hover { background: rgba(94, 119, 51, 0.92); }
+
+/* Skeleton shimmer para estados de carga */
+@keyframes mc-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

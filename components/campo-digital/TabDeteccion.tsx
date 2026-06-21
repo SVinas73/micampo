@@ -389,7 +389,11 @@ function EnfermedadesAnalisisIA({
           setError(d.error || "No se pudo analizar la imagen");
         } else {
           setResultado(d);
-          toast.show(`Detección: ${d.enfermedad} (${d.confianzaGlobal}%)`);
+          toast.show(
+            d.guardado
+              ? `Detección guardada: ${d.enfermedad} (${d.confianzaGlobal}%) — ya figura en Información`
+              : `Detección: ${d.enfermedad} (${d.confianzaGlobal}%)`
+          );
         }
       } catch {
         setError("No se pudo analizar la imagen");
