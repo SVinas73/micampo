@@ -58,12 +58,40 @@ export default function TabLotes() {
   const [dibujado, setDibujado] = useState<DibujoLote | null>(null);
 
   useEffect(() => {
-    fetch("/api/lotes")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (Array.isArray(d) && d.length > 0) setLotes(mapLotesApi(d));
-      })
-      .catch(() => {});
+    let cancelado = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/lotes");
+        const d = r.ok ? await r.json() : [];
+        if (!Array.isArray(d) || d.length === 0 || cancelado) return;
+        const base = mapLotesApi(d);
+        setLotes(base);
+
+        // NDVI real (Sentinel Hub Statistics API) para los lotes con geometría
+        const conGeo = base.filter((l) => l.geojson?.coordinates?.[0]?.length && l.dbId);
+        if (conGeo.length === 0) return;
+        const resp = await fetch("/api/lotes/ndvi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lotes: conGeo.map((l) => ({ id: l.dbId, geojson: l.geojson })) }),
+        }).catch(() => null);
+        if (!resp || !resp.ok || cancelado) return;
+        const { resultados } = (await resp.json()) as {
+          resultados?: Record<string, { ndvi: number; fecha: string | null }>;
+        };
+        if (!resultados || cancelado) return;
+        setLotes((prev) =>
+          prev.map((l) => {
+            const m = l.dbId ? resultados[l.dbId] : undefined;
+            if (!m || typeof m.ndvi !== "number") return l;
+            return { ...l, ndvi: m.ndvi, sano: m.ndvi === 0 ? l.sano : m.ndvi >= 0.5 };
+          })
+        );
+      } catch {
+        /* sin datos: el sistema sigue con NDVI en 0 */
+      }
+    })();
+    return () => { cancelado = true; };
   }, []);
 
   /* ---- Acciones de header (Figma: Eliminar Campo / Nuevo Campo) ---- */
