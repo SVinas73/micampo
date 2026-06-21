@@ -156,9 +156,17 @@ function LotePlot({ plot, metrica, maxHa, econ, maxMargen, maxCosto, activo, onC
   );
 }
 
+// Escala de color (de peor a mejor) por métrica, para la leyenda.
+const ESCALA: Partial<Record<Metrica, { stops: string[]; izq: string; der: string }>> = {
+  salud: { stops: ["#c93434", "#d9a538", "#8aa353", "#5e7733"], izq: "NDVI bajo", der: "NDVI alto" },
+  margen: { stops: ["#a12727", "#d98a38", "#d9a538", "#5e7733"], izq: "Pérdida", der: "Mejor margen" },
+  costo: { stops: ["#5e7733", "#d9a538", "#d98a38", "#c93434"], izq: "Más barato", der: "Más caro" },
+};
+
 export default function Campo3D({ lotes, economia }: { lotes: LoteUI[]; economia?: Record<string, EconLite> }) {
   const [metrica, setMetrica] = useState<Metrica>("superficie");
   const [sel, setSel] = useState<string | null>(null);
+  const [autoRot, setAutoRot] = useState(false);
   const plots = useMemo(() => proyectar(lotes), [lotes]);
   const maxHa = useMemo(() => Math.max(1, ...lotes.map((l) => l.ha || 0)), [lotes]);
   const econOf = (l: LoteUI): EconLite | undefined => (economia && l.dbId ? economia[l.dbId] : undefined);
@@ -191,7 +199,25 @@ export default function Campo3D({ lotes, economia }: { lotes: LoteUI[]; economia
             {m.label}
           </button>
         ))}
+        <span style={{ width: 1, alignSelf: "stretch", background: "rgba(0,0,0,0.08)", margin: "0 2px" }} />
+        <button
+          onClick={() => setAutoRot((v) => !v)}
+          aria-label="Rotación automática"
+          title="Rotación automática"
+          style={{ padding: "6px 9px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: autoRot ? "#5e7733" : "transparent", color: autoRot ? "#fff" : "#5b5749" }}
+        >
+          ⟳
+        </button>
       </div>
+
+      {/* Leyenda de escala de color (según métrica) */}
+      {ESCALA[metrica] && (
+        <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", zIndex: 5, background: "rgba(255,255,255,0.92)", padding: "7px 12px", borderRadius: 999, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 600, color: "#5b5749" }}>
+          <span>{ESCALA[metrica]!.izq}</span>
+          <span style={{ width: 120, height: 8, borderRadius: 999, background: `linear-gradient(90deg, ${ESCALA[metrica]!.stops.join(", ")})` }} />
+          <span>{ESCALA[metrica]!.der}</span>
+        </div>
+      )}
 
       {/* Leyenda / detalle */}
       <div style={{ position: "absolute", top: 14, right: 14, zIndex: 5, background: "rgba(255,255,255,0.92)", padding: "10px 12px", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: 12, maxWidth: 200 }}>
@@ -236,7 +262,7 @@ export default function Campo3D({ lotes, economia }: { lotes: LoteUI[]; economia
             onClick={() => setSel(p.lote.id)}
           />
         ))}
-        <OrbitControls enablePan maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={180} target={[0, 0, 0]} />
+        <OrbitControls enablePan autoRotate={autoRot} autoRotateSpeed={0.6} maxPolarAngle={Math.PI / 2.1} minDistance={20} maxDistance={180} target={[0, 0, 0]} />
       </Canvas>
     </div>
   );
