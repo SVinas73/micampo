@@ -60,7 +60,27 @@ function fc(lotes: LoteGeo[], layer: string): GeoJSON.FeatureCollection {
   };
 }
 
+const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
+const SENTINEL_LAYER = process.env.NEXT_PUBLIC_SENTINEL_NDVI_LAYER || "NDVI";
+
+function ndviWmsUrl(): string {
+  const hoy = new Date();
+  const desde = new Date(hoy.getTime() - 90 * 86400000);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const time = `${fmt(desde)}/${fmt(hoy)}`;
+  return (
+    `https://services.sentinel-hub.com/ogc/wms/${SENTINEL_INSTANCE}` +
+    `?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=${SENTINEL_LAYER}` +
+    `&FORMAT=image/png&TRANSPARENT=true&MAXCC=30&PRIORITY=mostRecent` +
+    `&TIME=${time}&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}`
+  );
+}
+
 function fillOpacity(layer: string, selectedId: string | null): any {
+  // Con NDVI satelital real, los lotes quedan apenas delineados (se ve la imagen NDVI)
+  if (layer === "NDVI" && SENTINEL_INSTANCE) {
+    return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 0.18, 0.04];
+  }
   const base = layer === "Satélite" ? 0.12 : 0.46;
   const sel = layer === "Satélite" ? 0.38 : 0.66;
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
@@ -157,6 +177,12 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
     map.on("load", () => {
+      // Capa NDVI real (Sentinel Hub) — solo si está configurada
+      if (SENTINEL_INSTANCE) {
+        map.addSource("ndvi", { type: "raster", tiles: [ndviWmsUrl()], tileSize: 256, attribution: "NDVI © Sentinel Hub / Copernicus Sentinel-2" });
+        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: layerRef.current === "NDVI" ? "visible" : "none" }, paint: { "raster-opacity": 0.85 } as any }, "etiquetas");
+      }
+
       map.addSource("lotes", { type: "geojson", data: fc(lotes, layer) });
       map.addLayer({ id: "lotes-fill", type: "fill", source: "lotes", paint: { "fill-color": ["get", "color"], "fill-opacity": fillOpacity(layerRef.current, selectedId ?? null) } as any });
       map.addLayer({ id: "lotes-line", type: "line", source: "lotes", paint: { "line-color": "#ffffff", "line-width": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6], "line-opacity": 0.95 } as any });
@@ -250,6 +276,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
     if (!map || !ready) return;
     (map.getSource("lotes") as maplibregl.GeoJSONSource)?.setData(fc(lotes, layer));
     if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
+    if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
     renderMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lotes, layer, ready]);
