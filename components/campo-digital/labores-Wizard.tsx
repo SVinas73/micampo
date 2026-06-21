@@ -32,6 +32,20 @@ const ACTIVIDADES: { categoria: string; icon: string; items: string[] }[] = [
 
 const STEPS = ["Selección de Actividad", "Lote y Superficie", "Maquinaria y RRHH", "Configuración Técnica", "Insumos", "Resumen y Costos"];
 
+/** Parámetros técnicos recomendados por defecto según la actividad/categoría. */
+function defaultsPara(actividad: string, categoria: string): Record<string, string> {
+  if (actividad === "Enrollado" || actividad === "Enfardado Prism.")
+    return { "Presión Hidráulica (bar)": "140", "Diámetro Rollo (m)": "1.50", "Núcleo": "Blando", "Sistema de Atado": "Red (Malla)", "Vueltas de Red": "2.5", "Número de Red": "20", "Picado (Cutter)": "ON", "Cuchillas Activas": "12" };
+  if (actividad === "Pulverización" || actividad === "Bioestimulante")
+    return { "Presión de trabajo (bar)": "3.0", "Caudal (L/Ha)": "80", "Velocidad (km/h)": "18", "Tipo de boquilla": "Abanico plano", "Ancho de banda (m)": "28" };
+  if (categoria === "Siembra & Plantación")
+    return { "Densidad (sem/Ha)": "80000", "Profundidad (cm)": "5", "Distancia entre líneas (cm)": "52" };
+  if (actividad === "Fertilización") return { "Dosis (kg/Ha)": "120", "Forma": "Sólida" };
+  if (actividad === "Riego") return { "Lámina objetivo (mm)": "15", "Caudal sistema (m³/h)": "220" };
+  if (categoria === "Labranza") return { "Profundidad de trabajo (cm)": "25", "Velocidad (km/h)": "9", "Ancho de labor (m)": "4.2" };
+  return {};
+}
+
 const INSUMOS_CATALOGO = [
   { nombre: "Urea Granulada", stock: 25000, unidad: "kg" },
   { nombre: "Urea Líquida (UAN)", stock: 0, unidad: "kg" },
@@ -69,19 +83,7 @@ export function NuevaOrdenLaborModal({
 
   // Cargar configuración por defecto según actividad
   useEffect(() => {
-    if (actividad === "Enrollado" || actividad === "Enfardado Prism.") {
-      setParametros({ "Presión Hidráulica (bar)": "140", "Diámetro Rollo (m)": "1.50", "Núcleo": "Blando", "Sistema de Atado": "Red (Malla)", "Vueltas de Red": "2.5", "Número de Red": "20", "Picado (Cutter)": "ON", "Cuchillas Activas": "12" });
-    } else if (actividad === "Pulverización" || actividad === "Bioestimulante") {
-      setParametros({ "Presión de trabajo (bar)": "3.0", "Caudal (L/Ha)": "80", "Velocidad (km/h)": "18", "Tipo de boquilla": "Abanico plano", "Ancho de banda (m)": "28" });
-    } else if (categoria === "Siembra & Plantación") {
-      setParametros({ "Densidad (sem/Ha)": "80000", "Profundidad (cm)": "5", "Distancia entre líneas (cm)": "52" });
-    } else if (actividad === "Fertilización") {
-      setParametros({ "Dosis (kg/Ha)": "120", "Forma": "Sólida" });
-    } else if (actividad === "Riego") {
-      setParametros({ "Lámina objetivo (mm)": "15", "Caudal sistema (m³/h)": "220" });
-    } else if (categoria === "Labranza") {
-      setParametros({ "Profundidad de trabajo (cm)": "25", "Velocidad (km/h)": "9", "Ancho de labor (m)": "4.2" });
-    }
+    setParametros(defaultsPara(actividad, categoria));
   }, [actividad, categoria]);
 
   const haNetas = useMemo(() => {
@@ -363,9 +365,9 @@ export function NuevaOrdenLaborModal({
                 <button
                   className="mc-btn mc-btn--secondary mc-btn--sm"
                   style={{ alignSelf: "flex-start", color: "var(--mc-blue)", borderColor: "var(--mc-blue)" }}
-                  onClick={() => setParametros((p) => ({ ...p }))}
+                  onClick={() => setParametros(defaultsPara(actividad, categoria))}
                 >
-                  <Icon name="bolt" size={13} /> Cargar Configuración Predefinida
+                  <Icon name="bolt" size={13} /> Restablecer valores recomendados
                 </button>
                 <div className="grid g-cols-3 gap-12">
                   {Object.entries(parametros).map(([k, v]) => (
@@ -402,9 +404,6 @@ export function NuevaOrdenLaborModal({
                     <div className="text-sm text-muted">Esta actividad no requiere parámetros técnicos adicionales.</div>
                   )}
                 </div>
-                <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ alignSelf: "flex-start", color: "var(--mc-blue)", borderColor: "var(--mc-blue)" }}>
-                  <Icon name="activity" size={13} /> Crear mapeo de telemetría
-                </button>
               </div>
             )}
 

@@ -302,48 +302,74 @@ function EstrategiaVacia() {
   );
 }
 
+type RiesgoClima = { amenaza: string; cultivo: string; lote: string; nivel: "Alto" | "Medio" | "Bajo"; probabilidad: number; ventana: string; causa: string };
+
 function Probabilidades() {
-  const probs = demo([
-    { rank: 1, nombre: "Roya Común", cientifico: "Puccinia sorghi", pct: 88, color: "#d13a3a", colorLight: "#e85f5f", tinte: "rgba(209,58,58,0.08)", tendencia: "up", deltaText: "+12% vs ayer", lotes: ["Lote 4", "Lote 7"] },
-    { rank: 2, nombre: "Tizón del Maíz", cientifico: "Exserohilum turcicum", pct: 42, color: "#d9a538", colorLight: "#e8b859", tinte: "rgba(217,165,56,0.08)", tendencia: "flat", deltaText: "Estable", lotes: ["Lote 2"] },
-    { rank: 3, nombre: "Cercospora", cientifico: "Mancha Gris", pct: 15, color: "#768f44", colorLight: "#6db870", tinte: "rgba(79,157,82,0.08)", tendencia: "down", deltaText: "Bajando", lotes: ["Lote 5 (Sector Norte)"] },
-  ], [] as { rank: number; nombre: string; cientifico: string; pct: number; color: string; colorLight: string; tinte: string; tendencia: string; deltaText: string; lotes: string[] }[]);
+  const [riesgos, setRiesgos] = useState<RiesgoClima[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [simulado, setSimulado] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/lotes/presion-plagas")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d?.riesgos)) setRiesgos(d.riesgos);
+        setSimulado(Boolean(d?.simulado));
+      })
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, []);
+
+  const colorDe = (n: string) => (n === "Alto" ? "#d13a3a" : n === "Medio" ? "#d9a538" : "#768f44");
+  const lightDe = (n: string) => (n === "Alto" ? "#e85f5f" : n === "Medio" ? "#e8b859" : "#6db870");
+
   return (
     <div className="mc-card ia-card">
       <div className="mc-card__head">
         <div className="row gap-8" style={{ alignItems: "center" }}>
-          <div className="mc-card__title">Probabilidades</div>
+          <div className="mc-card__title">Presión pronosticada</div>
           <IABadge />
         </div>
-        <span className="text-xs text-muted">Análisis predictivo · 7d</span>
+        <span className="text-xs text-muted">Clima · próx. 5d</span>
       </div>
-      <div className="col gap-10">
-        {probs.map((p, i) => (
-          <div key={i} style={{ padding: "12px 14px", background: p.tinte, borderRadius: 10, border: `1px solid ${p.color}30`, borderLeft: `4px solid ${p.color}` }}>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-              <div className="row gap-10" style={{ alignItems: "center", flex: 1, minWidth: 0 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: p.color, color: "white", display: "grid", placeItems: "center", fontFamily: "var(--ff-display)", fontSize: 14, fontWeight: 800, flexShrink: 0 }}>{p.rank}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13, lineHeight: 1.2 }}>{p.nombre} ({p.cientifico})</div>
+      {cargando ? (
+        <div className="text-sm text-muted" style={{ padding: "20px 4px", textAlign: "center" }}>Analizando el pronóstico…</div>
+      ) : riesgos.length === 0 ? (
+        <div className="mc-empty" style={{ marginTop: 4 }}>
+          <div className="mc-empty__icon"><Icon name="shieldCheck" size={22} /></div>
+          Sin presión significativa pronosticada para los próximos días según el clima de tus lotes.
+        </div>
+      ) : (
+        <div className="col gap-10">
+          {riesgos.map((p, i) => {
+            const color = colorDe(p.nivel); const colorLight = lightDe(p.nivel);
+            return (
+              <div key={i} style={{ padding: "12px 14px", background: `${color}14`, borderRadius: 10, border: `1px solid ${color}30`, borderLeft: `4px solid ${color}` }}>
+                <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <div className="row gap-10" style={{ alignItems: "center", flex: 1, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: color, color: "white", display: "grid", placeItems: "center", fontFamily: "var(--ff-display)", fontSize: 14, fontWeight: 800, flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13, lineHeight: 1.2 }}>{p.amenaza}</div>
+                      <div className="text-xs text-muted">{p.cultivo} · {p.ventana}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 800, color, lineHeight: 1 }}>{Math.round(p.probabilidad)}%</div>
+                </div>
+                <div style={{ height: 6, background: `${color}20`, borderRadius: 999, marginTop: 10, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${p.probabilidad}%`, background: `linear-gradient(90deg, ${color}, ${colorLight})`, borderRadius: 999 }}></div>
+                </div>
+                <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 8, fontSize: 11 }}>
+                  <span style={{ color, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="cloud" size={13} /> {p.causa}</span>
+                  <span style={{ padding: "2px 8px", background: "var(--mc-surface)", border: `1px solid ${color}40`, borderRadius: 999, fontSize: 10, fontWeight: 700, color }}>{p.lote}</span>
                 </div>
               </div>
-              <div style={{ fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 800, color: p.color, lineHeight: 1 }}>{p.pct}%</div>
-            </div>
-            <div style={{ height: 6, background: `${p.color}20`, borderRadius: 999, marginTop: 10, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${p.pct}%`, background: `linear-gradient(90deg, ${p.color}, ${p.colorLight})`, borderRadius: 999 }}></div>
-            </div>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 8, fontSize: 11 }}>
-              <span style={{ color: p.color, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={p.tendencia === "up" ? "arrowUp" : p.tendencia === "down" ? "arrowDown" : "arrowRight"} size={13} /> Tendencia: {p.deltaText}</span>
-              <div className="row gap-4" style={{ alignItems: "center" }}>
-                <span className="text-xs text-muted" style={{ fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="map" size={12} /> Afectados:</span>
-                {p.lotes.map((l, j) => (
-                  <span key={j} style={{ padding: "2px 8px", background: "var(--mc-surface)", border: `1px solid ${p.color}40`, borderRadius: 999, fontSize: 10, fontWeight: 700, color: p.color }}>{l}</span>
-                ))}
-              </div>
-            </div>
+            );
+          })}
+          <div className="text-xs text-muted" style={{ textAlign: "center" }}>
+            {simulado ? "Estimación por reglas climáticas" : "Refinado con IA"} · fuente Open-Meteo
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -389,7 +415,11 @@ function EnfermedadesAnalisisIA({
           setError(d.error || "No se pudo analizar la imagen");
         } else {
           setResultado(d);
-          toast.show(`Detección: ${d.enfermedad} (${d.confianzaGlobal}%)`);
+          toast.show(
+            d.guardado
+              ? `Detección guardada: ${d.enfermedad} (${d.confianzaGlobal}%) — ya figura en Información`
+              : `Detección: ${d.enfermedad} (${d.confianzaGlobal}%)`
+          );
         }
       } catch {
         setError("No se pudo analizar la imagen");

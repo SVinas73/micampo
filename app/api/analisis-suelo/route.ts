@@ -1,194 +1,96 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(req: Request) {
+/**
+ * Análisis de suelo — datos reales del usuario.
+ * GET: devuelve los análisis cargados (con su lote), ordenados por fecha.
+ * POST: registra un nuevo análisis de laboratorio para un lote.
+ */
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // ============================================
-    // DATOS HARDCODEADOS SEGÚN FIGMA
-    // ============================================
-
-    const cardsLotes = [
-      {
-        id: "1",
-        nombre: "Lote 1 - Ethel",
-        subtitulo: "Lote Ente / Tipo 2 parcelas",
-        parametros: [
-          {
-            nombre: "Nitrógeno",
-            valor: "pH 7,51",
-            porcentaje: 8,
-            color: "green",
-            necesitaFertilizante: false,
-          },
-          {
-            nombre: "Fósforo",
-            valor: "Alto 28%",
-            porcentaje: 28,
-            color: "orange",
-            necesitaFertilizante: true,
-          },
-          {
-            nombre: "Potasio",
-            valor: "65%",
-            porcentaje: 65,
-            color: "yellow",
-            necesitaFertilizante: false,
-          },
-        ],
-      },
-      {
-        id: "41",
-        nombre: "Lote 41 - Ibera",
-        subtitulo: "Lote Oeste / Tipo 1 parcela",
-        parametros: [
-          {
-            nombre: "Nitrógeno",
-            valor: "pH 7,2",
-            porcentaje: 12,
-            color: "green",
-            necesitaFertilizante: false,
-          },
-          {
-            nombre: "Fósforo",
-            valor: "Alto 35%",
-            porcentaje: 35,
-            color: "orange",
-            necesitaFertilizante: true,
-          },
-          {
-            nombre: "Potasio",
-            valor: "58%",
-            porcentaje: 58,
-            color: "yellow",
-            necesitaFertilizante: false,
-          },
-        ],
-      },
-      {
-        id: "7",
-        nombre: "Lote 7 - La Loma",
-        subtitulo: "Lote Sur / Tipo 3 parcelas",
-        parametros: [
-          {
-            nombre: "Nitrógeno",
-            valor: "pH 7,8",
-            porcentaje: 6,
-            color: "green",
-            necesitaFertilizante: false,
-          },
-          {
-            nombre: "Fósforo",
-            valor: "Medio 22%",
-            porcentaje: 22,
-            color: "orange",
-            necesitaFertilizante: false,
-          },
-          {
-            nombre: "Potasio",
-            valor: "72%",
-            porcentaje: 72,
-            color: "yellow",
-            necesitaFertilizante: false,
-          },
-        ],
-      },
-      {
-        id: "4",
-        nombre: "Lote 4 - El Bajo",
-        subtitulo: "Lote Norte / Tipo 2 parcelas",
-        parametros: [
-          {
-            nombre: "Nitrógeno",
-            valor: "pH 6,9",
-            porcentaje: 10,
-            color: "green",
-            necesitaFertilizante: false,
-          },
-          {
-            nombre: "Fósforo",
-            valor: "Bajo 18%",
-            porcentaje: 18,
-            color: "orange",
-            necesitaFertilizante: true,
-          },
-          {
-            nombre: "Potasio",
-            valor: "45%",
-            porcentaje: 45,
-            color: "yellow",
-            necesitaFertilizante: false,
-          },
-        ],
-      },
-    ];
-
-    const resultadosLaboratorio = [
-      {
-        id: "1",
-        fecha: "2024-12-16",
-        lote: "Lote Norte",
-        phEst: "0-20",
-        fosforo: "P ppm A",
-        nTotal: 45,
-        ph: 6.5,
-        estado: "Alto",
-      },
-      {
-        id: "2",
-        fecha: "2024-10-14",
-        lote: "Lote Sur",
-        phEst: "0-20",
-        fosforo: "19 ppm",
-        nTotal: 60,
-        ph: 6.2,
-        estado: "Apta",
-      },
-      {
-        id: "3",
-        fecha: "2024-10-12",
-        lote: "Lote Este",
-        phEst: "0-20",
-        fosforo: "29 ppm",
-        nTotal: 75,
-        ph: 6.6,
-        estado: "Óptimo",
-      },
-      {
-        id: "4",
-        fecha: "2024-10-10",
-        lote: "Lote Oeste",
-        phEst: "20-40",
-        fosforo: "10 ppm A",
-        nTotal: 50,
-        ph: 6.8,
-        estado: "Apta",
-      },
-    ];
-
-    const evolucionHistorica = [
-      { año: "2020", nitrogeno: 10, optimo: 20 },
-      { año: "2021", nitrogeno: 12, optimo: 22 },
-      { año: "2022", nitrogeno: 11, optimo: 21 },
-      { año: "2023", nitrogeno: 14, optimo: 24 },
-      { año: "2024", nitrogeno: 15, optimo: 25 },
-    ];
-
-    return NextResponse.json({
-      cardsLotes,
-      resultadosLaboratorio,
-      evolucionHistorica,
+    const analisis = await prisma.analisisSuelo.findMany({
+      where: { userId: session.user.id },
+      include: { lote: { select: { nombre: true, cultivo: true } } },
+      orderBy: { fechaAnalisis: "desc" },
+      take: 50,
     });
+
+    return NextResponse.json(analisis);
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error al obtener análisis de suelo:", error);
     return NextResponse.json(
-      { error: "Error al obtener datos de análisis de suelo" },
+      { error: "Error al obtener análisis de suelo" },
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { loteId, fechaAnalisis, pH, materiaOrganica, nitrogeno, fosforo, potasio, observaciones } = body;
+
+    if (!loteId) {
+      return NextResponse.json({ error: "El lote es requerido" }, { status: 400 });
+    }
+
+    const lote = await prisma.lote.findUnique({ where: { id: loteId } });
+    if (!lote || lote.userId !== session.user.id) {
+      return NextResponse.json({ error: "Lote no encontrado" }, { status: 404 });
+    }
+
+    const num = (v: unknown) => (v === undefined || v === null || v === "" ? null : Number(v));
+
+    // Recomendación agronómica determinística a partir de N/P/K, pH y MO.
+    const recomendaciones = recetaSuelo({
+      n: num(nitrogeno),
+      p: num(fosforo),
+      k: num(potasio),
+      ph: num(pH),
+      mo: num(materiaOrganica),
+    });
+
+    const analisis = await prisma.analisisSuelo.create({
+      data: {
+        loteId,
+        fechaAnalisis: fechaAnalisis ? new Date(fechaAnalisis) : new Date(),
+        pH: num(pH),
+        materiaOrganica: num(materiaOrganica),
+        nitrogeno: num(nitrogeno),
+        fosforo: num(fosforo),
+        potasio: num(potasio),
+        observaciones: observaciones || null,
+        recomendaciones: recomendaciones.length ? recomendaciones.join(" · ") : null,
+        userId: session.user.id,
+      },
+      include: { lote: { select: { nombre: true, cultivo: true } } },
+    });
+
+    return NextResponse.json(analisis, { status: 201 });
+  } catch (error) {
+    console.error("Error al crear análisis de suelo:", error);
+    return NextResponse.json({ error: "Error al crear análisis de suelo" }, { status: 500 });
+  }
+}
+
+function recetaSuelo({ n, p, k, ph, mo }: { n: number | null; p: number | null; k: number | null; ph: number | null; mo: number | null }): string[] {
+  const recs: string[] = [];
+  if (n != null && n < 50) recs.push(`Urea 46-0-0: ${Math.round((60 - n) * 2.6)} kg/Ha (déficit de N)`);
+  if (p != null && p < 15) recs.push(`Fosfato diamónico: ${Math.round((18 - p) * 6)} kg/Ha (déficit de P)`);
+  if (k != null && k < 120) recs.push(`Cloruro de potasio: ${Math.round((150 - k) * 0.8)} kg/Ha (déficit de K)`);
+  if (ph != null && ph < 6) recs.push(`Enmienda calcárea: 800-1200 kg/Ha (pH ${ph} bajo el óptimo)`);
+  if (mo != null && mo < 2.5) recs.push("Incorporar cultivos de cobertura para subir materia orgánica");
+  return recs;
 }
