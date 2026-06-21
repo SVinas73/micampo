@@ -301,7 +301,7 @@ function ClimaInner() {
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
 
-      {tab === "Inicio" && <ClimaInicio actual={clima?.actual ?? null} onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -33.3} lon={clima?.ubicacion?.lon ?? -61.5} marcador={tieneCampo} />}
+      {tab === "Inicio" && <ClimaInicio actual={clima?.actual ?? null} onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -32.8} lon={clima?.ubicacion?.lon ?? -56.0} marcador={tieneCampo} />}
       {tab === "Alertas" && <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />}
       {tab === "Registro de Lluvias" && (
         <ClimaLluvias lluvias={lluvias} historico={histLluvia} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} onEliminar={eliminarLluvia} />
@@ -330,7 +330,7 @@ function ClimaInner() {
                 />
               </Field>
             </div>
-            <div className="text-xs text-muted">Datos estimados a partir del modelo de pronóstico extendido para Don Ramón, Pergamino.</div>
+            <div className="text-xs text-muted">Pronóstico extendido (Open-Meteo) para la ubicación de tu lote.</div>
           </div>
         )}
       </Modal>

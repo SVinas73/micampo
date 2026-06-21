@@ -13,11 +13,20 @@ import {
 } from "./lotes-data";
 
 // Mapa satelital con terreno 3D (MapLibre GL) — solo en cliente
-const MapaNDVI = dynamic(() => import("./MapaLibre"), {
+const Mapa3D = dynamic(() => import("./MapaLibre"), {
   ssr: false,
   loading: () => (
     <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
       Cargando mapa 3D…
+    </div>
+  ),
+});
+// Mapa clásico (Leaflet) — vista 2D con NDVI satelital
+const MapaClasico = dynamic(() => import("./MapaNDVI"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
+      Cargando mapa…
     </div>
   ),
 });
@@ -315,23 +324,31 @@ function LotesMapa({
   };
   const legend = legendByLayer[layer] || [];
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null }));
+  const [vista, setVista] = useState<"3d" | "clasico">("3d");
+  const MapaActivo = vista === "3d" ? Mapa3D : MapaClasico;
 
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)", gap: 12, flexWrap: "wrap" }}>
-        <div className="mc-seg">
-          {["NDVI", "Satélite", "Cultivos"].map((l) => (
-            <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
-          ))}
+        <div className="row gap-10" style={{ alignItems: "center", flexWrap: "wrap" }}>
+          <div className="mc-seg">
+            <button className={vista === "3d" ? "is-on" : ""} onClick={() => setVista("3d")}><Icon name="map" size={12} /> 3D</button>
+            <button className={vista === "clasico" ? "is-on" : ""} onClick={() => setVista("clasico")}>Clásico</button>
+          </div>
+          <div className="mc-seg">
+            {["NDVI", "Satélite", "Cultivos"].map((l) => (
+              <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
+            ))}
+          </div>
         </div>
-        <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Dibujá tu lote con la herramienta de polígono (arriba a la derecha del mapa) · tocá un lote para ver su ficha</div>
+        <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Tocá un lote para ver su ficha · dibujá nuevos lotes desde el mapa</div>
       </div>
       <div style={{ height: 640, position: "relative" }}>
-        <MapaNDVI
+        <MapaActivo
           lotes={lotesGeo}
           selectedId={selected?.id ?? null}
           layer={layer}
-          onSelect={(id) => onSelect(lotes.find((l) => l.id === id) || null)}
+          onSelect={(id: string) => onSelect(lotes.find((l) => l.id === id) || null)}
           onDrawn={onDrawn}
         />
         {selected && (

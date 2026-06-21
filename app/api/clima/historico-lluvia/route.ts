@@ -18,8 +18,8 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const lat = searchParams.get("lat") || "-33.3";
-    const lon = searchParams.get("lon") || "-61.5";
+    const lat = searchParams.get("lat") || "-32.8"; // centro de Uruguay por defecto
+    const lon = searchParams.get("lon") || "-56.0";
 
     // Ventana: últimos 10 años completos (hasta el 31/12 del año pasado)
     const anioPasado = new Date().getFullYear() - 1;

@@ -7,6 +7,13 @@ import { Icon } from "@/components/mc/Icon";
 import { Copiloto } from "@/components/Copiloto";
 import { LoteScopeProvider, useLoteScope } from "@/components/LoteScope";
 
+function EstablecimientoLabel() {
+  const { establecimientos, establecimientoActivo, cargado } = useLoteScope();
+  if (!cargado) return null;
+  const txt = establecimientoActivo?.nombre || (establecimientos.length === 1 ? establecimientos[0].nombre : establecimientos.length > 1 ? `${establecimientos.length} establecimientos` : "Sin establecimiento");
+  return <div className="mc-sb__estab">{txt}</div>;
+}
+
 function LoteSelectorSidebar() {
   const { establecimientos, establecimientoId, setEstablecimientoId, lotes, loteId, setLoteId } = useLoteScope();
   if (lotes.length === 0 && establecimientos.length === 0) return null;
@@ -447,7 +454,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="mc-sb__brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="MiCampo" className="mc-sb__logo-full" />
-          <div className="mc-sb__estab">Est. Don Ramón</div>
+          <EstablecimientoLabel />
         </div>
 
         <div className="mc-sb__search" onClick={() => setPaletteOpen(true)}>
@@ -525,7 +532,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="mc-sb__avatar">{userInitials}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="mc-sb__user-name">{userName}</div>
-            <div className="mc-sb__user-role">Administrador · Don Ramón</div>
+            <div className="mc-sb__user-role">Administrador</div>
           </div>
           <button className="mc-icon-btn" title="Preferencias" style={{ width: 28, height: 28 }} onClick={() => setTweaksOpen(!tweaksOpen)}>
             <Icon name="settings" size={14} />

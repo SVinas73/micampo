@@ -60,6 +60,12 @@ function fc(lotes: LoteGeo[], layer: string): GeoJSON.FeatureCollection {
   };
 }
 
+function fillOpacity(layer: string, selectedId: string | null): any {
+  const base = layer === "Satélite" ? 0.12 : 0.46;
+  const sel = layer === "Satélite" ? 0.38 : 0.66;
+  return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
+}
+
 export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -72,15 +78,37 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
   const onSelectRef = useRef(onSelect);
   const onDrawnRef = useRef(onDrawn);
   const drawingRef = useRef(false);
+  const layerRef = useRef(layer);
+  const lotesRef = useRef(lotes);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
   onSelectRef.current = onSelect;
   onDrawnRef.current = onDrawn;
   drawingRef.current = drawing;
+  layerRef.current = layer;
+  lotesRef.current = lotes;
+
+  // Markers HTML con el nombre de cada lote (no dependen de glyphs)
+  const renderMarkers = () => {
+    const map = mapRef.current; if (!map) return;
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+    lotesRef.current.filter((l) => l.geojson?.coordinates?.[0]?.length).forEach((l) => {
+      const ring = l.geojson!.coordinates[0];
+      const lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+      const lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+      const el = document.createElement("div");
+      el.className = "mc-lote-marker";
+      el.textContent = l.name;
+      el.onclick = () => { if (!drawingRef.current) onSelectRef.current(l.id); };
+      markersRef.current.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map));
+    });
+  };
 
   // ---- init ----
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
     const conGeo = lotes.filter((l) => l.geojson?.coordinates?.[0]?.length);
-    let center: [number, number] = [-61.5, -33.3];
+    let center: [number, number] = [-56.0, -32.8];
     if (conGeo.length) {
       const ring = conGeo[0].geojson!.coordinates[0];
       center = [ring.reduce((s, p) => s + p[0], 0) / ring.length, ring.reduce((s, p) => s + p[1], 0) / ring.length];
@@ -98,6 +126,11 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
             tileSize: 256,
             attribution: "© Esri World Imagery",
           },
+          etiquetas: {
+            type: "raster",
+            tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
+            tileSize: 256,
+          },
           dem: {
             type: "raster-dem",
             tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
@@ -109,6 +142,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
         layers: [
           { id: "satelite", type: "raster", source: "satelite" },
           { id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-exaggeration": 0.4 } as any },
+          { id: "etiquetas", type: "raster", source: "etiquetas", paint: { "raster-opacity": 0.9 } as any },
         ],
         terrain: { source: "dem", exaggeration: 1.3 },
       } as any,
@@ -124,9 +158,9 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
 
     map.on("load", () => {
       map.addSource("lotes", { type: "geojson", data: fc(lotes, layer) });
-      map.addLayer({ id: "lotes-fill", type: "fill", source: "lotes", paint: { "fill-color": ["get", "color"], "fill-opacity": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 0.62, 0.4] } as any });
+      map.addLayer({ id: "lotes-fill", type: "fill", source: "lotes", paint: { "fill-color": ["get", "color"], "fill-opacity": fillOpacity(layerRef.current, selectedId ?? null) } as any });
       map.addLayer({ id: "lotes-line", type: "line", source: "lotes", paint: { "line-color": "#ffffff", "line-width": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6], "line-opacity": 0.95 } as any });
-      map.addLayer({ id: "lotes-label", type: "symbol", source: "lotes", layout: { "text-field": ["get", "name"], "text-size": 13, "text-font": ["Open Sans Bold"] } as any, paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,0.55)", "text-halo-width": 1.4 } as any });
+      renderMarkers();
       map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({ id: "draw-fill", type: "fill", source: "draw", paint: { "fill-color": "#5e7733", "fill-opacity": 0.3 } });
       map.addLayer({ id: "draw-line", type: "line", source: "draw", paint: { "line-color": "#d9a538", "line-width": 2.5, "line-dasharray": [2, 1] } });
@@ -164,7 +198,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
       setReady(true);
     });
 
-    return () => { map.remove(); mapRef.current = null; readyRef.current = false; };
+    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; map.remove(); mapRef.current = null; readyRef.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -215,12 +249,15 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
     const map = mapRef.current;
     if (!map || !ready) return;
     (map.getSource("lotes") as maplibregl.GeoJSONSource)?.setData(fc(lotes, layer));
+    if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
+    renderMarkers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lotes, layer, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !map.getLayer("lotes-fill")) return;
-    map.setPaintProperty("lotes-fill", "fill-opacity", ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 0.62, 0.4] as any);
+    map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layerRef.current, selectedId ?? null) as any);
     map.setPaintProperty("lotes-line", "line-width", ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6] as any);
   }, [selectedId, ready]);
 
