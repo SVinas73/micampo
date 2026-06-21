@@ -34,6 +34,16 @@ export function cropImage(cultivo?: string | null): string | null {
   return slug ? `/cultivos/${slug}.jpg` : null;
 }
 
+// Extensiones soportadas, en orden de preferencia. El componente prueba una a una.
+const EXTS = ["jpg", "jpeg", "png", "webp"];
+
+/** Lista de rutas candidatas (varias extensiones) para el cultivo. */
+export function cropImageCandidates(cultivo?: string | null): string[] {
+  const slug = cropSlug(cultivo);
+  if (!slug) return [];
+  return EXTS.map((e) => `/cultivos/${slug}.${e}`);
+}
+
 export const CULTIVO_COLOR: Record<string, string> = {
   Soja: "#768f44",
   Maíz: "#d9a538",

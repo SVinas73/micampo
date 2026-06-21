@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Icon } from "@/components/mc";
 import type { LoteUI } from "./lotes-data";
-import { cropImage, CULTIVO_COLOR } from "./cropImage";
+import { cropImageCandidates, CULTIVO_COLOR } from "./cropImage";
 
 type SeriePunto = { fecha: string; ndvi: number };
 type SerieNdvi = {
@@ -35,12 +35,13 @@ function Sparkline({ pts, color }: { pts: number[]; color: string }) {
   );
 }
 
-/** Imagen de cultivo con fallback a gradiente del color del cultivo. */
-function CropImg({ cultivo, style }: { cultivo?: string | null; style?: React.CSSProperties }) {
-  const [err, setErr] = useState(false);
-  const src = cropImage(cultivo);
+/** Imagen de cultivo: prueba varias extensiones y cae a un gradiente del color. */
+export function CropImg({ cultivo, style }: { cultivo?: string | null; style?: React.CSSProperties }) {
+  const candidatos = cropImageCandidates(cultivo);
+  const [idx, setIdx] = useState(0);
   const color = (cultivo && CULTIVO_COLOR[cultivo]) || "#5e7733";
-  if (!src || err) {
+  const src = candidatos[idx];
+  if (!src) {
     return (
       <div style={{ ...style, background: `linear-gradient(150deg, ${color} 0%, ${color}aa 100%)`, display: "grid", placeItems: "center", color: "#fff" }}>
         <Icon name={cultivo ? "sprout" : "leaf"} size={(Number(style?.width) || 48) * 0.42} />
@@ -48,7 +49,7 @@ function CropImg({ cultivo, style }: { cultivo?: string | null; style?: React.CS
     );
   }
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={cultivo || "cultivo"} onError={() => setErr(true)} style={{ ...style, objectFit: "cover" }} />;
+  return <img src={src} alt={cultivo || "cultivo"} onError={() => setIdx((i) => i + 1)} style={{ ...style, objectFit: "cover" }} />;
 }
 
 function centroide(l: LoteUI): { lat: number; lng: number } | null {
@@ -95,12 +96,14 @@ export function LoteOverlay({
   onNota,
   onEditar,
   onTarea,
+  onFicha,
 }: {
   lote: LoteUI;
   onClose: () => void;
   onNota: () => void;
   onEditar: () => void;
   onTarea: () => void;
+  onFicha?: () => void;
 }) {
   const c = centroide(lote);
   const cultivoColor = (lote.cultivo && CULTIVO_COLOR[lote.cultivo]) || "#5e7733";
@@ -273,7 +276,8 @@ export function LoteOverlay({
         {...fade(2)}
         style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8, pointerEvents: "auto" }}
       >
-        <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
+        {onFicha && <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={onFicha}><Icon name="list" size={13} />Ficha completa</button>}
+        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
         <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onNota}><Icon name="pen" size={13} />Nota</button>
         <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onEditar}><Icon name="edit" size={13} />Editar</button>
       </motion.div>

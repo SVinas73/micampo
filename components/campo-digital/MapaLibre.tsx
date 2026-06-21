@@ -301,8 +301,8 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
     <div style={{ position: "absolute", inset: 0 }}>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
 
-      {/* Controles dibujo / terreno */}
-      <div style={{ position: "absolute", top: 12, left: 12, zIndex: 500, display: "flex", gap: 8 }}>
+      {/* Controles dibujo / terreno — barra inferior centrada (no choca con la ficha del lote) */}
+      <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", zIndex: 500, display: "flex", gap: 8 }}>
         {!drawing ? (
           <>
             <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={iniciarDibujo}><Icon name="pen" size={13} />Dibujar lote</button>

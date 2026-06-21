@@ -353,7 +353,17 @@ function LotesMapa({
   const legend = legendByLayer[layer] || [];
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null }));
   const [vista, setVista] = useState<"3d" | "clasico">("3d");
+  const [fichaOpen, setFichaOpen] = useState(false);
   const MapaActivo = vista === "3d" ? Mapa3D : MapaClasico;
+
+  // Cambio rápido de lote a lote (sin ir a la lista)
+  const idx = selected ? lotes.findIndex((l) => l.id === selected.id) : -1;
+  const irA = (delta: number) => {
+    if (lotes.length === 0) return;
+    const base = idx < 0 ? 0 : (idx + delta + lotes.length) % lotes.length;
+    onSelect(lotes[base]);
+  };
+  const switcherBtn: React.CSSProperties = { borderRadius: 11, width: 32, height: 32, display: "grid", placeItems: "center", color: "var(--mc-ink)", cursor: "pointer", border: "none" };
 
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -379,6 +389,26 @@ function LotesMapa({
           onSelect={(id: string) => onSelect(lotes.find((l) => l.id === id) || null)}
           onDrawn={onDrawn}
         />
+
+        {/* Switcher de lote (arriba-centro) — saltar de lote a lote */}
+        {lotes.length > 0 && (
+          <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 550, display: "flex", alignItems: "center", gap: 6, pointerEvents: "auto" }}>
+            <button className="mc-glass" aria-label="Lote anterior" onClick={() => irA(-1)} style={switcherBtn}><Icon name="chevLeft" size={16} /></button>
+            <div className="mc-glass" style={{ borderRadius: 11, padding: "4px 6px", display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="map" size={13} style={{ color: "var(--mc-green-700)", marginLeft: 4 }} />
+              <select
+                value={selected?.id ?? ""}
+                onChange={(e) => onSelect(lotes.find((l) => l.id === e.target.value) || null)}
+                style={{ border: "none", background: "transparent", fontWeight: 700, fontSize: 13, color: "var(--mc-ink)", cursor: "pointer", maxWidth: 200, outline: "none" }}
+              >
+                <option value="" disabled>Elegí un lote…</option>
+                {lotes.map((l) => <option key={l.id} value={l.id}>{l.name}{l.cultivo ? ` · ${l.cultivo}` : ""}</option>)}
+              </select>
+            </div>
+            <button className="mc-glass" aria-label="Lote siguiente" onClick={() => irA(1)} style={switcherBtn}><Icon name="chevRight" size={16} /></button>
+          </div>
+        )}
+
         {selected && (
           <LoteOverlay
             lote={selected}
@@ -386,7 +416,24 @@ function LotesMapa({
             onNota={() => onNota(selected)}
             onEditar={() => onEditar(selected)}
             onTarea={() => onTarea(selected)}
+            onFicha={() => setFichaOpen(true)}
           />
+        )}
+
+        {/* Drawer: ficha técnica completa del lote */}
+        {selected && fichaOpen && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 800, display: "flex", justifyContent: "flex-end", pointerEvents: "auto" }}>
+            <div onClick={() => setFichaOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(15,22,18,0.32)", backdropFilter: "blur(1.5px)" }} />
+            <div className="mc-drawer-in" style={{ position: "relative", width: 420, maxWidth: "92%", height: "100%", overflowY: "auto", background: "var(--mc-surface)", boxShadow: "-12px 0 40px rgba(0,0,0,0.25)" }}>
+              <LoteFichaTecnica
+                lote={selected}
+                onClose={() => setFichaOpen(false)}
+                onNota={() => { setFichaOpen(false); onNota(selected); }}
+                onEditar={() => { setFichaOpen(false); onEditar(selected); }}
+                onTarea={() => { setFichaOpen(false); onTarea(selected); }}
+              />
+            </div>
+          </div>
         )}
         {legend.length > 0 && !selected && (
           <div style={{ position: "absolute", bottom: 12, left: 12, zIndex: 500, background: "rgba(255,255,255,0.95)", padding: "10px 14px", borderRadius: 10, fontSize: 12, display: "flex", gap: 14, flexWrap: "wrap", boxShadow: "var(--sh-md)" }}>

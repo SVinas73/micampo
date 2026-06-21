@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
 import { ForecastChart, type DayForecast } from "@/components/clima/ForecastChart";
-import { weatherTone } from "@/components/clima/weatherTone";
+import { WeatherScene } from "@/components/clima/WeatherScene";
 import { AnimatedWeatherIcon } from "@/components/clima/AnimatedWeatherIcon";
 import { VentanaPulverizacion, type HoraPulver } from "@/components/clima/VentanaPulverizacion";
 
@@ -340,12 +340,12 @@ function ClimaInner() {
 
 /* ================= TAB INICIO ================= */
 function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marcador }: { actual: ClimaActual | null; onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string; horas: HoraPulver[]; lat: number; lon: number; marcador: boolean }) {
-  const tone = weatherTone(actual?.icono ?? "cloud");
   return (
     <>
       {actual && (
         <div className="mc-card" style={{ padding: 0, overflow: "hidden", border: "none" }}>
-          <div style={{ background: tone.grad, color: "#fff", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, position: "relative" }}>
+          <WeatherScene cond={actual.cond || actual.icono} windy={(actual.viento ?? 0) >= 25} style={{ color: "#fff" }}>
+          <div style={{ padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 18, position: "relative" }}>
               <span style={{ width: 84, height: 84, borderRadius: "50%", background: "rgba(255,255,255,0.20)", display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(0,0,0,0.18)", flexShrink: 0 }}>
                 <AnimatedWeatherIcon cond={actual.cond || actual.icono} size={62} />
@@ -370,6 +370,7 @@ function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marca
               ))}
             </div>
           </div>
+          </WeatherScene>
         </div>
       )}
       <div className="mc-card">

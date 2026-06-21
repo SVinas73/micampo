@@ -8,6 +8,7 @@ import { Icon, Modal, Field, useToast, AnimatedNumber, Sparkline } from "@/compo
 import { useLoteScope } from "@/components/LoteScope";
 import { weatherTone } from "@/components/clima/weatherTone";
 import { AnimatedWeatherIcon } from "@/components/clima/AnimatedWeatherIcon";
+import { WeatherScene } from "@/components/clima/WeatherScene";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
 
@@ -230,7 +231,7 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
 
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
-      <div style={{ background: "var(--mc-field-grad)", color: "white", padding: "18px 22px 20px" }}>
+      <WeatherScene cond={(a as { cond?: string } | null)?.cond || a?.icono} windy={(a?.viento ?? 0) >= 25} style={{ color: "white", padding: "18px 22px 20px" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
           <div className="row" style={{ gap: 8, alignItems: "center" }}>
             <Icon name="map" size={13} />
@@ -266,7 +267,7 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
             <InfoCell icon="activity" big={a ? `ΔT ${a.deltaT}` : "—"} sub={a ? (a.aptoPulverizacion ? "Apto pulver." : "Fuera de rango") : ""} highlight />
           </div>
         </div>
-      </div>
+      </WeatherScene>
 
       <div style={{ position: "relative", borderBottom: "1px solid var(--mc-line)", background: "var(--mc-surface)" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
