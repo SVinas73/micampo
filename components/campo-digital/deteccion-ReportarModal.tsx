@@ -101,7 +101,7 @@ export function ReportarPlagaModal({
 
           {/* Right */}
           <div style={{ padding: "22px 28px 22px 22px", display: "flex", flexDirection: "column" }}>
-            <Section icon="camera" title="Upload Photo">
+            <Section icon="camera" title="Cargar foto">
               <label
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}

@@ -164,7 +164,7 @@ export function LoteOverlay({
             <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="sprout" size={12} />{lote.cultivo || "Sin cultivo"}</span>
           </div>
         </div>
-        <button onClick={onClose} className="mc-icon-btn" style={{ width: 30, height: 30, border: "none", marginLeft: 4, alignSelf: "flex-start" }}>
+        <button onClick={onClose} aria-label="Cerrar ficha del lote" className="mc-icon-btn" style={{ width: 30, height: 30, border: "none", marginLeft: 4, alignSelf: "flex-start" }}>
           <Icon name="x" size={14} />
         </button>
       </motion.div>

@@ -1050,6 +1050,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 @media (max-width: 820px) {
   .mc-app { grid-template-columns: 1fr; }
   .mc-sb { position: relative; height: auto; }
+  /* En tablet/mobile las KPIs van de a 2 (no apiladas de a 1, que queda muy largo) */
+  .g-cols-2, .g-cols-3, .g-cols-4, .g-cols-5, .g-cols-6 { grid-template-columns: repeat(2, 1fr); }
+  /* Las grillas inline de 2 columnas (resumen, modales) también reflowean */
+  .grid[style*="1.1fr"], .grid[style*="1fr 1fr"] { grid-template-columns: 1fr !important; }
+  .mc-seg { flex-wrap: wrap; }
+}
+@media (max-width: 520px) {
   .g-cols-2, .g-cols-3, .g-cols-4, .g-cols-5, .g-cols-6 { grid-template-columns: 1fr; }
 }
 
