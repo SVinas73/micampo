@@ -61,7 +61,9 @@ function fc(lotes: LoteGeo[], layer: string): GeoJSON.FeatureCollection {
 }
 
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
-const SENTINEL_LAYER = process.env.NEXT_PUBLIC_SENTINEL_NDVI_LAYER || "NDVI";
+// ID de la capa NDVI dentro de la instancia de Sentinel Hub. El default "3_NDVI"
+// es el ID de la plantilla estándar de Sentinel Hub; se puede sobreescribir.
+const SENTINEL_LAYER = process.env.NEXT_PUBLIC_SENTINEL_NDVI_LAYER || "3_NDVI";
 
 function ndviWmsUrl(): string {
   const hoy = new Date();

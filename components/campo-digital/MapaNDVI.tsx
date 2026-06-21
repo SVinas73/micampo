@@ -33,8 +33,9 @@ type Props = {
 };
 
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
-// Nombre de la capa NDVI dentro de tu instancia de Sentinel Hub (por defecto "NDVI")
-const SENTINEL_LAYER = process.env.NEXT_PUBLIC_SENTINEL_NDVI_LAYER || "NDVI";
+// ID de la capa NDVI dentro de tu instancia de Sentinel Hub. El default "3_NDVI"
+// es el ID de la plantilla estándar de Sentinel Hub; se puede sobreescribir.
+const SENTINEL_LAYER = process.env.NEXT_PUBLIC_SENTINEL_NDVI_LAYER || "3_NDVI";
 
 // Escala NDVI (0–1) → color (oliva DS). Para lotes sin medición (0) usa gris.
 function ndviColor(v: number) {
