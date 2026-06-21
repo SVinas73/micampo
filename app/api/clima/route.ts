@@ -64,8 +64,8 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const lat = searchParams.get("lat") || "-33.3"; // zona núcleo (Pampa) por defecto
-    const lon = searchParams.get("lon") || "-61.5";
+    const lat = searchParams.get("lat") || "-32.8"; // centro de Uruguay por defecto
+    const lon = searchParams.get("lon") || "-56.0";
 
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
