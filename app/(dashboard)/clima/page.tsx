@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { Icon, KPI, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
+import { Icon, KPI, Modal, Field, useToast, PageHeader, Tabs, IABadge } from "@/components/mc";
 import { ForecastChart, type DayForecast } from "@/components/clima/ForecastChart";
 import { WeatherScene } from "@/components/clima/WeatherScene";
 import { AnimatedWeatherIcon } from "@/components/clima/AnimatedWeatherIcon";
@@ -83,7 +83,18 @@ function ClimaInner() {
       : scopeLotes.find((l) => l.centroLatitud && l.centroLongitud) || null;
     if (target) setTieneCampo(true); else setTieneCampo(false);
     const q = target ? `?lat=${target.centroLatitud}&lon=${target.centroLongitud}` : "";
-    fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
+    fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => {
+      if (!c?.actual) return;
+      setClima(c);
+      // Persiste las alertas auto-generadas y recarga el listado (quedan en el historial)
+      if (Array.isArray(c.alertas) && c.alertas.length) {
+        fetch("/api/alertas-climaticas/sincronizar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ alertas: c.alertas, ubicacion: target?.nombre || c.ubicacion?.nombre || "Campo", lat: c.ubicacion?.lat, lon: c.ubicacion?.lon }),
+        }).then(() => fetch("/api/alertas-climaticas")).then((r) => (r && r.ok ? r.json() : null))
+          .then((d) => { if (Array.isArray(d) && d.length) setAlertas(d.map(mapAlertaApi)); }).catch(() => {});
+      }
+    }).catch(() => {});
     fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistLluvia(h); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loteActivo?.id, scopeLotes]);
@@ -110,21 +121,7 @@ function ClimaInner() {
 
     fetch("/api/alertas-climaticas")
       .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (!Array.isArray(d) || d.length === 0) return;
-        setAlertas(
-          d.map((a: { id: string; titulo: string; tipo: string; severidad: string; ubicacion?: string; descripcion?: string }) => ({
-            id: a.id,
-            seccion: a.severidad === "Alta" || a.severidad === "Extrema" || a.severidad === "Severo - Daño" ? "critical" : a.severidad === "Baja" ? "info" : "warning",
-            titulo: a.titulo,
-            lugar: a.ubicacion || "Área General",
-            icon: iconForTipo(a.tipo),
-            color: a.severidad === "Baja" ? "#3aa6d9" : a.severidad === "Moderado" || a.severidad === "Media" ? "#d9a538" : "#c08a22",
-            val: a.descripcion || a.tipo,
-            chart: "icon",
-          }))
-        );
-      })
+      .then((d) => { if (Array.isArray(d) && d.length) setAlertas(d.map(mapAlertaApi)); })
       .catch(() => {});
   }, []);
 
@@ -306,8 +303,18 @@ function ClimaInner() {
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
 
-      {tab === "Inicio" && <ClimaInicio actual={clima?.actual ?? null} onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -32.8} lon={clima?.ubicacion?.lon ?? -56.0} marcador={tieneCampo} />}
-      {tab === "Alertas" && <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />}
+      {tab === "Inicio" && (
+        <div className="col gap-16">
+          <RecomendacionDia clima={clima} />
+          <ClimaInicio actual={clima?.actual ?? null} onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -32.8} lon={clima?.ubicacion?.lon ?? -56.0} marcador={tieneCampo} />
+        </div>
+      )}
+      {tab === "Alertas" && (
+        <div className="col gap-16">
+          <PresionPlagasCard />
+          <ClimaAlertas alertas={alertas} onGestionar={gestionarTareas} />
+        </div>
+      )}
       {tab === "Registro de Lluvias" && (
         <ClimaLluvias lluvias={lluvias} historico={histLluvia} onRegistrar={() => setShowLluvia(true)} onEditar={setEditLluvia} onEliminar={eliminarLluvia} />
       )}
@@ -344,6 +351,63 @@ function ClimaInner() {
 }
 
 /* ================= TAB INICIO ================= */
+type RecDia = { titulo: string; detalle: string; prioridad: "alta" | "media" | "baja"; icono: string };
+
+function RecomendacionDia({ clima }: { clima: ClimaData | null }) {
+  const [recs, setRecs] = useState<RecDia[] | null>(null);
+  const [simulado, setSimulado] = useState(false);
+
+  useEffect(() => {
+    if (!clima?.actual) return;
+    fetch("/api/clima/recomendacion", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actual: clima.actual, dias: clima.dias, alertas: (clima as { alertas?: unknown }).alertas ?? [] }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) { setRecs(d.recomendaciones || []); setSimulado(Boolean(d.simulado)); } })
+      .catch(() => setRecs([]));
+  }, [clima?.actual?.temperatura, clima?.actual?.viento]);
+
+  if (!clima?.actual) return null;
+  const prColor = (p: string) => (p === "alta" ? "#c93434" : p === "media" ? "#d9a538" : "#5e7733");
+
+  return (
+    <div className="mc-card" style={{ background: "var(--mc-green-50)", borderColor: "var(--mc-green-200)" }}>
+      <div className="mc-card__head">
+        <div className="row gap-8" style={{ alignItems: "center" }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--mc-green-600)", color: "#fff", display: "grid", placeItems: "center" }}><Icon name="sparkles" size={17} /></div>
+          <div>
+            <div className="mc-card__eyebrow" style={{ color: "var(--mc-green-700)" }}>Asesor del clima</div>
+            <div className="mc-card__title mt-2">Recomendación del día</div>
+          </div>
+          <IABadge />
+        </div>
+      </div>
+      {recs === null ? (
+        <div className="text-sm text-muted" style={{ padding: "12px 2px" }}>Generando recomendaciones…</div>
+      ) : recs.length === 0 ? (
+        <div className="text-sm text-muted" style={{ padding: "6px 2px" }}>Sin recomendaciones para hoy.</div>
+      ) : (
+        <div className="grid g-cols-2 gap-10">
+          {recs.map((r, i) => {
+            const c = prColor(r.prioridad);
+            return (
+              <div key={i} style={{ background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderLeft: `4px solid ${c}`, borderRadius: 10, padding: "11px 13px", display: "flex", gap: 10 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: `${c}1a`, color: c, display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name={r.icono} size={15} /></div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13.5 }}>{r.titulo}</div>
+                  <div className="text-xs text-muted" style={{ marginTop: 2, lineHeight: 1.45 }}>{r.detalle}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {recs && recs.length > 0 && <div className="text-xs text-muted mt-8">{simulado ? "Generado por reglas a partir del clima" : "Generado con IA según tu clima y cultivos"}</div>}
+    </div>
+  );
+}
+
 function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marcador }: { actual: ClimaActual | null; onVerDetalle: (d: DayForecast) => void; dias: DayForecast[]; lugar: string; horas: HoraPulver[]; lat: number; lon: number; marcador: boolean }) {
   return (
     <>
@@ -449,6 +513,69 @@ const DEMO_ALERTAS: AlertaRow[] = [
   { seccion: "warning", titulo: "Estrés Hídrico Detectado", lugar: "Lote de Maíz", icon: "droplet", color: "#a88032", val: "Agua Útil: 20% (Crítico)", chart: "icon" },
   { seccion: "info", titulo: "Lluvia Registrada (Automático)", lugar: "Hace 30 min", icon: "droplet", color: "#3aa6d9", val: "45 mm", chart: "drop" },
 ];
+
+type RiesgoPlaga = { amenaza: string; cultivo: string; lote: string; nivel: "Alto" | "Medio" | "Bajo"; probabilidad: number; ventana: string; causa: string };
+
+function PresionPlagasCard() {
+  const [riesgos, setRiesgos] = useState<RiesgoPlaga[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [simulado, setSimulado] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/lotes/presion-plagas")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (Array.isArray(d?.riesgos)) setRiesgos(d.riesgos); setSimulado(Boolean(d?.simulado)); })
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, []);
+
+  const colorDe = (n: string) => (n === "Alto" ? "#c93434" : n === "Medio" ? "#d9a538" : "#5e7733");
+
+  return (
+    <div className="mc-card">
+      <div className="mc-card__head">
+        <div className="row gap-8" style={{ alignItems: "center" }}>
+          <div>
+            <div className="mc-card__eyebrow">Sanidad · pronóstico desde el clima</div>
+            <div className="mc-card__title mt-2">Presión de plagas y enfermedades</div>
+          </div>
+          <IABadge />
+        </div>
+        <span className="text-xs text-muted">Próx. 5 días</span>
+      </div>
+      {cargando ? (
+        <div className="text-sm text-muted" style={{ padding: "16px 2px", textAlign: "center" }}>Analizando el pronóstico…</div>
+      ) : riesgos.length === 0 ? (
+        <div className="mc-empty"><div className="mc-empty__icon"><Icon name="shieldCheck" size={22} /></div>Sin presión significativa pronosticada para tus cultivos según el clima de los próximos días.</div>
+      ) : (
+        <div className="col gap-10">
+          {riesgos.map((p, i) => {
+            const color = colorDe(p.nivel);
+            return (
+              <div key={i} style={{ padding: "12px 14px", background: `${color}12`, borderRadius: 10, border: `1px solid ${color}30`, borderLeft: `4px solid ${color}` }}>
+                <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <div className="row gap-10" style={{ alignItems: "center", flex: 1, minWidth: 0 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 8, background: color, color: "white", display: "grid", placeItems: "center" }}><Icon name="bug" size={15} /></div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13.5 }}>{p.amenaza}</div>
+                      <div className="text-xs text-muted">{p.cultivo} · {p.lote} · {p.ventana}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: "var(--ff-display)", fontSize: 24, fontWeight: 800, color }}>{Math.round(p.probabilidad)}%</div>
+                </div>
+                <div style={{ height: 5, background: `${color}22`, borderRadius: 999, marginTop: 9, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${p.probabilidad}%`, background: color, borderRadius: 999 }} />
+                </div>
+                <div className="text-xs" style={{ color, fontWeight: 600, marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}><Icon name="cloud" size={12} /> {p.causa}</div>
+              </div>
+            );
+          })}
+          <div className="text-xs text-muted" style={{ textAlign: "center" }}>{simulado ? "Estimación por reglas climáticas" : "Refinado con IA"} · fuente Open-Meteo</div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ClimaAlertas({ alertas, onGestionar }: { alertas: AlertaRow[]; onGestionar: (a: AlertaRow) => void }) {
   const [filtro, setFiltro] = useState<"todos" | "critical" | "warning" | "info">("todos");
@@ -760,6 +887,19 @@ function parseTags(obs?: string): Tag[] {
     .map((s) => s.trim())
     .filter(Boolean)
     .map(condToTag);
+}
+
+function mapAlertaApi(a: { id: string; titulo: string; tipo: string; severidad: string; ubicacion?: string; descripcion?: string }): AlertaRow {
+  return {
+    id: a.id,
+    seccion: a.severidad === "Alta" || a.severidad === "Extrema" || a.severidad === "Severo - Daño" ? "critical" : a.severidad === "Baja" ? "info" : "warning",
+    titulo: a.titulo,
+    lugar: a.ubicacion || "Área General",
+    icon: iconForTipo(a.tipo),
+    color: a.severidad === "Baja" ? "#3aa6d9" : a.severidad === "Moderado" || a.severidad === "Media" ? "#d9a538" : "#c08a22",
+    val: a.descripcion || a.tipo,
+    chart: "icon",
+  };
 }
 
 function iconForTipo(tipo: string): string {
