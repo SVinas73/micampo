@@ -23,12 +23,8 @@ const pivotOptions = [
   { value: "goteo", label: "Goteo" },
   { value: "aspersion", label: "Aspersión Manual" },
 ];
-const lotesOptions = [
-  { key: "Lote 4", label: "Lote 4 — Maíz V6", has: "18 Ha" },
-  { key: "Lote 7", label: "Lote 7 — Sorgo V3", has: "14 Ha" },
-  { key: "Lote 9", label: "Lote 9 — Girasol R1", has: "22 Ha" },
-  { key: "Lote 2", label: "Lote 2 — Soja V4", has: "16 Ha" },
-];
+
+type LoteOpt = { id: string; nombre: string; cultivo?: string | null; hectareas?: number | null };
 
 function Section({ title, icon, right, children }: { title: string; icon: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -49,27 +45,49 @@ export default function RegistrarRiegoModal({
   onClose,
   sugerencias,
   onRegistrar,
+  lotes: lotesProp = [],
+  loteActivoId,
 }: {
   open: boolean;
   onClose: () => void;
   sugerencias: SugerenciaIA[];
   onRegistrar: (r: RegistroRiego) => Promise<void> | void;
+  lotes?: LoteOpt[];
+  loteActivoId?: string | null;
 }) {
+  const hoyISO = new Date().toISOString().slice(0, 10);
   const [modo, setModo] = useState<"ia" | "manual">("ia");
-  const [fecha, setFecha] = useState("2025-09-25");
+  const [fecha, setFecha] = useState(hoyISO);
   const [hora, setHora] = useState("05:00");
   const [mm, setMm] = useState(15);
   const [metodo, setMetodo] = useState("pivot1");
-  const [lotes, setLotes] = useState<Record<string, boolean>>({ "Lote 4": true, "Lote 7": true, "Lote 9": false, "Lote 2": false });
+  const [lotes, setLotes] = useState<Record<string, boolean>>({});
   const [obs, setObs] = useState("");
   const [iaSel, setIaSel] = useState<Record<number, boolean>>({ 0: true, 1: true });
   const [guardando, setGuardando] = useState(false);
+
+  // Lotes reales del usuario; preselecciona el activo (o el primero)
+  const lotesOptions = React.useMemo(
+    () => lotesProp.map((l) => ({ key: l.id, label: `${l.nombre}${l.cultivo ? ` — ${l.cultivo}` : ""}`, has: l.hectareas ? `${Math.round(l.hectareas)} Ha` : "—", nombre: l.nombre })),
+    [lotesProp]
+  );
+  React.useEffect(() => {
+    if (!open) return;
+    setLotes((prev) => {
+      if (Object.keys(prev).length) return prev;
+      const init: Record<string, boolean> = {};
+      const def = loteActivoId || lotesOptions[0]?.key;
+      lotesOptions.forEach((o) => { init[o.key] = o.key === def; });
+      return init;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, lotesOptions]);
 
   if (!open) return null;
 
   const toggleLote = (k: string) => setLotes((p) => ({ ...p, [k]: !p[k] }));
   const selectedCount = Object.values(lotes).filter(Boolean).length;
-  const lotesSel = Object.keys(lotes).filter((k) => lotes[k]);
+  const lotesSel = lotesOptions.filter((o) => lotes[o.key]).map((o) => o.nombre);
   const metodoLabel = pivotOptions.find((p) => p.value === metodo)?.label || "Pivot Central 1";
 
   const overlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 };
@@ -150,8 +168,8 @@ export default function RegistrarRiegoModal({
                           </div>
                           <div>
                             <div style={{ fontWeight: 700, fontSize: 14, color: "#1e3a5f" }}>Riego Sugerido #{i + 1}</div>
-                            <div style={{ fontSize: 13, color: "#2c82c9", fontWeight: 600 }}>{i === 0 ? "SÁB 25 SEP" : "LUN 27 SEP"} · 05:00</div>
-                            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{lotesSel.join(" + ") || "Lotes según plan"}</div>
+                            <div style={{ fontSize: 13, color: "#2c82c9", fontWeight: 600 }}>{s.fecha} · 05:00</div>
+                            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{lotesSel.join(" + ") || "Elegí lotes abajo"}</div>
                           </div>
                         </div>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
