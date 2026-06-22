@@ -341,9 +341,6 @@ function TweaksPanel({ open, onClose }: { open: boolean; onClose: () => void }) 
       </div>
       <div className="mc-tweaks__body">
         <Row label="Modo" k="theme" value={tweaks.theme} options={[{ l: "Claro", v: "light" }, { l: "Oscuro", v: "dark" }]} />
-        <Row label="Paleta" k="palette" value={tweaks.palette} options={[{ l: "Natural", v: "natural" }, { l: "Terracotta", v: "terracotta" }, { l: "Bosque", v: "forest" }]} />
-        <Row label="Tipografía" k="font" value={tweaks.font} options={[{ l: "Editorial", v: "editorial" }, { l: "Grotesk", v: "grotesk" }, { l: "Moderno", v: "modern" }]} />
-        <Row label="Densidad" k="density" value={tweaks.density} options={[{ l: "Cómoda", v: "comfortable" }, { l: "Compacta", v: "compact" }]} />
       </div>
     </div>
   );

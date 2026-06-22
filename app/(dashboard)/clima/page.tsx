@@ -240,22 +240,27 @@ function ClimaInner() {
 
   const gestionarTareas = async (a: AlertaRow) => {
     const lote = lotes.find((l) => l.id);
+    if (!lote?.id) {
+      toast.show("Creá un lote primero para asignarle la tarea", "err");
+      return;
+    }
     try {
-      if (lote?.id) {
-        await fetch("/api/labores", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tipo: "Monitoreo",
-            fecha: new Date().toISOString().slice(0, 10),
-            loteId: lote.id,
-            superficieTrabajada: 0,
-            descripcion: `Tarea por alerta climática: ${a.titulo}`,
-          }),
-        });
-      }
-    } catch {}
-    toast.show(`Tarea creada para: ${a.titulo}`);
+      const res = await fetch("/api/labores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo: "Monitoreo",
+          fecha: new Date().toISOString().slice(0, 10),
+          loteId: lote.id,
+          superficieTrabajada: 0,
+          descripcion: `Tarea por alerta climática: ${a.titulo}`,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.show(`Tarea de monitoreo creada para "${lote.nombre}"`);
+    } catch {
+      toast.show("No se pudo crear la tarea", "err");
+    }
   };
 
   const alertasCount = alertas.length;

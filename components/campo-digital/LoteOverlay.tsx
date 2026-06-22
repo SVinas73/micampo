@@ -181,6 +181,17 @@ export function LoteOverlay({
           <motion.div {...fade(3)}><StatChip icon="droplet" label="Agua útil" value={lote.aguaUtil > 0 ? `${lote.aguaUtil}%` : "—"} color="#2c6bb8" /></motion.div>
           <motion.div {...fade(4)}><StatChip icon="activity" label="Estadio" value={lote.estadio && lote.estadio !== "—" ? lote.estadio : "—"} color="#d9a538" /></motion.div>
         </div>
+
+        {onFicha && (
+          <motion.button
+            {...fade(5)}
+            onClick={onFicha}
+            className="mc-glass mc-floatcard"
+            style={{ pointerEvents: "auto", borderRadius: 14, padding: "11px 14px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 700, fontSize: 13, color: "var(--mc-green-800)", width: "100%" }}
+          >
+            <Icon name="list" size={15} /> Ver ficha completa
+          </motion.button>
+        )}
       </div>
 
       {/* Tarjeta de cultivo (abajo-izquierda) */}
@@ -279,8 +290,7 @@ export function LoteOverlay({
         {...fade(2)}
         style={{ position: "absolute", top: 16, right: 16, display: "flex", flexDirection: "column", gap: 8, width: 152, pointerEvents: "auto" }}
       >
-        {onFicha && <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={onFicha}><Icon name="list" size={13} />Ficha completa</button>}
-        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
+        <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
         <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onNota}><Icon name="pen" size={13} />Nota</button>
         <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onEditar}><Icon name="edit" size={13} />Editar</button>
       </motion.div>
