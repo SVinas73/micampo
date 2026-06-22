@@ -147,37 +147,38 @@ export function LoteOverlay({
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 600, pointerEvents: "none" }}>
-      {/* Header flotante */}
-      <motion.div
-        {...fade(0)}
-        className="mc-glass"
-        style={{ position: "absolute", top: 16, left: 16, borderRadius: 18, padding: 12, display: "flex", alignItems: "center", gap: 12, maxWidth: 360, pointerEvents: "auto" }}
-      >
-        <CropImg cultivo={lote.cultivo} style={{ width: 64, height: 64, borderRadius: 14, flexShrink: 0 }} />
-        <div style={{ minWidth: 0 }}>
-          <div className="row gap-6" style={{ alignItems: "center" }}>
-            <span className="font-semi" style={{ fontSize: 15.5, color: "var(--mc-ink)" }}>{lote.name}</span>
-            <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`} style={{ fontSize: 10 }}>{lote.sano ? "Saludable" : "Atención"}</span>
+      {/* Columna izquierda: header + chips (sin solaparse) */}
+      <div style={{ position: "absolute", top: 16, left: 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: 344, pointerEvents: "none" }}>
+        <motion.div
+          {...fade(0)}
+          className="mc-glass"
+          style={{ borderRadius: 18, padding: 12, display: "flex", alignItems: "center", gap: 12, pointerEvents: "auto" }}
+        >
+          <CropImg cultivo={lote.cultivo} style={{ width: 60, height: 60, borderRadius: 14, flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <div className="row gap-6" style={{ alignItems: "center" }}>
+              <span className="font-semi" style={{ fontSize: 15.5, color: "var(--mc-ink)" }}>{lote.name}</span>
+              <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`} style={{ fontSize: 10 }}>{lote.sano ? "Saludable" : "Atención"}</span>
+            </div>
+            <div className="text-xs text-muted" style={{ marginTop: 2 }}>
+              {c ? `${c.lat.toFixed(4)}° , ${c.lng.toFixed(4)}°` : lote.campo}
+            </div>
+            <div className="row gap-8" style={{ marginTop: 6 }}>
+              <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="map" size={12} />{lote.ha} ha</span>
+              <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="sprout" size={12} />{lote.cultivo || "Sin cultivo"}</span>
+            </div>
           </div>
-          <div className="text-xs text-muted" style={{ marginTop: 2 }}>
-            {c ? `${c.lat.toFixed(4)}° , ${c.lng.toFixed(4)}°` : lote.campo}
-          </div>
-          <div className="row gap-8" style={{ marginTop: 6 }}>
-            <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="map" size={12} />{lote.ha} ha</span>
-            <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="sprout" size={12} />{lote.cultivo || "Sin cultivo"}</span>
-          </div>
-        </div>
-        <button onClick={onClose} aria-label="Cerrar ficha del lote" className="mc-icon-btn" style={{ width: 30, height: 30, border: "none", marginLeft: 4, alignSelf: "flex-start" }}>
-          <Icon name="x" size={14} />
-        </button>
-      </motion.div>
+          <button onClick={onClose} aria-label="Cerrar ficha del lote" className="mc-icon-btn" style={{ width: 30, height: 30, border: "none", marginLeft: 4, alignSelf: "flex-start" }}>
+            <Icon name="x" size={14} />
+          </button>
+        </motion.div>
 
-      {/* Chips de datos flotantes */}
-      <div style={{ position: "absolute", top: 120, left: 16, display: "flex", flexWrap: "wrap", gap: 10, maxWidth: 340, pointerEvents: "auto" }}>
-        <motion.div {...fade(1)}><StatChip icon="map" label="Superficie" value={`${lote.ha} ha`} color="#5e7733" /></motion.div>
-        <motion.div {...fade(2)}><StatChip icon="leaf" label="NDVI" value={lote.ndvi > 0 ? lote.ndvi.toFixed(2) : "—"} color="#768f44" /></motion.div>
-        <motion.div {...fade(3)}><StatChip icon="droplet" label="Agua útil" value={lote.aguaUtil > 0 ? `${lote.aguaUtil}%` : "—"} color="#2c6bb8" /></motion.div>
-        <motion.div {...fade(4)}><StatChip icon="activity" label="Estadio" value={lote.estadio && lote.estadio !== "—" ? lote.estadio : "—"} color="#d9a538" /></motion.div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, pointerEvents: "auto" }}>
+          <motion.div {...fade(1)}><StatChip icon="map" label="Superficie" value={`${lote.ha} ha`} color="#5e7733" /></motion.div>
+          <motion.div {...fade(2)}><StatChip icon="leaf" label="NDVI" value={lote.ndvi > 0 ? lote.ndvi.toFixed(2) : "—"} color="#768f44" /></motion.div>
+          <motion.div {...fade(3)}><StatChip icon="droplet" label="Agua útil" value={lote.aguaUtil > 0 ? `${lote.aguaUtil}%` : "—"} color="#2c6bb8" /></motion.div>
+          <motion.div {...fade(4)}><StatChip icon="activity" label="Estadio" value={lote.estadio && lote.estadio !== "—" ? lote.estadio : "—"} color="#d9a538" /></motion.div>
+        </div>
       </div>
 
       {/* Tarjeta de cultivo (abajo-izquierda) */}
@@ -271,15 +272,15 @@ export function LoteOverlay({
         </motion.div>
       )}
 
-      {/* Acciones rápidas (arriba-derecha) */}
+      {/* Acciones rápidas (arriba-derecha, en columna para no solaparse) */}
       <motion.div
         {...fade(2)}
-        style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8, pointerEvents: "auto" }}
+        style={{ position: "absolute", top: 16, right: 16, display: "flex", flexDirection: "column", gap: 8, width: 152, pointerEvents: "auto" }}
       >
-        {onFicha && <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={onFicha}><Icon name="list" size={13} />Ficha completa</button>}
-        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
-        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onNota}><Icon name="pen" size={13} />Nota</button>
-        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onEditar}><Icon name="edit" size={13} />Editar</button>
+        {onFicha && <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={onFicha}><Icon name="list" size={13} />Ficha completa</button>}
+        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
+        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onNota}><Icon name="pen" size={13} />Nota</button>
+        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onEditar}><Icon name="edit" size={13} />Editar</button>
       </motion.div>
     </div>
   );

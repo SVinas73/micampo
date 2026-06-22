@@ -44,6 +44,8 @@ export interface AgregarCampoData {
   nombre: string;
   ubicacion: string;
   hectareas: number;
+  cultivo: string | null;
+  establecimientoId: string | null;
   tenencia: "propio" | "arrendado";
   valor?: string;
   moneda?: string;
@@ -57,6 +59,8 @@ export function AgregarCampoModal({
   defaultHectareas,
   dibujadoEnMapa = false,
   centro,
+  establecimientos = [],
+  establecimientoActivoId,
 }: {
   titulo?: string;
   onClose: () => void;
@@ -64,11 +68,15 @@ export function AgregarCampoModal({
   defaultHectareas?: number;
   dibujadoEnMapa?: boolean;
   centro?: { lat: number; lng: number };
+  establecimientos?: { id: string; nombre: string }[];
+  establecimientoActivoId?: string | null;
 }) {
   const tituloFinal = titulo ?? (dibujadoEnMapa ? "Nuevo lote dibujado en el mapa" : "Crear Nuevo Establecimiento");
   const [nombre, setNombre] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [hectareas, setHectareas] = useState(defaultHectareas != null ? String(defaultHectareas) : "100");
+  const [cultivo, setCultivo] = useState("");
+  const [establecimientoId, setEstablecimientoId] = useState(establecimientoActivoId || "");
   const [tenencia, setTenencia] = useState<"propio" | "arrendado">("propio");
   const [valor, setValor] = useState("");
   const [moneda, setMoneda] = useState("USD/Ha");
@@ -100,7 +108,7 @@ export function AgregarCampoModal({
   const guardar = async () => {
     if (!nombre.trim() || saving) return;
     setSaving(true);
-    await onConfirm({ nombre: nombre.trim(), ubicacion, hectareas: parseFloat(hectareas) || 0, tenencia, valor, moneda, frecuencia });
+    await onConfirm({ nombre: nombre.trim(), ubicacion, hectareas: parseFloat(hectareas) || 0, cultivo: cultivo || null, establecimientoId: establecimientoId || null, tenencia, valor, moneda, frecuencia });
     setSaving(false);
   };
 
@@ -155,6 +163,28 @@ export function AgregarCampoModal({
             </div>
           </Section>
 
+          <Section icon="sprout" title="Cultivo y campo">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div>
+                <label style={lbl}>Cultivo</label>
+                <select style={inp} value={cultivo} onChange={(e) => setCultivo(e.target.value)}>
+                  <option value="">Sin cultivo</option>
+                  {["Soja", "Maíz", "Trigo", "Cebada", "Girasol", "Sorgo", "Alfalfa", "Trébol", "Avena"].map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Campo (establecimiento)</label>
+                <select style={inp} value={establecimientoId} onChange={(e) => setEstablecimientoId(e.target.value)}>
+                  <option value="">Sin asignar</option>
+                  {establecimientos.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                </select>
+                {establecimientos.length === 0 && (
+                  <div className="text-xs" style={{ color: "var(--mc-text-3)", marginTop: 4 }}>Podés crear campos en la sección Establecimientos.</div>
+                )}
+              </div>
+            </div>
+          </Section>
+
           <Section icon="users" title="Régimen de Tenencia">
             <div style={{ display: "flex", gap: 8 }}>
               {([["propio", "Propio"], ["arrendado", "Arrendado"]] as const).map(([val, label]) => {
@@ -203,7 +233,88 @@ export function AgregarCampoModal({
   );
 }
 
-/* ========== ELIMINAR CAMPO (destructivo) ========== */
+/* ========== ELIMINAR CAMPO / ESTABLECIMIENTO (destructivo) ========== */
+export function EliminarCampoEstModal({
+  campos,
+  onClose,
+  onConfirm,
+}: {
+  campos: { id: string; nombre: string; lotesCount?: number }[];
+  onClose: () => void;
+  onConfirm: (id: string) => Promise<void> | void;
+}) {
+  const [campoId, setCampoId] = useState(campos[0]?.id ?? "");
+  const [confirmado, setConfirmado] = useState(false);
+  const [borrando, setBorrando] = useState(false);
+  const sel = campos.find((c) => c.id === campoId) || campos[0];
+
+  const eliminar = async () => {
+    if (!confirmado || borrando || !campoId) return;
+    setBorrando(true);
+    await onConfirm(campoId);
+    setBorrando(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: 16, width: 500, maxWidth: "100%", maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ background: "linear-gradient(135deg,#c93434 0%,#7f1d1d 100%)", padding: "22px 28px 20px", color: "#fff", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
+          <div>
+            <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 6, letterSpacing: ".06em", textTransform: "uppercase" }}>Acción irreversible</div>
+            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", display: "flex", alignItems: "center", gap: 10 }}>
+              <Icon name="alert" size={26} /> Eliminar Campo
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>Se elimina el establecimiento. Sus lotes NO se borran.</div>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, width: 34, height: 34, cursor: "pointer", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <Icon name="x" size={15} />
+          </button>
+        </div>
+
+        <div style={{ padding: "22px 28px", overflowY: "auto", flex: 1 }}>
+          {campos.length === 0 ? (
+            <div style={{ fontSize: 14, color: "var(--mc-text-2)" }}>No hay campos para eliminar. Creá uno en la sección Establecimientos.</div>
+          ) : (
+            <>
+              <Section icon="building" title="Campo">
+                <label style={lbl}>Seleccioná el campo a eliminar</label>
+                <select value={campoId} onChange={(e) => { setCampoId(e.target.value); setConfirmado(false); }} style={inp}>
+                  {campos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}{c.lotesCount ? ` · ${c.lotesCount} lote(s)` : ""}</option>
+                  ))}
+                </select>
+              </Section>
+
+              <div style={{ background: "#fef2f2", border: "1.5px solid #fca5a5", borderRadius: 10, padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <Icon name="alert" size={18} style={{ flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#b91c1c", marginBottom: 4 }}>¡Atención!</div>
+                  <div style={{ fontSize: 13, color: "#7f1d1d", lineHeight: 1.5 }}>
+                    Vas a eliminar el campo <strong>{sel?.nombre}</strong>. {sel?.lotesCount ? <>Sus <strong>{sel.lotesCount} lote(s)</strong> NO se eliminan: quedan “Sin asignar” y los podés reasignar.</> : "No tiene lotes asignados."}
+                  </div>
+                </div>
+              </div>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: "var(--mc-ink)", padding: "10px 12px", background: "#f8fafc", borderRadius: 8, border: "1.5px solid #e2e8f0" }}>
+                <input type="checkbox" checked={confirmado} onChange={(e) => setConfirmado(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#c93434", cursor: "pointer" }} />
+                Confirmo que quiero eliminar este campo
+              </label>
+            </>
+          )}
+        </div>
+
+        <div style={{ padding: "16px 28px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
+          <button className="mc-btn mc-btn--secondary" onClick={onClose}>Cancelar</button>
+          <button disabled={!confirmado || borrando || campos.length === 0} onClick={eliminar} className="mc-btn" style={{ background: confirmado ? "#c93434" : "#fca5a5", color: "#fff", border: "none", cursor: confirmado ? "pointer" : "not-allowed" }}>
+            <Icon name="trash" size={14} />{borrando ? "Eliminando..." : "Eliminar Campo"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ========== ELIMINAR LOTE (destructivo) ========== */
 export function EliminarCampoModal({
   lotes,
   initialId,

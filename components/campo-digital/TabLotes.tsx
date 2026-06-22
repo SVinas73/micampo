@@ -8,7 +8,7 @@ import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import { useSetHeaderActions } from "./ActionsContext";
 import {
-  LOTES_INICIALES, mapLotesApi, fechaCorta,
+  LOTES_INICIALES, mapLotesApi, fechaCorta, CULTIVO_COLORES,
   type LoteUI,
 } from "./lotes-data";
 
@@ -33,7 +33,7 @@ const MapaClasico = dynamic(() => import("./MapaNDVI"), {
 
 type DibujoLote = { geojson: { type: "Polygon"; coordinates: number[][][] }; hectareas: number; centro: { lat: number; lng: number }; perimetro: number };
 import {
-  AgregarCampoModal, EliminarCampoModal, EditarLoteModal, NuevaTareaModal,
+  AgregarCampoModal, EliminarCampoModal, EliminarCampoEstModal, EditarLoteModal, NuevaTareaModal,
   type AgregarCampoData, type EditarLoteData, type NuevaTareaData,
 } from "./lotes-Modales";
 import { LoteOverlay } from "./LoteOverlay";
@@ -49,6 +49,7 @@ export default function TabLotes() {
   const [layer, setLayer] = useState("NDVI");
   const [showAgregar, setShowAgregar] = useState(searchParams.get("modal") === "nuevo");
   const [showEliminar, setShowEliminar] = useState(false);
+  const [showEliminarCampo, setShowEliminarCampo] = useState(false);
   const [showFiltros, setShowFiltros] = useState(false);
   const [filtroCultivo, setFiltroCultivo] = useState("Todos");
   const [editLote, setEditLote] = useState<LoteUI | null>(null);
@@ -97,6 +98,9 @@ export default function TabLotes() {
   /* ---- Acción de header: crear lote (la eliminación va en la toolbar del mapa) ---- */
   useSetHeaderActions(
     <>
+      <button className="mc-btn mc-btn--red" onClick={() => setShowEliminarCampo(true)}>
+        <Icon name="trash" size={14} />Eliminar campo
+      </button>
       <button className="mc-btn mc-btn--primary" onClick={() => setShowAgregar(true)}>
         <Icon name="plus" size={14} />Nuevo lote
       </button>
@@ -129,12 +133,12 @@ export default function TabLotes() {
         body: JSON.stringify({
           nombre: data.nombre,
           hectareas: data.hectareas,
-          cultivo: null,
+          cultivo: data.cultivo,
           coordenadas: geom?.geojson ?? null,
           centroLatitud: geom?.centro.lat ?? null,
           centroLongitud: geom?.centro.lng ?? null,
           perimetro: geom?.perimetro ?? null,
-          establecimientoId: establecimientoActivo?.id ?? null,
+          establecimientoId: data.establecimientoId ?? establecimientoActivo?.id ?? null,
         }),
       });
       let dbId: string | undefined;
@@ -143,8 +147,9 @@ export default function TabLotes() {
         ...prev,
         {
           id: dbId || `L-${prev.length + 1}`, dbId, name: data.nombre, campo: data.nombre, ha: data.hectareas,
-          cultivo: null, estadio: "—", ndvi: 0, aguaUtil: 0, sano: true, vacio: true, comentarios: [],
-          geojson: geom?.geojson ?? null, cultivoColor: null,
+          cultivo: data.cultivo, estadio: data.cultivo ? "Vegetativo" : "—", ndvi: 0, aguaUtil: 0, sano: true, vacio: !data.cultivo, comentarios: [],
+          geojson: geom?.geojson ?? null, cultivoColor: data.cultivo ? (CULTIVO_COLORES[data.cultivo] || "#5e7733") : null,
+          establecimientoId: data.establecimientoId ?? establecimientoActivo?.id ?? null,
         },
       ]);
       setDibujado(null);
@@ -167,6 +172,16 @@ export default function TabLotes() {
     toast.show(`Lote "${lote?.name || ""}" eliminado definitivamente`);
     setShowEliminar(false);
     recargar(); // refresca el selector global
+  };
+
+  const eliminarCampoEst = async (id: string) => {
+    const camp = establecimientos.find((e) => e.id === id);
+    const res = await fetch(`/api/establecimientos/${id}`, { method: "DELETE" }).catch(() => null);
+    if (!res || !res.ok) { toast.show("No se pudo eliminar el campo", "err"); return; }
+    const d = await res.json().catch(() => ({}));
+    toast.show(d.lotesLiberados ? `Campo "${camp?.nombre || ""}" eliminado · ${d.lotesLiberados} lote(s) sin asignar` : `Campo "${camp?.nombre || ""}" eliminado`);
+    setShowEliminarCampo(false);
+    recargar();
   };
 
   const guardarEdicion = async (data: EditarLoteData) => {
@@ -221,13 +236,20 @@ export default function TabLotes() {
   return (
     <>
       {toast.node}
-      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} centro={dibujado?.centro} />}
+      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} centro={dibujado?.centro} establecimientos={establecimientos} establecimientoActivoId={establecimientoActivo?.id ?? null} />}
       {showEliminar && (
         <EliminarCampoModal
           lotes={enScope.map((l) => ({ id: l.dbId || l.id, nombre: l.name, ha: l.ha, cultivo: l.cultivo }))}
           initialId={selected ? selected.dbId || selected.id : undefined}
           onClose={() => setShowEliminar(false)}
           onConfirm={eliminarLote}
+        />
+      )}
+      {showEliminarCampo && (
+        <EliminarCampoEstModal
+          campos={establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, lotesCount: lotes.filter((l) => l.establecimientoId === e.id).length }))}
+          onClose={() => setShowEliminarCampo(false)}
+          onConfirm={eliminarCampoEst}
         />
       )}
       {editLote && <EditarLoteModal lote={editLote} onClose={() => setEditLote(null)} onConfirm={guardarEdicion} />}

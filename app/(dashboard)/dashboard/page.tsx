@@ -725,7 +725,14 @@ export default function InicioPage() {
 
       {/* Tarjetas resumen */}
       <div className="grid g-cols-2">
-        <SummaryCard tone="field" icon="leaf" eyebrow="Estado general de campos" value="Sin datos" sub="Cargá tus lotes para ver el análisis" onVer={() => router.push("/campo-digital?tab=Detección de Enfermedades (IA)")} />
+        <SummaryCard
+          tone="field"
+          icon="leaf"
+          eyebrow="Estado general de campos"
+          value={scopeLotes.length === 0 ? "Sin datos" : `${scopeLotes.length} ${scopeLotes.length === 1 ? "lote" : "lotes"}`}
+          sub={scopeLotes.length === 0 ? "Cargá tus lotes en Campo Digital" : `${Math.round(scopeLotes.reduce((s, l) => s + (l.hectareas || 0), 0)).toLocaleString("es-AR")} ha · ${scopeLotes.filter((l) => l.cultivo).length} con cultivo`}
+          onVer={() => router.push("/campo-digital?tab=Lotes")}
+        />
         <SummaryCard tone="gold" icon="dollar" eyebrow="Gastos del mes" value={`$${gasTot.toFixed(1)}M`} sub={`Margen bruto est. $${Math.max(0, ingTot - gasTot).toFixed(1)}M`} spark={bal.gastos} onVer={() => router.push("/finanzas")} />
       </div>
 
