@@ -61,7 +61,8 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
 
-    const map = L.map(ref.current, { center: [-33.5, -61.5], zoom: 6, zoomControl: true, attributionControl: true });
+    const map = L.map(ref.current, { center: [-33.5, -61.5], zoom: 6, zoomControl: false, attributionControl: true });
+    L.control.zoom({ position: "bottomright" }).addTo(map);
     mapRef.current = map;
 
     const satelite = L.tileLayer(
@@ -97,11 +98,11 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }
     lotesLayerRef.current = lotesFg;
 
     // Controles de capas base
-    L.control.layers({ Satélite: satelite }, { Lugares: labels }, { collapsed: true }).addTo(map);
+    L.control.layers({ Satélite: satelite }, { Lugares: labels }, { collapsed: true, position: "bottomright" }).addTo(map);
 
     // Herramienta de dibujo de lotes
     const drawControl = new (L as any).Control.Draw({
-      position: "topright",
+      position: "topleft",
       draw: {
         polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: "#d9a538", weight: 3, fillOpacity: 0.1 } },
         rectangle: { shapeOptions: { color: "#d9a538", weight: 3 } },

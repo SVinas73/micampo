@@ -36,7 +36,7 @@ import {
   AgregarCampoModal, EliminarCampoModal, EliminarCampoEstModal, EditarLoteModal, NuevaTareaModal,
   type AgregarCampoData, type EditarLoteData, type NuevaTareaData,
 } from "./lotes-Modales";
-import { LoteOverlay } from "./LoteOverlay";
+import { LoteOverlay, CropImg } from "./LoteOverlay";
 
 /* ========== TAB LOTES (Figma CDLotes) ========== */
 export default function TabLotes() {
@@ -747,6 +747,25 @@ function SoilBar({ label, value, color }: { label: string; value: number; color:
 }
 
 /* ========== VISTA LISTA (Figma LotesListaDetallada) ========== */
+/* ========== VISTA LISTA (prolija, con datos reales) ========== */
+const REF_RINDE: Record<string, number> = { Soja: 2800, Maíz: 7000, Trigo: 3500, Cebada: 3800, Girasol: 1800, Sorgo: 5000, Alfalfa: 12000, Avena: 3000, Trébol: 9000 };
+function ndviColorList(v: number) {
+  if (!v || v <= 0) return "var(--mc-text-3)";
+  if (v >= 0.7) return "var(--mc-green-700)";
+  if (v >= 0.55) return "#8ea65a";
+  if (v >= 0.45) return "#d9a538";
+  return "#c08a22";
+}
+function proyeccionTn(l: LoteUI): number | null {
+  if (!l.cultivo) return null;
+  const base = REF_RINDE[l.cultivo] || 3000;
+  const f = l.ndvi > 0 ? Math.min(1.25, Math.max(0.7, 1 + (l.ndvi - 0.7) * 0.8)) : 1;
+  return Math.round((base * f) / 100) / 10; // t/ha (1 decimal)
+}
+
+type EcoLote = { margenPorHa: number; costoPorHa: number; porcentajeMargen: number; fuente: string };
+type AlertaLote = { plaga: string; severidad: string };
+
 function LotesListaDetallada({
   lotes, onVer, onTarea,
 }: {
@@ -754,135 +773,136 @@ function LotesListaDetallada({
   onVer: (l: LoteUI) => void;
   onTarea: (l: LoteUI) => void;
 }) {
-  const [histLote, setHistLote] = useState<{ lote: string; genetica: string } | null>(null);
+  const { establecimientos } = useLoteScope();
+  const [economia, setEconomia] = useState<Record<string, EcoLote>>({});
+  const [alertas, setAlertas] = useState<Record<string, AlertaLote>>({});
 
-  // Columnas derivadas de datos reales del lote; lo que aún no tiene fuente real va vacío ("—").
-  const rows = lotes.map((l) => ({
-    lote: l,
-    x: {
-      genetica: l.variety || "—",
-      finPct: 0, finUSD: "—", finDisp: "—",
-      ndviLabel: l.ndvi ? l.ndvi.toFixed(2) : "—", ndviTrend: "flat" as "up" | "down" | "flat",
-      visita: "—",
-      plaga: "Sin monitoreo", riesgo: "Sin datos", riesgoVal: "—", riesgoColor: "green",
-      monitor: "Sin datos",
-      proy: "—", proyDelta: "—", proyFecha: "—", neg: false,
-    },
-  }));
+  useEffect(() => {
+    fetch("/api/economia/lotes").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!d?.lotes) return;
+      const m: Record<string, EcoLote> = {};
+      d.lotes.forEach((l: any) => { m[l.loteId] = { margenPorHa: l.margenPorHa, costoPorHa: l.costoPorHa, porcentajeMargen: l.porcentajeMargen, fuente: l.fuente }; });
+      setEconomia(m);
+    }).catch(() => {});
+    fetch("/api/deteccion-enfermedades").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d)) return;
+      const m: Record<string, AlertaLote> = {};
+      d.forEach((a: any) => { if (a.loteId && a.estado !== "Resuelta" && !m[a.loteId]) m[a.loteId] = { plaga: a.plaga, severidad: a.severidad }; });
+      setAlertas(m);
+    }).catch(() => {});
+  }, []);
+
+  const nombreEst = (id?: string | null) => (id ? establecimientos.find((e) => e.id === id)?.nombre : null);
 
   return (
-    <>
-      {histLote && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "grid", placeItems: "center" }} onClick={() => setHistLote(null)}>
-          <div style={{ background: "var(--mc-surface)", borderRadius: 14, padding: 24, width: 420, maxWidth: "90vw", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+    <div className="mc-card" style={{ padding: 0, overflow: "auto" }}>
+      <div className="mc-lotes-list">
+        <div className="mc-lotes-list__head">
+          <div>Identidad</div>
+          <div>Cultivo</div>
+          <div>Finanzas</div>
+          <div>Salud</div>
+          <div>Monitoreo</div>
+          <div>Proyección</div>
+          <div>Acciones</div>
+        </div>
+        {lotes.length === 0 && (
+          <div style={{ padding: 28, textAlign: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
+            Sin lotes. Creá uno con “Nuevo lote” o dibujándolo en el mapa.
+          </div>
+        )}
+        {lotes.map((l, i) => {
+          const eco = l.dbId ? economia[l.dbId] : undefined;
+          const conEco = eco && eco.fuente !== "sin-datos";
+          const alerta = l.dbId ? alertas[l.dbId] : undefined;
+          const proy = proyeccionTn(l);
+          const est = nombreEst(l.establecimientoId);
+          const sevColor = alerta ? (alerta.severidad === "Alta" || alerta.severidad === "Crítica" ? "var(--mc-red)" : alerta.severidad === "Media" ? "var(--mc-amber)" : "var(--mc-green-700)") : "var(--mc-green-700)";
+          return (
+            <div key={l.dbId || l.id || i} className="mc-lotes-list__row" onClick={() => onVer(l)} style={{ cursor: "pointer" }}>
+              {/* Identidad */}
+              <div className="row gap-10" style={{ alignItems: "center" }}>
+                <CropImg cultivo={l.cultivo} style={{ width: 42, height: 42, borderRadius: 10, flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l.name}</div>
+                  <div className="text-xs text-muted">Lote {i + 1} · {Math.round(l.ha)} ha</div>
+                  {est && <div className="text-xs" style={{ color: "var(--mc-green-700)", display: "flex", alignItems: "center", gap: 3 }}><Icon name="building" size={10} />{est}</div>}
+                </div>
+              </div>
+              {/* Cultivo */}
               <div>
-                <div className="mc-card__eyebrow">Timeline del Lote</div>
-                <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 16, marginTop: 2 }}>{histLote.lote}</div>
+                <div className="row gap-4" style={{ alignItems: "center" }}>
+                  <Icon name="sprout" size={15} style={{ color: l.cultivo ? "var(--mc-green-700)" : "var(--mc-text-3)" }} />
+                  <span className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{l.cultivo || "Sin cultivo"}</span>
+                </div>
+                <span className="mc-badge mc-badge--neutral mt-4" style={{ fontSize: 10 }}>{l.estadio && l.estadio !== "—" ? l.estadio : "Sin estadio"}</span>
               </div>
-              <button className="mc-icon-btn" onClick={() => setHistLote(null)}>
-                <Icon name="x" size={14} />
-              </button>
-            </div>
-            <div className="mc-empty">
-              <div className="mc-empty__icon"><Icon name="timeline" size={20} /></div>
-              Sin eventos registrados en este lote todavía. Las labores y registros aparecerán acá.
-            </div>
-          </div>
-        </div>
-      )}
-      <div className="mc-card" style={{ padding: 0, overflow: "auto" }}>
-        <div className="mc-lotes-list">
-          <div className="mc-lotes-list__head">
-            <div>Identidad</div>
-            <div>Cultivo</div>
-            <div>Finanzas</div>
-            <div>Salud</div>
-            <div>Monitoreo</div>
-            <div>Proyección</div>
-            <div>Acciones</div>
-          </div>
-          {rows.map(({ lote: l, x }, i) => {
-            const cultivo = l.cultivo || "Sin cultivo";
-            const cropEmoji = cultivo.includes("Maíz") ? "wheat" : cultivo.includes("Soja") ? "sprout" : cultivo.includes("Trigo") ? "wheat" : cultivo.includes("Girasol") ? "sun" : "leaf";
-            return (
-              <div key={i} className="mc-lotes-list__row" onClick={() => onVer(l)}>
-                <div>
-                  <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>{l.cultivo || "Sin cultivo"}</div>
-                  <div className="row gap-4 mt-4" style={{ alignItems: "center" }}>
-                    <Icon name="map" size={14} style={{ color: "var(--mc-red)" }} />
-                    <span className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 14 }}>{l.id.replace("L-0", "Lote ")} - {l.name}</span>
-                  </div>
-                  <div className="text-xs text-muted mt-4">{l.ha} Hectáreas</div>
+              {/* Finanzas */}
+              <div>
+                {conEco ? (
+                  <>
+                    <div className="font-semi text-sm" style={{ color: eco!.margenPorHa >= 0 ? "var(--mc-green-700)" : "var(--mc-red)" }}>
+                      {eco!.margenPorHa >= 0 ? "+" : ""}${Math.round(eco!.margenPorHa).toLocaleString("es-AR")}/ha
+                    </div>
+                    <div className="mc-prog" style={{ marginTop: 4 }}>
+                      <div className="mc-prog__bar" style={{ width: `${Math.max(4, Math.min(100, Math.abs(eco!.porcentajeMargen)))}%`, background: eco!.margenPorHa >= 0 ? "var(--mc-green-500)" : "var(--mc-red)" }}></div>
+                    </div>
+                    <div className="text-xs text-muted mt-4">Costo ${Math.round(eco!.costoPorHa).toLocaleString("es-AR")}/ha</div>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted">Sin datos de costos</span>
+                )}
+              </div>
+              {/* Salud */}
+              <div>
+                <div className="row gap-4" style={{ alignItems: "center", fontSize: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: ndviColorList(l.ndvi) }} />
+                  <span className="font-semi" style={{ color: "var(--mc-ink)" }}>NDVI {l.ndvi > 0 ? l.ndvi.toFixed(2) : "—"}</span>
                 </div>
-                <div>
-                  <div className="row gap-4" style={{ alignItems: "center" }}>
-                    <Icon name={cropEmoji} size={16} />
-                    <span className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{cultivo}</span>
-                  </div>
-                  <span className="mc-badge mc-badge--neutral mt-4" style={{ fontSize: 10 }}>[ {l.estadio || "—"} ]</span>
-                  <div className="text-xs text-muted mt-4" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="activity" size={12} /> Genética: {l.variety || x.genetica}</div>
-                </div>
-                <div>
-                  <div className="row" style={{ justifyContent: "flex-end", fontSize: 11, color: "var(--mc-text-3)" }}>{x.finPct}%</div>
-                  <div className="mc-prog" style={{ marginTop: 2 }}>
-                    <div className="mc-prog__bar" style={{ width: `${x.finPct}%`, background: "var(--mc-blue)" }}></div>
-                  </div>
-                  <div className="text-xs mt-4" style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{x.finUSD}</div>
-                  <div className="text-xs" style={{ color: "var(--mc-green-700)", fontWeight: 600, marginTop: 2 }}>Disp: {x.finDisp}</div>
-                </div>
-                <div>
-                  <div className="row gap-4" style={{ alignItems: "center", fontSize: 12 }}>
-                    <Icon name="check" size={11} style={{ color: "var(--mc-green-700)" }} />
-                    <span className="font-semi" style={{ color: "var(--mc-ink)" }}>NDVI {x.ndviLabel}</span>
-                    {x.ndviTrend === "up" && <Icon name="arrowUp" size={10} style={{ color: "var(--mc-green-700)" }} />}
-                    {x.ndviTrend === "down" && <Icon name="arrowDown" size={10} style={{ color: "var(--mc-red)" }} />}
-                  </div>
-                  <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12 }}>
-                    <Icon name="droplet" size={11} style={{ color: "var(--mc-blue)" }} />
-                    <span className="text-muted">Agua: {l.aguaUtil}%</span>
-                  </div>
-                  <div className="text-xs text-muted mt-4" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="calendar" size={12} /> Visita: {x.visita}</div>
-                </div>
-                <div>
-                  <div className="row gap-4" style={{ alignItems: "center", fontSize: 12 }}>
-                    <Icon name="bug" size={12} />
-                    <span className="font-semi text-xs" style={{ color: "var(--mc-ink)" }}>{x.plaga}</span>
-                  </div>
-                  <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: x.riesgoColor === "red" ? "var(--mc-red)" : x.riesgoColor === "amber" ? "var(--mc-amber)" : "var(--mc-green-500)" }}></span>
-                    <span className="font-semi text-xs" style={{ color: x.riesgoColor === "red" ? "var(--mc-red)" : x.riesgoColor === "amber" ? "var(--mc-amber)" : "var(--mc-green-700)" }}>
-                      {x.riesgo} ({x.riesgoVal})
-                    </span>
-                  </div>
-                  <span className={`mc-badge mt-4 ${x.monitor.includes("OK") ? "mc-badge--green" : x.monitor.includes("Vigilancia") || x.monitor.includes("Pendiente") ? "mc-badge--amber" : "mc-badge--red"}`} style={{ fontSize: 10 }}>
-                    <Icon name={x.monitor.includes("OK") ? "check" : "alert"} size={11} /> {x.monitor}
-                  </span>
-                </div>
-                <div>
-                  <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, color: "var(--mc-ink)" }}>{x.proy}</div>
-                  <div className="text-xs" style={{ color: x.neg ? "var(--mc-red)" : "var(--mc-green-700)", fontWeight: 600, marginTop: 2 }}>
-                    {x.neg ? <Icon name="arrowDown" size={10} /> : <Icon name="arrowUp" size={10} />} {x.proyDelta}
-                  </div>
-                  <div className="text-xs text-muted mt-4" style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="calendar" size={12} /> Est: {x.proyFecha}</div>
-                </div>
-                <div className="col gap-4" onClick={(e) => e.stopPropagation()}>
-                  <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "4px 10px", fontSize: 11 }} onClick={() => onTarea(l)}>
-                    <Icon name="plus" size={11} />Tarea
-                  </button>
-                  <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ padding: "4px 10px", fontSize: 11, justifyContent: "flex-start" }} onClick={() => setHistLote({ lote: l.name, genetica: l.variety || x.genetica })}>
-                    <Icon name="activity" size={11} />Historial
-                  </button>
-                  <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ padding: "4px 10px", fontSize: 11, justifyContent: "flex-start", color: "var(--mc-green-700)" }} onClick={() => onVer(l)}>
-                    <Icon name="arrowRight" size={11} /> Ver
-                  </button>
+                <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12 }}>
+                  <Icon name="droplet" size={11} style={{ color: "var(--mc-blue)" }} />
+                  <span className="text-muted">Agua {l.aguaUtil > 0 ? `${l.aguaUtil}%` : "—"}</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
+              {/* Monitoreo */}
+              <div>
+                {alerta ? (
+                  <>
+                    <div className="row gap-4" style={{ alignItems: "center", fontSize: 12 }}>
+                      <Icon name="bug" size={12} style={{ color: sevColor }} />
+                      <span className="font-semi text-xs" style={{ color: "var(--mc-ink)" }}>{alerta.plaga}</span>
+                    </div>
+                    <span className="mc-badge mt-4" style={{ fontSize: 10, background: `${sevColor}1a`, color: sevColor }}><Icon name="alert" size={10} />{alerta.severidad}</span>
+                  </>
+                ) : (
+                  <span className="mc-badge mc-badge--green" style={{ fontSize: 10 }}><Icon name="check" size={10} />Sin alertas</span>
+                )}
+              </div>
+              {/* Proyección */}
+              <div>
+                {proy != null ? (
+                  <>
+                    <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, color: "var(--mc-ink)" }}>{proy} <span style={{ fontSize: 11, color: "var(--mc-text-3)" }}>t/ha</span></div>
+                    <div className="text-xs text-muted">estimado{l.ndvi > 0 ? " · ajustado NDVI" : " · referencia"}</div>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted">Sin cultivo</span>
+                )}
+              </div>
+              {/* Acciones */}
+              <div className="col gap-4" onClick={(e) => e.stopPropagation()}>
+                <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "4px 10px", fontSize: 11, justifyContent: "center" }} onClick={() => onTarea(l)}>
+                  <Icon name="plus" size={11} />Tarea
+                </button>
+                <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ padding: "4px 10px", fontSize: 11, justifyContent: "flex-start", color: "var(--mc-green-700)" }} onClick={() => onVer(l)}>
+                  <Icon name="arrowRight" size={11} />Ver ficha
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </>
+    </div>
   );
 }
 
