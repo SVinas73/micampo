@@ -2330,3 +2330,8 @@ a:focus-visible {
   pointer-events: none;
   transform: translateY(-6px);
 }
+
+/* Campo Digital: subir los controles del mapa para que el orbe del Copiloto
+   (fijo abajo-derecha) no los tape. Scopeado al contenedor del mapa. */
+.mc-mapwrap .maplibregl-ctrl-bottom-right { margin-bottom: 86px; }
+.mc-mapwrap .leaflet-bottom.leaflet-right { margin-bottom: 86px; }

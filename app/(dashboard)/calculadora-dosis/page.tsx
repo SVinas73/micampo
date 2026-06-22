@@ -12,8 +12,7 @@ import {
   COLOR_CATEGORIA,
   TIPO_A_CATEGORIA,
 } from "@/components/calculadora/types";
-import { PRESETS, HISTORIAL_DEMO, CONFIG_VACIA } from "@/components/calculadora/presets";
-import { demo } from "@/lib/demo";
+import { PRESETS, CONFIG_VACIA } from "@/components/calculadora/presets";
 import { useLoteScope } from "@/components/LoteScope";
 import {
   caldoTotal,
@@ -30,6 +29,7 @@ import {
 const TABS = ["Inicio", "Nuevo Cálculo", "Historial", "Preestablecidos"];
 
 type Lote = { id: string; nombre: string; hectareas: number };
+type UserPreset = { id: string; nombre: string; config: ConfigCalculo };
 
 export default function CalculadoraDosisPage() {
   return (
@@ -52,7 +52,8 @@ function CalculadoraInner() {
 
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [config, setConfig] = useState<ConfigCalculo>({ ...CONFIG_VACIA, productos: [] });
-  const [historial, setHistorial] = useState<HistRow[]>(demo(HISTORIAL_DEMO, []));
+  const [historial, setHistorial] = useState<HistRow[]>([]);
+  const [userPresets, setUserPresets] = useState<UserPreset[]>([]);
 
   // sincroniza el tab con el query param (atajos del dashboard)
   useEffect(() => {
@@ -70,12 +71,44 @@ function CalculadoraInner() {
     fetch("/api/calculadora-dosis")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
-        if (!Array.isArray(d) || d.length === 0) return;
-        const rows: HistRow[] = d.map((c: CalculoApi) => apiToHistRow(c));
-        setHistorial(rows);
+        if (!Array.isArray(d)) return;
+        setHistorial(d.map((c: CalculoApi) => apiToHistRow(c)));
       })
       .catch(() => {});
+    fetch("/api/dosis-presets")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (Array.isArray(d)) setUserPresets(d); })
+      .catch(() => {});
   }, []);
+
+  const guardarPreset = async (nombre: string, cfg: ConfigCalculo) => {
+    try {
+      const res = await fetch("/api/dosis-presets", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, config: cfg }),
+      });
+      if (!res.ok) throw new Error();
+      const saved = await res.json();
+      setUserPresets((p) => [saved, ...p]);
+      toast.show(`Preestablecido "${nombre}" guardado`);
+    } catch { toast.show("No se pudo guardar el preestablecido", "err"); }
+  };
+
+  const eliminarPreset = async (id: string) => {
+    const res = await fetch(`/api/dosis-presets/${id}`, { method: "DELETE" }).catch(() => null);
+    if (!res || !res.ok) { toast.show("No se pudo eliminar", "err"); return; }
+    setUserPresets((p) => p.filter((x) => x.id !== id));
+    toast.show("Preestablecido eliminado");
+  };
+
+  const eliminarCalculo = async (row: HistRow) => {
+    if (row.id) {
+      const res = await fetch(`/api/calculadora-dosis/${row.id}`, { method: "DELETE" }).catch(() => null);
+      if (!res || !res.ok) { toast.show("No se pudo eliminar", "err"); return; }
+    }
+    setHistorial((prev) => prev.filter((r) => r !== row));
+    toast.show("Cálculo eliminado");
+  };
 
   const goTab = (t: string) => {
     setTab(t);
@@ -100,7 +133,7 @@ function CalculadoraInner() {
       />
       <Tabs tabs={TABS} active={tab} onChange={goTab} />
 
-      {tab === "Inicio" && <TabInicio onAbrir={(tipo) => abrirNuevo(configDesdeTipo(tipo))} onPreset={() => goTab("Preestablecidos")} onNuevo={() => abrirNuevo({ ...CONFIG_VACIA, productos: [] })} />}
+      {tab === "Inicio" && <TabInicio historial={historial} onAbrir={(tipo) => abrirNuevo(configDesdeTipo(tipo))} onPreset={() => goTab("Preestablecidos")} onNuevo={() => abrirNuevo({ ...CONFIG_VACIA, productos: [] })} />}
 
       {tab === "Nuevo Cálculo" && (
         <TabNuevo
@@ -112,8 +145,7 @@ function CalculadoraInner() {
             toast.show("Cálculo guardado en el historial");
             goTab("Historial");
           }}
-          onBorrador={() => toast.show("Borrador guardado")}
-          onCalcular={() => toast.show("Cálculo actualizado")}
+          onGuardarPreset={guardarPreset}
           onError={(m) => toast.show(m, "err")}
           onCancelar={() => goTab("Inicio")}
         />
@@ -122,9 +154,9 @@ function CalculadoraInner() {
       {tab === "Historial" && (
         <TabHistorial
           rows={historial}
-          onExportar={() => toast.show("Historial exportado a CSV")}
+          onEliminar={eliminarCalculo}
           onDuplicar={(r) => {
-            if (r.config) abrirNuevo(r.config);
+            if (r.config) abrirNuevo(structuredClone(r.config));
             else abrirNuevo({ ...CONFIG_VACIA, area: r.ha, productos: [{ tipo: "Herbicida", nombre: r.producto, costoUnitario: "", dosis: r.dosis.replace(/[^\d.]/g, ""), unidad: "Lt/Ha" }] });
             toast.show("Cálculo duplicado en Nuevo Cálculo");
           }}
@@ -133,6 +165,9 @@ function CalculadoraInner() {
 
       {tab === "Preestablecidos" && (
         <TabPreset
+          userPresets={userPresets}
+          onEliminarPreset={eliminarPreset}
+          onCrear={() => abrirNuevo({ ...CONFIG_VACIA, productos: [] })}
           onUsar={(cfg) => {
             abrirNuevo(structuredClone(cfg));
             toast.show("Preset cargado en Nuevo Cálculo");
@@ -156,15 +191,28 @@ const TIPOS_CALCULO = [
   { tipo: "Riego + agroquímico", desc: "Dosificación en fertirriego", color: "var(--mc-green-500)" },
 ];
 
-function TabInicio({ onAbrir, onPreset, onNuevo }: { onAbrir: (tipo: string) => void; onPreset: () => void; onNuevo: () => void }) {
+function TabInicio({ historial, onAbrir, onPreset, onNuevo }: { historial: HistRow[]; onAbrir: (tipo: string) => void; onPreset: () => void; onNuevo: () => void }) {
+  // KPIs reales derivados del historial
+  const ahora = new Date();
+  const esEsteMes = (f: string) => {
+    const [d, m, y] = f.split("/").map(Number);
+    return m === ahora.getMonth() + 1 && y === ahora.getFullYear();
+  };
+  const esteMes = historial.filter((r) => esEsteMes(r.fecha)).length;
+  const litros = Math.round(historial.reduce((s, r) => s + (parseFloat(String(r.total).replace(/[^\d.]/g, "")) || 0), 0));
+  const lotesTratados = new Set(historial.map((r) => r.lote).filter((l) => l && l !== "—")).size;
+  const conteoProd = new Map<string, number>();
+  historial.forEach((r) => conteoProd.set(r.producto, (conteoProd.get(r.producto) || 0) + 1));
+  const masUsado = [...conteoProd.entries()].sort((a, b) => b[1] - a[1])[0];
+
   return (
     <>
       <div className="grid g-cols-5">
-        <KPI label="Cálculos este mes" value={demo("42", "0")} delta={demo("+12 vs mes pasado", "—")} trend="up" icon="flask" accent />
-        <KPI label="Insumos dosificados" value={demo("8,240 L", "—")} delta={demo("glifosato + 2,4-D", "—")} trend="up" icon="droplet" />
-        <KPI label="Costo estimado" value={demo("$1.2M", "—")} delta={demo("Campaña actual", "—")} trend="up" icon="dollar" />
-        <KPI label="Ahorro vs ficha técnica" value={demo("7.3%", "—")} delta={demo("Por ajuste de dosis", "—")} trend="up" icon="target" />
-        <KPI label="Producto más usado" value={demo("Glifosato 48%", "—")} delta={demo("18 cálculos · 3.060 L", "—")} trend="up" icon="leaf" />
+        <KPI label="Cálculos guardados" value={String(historial.length)} delta={historial.length ? `${esteMes} este mes` : "—"} trend="up" icon="flask" accent />
+        <KPI label="Cálculos este mes" value={String(esteMes)} delta={esteMes ? "registrados" : "—"} trend="up" icon="calendar" />
+        <KPI label="Insumos dosificados" value={litros > 0 ? `${litros.toLocaleString("es-AR")} L` : "—"} delta="acumulado" trend="up" icon="droplet" />
+        <KPI label="Lotes tratados" value={String(lotesTratados)} delta={lotesTratados ? "con cálculo" : "—"} trend="up" icon="map" />
+        <KPI label="Producto más usado" value={masUsado ? masUsado[0] : "—"} delta={masUsado ? `${masUsado[1]} cálculo(s)` : "—"} trend="up" icon="leaf" />
       </div>
       <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
         <button className="mc-btn mc-btn--secondary" onClick={onPreset}>
@@ -220,8 +268,7 @@ function TabNuevo({
   config,
   setConfig,
   onGuardar,
-  onBorrador,
-  onCalcular,
+  onGuardarPreset,
   onError,
   onCancelar,
 }: {
@@ -229,14 +276,15 @@ function TabNuevo({
   config: ConfigCalculo;
   setConfig: React.Dispatch<React.SetStateAction<ConfigCalculo>>;
   onGuardar: (row: HistRow) => void;
-  onBorrador: () => void;
-  onCalcular: () => void;
+  onGuardarPreset: (nombre: string, cfg: ConfigCalculo) => void | Promise<void>;
   onError: (m: string) => void;
   onCancelar: () => void;
 }) {
   const [prodModal, setProdModal] = useState(false);
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [presetModal, setPresetModal] = useState(false);
+  const [presetNombre, setPresetNombre] = useState("");
 
   const { area, caldo, tanque, productos } = config;
   const ct = caldoTotal(config);
@@ -287,7 +335,8 @@ function TabNuevo({
       costoUnitario: p0.costoUnitario || null,
       aguaPorHa: String(caldo),
       loteId: config.loteId,
-      observaciones: `Aplicación ${config.tipoAplicacion}. ${productos.length} producto(s). Tanque ${tanque} L.`,
+      // Guardamos la mezcla completa para poder duplicarla luego (incluye todos los productos)
+      observaciones: `Aplicación ${config.tipoAplicacion}. ${productos.length} producto(s). Tanque ${tanque} L. ##CFG##${JSON.stringify(config)}`,
     };
     try {
       const res = await fetch("/api/calculadora-dosis", {
@@ -452,9 +501,13 @@ function TabNuevo({
           <div className="row gap-8 mt-4" style={{ flexWrap: "wrap" }}>
             <button className="mc-btn mc-btn--ghost" onClick={onCancelar}>Cancelar</button>
             <div style={{ flex: 1 }} />
-            <button className="mc-btn mc-btn--secondary" onClick={onBorrador}>Guardar borrador</button>
-            <button className="mc-btn mc-btn--secondary" onClick={onCalcular}>
-              <Icon name="chart" size={14} />Calcular
+            <button
+              className="mc-btn mc-btn--secondary"
+              disabled={productos.length === 0}
+              onClick={() => { setPresetNombre(productos[0]?.nombre ? `Mezcla ${productos[0].nombre}` : "Mi preestablecido"); setPresetModal(true); }}
+              title="Guardar esta mezcla como preestablecido reutilizable"
+            >
+              <Icon name="book" size={14} />Guardar como preestablecido
             </button>
             <button className="mc-btn mc-btn--primary" onClick={guardarCalculo} disabled={guardando}>
               <Icon name="save" size={14} />{guardando ? "Guardando…" : "Guardar Cálculo"}
@@ -510,6 +563,31 @@ function TabNuevo({
         area={area}
         editing={editIdx !== null ? productos[editIdx] : null}
       />
+
+      <Modal
+        open={presetModal}
+        onClose={() => setPresetModal(false)}
+        title="Guardar preestablecido"
+        subtitle="Reutilizá esta mezcla en futuros cálculos con un clic."
+        width={460}
+        footer={
+          <>
+            <button className="mc-btn mc-btn--ghost" onClick={() => setPresetModal(false)}>Cancelar</button>
+            <button
+              className="mc-btn mc-btn--primary"
+              disabled={!presetNombre.trim()}
+              onClick={async () => { await onGuardarPreset(presetNombre.trim(), structuredClone(config)); setPresetModal(false); }}
+            >
+              <Icon name="book" size={14} />Guardar
+            </button>
+          </>
+        }
+      >
+        <Field label="Nombre del preestablecido">
+          <input className="mc-input" value={presetNombre} onChange={(e) => setPresetNombre(e.target.value)} placeholder="Ej: Glifosato barbecho" autoFocus />
+        </Field>
+        <div className="text-xs text-muted mt-8">Se guardarán los {productos.length} producto(s), el caldo ({caldo} L/Ha) y el tanque ({tanque} L).</div>
+      </Modal>
     </div>
   );
 }
@@ -550,10 +628,17 @@ function PasoTitle({ n, label }: { n: string; label: string }) {
 /* TAB HISTORIAL                                                       */
 /* =================================================================== */
 
-function TabHistorial({ rows, onExportar, onDuplicar }: { rows: HistRow[]; onExportar: () => void; onDuplicar: (r: HistRow) => void }) {
+function TabHistorial({ rows, onEliminar, onDuplicar }: { rows: HistRow[]; onEliminar: (r: HistRow) => void; onDuplicar: (r: HistRow) => void }) {
+  const [q, setQ] = useState("");
+  const filtradas = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return rows;
+    return rows.filter((r) => `${r.producto} ${r.lote} ${r.fecha}`.toLowerCase().includes(t));
+  }, [rows, q]);
+
   const exportar = () => {
     const head = "Fecha,Producto,Lote,Ha,Dosis,Total,Costo,Usuario\n";
-    const body = rows
+    const body = filtradas
       .map((r) => [r.fecha, r.producto, r.lote, r.ha, r.dosis, r.total, r.costo, r.usuario].map((c) => `"${c}"`).join(","))
       .join("\n");
     const blob = new Blob([head + body], { type: "text/csv;charset=utf-8;" });
@@ -563,56 +648,61 @@ function TabHistorial({ rows, onExportar, onDuplicar }: { rows: HistRow[]; onExp
     link.download = "micampo-calculos-dosis.csv";
     link.click();
     URL.revokeObjectURL(url);
-    onExportar();
   };
 
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
-      <div style={{ padding: "14px 20px", display: "flex", justifyContent: "space-between" }}>
+      <div style={{ padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div className="mc-card__title">Historial de cálculos</div>
-        <div className="row gap-8">
-          <button className="mc-btn mc-btn--ghost mc-btn--sm">
-            <Icon name="filter" size={13} />Filtrar
-          </button>
-          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={exportar}>
+        <div className="row gap-8" style={{ alignItems: "center" }}>
+          <div style={{ position: "relative" }}>
+            <Icon name="search" size={13} style={{ position: "absolute", left: 9, top: 8, color: "var(--mc-text-3)" }} />
+            <input className="mc-input mc-input--sm" style={{ paddingLeft: 28, height: 30, fontSize: 12.5, width: 200 }} placeholder="Buscar producto o lote…" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={exportar} disabled={filtradas.length === 0}>
             <Icon name="download" size={13} />Exportar
           </button>
         </div>
       </div>
-      <table className="mc-table">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Producto</th>
-            <th>Lote</th>
-            <th className="mc-cell--num">Ha</th>
-            <th>Dosis</th>
-            <th className="mc-cell--num">Total</th>
-            <th className="mc-cell--num">Costo</th>
-            <th>Usuario</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={r.id ?? i}>
-              <td className="mc-cell--mono">{r.fecha}</td>
-              <td className="mc-cell--emph">{r.producto}</td>
-              <td>{r.lote}</td>
-              <td className="mc-cell--num">{r.ha}</td>
-              <td>{r.dosis}</td>
-              <td className="mc-cell--num">{r.total}</td>
-              <td className="mc-cell--num">{r.costo}</td>
-              <td>{r.usuario}</td>
-              <td>
-                <button className="mc-icon-btn" style={{ width: 26, height: 26, border: "none" }} title="Duplicar cálculo" aria-label="Duplicar cálculo" onClick={() => onDuplicar(r)}>
-                  <Icon name="copy" size={13} />
-                </button>
-              </td>
+      {rows.length === 0 ? (
+        <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--mc-text-3)" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--mc-green-50)", color: "var(--mc-green-700)", display: "grid", placeItems: "center", margin: "0 auto 10px" }}><Icon name="flask" size={20} /></div>
+          <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 14 }}>Sin cálculos guardados</div>
+          <div className="text-xs" style={{ marginTop: 4 }}>Armá una mezcla en “Nuevo Cálculo” y guardala para verla acá.</div>
+        </div>
+      ) : (
+        <table className="mc-table">
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Producto</th><th>Lote</th><th className="mc-cell--num">Ha</th>
+              <th>Dosis</th><th className="mc-cell--num">Total</th><th className="mc-cell--num">Costo</th><th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtradas.map((r, i) => (
+              <tr key={r.id ?? i}>
+                <td className="mc-cell--mono">{r.fecha}</td>
+                <td className="mc-cell--emph">{r.producto}</td>
+                <td>{r.lote}</td>
+                <td className="mc-cell--num">{r.ha}</td>
+                <td>{r.dosis}</td>
+                <td className="mc-cell--num">{r.total}</td>
+                <td className="mc-cell--num">{r.costo}</td>
+                <td>
+                  <div className="row gap-2" style={{ justifyContent: "flex-end" }}>
+                    <button className="mc-icon-btn" style={{ width: 26, height: 26, border: "none" }} title="Duplicar" aria-label="Duplicar cálculo" onClick={() => onDuplicar(r)}>
+                      <Icon name="copy" size={13} />
+                    </button>
+                    <button className="mc-icon-btn" style={{ width: 26, height: 26, border: "none", color: "var(--mc-red)" }} title="Eliminar" aria-label="Eliminar cálculo" onClick={() => onEliminar(r)}>
+                      <Icon name="trash" size={13} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -621,11 +711,67 @@ function TabHistorial({ rows, onExportar, onDuplicar }: { rows: HistRow[]; onExp
 /* TAB PREESTABLECIDOS                                                 */
 /* =================================================================== */
 
-function TabPreset({ onUsar }: { onUsar: (cfg: ConfigCalculo) => void }) {
-  const [detalle, setDetalle] = useState<(typeof PRESETS)[number] | null>(null);
+function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear }: { userPresets: UserPreset[]; onUsar: (cfg: ConfigCalculo) => void; onEliminarPreset: (id: string) => void; onCrear: () => void }) {
+  const [detalle, setDetalle] = useState<{ nombre: string; tipo: string; caldo: string; config: ConfigCalculo } | null>(null);
+
+  const resumen = (cfg: ConfigCalculo) => {
+    const p0 = cfg.productos[0];
+    return {
+      tipo: p0?.tipo || "Mezcla",
+      dosis: p0 ? `${p0.dosis} ${p0.unidad}` : "—",
+      caldo: `${cfg.caldo} L/Ha`,
+      productos: cfg.productos.length,
+    };
+  };
 
   return (
     <>
+      {/* Preestablecidos del usuario */}
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <div className="mc-card__title">Tus preestablecidos</div>
+        <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={onCrear}><Icon name="plus" size={13} />Crear nuevo</button>
+      </div>
+      {userPresets.length === 0 ? (
+        <div className="mc-card" style={{ textAlign: "center", color: "var(--mc-text-3)", padding: "26px 16px" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--mc-green-50)", color: "var(--mc-green-700)", display: "grid", placeItems: "center", margin: "0 auto 10px" }}><Icon name="book" size={20} /></div>
+          <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 14 }}>Todavía no guardaste preestablecidos</div>
+          <div className="text-xs" style={{ marginTop: 4 }}>Armá una mezcla en “Nuevo Cálculo” y tocá “Guardar como preestablecido”.</div>
+        </div>
+      ) : (
+        <div className="grid g-cols-2 gap-16">
+          {userPresets.map((up) => {
+            const r = resumen(up.config);
+            return (
+              <div key={up.id} className="mc-card" style={{ borderTop: `3px solid var(--mc-green-600)` }}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <div>
+                    <div className="mc-card__eyebrow">{r.tipo} · tuyo</div>
+                    <div className="mc-card__title mt-4">{up.nombre}</div>
+                  </div>
+                  <div className="row gap-4">
+                    <Badge tone="neutral">{r.productos} prod.</Badge>
+                    <button className="mc-icon-btn" style={{ width: 26, height: 26, border: "none", color: "var(--mc-red)" }} title="Eliminar" aria-label="Eliminar preestablecido" onClick={() => onEliminarPreset(up.id)}>
+                      <Icon name="trash" size={13} />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid g-cols-3 gap-8 mt-12">
+                  <div><div className="text-xs text-muted">Dosis</div><div className="font-semi">{r.dosis}</div></div>
+                  <div><div className="text-xs text-muted">Caldo</div><div className="font-semi">{r.caldo}</div></div>
+                  <div><div className="text-xs text-muted">Área ref.</div><div className="font-semi">{up.config.area} Ha</div></div>
+                </div>
+                <div className="row gap-8 mt-12">
+                  <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setDetalle({ nombre: up.nombre, tipo: r.tipo, caldo: r.caldo, config: up.config })}>Ver detalle</button>
+                  <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => onUsar(up.config)}>Usar</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Sugeridos del sistema */}
+      <div className="mc-card__title mt-12">Sugeridos</div>
       <div className="grid g-cols-2 gap-16">
         {PRESETS.map((p, i) => (
           <div key={i} className="mc-card" style={{ borderTop: `3px solid ${p.color}` }}>
@@ -651,7 +797,7 @@ function TabPreset({ onUsar }: { onUsar: (cfg: ConfigCalculo) => void }) {
               </div>
             </div>
             <div className="row gap-8 mt-12">
-              <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setDetalle(p)}>Ver detalle</button>
+              <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setDetalle({ nombre: p.nombre, tipo: p.tipo, caldo: p.caldo, config: p.config })}>Ver detalle</button>
               <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => onUsar(p.config)}>Usar preset</button>
             </div>
           </div>
@@ -712,11 +858,17 @@ type CalculoApi = {
   cantidadTotal: number;
   costoTotal: number | null;
   createdAt: string;
+  observaciones?: string | null;
   lote?: { nombre: string } | null;
 };
 
 function apiToHistRow(c: CalculoApi): HistRow {
   const fecha = new Date(c.createdAt).toLocaleDateString("es-AR");
+  // Recupera la mezcla completa guardada en observaciones (para duplicar)
+  let config: ConfigCalculo | undefined;
+  if (c.observaciones?.includes("##CFG##")) {
+    try { config = JSON.parse(c.observaciones.split("##CFG##")[1]); } catch { /* ignora */ }
+  }
   return {
     id: c.id,
     fecha,
@@ -727,5 +879,6 @@ function apiToHistRow(c: CalculoApi): HistRow {
     total: `${c.cantidadTotal?.toFixed(1) ?? "—"} L`,
     costo: c.costoTotal != null ? fmtUSD(c.costoTotal) : "—",
     usuario: "Yo",
+    config,
   };
 }

@@ -393,7 +393,7 @@ function LotesMapa({
         </div>
         <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Tocá un lote para ver su ficha · dibujá nuevos lotes desde el mapa</div>
       </div>
-      <div style={{ height: 640, position: "relative" }}>
+      <div className="mc-mapwrap" style={{ height: 640, position: "relative" }}>
         <MapaActivo
           lotes={lotesGeo}
           selectedId={selected?.id ?? null}

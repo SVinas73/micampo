@@ -147,8 +147,8 @@ export function LoteOverlay({
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 600, pointerEvents: "none" }}>
-      {/* Columna izquierda: header + chips (sin solaparse) */}
-      <div style={{ position: "absolute", top: 16, left: 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: 344, pointerEvents: "none" }}>
+      {/* Columna izquierda: header + chips (corrida del borde para no tapar las herramientas de dibujo) */}
+      <div style={{ position: "absolute", top: 16, left: 58, display: "flex", flexDirection: "column", gap: 12, maxWidth: 340, pointerEvents: "none" }}>
         <motion.div
           {...fade(0)}
           className="mc-glass"
