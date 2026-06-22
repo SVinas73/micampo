@@ -80,12 +80,12 @@ function AnomaliaBadge({ anomalia, pct }: { anomalia: SerieNdvi["anomalia"]; pct
 
 function StatChip({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
   return (
-    <div className="mc-glass mc-floatcard" style={{ borderRadius: 14, padding: "10px 13px", minWidth: 96 }}>
-      <div className="row gap-6" style={{ alignItems: "center", color: "var(--mc-text-2)", fontSize: 11, fontWeight: 600 }}>
-        <span style={{ width: 18, height: 18, borderRadius: 6, background: color + "22", color, display: "grid", placeItems: "center" }}><Icon name={icon} size={11} /></span>
+    <div className="mc-glass mc-floatcard" style={{ borderRadius: 14, padding: "10px 12px", minWidth: 0 }}>
+      <div className="row gap-6" style={{ alignItems: "center", color: "var(--mc-text-2)", fontSize: 10.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden" }}>
+        <span style={{ width: 18, height: 18, borderRadius: 6, background: color + "22", color, display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name={icon} size={11} /></span>
         {label}
       </div>
-      <div style={{ fontFamily: "var(--ff-display)", fontSize: 20, fontWeight: 700, color: "var(--mc-ink)", marginTop: 4, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: "var(--ff-display)", fontSize: 17, fontWeight: 700, color: "var(--mc-ink)", marginTop: 4, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={value}>{value}</div>
     </div>
   );
 }
@@ -150,7 +150,7 @@ export function LoteOverlay({
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 600, pointerEvents: "none" }}>
       {/* Columna izquierda: header + chips. En clásico se corre del borde para no tapar las herramientas de dibujo de Leaflet; en 3D va pegada a la izquierda. */}
-      <div style={{ position: "absolute", top: 16, left: vista === "clasico" ? 58 : 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: 340, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", top: 16, left: vista === "clasico" ? 58 : 16, display: "flex", flexDirection: "column", gap: 12, width: 366, maxWidth: "calc(100% - 200px)", pointerEvents: "none" }}>
         <motion.div
           {...fade(0)}
           className="mc-glass"
@@ -175,23 +175,22 @@ export function LoteOverlay({
           </button>
         </motion.div>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, pointerEvents: "auto" }}>
-          <motion.div {...fade(1)}><StatChip icon="map" label="Superficie" value={`${lote.ha} ha`} color="#5e7733" /></motion.div>
-          <motion.div {...fade(2)}><StatChip icon="leaf" label="NDVI" value={lote.ndvi > 0 ? lote.ndvi.toFixed(2) : "—"} color="#768f44" /></motion.div>
-          <motion.div {...fade(3)}><StatChip icon="droplet" label="Agua útil" value={lote.aguaUtil > 0 ? `${lote.aguaUtil}%` : "—"} color="#2c6bb8" /></motion.div>
-          <motion.div {...fade(4)}><StatChip icon="activity" label="Estadio" value={lote.estadio && lote.estadio !== "—" ? lote.estadio : "—"} color="#d9a538" /></motion.div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, pointerEvents: "auto" }}>
+          <motion.div {...fade(1)} style={{ minWidth: 0 }}><StatChip icon="map" label="Superficie" value={`${lote.ha} ha`} color="#5e7733" /></motion.div>
+          <motion.div {...fade(2)} style={{ minWidth: 0 }}><StatChip icon="leaf" label="NDVI" value={lote.ndvi > 0 ? lote.ndvi.toFixed(2) : "—"} color="#768f44" /></motion.div>
+          <motion.div {...fade(3)} style={{ minWidth: 0 }}><StatChip icon="droplet" label="Agua útil" value={lote.aguaUtil > 0 ? `${lote.aguaUtil}%` : "—"} color="#2c6bb8" /></motion.div>
+          <motion.div {...fade(4)} style={{ minWidth: 0 }}><StatChip icon="activity" label="Estadio" value={lote.estadio && lote.estadio !== "—" ? lote.estadio : "—"} color="#d9a538" /></motion.div>
+          {onFicha && (
+            <motion.button
+              {...fade(5)}
+              onClick={onFicha}
+              className="mc-glass mc-floatcard"
+              style={{ gridColumn: "span 2", pointerEvents: "auto", borderRadius: 14, padding: "11px 14px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 700, fontSize: 13, color: "var(--mc-green-800)" }}
+            >
+              <Icon name="list" size={15} /> Ver ficha completa
+            </motion.button>
+          )}
         </div>
-
-        {onFicha && (
-          <motion.button
-            {...fade(5)}
-            onClick={onFicha}
-            className="mc-glass mc-floatcard"
-            style={{ pointerEvents: "auto", borderRadius: 14, padding: "11px 14px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontWeight: 700, fontSize: 13, color: "var(--mc-green-800)", width: "100%" }}
-          >
-            <Icon name="list" size={15} /> Ver ficha completa
-          </motion.button>
-        )}
       </div>
 
       {/* Tarjeta de cultivo (abajo-izquierda) */}

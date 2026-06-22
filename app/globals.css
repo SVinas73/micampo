@@ -1998,7 +1998,7 @@ a:focus-visible {
 }
 .mc-lotes-list__head {
   display: grid;
-  grid-template-columns: 196px 170px 150px 128px 160px 110px minmax(150px, 1fr) 96px;
+  grid-template-columns: minmax(190px, 1.4fr) minmax(140px, 1.1fr) minmax(120px, 1fr) minmax(110px, 0.95fr) minmax(150px, 1.15fr) minmax(110px, 1fr) minmax(196px, 1.7fr) 92px;
   gap: 0;
   padding: 10px 16px;
   background: var(--mc-surface-2);
@@ -2011,7 +2011,7 @@ a:focus-visible {
 }
 .mc-lotes-list__row {
   display: grid;
-  grid-template-columns: 196px 170px 150px 128px 160px 110px minmax(150px, 1fr) 96px;
+  grid-template-columns: minmax(190px, 1.4fr) minmax(140px, 1.1fr) minmax(120px, 1fr) minmax(110px, 0.95fr) minmax(150px, 1.15fr) minmax(110px, 1fr) minmax(196px, 1.7fr) 92px;
   gap: 0;
   padding: 12px 16px;
   border-bottom: 1px solid var(--mc-line);
@@ -2335,3 +2335,7 @@ a:focus-visible {
    (fijo abajo-derecha) no los tape. Scopeado al contenedor del mapa. */
 .mc-mapwrap .maplibregl-ctrl-bottom-right { margin-bottom: 86px; }
 .mc-mapwrap .leaflet-bottom.leaflet-right { margin-bottom: 86px; }
+
+/* Segundo rayo de tormenta (desfasado para que parpadeen alternados) */
+.wx-scene-bolt2 { opacity: 0; animation: wx-flash 6s ease-in-out infinite; animation-delay: -3.2s; }
+@media (prefers-reduced-motion: reduce) { .wx-scene-bolt2 { animation: none; } }

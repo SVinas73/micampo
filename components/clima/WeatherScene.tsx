@@ -80,7 +80,7 @@ function Clouds({ defs }: { defs: { top: string; w: number; dur: number; delay: 
 }
 
 function Rain({ heavy }: { heavy?: boolean }) {
-  const n = heavy ? 38 : 24;
+  const n = heavy ? 60 : 42;
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }} aria-hidden>
       {Array.from({ length: n }).map((_, i) => (
@@ -153,8 +153,11 @@ export function WeatherScene({
             <Clouds defs={[{ top: "2%", w: 158, dur: 42, delay: 0, dark: true }, { top: "22%", w: 118, dur: 30, delay: -14, dark: true }]} />
             <Rain heavy />
             <div className="wx-scene-flash" />
-            <svg className="wx-scene-bolt" viewBox="0 0 24 48" width="26" height="52" style={{ position: "absolute", top: "36%", left: "60%" }}>
+            <svg className="wx-scene-bolt" viewBox="0 0 24 48" width="28" height="58" style={{ position: "absolute", top: "30%", left: "58%", filter: "drop-shadow(0 0 6px rgba(255,226,122,0.8))" }}>
               <path d="M13 0 L3 26 H11 L8 48 L21 18 H12 Z" fill="#ffe27a" />
+            </svg>
+            <svg className="wx-scene-bolt2" viewBox="0 0 24 48" width="20" height="42" style={{ position: "absolute", top: "40%", left: "30%", filter: "drop-shadow(0 0 5px rgba(255,226,122,0.7))" }}>
+              <path d="M13 0 L3 26 H11 L8 48 L21 18 H12 Z" fill="#fff0b0" />
             </svg>
           </>
         )}
