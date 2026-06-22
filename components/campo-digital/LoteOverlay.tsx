@@ -242,7 +242,7 @@ export function LoteOverlay({
         <motion.div
           {...fade(4)}
           className="mc-glass mc-floatcard"
-          style={{ position: "absolute", bottom: 16, right: 16, borderRadius: 16, padding: 13, width: 234, pointerEvents: "auto" }}
+          style={{ position: "absolute", top: 196, right: 16, borderRadius: 16, padding: 13, width: 234, pointerEvents: "auto" }}
         >
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div className="row gap-6" style={{ alignItems: "center", color: "var(--mc-text-2)", fontSize: 11, fontWeight: 700 }}>

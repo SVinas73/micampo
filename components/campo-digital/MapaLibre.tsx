@@ -230,7 +230,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
       attributionControl: false,
     });
     mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
 
     map.on("load", () => {
       // Capa NDVI real (Sentinel Hub) — solo si está configurada
