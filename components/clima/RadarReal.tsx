@@ -97,7 +97,7 @@ export default function RadarReal({ lat, lon, marcador = false }: { lat: number;
       <div ref={ref} style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
 
       {/* Estado: observado / pronóstico */}
-      <div style={{ position: "absolute", top: 12, left: 12, zIndex: 500, display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 700, color: "#fff", background: esPronostico ? "rgba(217,165,56,0.92)" : "rgba(58,147,184,0.92)", backdropFilter: "blur(6px)", boxShadow: "0 2px 10px rgba(0,0,0,0.25)" }}>
+      <div style={{ position: "absolute", top: 12, left: 52, zIndex: 500, display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 700, color: "#fff", background: esPronostico ? "rgba(217,165,56,0.92)" : "rgba(58,147,184,0.92)", backdropFilter: "blur(6px)", boxShadow: "0 2px 10px rgba(0,0,0,0.25)" }}>
         <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#fff" }} />
         {esPronostico ? "Pronóstico (nowcast)" : "Observado"} · {ts || "—"}
       </div>

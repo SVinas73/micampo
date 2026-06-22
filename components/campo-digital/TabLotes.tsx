@@ -780,6 +780,38 @@ function proyeccionTn(l: LoteUI): number | null {
   return Math.round((base * f) / 100) / 10; // t/ha (1 decimal)
 }
 
+/** Croquis: dibuja la forma real del lote (su polígono) normalizado. */
+function LoteCroquis({ lote }: { lote: LoteUI }) {
+  const ring = lote.geojson?.coordinates?.[0];
+  const color = lote.cultivoColor || ndviColorList(lote.ndvi);
+  if (!ring || ring.length < 3) {
+    return (
+      <div className="row gap-6" style={{ alignItems: "center", color: "var(--mc-text-3)", fontSize: 11.5 }}>
+        <span style={{ width: 34, height: 34, borderRadius: 8, border: "1.5px dashed var(--mc-line)", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name="map" size={13} /></span>
+        Sin geometría
+      </div>
+    );
+  }
+  const xs = ring.map((p) => p[0]); const ys = ring.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = maxX - minX || 1, h = maxY - minY || 1;
+  const W = 116, H = 56, pad = 7;
+  const sc = Math.min((W - 2 * pad) / w, (H - 2 * pad) / h);
+  const ox = (W - w * sc) / 2, oy = (H - h * sc) / 2;
+  const pts = ring.map((p) => `${(ox + (p[0] - minX) * sc).toFixed(1)},${(oy + (maxY - p[1]) * sc).toFixed(1)}`).join(" ");
+  return (
+    <div className="row gap-8" style={{ alignItems: "center" }}>
+      <svg width={W} height={H} style={{ flexShrink: 0, borderRadius: 8, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)" }}>
+        <polygon points={pts} fill={`${color}33`} stroke={color} strokeWidth={1.6} strokeLinejoin="round" />
+      </svg>
+      <div style={{ minWidth: 0 }}>
+        <div className="text-xs" style={{ color: "var(--mc-text-2)", fontWeight: 600 }}>{Math.round(lote.ha)} ha</div>
+        <div className="text-xs text-muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lote.vacio ? "Sin sembrar" : "Activo"}</div>
+      </div>
+    </div>
+  );
+}
+
 type EcoLote = { margenPorHa: number; costoPorHa: number; porcentajeMargen: number; fuente: string };
 type AlertaLote = { plaga: string; severidad: string };
 
@@ -821,6 +853,7 @@ function LotesListaDetallada({
           <div>Salud</div>
           <div>Monitoreo</div>
           <div>Proyección</div>
+          <div>Croquis</div>
           <div>Acciones</div>
         </div>
         {lotes.length === 0 && (
@@ -906,6 +939,8 @@ function LotesListaDetallada({
                   <span className="text-xs text-muted">Sin cultivo</span>
                 )}
               </div>
+              {/* Croquis */}
+              <div><LoteCroquis lote={l} /></div>
               {/* Acciones */}
               <div className="col gap-4" onClick={(e) => e.stopPropagation()}>
                 <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "4px 10px", fontSize: 11, justifyContent: "center" }} onClick={() => onTarea(l)}>

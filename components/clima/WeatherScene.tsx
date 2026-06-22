@@ -67,11 +67,11 @@ function CloudSVG({ w = 150, dark }: { w?: number; dark?: boolean }) {
   );
 }
 
-function Clouds({ defs }: { defs: { top: string; w: number; dur: number; delay: number; dark?: boolean }[] }) {
+function Clouds({ defs }: { defs: { top: string; w: number; dur: number; delay: number; dark?: boolean; opacity?: number }[] }) {
   return (
     <>
       {defs.map((d, i) => (
-        <div key={i} className="wx-scene-cloud-wrap" style={{ top: d.top, animationDuration: `${d.dur}s`, animationDelay: `${d.delay}s` }}>
+        <div key={i} className="wx-scene-cloud-wrap" style={{ top: d.top, opacity: d.opacity ?? 1, animationDuration: `${d.dur}s`, animationDelay: `${d.delay}s` }}>
           <CloudSVG w={d.w} dark={d.dark} />
         </div>
       ))}
@@ -137,8 +137,8 @@ export function WeatherScene({
             <SunSVG size={c === "sun" ? 168 : 120} />
           </div>
         )}
-        {c === "partly" && <Clouds defs={[{ top: "44%", w: 130, dur: 32, delay: -4 }, { top: "16%", w: 88, dur: 46, delay: -20 }]} />}
-        {c === "cloud" && <Clouds defs={[{ top: "12%", w: 150, dur: 38, delay: 0 }, { top: "40%", w: 116, dur: 30, delay: -12 }, { top: "60%", w: 92, dur: 52, delay: -26 }]} />}
+        {c === "partly" && <Clouds defs={[{ top: "44%", w: 130, dur: 32, delay: -4, opacity: 0.78 }, { top: "16%", w: 88, dur: 46, delay: -20, opacity: 0.7 }]} />}
+        {c === "cloud" && <Clouds defs={[{ top: "12%", w: 150, dur: 38, delay: 0, opacity: 0.5 }, { top: "40%", w: 116, dur: 30, delay: -12, opacity: 0.42 }, { top: "60%", w: 92, dur: 52, delay: -26, opacity: 0.38 }]} />}
         {c === "fog" && (
           <>
             <Clouds defs={[{ top: "8%", w: 150, dur: 50, delay: 0, dark: true }]} />
