@@ -799,14 +799,21 @@ function LoteCroquis({ lote }: { lote: LoteUI }) {
   const sc = Math.min((W - 2 * pad) / w, (H - 2 * pad) / h);
   const ox = (W - w * sc) / 2, oy = (H - h * sc) / 2;
   const pts = ring.map((p) => `${(ox + (p[0] - minX) * sc).toFixed(1)},${(oy + (maxY - p[1]) * sc).toFixed(1)}`).join(" ");
+  const cLat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+  const cLng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+  const perim = lote.perimetro ? (lote.perimetro >= 1000 ? `${(lote.perimetro / 1000).toFixed(1)} km` : `${Math.round(lote.perimetro)} m`) : null;
   return (
-    <div className="row gap-8" style={{ alignItems: "center" }}>
+    <div className="row gap-10" style={{ alignItems: "center" }}>
       <svg width={W} height={H} style={{ flexShrink: 0, borderRadius: 8, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)" }}>
-        <polygon points={pts} fill={`${color}33`} stroke={color} strokeWidth={1.6} strokeLinejoin="round" />
+        <polygon points={pts} fill={`${color}33`} stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
       </svg>
-      <div style={{ minWidth: 0 }}>
-        <div className="text-xs" style={{ color: "var(--mc-text-2)", fontWeight: 600 }}>{Math.round(lote.ha)} ha</div>
-        <div className="text-xs text-muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lote.vacio ? "Sin sembrar" : "Activo"}</div>
+      <div style={{ minWidth: 0, fontSize: 11.5 }}>
+        <div className="row gap-4" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="map" size={11} />{cLat.toFixed(4)}°, {cLng.toFixed(4)}°</div>
+        {perim && <div className="row gap-4 mt-2" style={{ alignItems: "center", color: "var(--mc-text-3)" }}><Icon name="activity" size={11} />Perímetro {perim}</div>}
+        <div className="row gap-4 mt-2" style={{ alignItems: "center" }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: lote.vacio ? "#b8b2a3" : "#7ec47f" }} />
+          <span style={{ color: "var(--mc-text-3)" }}>{lote.vacio ? "Sin sembrar" : "Activo"}</span>
+        </div>
       </div>
     </div>
   );
