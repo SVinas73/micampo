@@ -288,6 +288,16 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
     if (!map || !ready || !map.getLayer("lotes-fill")) return;
     map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layerRef.current, selectedId ?? null) as any);
     map.setPaintProperty("lotes-line", "line-width", ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6] as any);
+    // Volar hacia el lote seleccionado
+    if (selectedId) {
+      const lote = lotesRef.current.find((l) => l.id === selectedId);
+      const ring = lote?.geojson?.coordinates?.[0];
+      if (ring && ring.length) {
+        const b = new maplibregl.LngLatBounds();
+        ring.forEach((p) => b.extend(p as [number, number]));
+        map.fitBounds(b, { padding: 120, maxZoom: 15.5, pitch: 52, bearing: -17, duration: 900 });
+      }
+    }
   }, [selectedId, ready]);
 
   const toggleTerrain = () => {
