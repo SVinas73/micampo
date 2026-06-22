@@ -37,7 +37,11 @@ function PlanRiegoInner() {
   const [sub, setSub] = useState("Inicio");
   const [riegoOpen, setRiegoOpen] = useState(false);
 
-  const [estrategia, setEstrategia] = useState(70);
+  const [estrategia, setEstrategia] = useState(() => {
+    if (typeof window === "undefined") return 70;
+    const v = Number(window.localStorage.getItem("mc-riego-estrategia"));
+    return Number.isFinite(v) && v > 0 ? v : 70;
+  });
   const [planRiegoId, setPlanRiegoId] = useState<string | null>(null);
   const [loteId, setLoteId] = useState<string | null>(null);
   const [loteNombre, setLoteNombre] = useState<string>("tu campo");
@@ -135,23 +139,48 @@ function PlanRiegoInner() {
   const costoEvento = sugerencias.reduce((s, x) => s + x.costoUSD, 0);
   const aguaUtilMm = Math.round((s0 / 100) * AWC);
 
-  const postEvento = useCallback(async (mm: number, fecha: string, observaciones: string) => {
-    if (!planRiegoId) return false;
+  // Asegura que el lote tenga un plan de riego (lo crea si no existe)
+  const ensurePlan = useCallback(async (): Promise<string | null> => {
+    if (planRiegoId) return planRiegoId;
+    if (!loteId) return null;
     try {
-      const res = await fetch("/api/eventos-riego", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planRiegoId, fechaProgramada: new Date().toISOString(), laminaAplicada: mm, estado: "Programado", observaciones }) });
+      const res = await fetch("/api/planes-riego", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          loteId, nombre: `Plan de riego · ${loteNombre}`, cultivo, etapaFenologica: "Media",
+          tipoSuelo: "Franco", etcDiaria: etcDia || 4, frecuenciaRiego: 3,
+          laminaRiego: Math.round(10 + (estrategia / 100) * 12), fechaInicio: new Date().toISOString(),
+          costoMM: COSTO_MM, eficienciaRiego: 85, modoIA: true,
+        }),
+      });
+      if (!res.ok) return null;
+      const p = await res.json();
+      setPlanRiegoId(p.id);
+      return p.id;
+    } catch { return null; }
+  }, [planRiegoId, loteId, loteNombre, cultivo, etcDia, estrategia]);
+
+  const postEvento = useCallback(async (mm: number, fecha: string, observaciones: string) => {
+    const plan = await ensurePlan();
+    if (!plan) return false;
+    try {
+      const res = await fetch("/api/eventos-riego", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planRiegoId: plan, fechaProgramada: new Date().toISOString(), laminaAplicada: mm, estado: "Programado", observaciones }) });
       return res.ok;
     } catch { return false; }
-  }, [planRiegoId]);
+  }, [ensurePlan]);
 
   const aprobarOrden = useCallback(async () => {
     if (sugerencias.length === 0) { toast.show("No hay riego sugerido por ahora", "err"); return; }
-    for (const s of sugerencias) await postEvento(s.mm, s.fecha, s.motivo);
+    let ok = 0;
+    for (const s of sugerencias) { if (await postEvento(s.mm, s.fecha, s.motivo)) ok++; }
+    if (ok === 0) { toast.show("No se pudo guardar la orden de riego", "err"); return; }
     setRiegos((prev) => [...sugerencias.map((s) => ({ t: Date.now(), mm: s.mm, estado: "Programado", ia: false })), ...prev]);
-    toast.show("Orden de riego aprobada");
+    toast.show(`Orden de riego aprobada · ${ok} evento(s) programado(s)`);
   }, [sugerencias, postEvento, toast]);
 
   const registrar = useCallback(async (r: RegistroRiego) => {
-    await postEvento(r.mm, r.fecha, r.observaciones);
+    const ok = await postEvento(r.mm, r.fecha, r.observaciones);
+    if (!ok) { toast.show("No se pudo guardar el riego", "err"); return; }
     setRiegos((prev) => [{ t: Date.now(), mm: r.mm, estado: r.fuente === "ia" ? "ejecutado" : "Reporte manual", ia: r.fuente === "ia" }, ...prev]);
     toast.show(r.fuente === "ia" ? "Riego IA confirmado" : "Registro manual guardado");
   }, [postEvento, toast]);
@@ -163,7 +192,7 @@ function PlanRiegoInner() {
   return (
     <div className="col gap-20">
       {toast.node}
-      <RegistrarRiegoModal open={riegoOpen} onClose={() => setRiegoOpen(false)} sugerencias={sugerencias} onRegistrar={registrar} />
+      <RegistrarRiegoModal open={riegoOpen} onClose={() => setRiegoOpen(false)} sugerencias={sugerencias} onRegistrar={registrar} lotes={scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo, hectareas: l.hectareas }))} loteActivoId={loteId} />
 
       <PageHeader
         crumbs={["Agronomía", "Plan de Riego"]}
@@ -188,7 +217,7 @@ function PlanRiegoInner() {
           sugerencias={sugerencias}
           estrategia={estrategia}
           onEstrategia={setEstrategia}
-          onEstrategiaCommit={() => {}}
+          onEstrategiaCommit={() => { try { window.localStorage.setItem("mc-riego-estrategia", String(estrategia)); } catch {} }}
           costoEvento={costoEvento}
           onAprobar={aprobarOrden}
           cargando={cargandoBalance}
