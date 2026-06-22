@@ -16,6 +16,8 @@ export default function EstablecimientosPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ nombre: "", ciudad: "", provincia: "", hectareasTotales: "" });
   const [guardando, setGuardando] = useState(false);
+  const [aEliminar, setAEliminar] = useState<Est | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   const cargar = () => {
     setCargando(true);
@@ -44,8 +46,7 @@ export default function EstablecimientosPage() {
     } catch { toast.show("No se pudo crear", "err"); } finally { setGuardando(false); }
   };
 
-  const asignar = async (loteId: string, establecimientoId: string) => {
-    setLotes((prev) => prev.map((l) => (l.id === loteId ? { ...l, establecimientoId: establecimientoId || null } : l)));
+  const asignar = async (loteId: string, establecimientoId: string) => {    setLotes((prev) => prev.map((l) => (l.id === loteId ? { ...l, establecimientoId: establecimientoId || null } : l)));
     try {
       const res = await fetch(`/api/lotes/${loteId}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -57,6 +58,19 @@ export default function EstablecimientosPage() {
       fetch("/api/establecimientos").then((r) => (r.ok ? r.json() : [])).then((e) => setEsts(Array.isArray(e) ? e : []));
       recargar();
     } catch { toast.show("No se pudo reasignar", "err"); cargar(); }
+  };
+
+  const eliminar = async () => {
+    if (!aEliminar) return;
+    setBorrando(true);
+    try {
+      const res = await fetch(`/api/establecimientos/${aEliminar.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      const d = await res.json().catch(() => ({}));
+      toast.show(d.lotesLiberados ? `Establecimiento eliminado · ${d.lotesLiberados} lote(s) quedaron sin asignar` : "Establecimiento eliminado");
+      setAEliminar(null);
+      cargar(); recargar();
+    } catch { toast.show("No se pudo eliminar", "err"); } finally { setBorrando(false); }
   };
 
   const totalHa = lotes.reduce((s, l) => s + (l.hectareas || 0), 0);
@@ -93,7 +107,12 @@ export default function EstablecimientosPage() {
                         <div className="text-xs text-muted">{[e.ciudad, e.provincia].filter(Boolean).join(", ") || "Sin ubicación"}</div>
                       </div>
                     </div>
-                    <span className="mc-badge mc-badge--neutral"><span className="mc-badge__dot" />{e.lotesCount ?? 0} lotes</span>
+                    <div className="row gap-6" style={{ alignItems: "center" }}>
+                      <span className="mc-badge mc-badge--neutral"><span className="mc-badge__dot" />{e.lotesCount ?? 0} lotes</span>
+                      <button className="mc-icon-btn" aria-label={`Eliminar ${e.nombre}`} title="Eliminar establecimiento" onClick={() => setAEliminar(e)} style={{ color: "var(--mc-red)" }}>
+                        <Icon name="trash" size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -158,6 +177,27 @@ export default function EstablecimientosPage() {
         <Field label="Hectáreas totales">
           <input className="mc-input" type="number" value={form.hectareasTotales} onChange={(e) => setForm({ ...form, hectareasTotales: e.target.value })} />
         </Field>
+      </Modal>
+
+      <Modal
+        open={!!aEliminar}
+        onClose={() => setAEliminar(null)}
+        title={`Eliminar ${aEliminar?.nombre || "establecimiento"}`}
+        subtitle="Se elimina el establecimiento. Sus lotes NO se borran: quedan sin asignar y los podés reasignar."
+        footer={<>
+          <button className="mc-btn mc-btn--ghost" onClick={() => setAEliminar(null)}>Cancelar</button>
+          <button className="mc-btn" style={{ background: "var(--mc-red)", color: "#fff", border: "none" }} onClick={eliminar} disabled={borrando}>
+            <Icon name="trash" size={14} />{borrando ? "Eliminando…" : "Eliminar establecimiento"}
+          </button>
+        </>}
+      >
+        <div style={{ fontSize: 13.5, color: "var(--mc-text-2)", lineHeight: 1.55 }}>
+          {aEliminar?.lotesCount ? (
+            <>El establecimiento <strong>{aEliminar.nombre}</strong> tiene <strong>{aEliminar.lotesCount} lote(s)</strong>. No se eliminan: pasarán a “Sin asignar”.</>
+          ) : (
+            <>El establecimiento <strong>{aEliminar?.nombre}</strong> no tiene lotes asignados.</>
+          )}
+        </div>
       </Modal>
     </div>
   );

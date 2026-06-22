@@ -172,7 +172,12 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }
       fg.addLayer(poly);
     });
 
-    if (conGeo.length > 0) {
+    // Volar al lote seleccionado; si no hay, encuadrar todos
+    const sel = selectedId ? conGeo.find((l) => l.id === selectedId) : null;
+    if (sel) {
+      const ring = sel.geojson!.coordinates[0].map(([lng, lat]) => [lat, lng] as [number, number]);
+      try { map.flyToBounds(L.latLngBounds(ring).pad(0.4), { maxZoom: 16, duration: 0.9 }); } catch {}
+    } else if (conGeo.length > 0) {
       try { map.fitBounds(fg.getBounds().pad(0.2)); } catch {}
     }
   }, [lotes, selectedId, layer]);
