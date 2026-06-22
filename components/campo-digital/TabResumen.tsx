@@ -6,7 +6,8 @@ import { CULTIVO_COLORES } from "./lotes-data";
 
 /* ========== TAB RESUMEN — 100% datos reales ========== */
 
-type LoteApi = { hectareas?: number; cultivo?: string | null };
+type LoteApi = { hectareas?: number; cultivo?: string | null; establecimientoId?: string | null };
+type EstApi = { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; lotesCount?: number };
 type LaborApi = {
   tipo?: string;
   fecha?: string;
@@ -55,6 +56,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
   const [lotes, setLotes] = useState<LoteApi[]>([]);
   const [labores, setLabores] = useState<LaborApi[]>([]);
   const [alertas, setAlertas] = useState<AlertaApi[]>([]);
+  const [ests, setEsts] = useState<EstApi[]>([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -62,13 +64,25 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/labores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/deteccion-enfermedades").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([l, lab, al]) => {
+      fetch("/api/establecimientos").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([l, lab, al, es]) => {
       if (Array.isArray(l)) setLotes(l);
       if (Array.isArray(lab)) setLabores(lab);
       if (Array.isArray(al)) setAlertas(al);
+      if (Array.isArray(es)) setEsts(es);
       setCargando(false);
     });
   }, []);
+
+  // ---- Campos (establecimientos) con su superficie real ----
+  const campos = useMemo(() => {
+    return ests.map((e) => {
+      const ls = lotes.filter((l) => l.establecimientoId === e.id);
+      return { ...e, lotes: ls.length, ha: Math.round(ls.reduce((s, l) => s + (l.hectareas || 0), 0)) };
+    });
+  }, [ests, lotes]);
+  const lotesSinCampo = lotes.filter((l) => !l.establecimientoId);
+  const haSinCampo = Math.round(lotesSinCampo.reduce((s, l) => s + (l.hectareas || 0), 0));
 
   // ---- KPIs reales ----
   const totalHa = lotes.reduce((s, l) => s + (l.hectareas || 0), 0);
@@ -143,6 +157,8 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
         <KPI label="Alertas sanitarias" value={String(alertasActivas)} delta={alertasCriticas > 0 ? `${alertasCriticas} críticas` : "Sin críticas"} trend="warn" icon="alert" warn={alertasCriticas > 0} />
       </div>
 
+      <CamposCard campos={campos} lotesSinCampo={lotesSinCampo.length} haSinCampo={haSinCampo} cargando={cargando} />
+
       <PlantacionesCard plantaciones={plantaciones} totalHa={Math.round(totalHa)} cargando={cargando} />
 
       <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 14 }}>
@@ -166,6 +182,54 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
         </div>
       </div>
     </>
+  );
+}
+
+function CamposCard({ campos, lotesSinCampo, haSinCampo, cargando }: { campos: { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; lotes: number; ha: number }[]; lotesSinCampo: number; haSinCampo: number; cargando: boolean }) {
+  return (
+    <div className="mc-card">
+      <div className="mc-card__head">
+        <div>
+          <div className="mc-card__eyebrow">Estructura del productor</div>
+          <div className="mc-card__title mt-4">Campos y lotes</div>
+        </div>
+        {campos.length > 0 && <span className="mc-badge mc-badge--neutral"><span className="mc-badge__dot" />{campos.length} campos</span>}
+      </div>
+      {cargando ? (
+        <SkeletonRows n={2} />
+      ) : campos.length === 0 && lotesSinCampo === 0 ? (
+        <EmptyState icon="building" title="Sin campos ni lotes" sub="Creá un establecimiento en la sección Establecimientos y dibujá tus lotes en el mapa." />
+      ) : (
+        <div className="grid g-cols-3 gap-12">
+          {campos.map((c) => (
+            <div key={c.id} style={{ border: "1px solid var(--mc-line)", borderRadius: 12, padding: 14 }}>
+              <div className="row gap-8" style={{ alignItems: "center" }}>
+                <span style={{ width: 32, height: 32, borderRadius: 9, background: "var(--mc-green-50)", color: "var(--mc-green-700)", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name="building" size={16} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.nombre}</div>
+                  <div className="text-xs text-muted">{[c.ciudad, c.provincia].filter(Boolean).join(", ") || "Sin ubicación"}</div>
+                </div>
+              </div>
+              <div className="row" style={{ justifyContent: "space-between", marginTop: 12 }}>
+                <div><div style={{ fontFamily: "var(--ff-display)", fontSize: 20, color: "var(--mc-ink)" }}>{c.lotes}</div><div className="text-xs text-muted">lotes</div></div>
+                <div style={{ textAlign: "right" }}><div style={{ fontFamily: "var(--ff-display)", fontSize: 20, color: "var(--mc-ink)" }}>{c.ha}</div><div className="text-xs text-muted">ha</div></div>
+              </div>
+            </div>
+          ))}
+          {lotesSinCampo > 0 && (
+            <div style={{ border: "1px dashed var(--mc-line)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div className="row gap-8" style={{ alignItems: "center" }}>
+                <span style={{ width: 32, height: 32, borderRadius: 9, background: "var(--mc-amber-bg)", color: "var(--mc-amber)", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name="alert" size={16} /></span>
+                <div>
+                  <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 14 }}>Sin asignar</div>
+                  <div className="text-xs text-muted">{lotesSinCampo} lotes · {haSinCampo} ha</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

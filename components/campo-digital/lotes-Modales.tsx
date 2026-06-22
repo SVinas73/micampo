@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Icon } from "@/components/mc";
 import type { LoteUI } from "./lotes-data";
 
@@ -56,12 +56,14 @@ export function AgregarCampoModal({
   onConfirm,
   defaultHectareas,
   dibujadoEnMapa = false,
+  centro,
 }: {
   titulo?: string;
   onClose: () => void;
   onConfirm: (data: AgregarCampoData) => Promise<void> | void;
   defaultHectareas?: number;
   dibujadoEnMapa?: boolean;
+  centro?: { lat: number; lng: number };
 }) {
   const tituloFinal = titulo ?? (dibujadoEnMapa ? "Nuevo lote dibujado en el mapa" : "Crear Nuevo Establecimiento");
   const [nombre, setNombre] = useState("");
@@ -72,6 +74,28 @@ export function AgregarCampoModal({
   const [moneda, setMoneda] = useState("USD/Ha");
   const [frecuencia, setFrecuencia] = useState("Anual");
   const [saving, setSaving] = useState(false);
+  const [geocodificando, setGeocodificando] = useState(false);
+
+  // Al dibujar en el mapa: geocodificación inversa para autocompletar la ubicación.
+  useEffect(() => {
+    if (!centro) return;
+    setGeocodificando(true);
+    const ctrl = new AbortController();
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${centro.lat}&lon=${centro.lng}&zoom=14&accept-language=es`, {
+      headers: { "Accept": "application/json" }, signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        const a = d.address || {};
+        const partes = [a.hamlet || a.village || a.town || a.city || a.county, a.state, a.country].filter(Boolean);
+        const lugar = partes.join(", ") || d.display_name || "";
+        if (lugar) setUbicacion(lugar);
+      })
+      .catch(() => {})
+      .finally(() => setGeocodificando(false));
+    return () => ctrl.abort();
+  }, [centro]);
 
   const guardar = async () => {
     if (!nombre.trim() || saving) return;
@@ -113,17 +137,19 @@ export function AgregarCampoModal({
                 </div>
               </div>
               <div>
-                <label style={lbl}>Vista previa</label>
-                <div style={{ height: 86, borderRadius: 8, border: "1.5px solid #c0c5ce", background: "linear-gradient(135deg, #d4e8d4 0%, #b8d9b8 40%, #9ecfa0 100%)", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ position: "absolute", inset: 0, opacity: 0.3 }}>
-                    {[0, 1, 2, 3].map((i) => (
-                      <div key={`h${i}`} style={{ position: "absolute", left: 0, right: 0, top: `${i * 33}%`, height: 1, background: "#768f44" }} />
-                    ))}
-                    {[0, 1, 2, 3].map((i) => (
-                      <div key={`v${i}`} style={{ position: "absolute", top: 0, bottom: 0, left: `${i * 33}%`, width: 1, background: "#768f44" }} />
-                    ))}
+                <label style={lbl}>{centro ? "Ubicación detectada" : "Vista previa"}</label>
+                <div style={{ minHeight: 86, borderRadius: 8, border: "1.5px solid #c0c5ce", background: "linear-gradient(135deg, #eef5ec 0%, #dfeede 100%)", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--mc-green-600)", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name="map" size={12} /></span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--mc-ink)", lineHeight: 1.25 }}>
+                      {centro ? (geocodificando ? "Detectando lugar…" : (ubicacion || "Ubicación sin nombre")) : "Dibujá el lote en el mapa para detectar la ubicación"}
+                    </span>
                   </div>
-                  <div style={{ width: 20, height: 20, background: "#475569", borderRadius: "50% 50% 50% 0", transform: "rotate(-45deg)", border: "3px solid white", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
+                  {centro && (
+                    <div style={{ fontFamily: "var(--ff-mono)", fontSize: 11, color: "var(--mc-text-2)", paddingLeft: 29 }}>
+                      {centro.lat.toFixed(5)}°, {centro.lng.toFixed(5)}°
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

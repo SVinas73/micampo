@@ -94,14 +94,11 @@ export default function TabLotes() {
     return () => { cancelado = true; };
   }, []);
 
-  /* ---- Acciones de header (Figma: Eliminar Campo / Nuevo Campo) ---- */
+  /* ---- Acción de header: crear lote (la eliminación va en la toolbar del mapa) ---- */
   useSetHeaderActions(
     <>
-      <button className="mc-btn mc-btn--red" onClick={() => setShowEliminar(true)}>
-        Eliminar Campo
-      </button>
       <button className="mc-btn mc-btn--primary" onClick={() => setShowAgregar(true)}>
-        Nuevo Campo
+        <Icon name="plus" size={14} />Nuevo lote
       </button>
     </>,
     []
@@ -224,7 +221,7 @@ export default function TabLotes() {
   return (
     <>
       {toast.node}
-      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} />}
+      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} centro={dibujado?.centro} />}
       {showEliminar && (
         <EliminarCampoModal
           lotes={enScope.map((l) => ({ id: l.dbId || l.id, nombre: l.name, ha: l.ha, cultivo: l.cultivo }))}
@@ -280,17 +277,8 @@ export default function TabLotes() {
               </div>
             </>
           )}
-          <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ color: "var(--mc-red)" }} onClick={() => setShowEliminar(true)}>
-            <Icon name="trash" size={13} />Eliminar campo
-          </button>
-          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setShowAgregar(true)}>
-            <Icon name="plus" size={13} />Agregar campo
-          </button>
-          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setComentarioGeneral(true)}>
-            <Icon name="pen" size={13} />Agregar Comentario
-          </button>
-          <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setShowAgregar(true)}>
-            <Icon name="plus" size={13} />Nuevo lote
+          <button className="mc-btn mc-btn--red mc-btn--sm" onClick={() => setShowEliminar(true)}>
+            <Icon name="trash" size={13} />Eliminar lote
           </button>
         </div>
       </div>
@@ -351,7 +339,9 @@ function LotesMapa({
     "Satélite": [],
   };
   const legend = legendByLayer[layer] || [];
-  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null }));
+  const { establecimientos } = useLoteScope();
+  const nombreEst = (id?: string | null) => (id ? establecimientos.find((e) => e.id === id)?.nombre ?? null : null);
+  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
   const [vista, setVista] = useState<"3d" | "clasico">("3d");
   const [fichaOpen, setFichaOpen] = useState(false);
   const MapaActivo = vista === "3d" ? Mapa3D : MapaClasico;
@@ -451,6 +441,8 @@ function LotesMapa({
 }
 
 /* ========== FICHA TÉCNICA (Figma LoteFichaTecnica) ========== */
+type HistItem = { fechaMs: number; fecha: string; tipo: string; detail: string };
+
 function LoteFichaTecnica({
   lote, onClose, onNota, onEditar, onTarea,
 }: {
@@ -461,19 +453,74 @@ function LoteFichaTecnica({
   onTarea: () => void;
 }) {
   const [innerTab, setInnerTab] = useState("Resumen");
-  const lluviasDays = [12, 25, 38, 28, 18, 14, 22];
-  const maxLl = Math.max(...lluviasDays);
+  const [cargando, setCargando] = useState(true);
+  const [historial, setHistorial] = useState<HistItem[]>([]);
+  const [laboresProg, setLaboresProg] = useState<HistItem[]>([]);
+  const [suelo, setSuelo] = useState<{ n: number | null; p: number | null; k: number | null; ph: number | null; mo: number | null; fecha: string } | null>(null);
+  const [lluvia, setLluvia] = useState<{ dias: { d: string; mm: number }[]; total: number } | null>(null);
+  const [alerta, setAlerta] = useState<{ plaga: string; severidad: string; fecha: string } | null>(null);
   const comentario = lote.comentarios[0];
+
+  useEffect(() => {
+    const dbId = lote.dbId;
+    if (!dbId) { setCargando(false); return; }
+    let cancel = false;
+    const fmt = (iso?: string) => (iso ? fechaCorta(new Date(iso)) : "—");
+
+    Promise.all([
+      fetch(`/api/lotes/${dbId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/labores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/deteccion-enfermedades").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      lote.geojson ? fetch(`/api/clima?lat=${centroLote(lote).lat}&lon=${centroLote(lote).lng}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) : Promise.resolve(null),
+    ]).then(([detalle, labores, alertas, clima]) => {
+      if (cancel) return;
+
+      // ----- Historial (eventos pasados, real) -----
+      const hist: HistItem[] = [];
+      (detalle?.siembras ?? []).forEach((s: any) => hist.push({ fechaMs: new Date(s.fechaSiembra).getTime(), fecha: fmt(s.fechaSiembra), tipo: "Siembra", detail: `${s.cultivo}${s.variedad ? ` · ${s.variedad}` : ""} · ${Math.round(s.hectareas)} ha` }));
+      (detalle?.cosechas ?? []).forEach((c: any) => hist.push({ fechaMs: new Date(c.fechaCosecha).getTime(), fecha: fmt(c.fechaCosecha), tipo: "Cosecha", detail: `${Math.round(c.rendimiento)} kg/ha${c.calidad ? ` · ${c.calidad}` : ""}` }));
+      (detalle?.analisisSuelo ?? []).forEach((a: any) => hist.push({ fechaMs: new Date(a.fechaAnalisis).getTime(), fecha: fmt(a.fechaAnalisis), tipo: "Análisis de suelo", detail: `pH ${a.pH ?? "—"}${a.materiaOrganica != null ? ` · MO ${a.materiaOrganica}%` : ""}` }));
+      const laboresLote = (Array.isArray(labores) ? labores : []).filter((l: any) => l.loteId === dbId);
+      laboresLote.filter((l: any) => l.estado === "Completada").forEach((l: any) => hist.push({ fechaMs: new Date(l.fecha).getTime(), fecha: fmt(l.fecha), tipo: l.tipo || "Labor", detail: l.descripcion || l.observaciones || "—" }));
+      hist.sort((a, b) => b.fechaMs - a.fechaMs);
+      setHistorial(hist);
+
+      // ----- Labores programadas -----
+      const prog = laboresLote
+        .filter((l: any) => l.estado !== "Completada")
+        .map((l: any) => ({ fechaMs: new Date(l.fecha).getTime(), fecha: fmt(l.fecha), tipo: l.tipo || "Labor", detail: `${l.estado || "Programada"}${l.descripcion ? ` · ${l.descripcion}` : ""}` }))
+        .sort((a: HistItem, b: HistItem) => a.fechaMs - b.fechaMs);
+      setLaboresProg(prog);
+
+      // ----- Suelo (último análisis) -----
+      const ult = (detalle?.analisisSuelo ?? [])[0];
+      if (ult) setSuelo({ n: ult.nitrogeno ?? null, p: ult.fosforo ?? null, k: ult.potasio ?? null, ph: ult.pH ?? null, mo: ult.materiaOrganica ?? null, fecha: fmt(ult.fechaAnalisis) });
+
+      // ----- Alerta sanitaria real del lote -----
+      const al = (Array.isArray(alertas) ? alertas : []).find((a: any) => a.loteId === dbId && a.estado !== "Resuelta");
+      if (al) setAlerta({ plaga: al.plaga, severidad: al.severidad, fecha: fmt(al.fechaDeteccion) });
+
+      // ----- Clima local 7 días (lluvia real) -----
+      if (clima?.dias?.length) {
+        const dias = clima.dias.slice(0, 7).map((d: any) => ({ d: (d.nombre || "").slice(0, 1).toUpperCase(), mm: Math.round(d.mm || 0) }));
+        setLluvia({ dias, total: dias.reduce((s: number, x: any) => s + x.mm, 0) });
+      }
+      setCargando(false);
+    });
+    return () => { cancel = true; };
+  }, [lote.dbId]);
+
+  const maxLl = lluvia ? Math.max(1, ...lluvia.dias.map((d) => d.mm)) : 1;
 
   return (
     <div className="mc-card" style={{ padding: 16, overflow: "hidden", display: "flex", flexDirection: "column", gap: 12, position: "relative" }}>
-      <button onClick={onClose} className="mc-icon-btn" style={{ position: "absolute", top: 10, right: 10, border: "none" }}>
+      <button onClick={onClose} aria-label="Cerrar ficha" className="mc-icon-btn" style={{ position: "absolute", top: 10, right: 10, border: "none" }}>
         <Icon name="x" size={14} />
       </button>
       <div>
         <div className="mc-card__eyebrow" style={{ fontSize: 12 }}>Ficha Técnica del Lote</div>
         <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, color: "var(--mc-ink)", marginTop: 8 }}>
-          {lote.id} · {lote.name.toUpperCase()}
+          {lote.name.toUpperCase()}
         </div>
         <div className="row gap-8 mt-8 text-xs text-muted" style={{ alignItems: "center" }}>
           <span>{lote.ha} Has</span>
@@ -483,7 +530,6 @@ function LoteFichaTecnica({
             <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`}>
               {lote.sano ? <Icon name="check" size={11} /> : <Icon name="alert" size={11} />} {lote.sano ? "Saludable" : "Atención"}
             </span>
-            <span className="mc-badge mc-badge--neutral"><Icon name="map" size={10} />Propio</span>
           </div>
         </div>
       </div>
@@ -507,28 +553,32 @@ function LoteFichaTecnica({
       {innerTab === "Resumen" && (
         <>
           <div className="grid g-cols-3 gap-8">
-            <FichaChip icon="leaf" label="NDVI" value={lote.ndvi.toFixed(2)} arrow="up" />
-            <FichaChip icon="droplet" label="Agua Útil" value={`${lote.aguaUtil}%`} arrow="droplet" />
-            <FichaChip icon="sprout" label="Estadio" value={lote.estadio || "V6 (Veg)"} small />
+            <FichaChip icon="leaf" label="NDVI" value={lote.ndvi > 0 ? lote.ndvi.toFixed(2) : "—"} arrow="up" />
+            <FichaChip icon="droplet" label="Agua Útil" value={lote.aguaUtil > 0 ? `${lote.aguaUtil}%` : "—"} arrow="droplet" />
+            <FichaChip icon="sprout" label="Estadio" value={lote.estadio && lote.estadio !== "—" ? lote.estadio : "—"} small />
           </div>
 
-          <div style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10 }}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div>
-                <div className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>Clima Local (7 días)</div>
-                <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", marginTop: 2 }}>45mm</div>
-                <div className="text-xs text-muted">Acumulados</div>
-              </div>
-              <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 56 }}>
-                {lluviasDays.map((v, i) => (
-                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                    <div style={{ width: 10, height: (v / maxLl) * 50, background: "var(--mc-blue)", borderRadius: 2 }}></div>
-                    <div style={{ fontSize: 9, color: "var(--mc-text-3)" }}>{["L", "M", "M", "J", "V", "S", "D"][i]}</div>
-                  </div>
-                ))}
+          {lluvia ? (
+            <div style={{ padding: 12, border: "1px solid var(--mc-line)", borderRadius: 10 }}>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div>
+                  <div className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>Clima local (7 días)</div>
+                  <div style={{ fontFamily: "var(--ff-display)", fontSize: 28, color: "var(--mc-ink)", marginTop: 2 }}>{lluvia.total}mm</div>
+                  <div className="text-xs text-muted">Lluvia pronosticada</div>
+                </div>
+                <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 56 }}>
+                  {lluvia.dias.map((v, i) => (
+                    <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                      <div style={{ width: 10, height: Math.max(2, (v.mm / maxLl) * 50), background: "var(--mc-blue)", borderRadius: 2 }}></div>
+                      <div style={{ fontSize: 9, color: "var(--mc-text-3)" }}>{v.d}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : !cargando && (
+            <div className="text-xs text-muted" style={{ padding: "8px 2px" }}>Dibujá el lote en el mapa para ver el clima local.</div>
+          )}
 
           {comentario && (
             <div style={{ padding: "10px 12px", background: "var(--mc-blue-bg)", border: "1px solid var(--mc-blue)", borderRadius: 10 }}>
@@ -542,12 +592,12 @@ function LoteFichaTecnica({
             </div>
           )}
 
-          {!lote.sano && (
+          {alerta && (
             <div style={{ padding: "10px 12px", background: "var(--mc-red-bg)", border: "1px solid var(--mc-red)", borderRadius: 10 }}>
               <div className="row gap-8">
                 <Icon name="alert" size={14} style={{ color: "var(--mc-red)" }} />
-                <div className="font-semi text-sm" style={{ color: "var(--mc-red)" }}>Oruga Bolillera detectada</div>
-                <span className="text-xs text-muted" style={{ marginLeft: "auto" }}>(Hace 2 días)</span>
+                <div className="font-semi text-sm" style={{ color: "var(--mc-red)" }}>{alerta.plaga} · {alerta.severidad}</div>
+                <span className="text-xs text-muted" style={{ marginLeft: "auto" }}>{alerta.fecha}</span>
               </div>
             </div>
           )}
@@ -556,36 +606,42 @@ function LoteFichaTecnica({
 
       {innerTab === "Historial" && (
         <div className="col gap-8">
-          <HistRow fecha="14/Abr" tipo="Pulverización" detail="Glifosato 3 L/Ha" />
-          <HistRow fecha="08/Abr" tipo="Fertilización" detail="Urea 120 kg/Ha" />
-          <HistRow fecha="22/Mar" tipo="Siembra" detail={`${lote.variety || "Var. estándar"} · 80 kpa`} />
-          <HistRow fecha="15/Mar" tipo="Análisis suelo" detail="pH 6.2 · MO 2.8%" />
+          {cargando ? <div className="text-xs text-muted">Cargando…</div>
+            : historial.length === 0 ? <FichaVacio texto="Sin eventos registrados. Las siembras, cosechas, análisis y labores aparecerán acá." />
+            : historial.map((h, i) => <HistRow key={i} fecha={h.fecha} tipo={h.tipo} detail={h.detail} />)}
         </div>
       )}
 
       {innerTab === "Suelo" && (
         <div className="col gap-8">
-          <SoilBar label="Nitrógeno (N)" value={60} color="var(--mc-amber)" />
-          <SoilBar label="Fósforo (P)" value={45} color="var(--mc-red)" />
-          <SoilBar label="Potasio (K)" value={80} color="var(--mc-green-500)" />
-          <div className="row gap-8 mt-8" style={{ fontSize: 13 }}>
-            <div style={{ flex: 1, padding: 8, background: "var(--mc-surface-2)", borderRadius: 8 }}>
-              <div className="text-xs text-muted">pH</div>
-              <div className="font-semi">6.2</div>
-            </div>
-            <div style={{ flex: 1, padding: 8, background: "var(--mc-surface-2)", borderRadius: 8 }}>
-              <div className="text-xs text-muted">MO</div>
-              <div className="font-semi">2.8%</div>
-            </div>
-          </div>
+          {cargando ? <div className="text-xs text-muted">Cargando…</div>
+            : !suelo ? <FichaVacio texto="Sin análisis de suelo. Cargá uno en Cultivos → Análisis de Suelo." />
+            : (
+              <>
+                <div className="text-xs text-muted">Último análisis · {suelo.fecha}</div>
+                <SoilBar label="Nitrógeno (N) ppm" value={suelo.n != null ? Math.min(100, Math.round(suelo.n)) : 0} color="var(--mc-amber)" />
+                <SoilBar label="Fósforo (P) ppm" value={suelo.p != null ? Math.min(100, Math.round(suelo.p * 2.5)) : 0} color="var(--mc-red)" />
+                <SoilBar label="Potasio (K) ppm" value={suelo.k != null ? Math.min(100, Math.round(suelo.k / 3)) : 0} color="var(--mc-green-500)" />
+                <div className="row gap-8 mt-8" style={{ fontSize: 13 }}>
+                  <div style={{ flex: 1, padding: 8, background: "var(--mc-surface-2)", borderRadius: 8 }}>
+                    <div className="text-xs text-muted">pH</div>
+                    <div className="font-semi">{suelo.ph ?? "—"}</div>
+                  </div>
+                  <div style={{ flex: 1, padding: 8, background: "var(--mc-surface-2)", borderRadius: 8 }}>
+                    <div className="text-xs text-muted">MO</div>
+                    <div className="font-semi">{suelo.mo != null ? `${suelo.mo}%` : "—"}</div>
+                  </div>
+                </div>
+              </>
+            )}
         </div>
       )}
 
       {innerTab === "Labores" && (
         <div className="col gap-8">
-          <HistRow fecha="22/Abr" tipo="Pulverización" detail="Programada · Cipermetrina" />
-          <HistRow fecha="28/Abr" tipo="Monitoreo" detail="Programado · Drone" />
-          <HistRow fecha="05/May" tipo="Cosecha est." detail={`${lote.name} · ${lote.cultivo || "—"}`} />
+          {cargando ? <div className="text-xs text-muted">Cargando…</div>
+            : laboresProg.length === 0 ? <FichaVacio texto="Sin labores programadas. Creá una con “Nueva Tarea”." />
+            : laboresProg.map((h, i) => <HistRow key={i} fecha={h.fecha} tipo={h.tipo} detail={h.detail} />)}
         </div>
       )}
 
@@ -602,6 +658,22 @@ function LoteFichaTecnica({
       </div>
     </div>
   );
+}
+
+function FichaVacio({ texto }: { texto: string }) {
+  return (
+    <div style={{ padding: "20px 12px", textAlign: "center", color: "var(--mc-text-3)", fontSize: 12.5, lineHeight: 1.5 }}>
+      {texto}
+    </div>
+  );
+}
+
+function centroLote(lote: LoteUI): { lat: number; lng: number } {
+  const ring = lote.geojson?.coordinates?.[0];
+  if (!ring || !ring.length) return { lat: -32.8, lng: -56.0 };
+  const lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+  const lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+  return { lat, lng };
 }
 
 function FichaChip({ icon, label, value, arrow, small }: { icon: string; label: string; value: string; arrow?: string; small?: boolean }) {

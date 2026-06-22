@@ -22,7 +22,41 @@ export type LoteGeo = {
   vacio?: boolean;
   cultivoColor?: string | null;
   geojson?: GeoJSON.Polygon | null;
+  establecimientoId?: string | null;
+  establecimientoNombre?: string | null;
 };
+
+/** Polígono envolvente (convex hull) de cada establecimiento a partir de sus lotes. */
+function camposFc(lotes: LoteGeo[]): GeoJSON.FeatureCollection {
+  const grupos = new Map<string, { nombre: string; pts: number[][] }>();
+  lotes.forEach((l) => {
+    if (!l.establecimientoId || !l.geojson?.coordinates?.[0]?.length) return;
+    const g = grupos.get(l.establecimientoId) || { nombre: l.establecimientoNombre || "Campo", pts: [] };
+    l.geojson.coordinates[0].forEach((p) => g.pts.push(p));
+    grupos.set(l.establecimientoId, g);
+  });
+  const feats: GeoJSON.Feature[] = [];
+  grupos.forEach((g, id) => {
+    if (g.pts.length < 3) return;
+    try {
+      const fcPts = turf.featureCollection(g.pts.map((p) => turf.point(p)));
+      const hull = turf.convex(fcPts, { concavity: Infinity });
+      if (hull) {
+        // Buffer pequeño para que el campo encierre a sus lotes con holgura
+        const buffered = turf.buffer(hull, 0.06, { units: "kilometers" }) || hull;
+        buffered.properties = { id, nombre: g.nombre };
+        feats.push(buffered);
+      }
+    } catch { /* ignora grupos degenerados */ }
+  });
+  return { type: "FeatureCollection", features: feats };
+}
+
+function centroideAnillo(coords: number[][]): [number, number] {
+  const lng = coords.reduce((s, p) => s + p[0], 0) / coords.length;
+  const lat = coords.reduce((s, p) => s + p[1], 0) / coords.length;
+  return [lng, lat];
+}
 
 type Props = {
   lotes: LoteGeo[];
@@ -103,6 +137,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
   const layerRef = useRef(layer);
   const lotesRef = useRef(lotes);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const campoMarkersRef = useRef<maplibregl.Marker[]>([]);
   onSelectRef.current = onSelect;
   onDrawnRef.current = onDrawn;
   drawingRef.current = drawing;
@@ -123,6 +158,25 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
       el.textContent = l.name;
       el.onclick = () => { if (!drawingRef.current) onSelectRef.current(l.id); };
       markersRef.current.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map));
+    });
+  };
+
+  // Etiquetas de los campos (establecimientos) en el borde superior de su envolvente
+  const renderCampoMarkers = () => {
+    const map = mapRef.current; if (!map) return;
+    campoMarkersRef.current.forEach((m) => m.remove());
+    campoMarkersRef.current = [];
+    const fc = camposFc(lotesRef.current);
+    fc.features.forEach((f) => {
+      const poly = f.geometry as GeoJSON.Polygon;
+      const ring = poly?.coordinates?.[0];
+      if (!ring?.length) return;
+      const c = centroideAnillo(ring);
+      const top = ring.reduce((a, p) => (p[1] > a[1] ? p : a), ring[0]);
+      const el = document.createElement("div");
+      el.className = "mc-campo-marker";
+      el.textContent = String((f.properties as any)?.nombre || "Campo");
+      campoMarkersRef.current.push(new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([c[0], top[1]]).addTo(map));
     });
   };
 
@@ -185,10 +239,16 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
         map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: layerRef.current === "NDVI" ? "visible" : "none" }, paint: { "raster-opacity": 0.85 } as any }, "etiquetas");
       }
 
+      // Envolvente de cada campo (establecimiento)
+      map.addSource("campos", { type: "geojson", data: camposFc(lotes) });
+      map.addLayer({ id: "campos-fill", type: "fill", source: "campos", paint: { "fill-color": "#f0c75e", "fill-opacity": 0.06 } as any });
+      map.addLayer({ id: "campos-line", type: "line", source: "campos", paint: { "line-color": "#f3cf6a", "line-width": 2.4, "line-dasharray": [3, 2], "line-opacity": 0.92 } as any });
+
       map.addSource("lotes", { type: "geojson", data: fc(lotes, layer) });
       map.addLayer({ id: "lotes-fill", type: "fill", source: "lotes", paint: { "fill-color": ["get", "color"], "fill-opacity": fillOpacity(layerRef.current, selectedId ?? null) } as any });
       map.addLayer({ id: "lotes-line", type: "line", source: "lotes", paint: { "line-color": "#ffffff", "line-width": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6], "line-opacity": 0.95 } as any });
       renderMarkers();
+      renderCampoMarkers();
       map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({ id: "draw-fill", type: "fill", source: "draw", paint: { "fill-color": "#5e7733", "fill-opacity": 0.3 } });
       map.addLayer({ id: "draw-line", type: "line", source: "draw", paint: { "line-color": "#d9a538", "line-width": 2.5, "line-dasharray": [2, 1] } });
@@ -226,7 +286,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
       setReady(true);
     });
 
-    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; map.remove(); mapRef.current = null; readyRef.current = false; };
+    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; campoMarkersRef.current.forEach((m) => m.remove()); campoMarkersRef.current = []; map.remove(); mapRef.current = null; readyRef.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -277,9 +337,11 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
     const map = mapRef.current;
     if (!map || !ready) return;
     (map.getSource("lotes") as maplibregl.GeoJSONSource)?.setData(fc(lotes, layer));
+    (map.getSource("campos") as maplibregl.GeoJSONSource)?.setData(camposFc(lotes));
     if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
     if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
     renderMarkers();
+    renderCampoMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lotes, layer, ready]);
 

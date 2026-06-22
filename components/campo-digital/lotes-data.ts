@@ -22,6 +22,7 @@ export interface LoteUI {
   comentarios: ComentarioLote[];
   geojson?: { type: "Polygon"; coordinates: number[][][] } | null;
   cultivoColor?: string | null;
+  establecimientoId?: string | null;
 }
 
 export interface LoteGeo {
@@ -157,6 +158,7 @@ export function mapLotesApi(rows: Array<Record<string, unknown>>): LoteUI[] {
       comentarios: [],
       geojson,
       cultivoColor: cultivo ? (CULTIVO_COLORES[cultivo] || "#5e7733") : null,
+      establecimientoId: (r.establecimientoId as string) || null,
     };
   });
 }
