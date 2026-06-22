@@ -7,6 +7,7 @@ import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import { useSetHeaderActions } from "./ActionsContext";
 import { NuevaSiembraModal, NuevaCosechaModal, type SiembraData, type CosechaData } from "./cultivos-Modales";
+import { CropImg } from "./LoteOverlay";
 
 /* ========== TAB CULTIVOS (Figma CDCultivos) ========== */
 
@@ -323,7 +324,7 @@ function CultivosEstados({ onNuevaTarea, distribucion }: { onNuevaTarea: (lote: 
               <div key={d.nombre} style={{ padding: "10px 12px", background: `${d.color}0d`, borderRadius: 10, border: `1px solid ${d.color}25` }}>
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                   <div className="row gap-8" style={{ alignItems: "center" }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: d.color, display: "grid", placeItems: "center", color: "white" }}><Icon name={d.icon} size={14} /></div>
+                    <CropImg cultivo={d.nombre} style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0 }} />
                     <div>
                       <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13 }}>{d.nombre}</div>
                       <div className="text-xs text-muted">{d.ha} Ha</div>
