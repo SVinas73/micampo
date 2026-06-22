@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Icon, KPI, Badge, Seg, Modal, Field, useToast, PageHeader, Tabs } from "@/components/mc";
+import { Icon, KPI, Badge, Seg, Modal, Field, useToast, PageHeader, Tabs, IABadge } from "@/components/mc";
 import { AgregarProductoModal } from "@/components/calculadora/AgregarProductoModal";
 import {
   type ConfigCalculo,
@@ -12,7 +12,7 @@ import {
   COLOR_CATEGORIA,
   TIPO_A_CATEGORIA,
 } from "@/components/calculadora/types";
-import { PRESETS, CONFIG_VACIA } from "@/components/calculadora/presets";
+import { CONFIG_VACIA } from "@/components/calculadora/presets";
 import { useLoteScope } from "@/components/LoteScope";
 import {
   caldoTotal,
@@ -711,8 +711,18 @@ function TabHistorial({ rows, onEliminar, onDuplicar }: { rows: HistRow[]; onEli
 /* TAB PREESTABLECIDOS                                                 */
 /* =================================================================== */
 
+type SugeridoPreset = { nombre: string; tipo: string; dosis: string; caldo: string; productos: number; color: string; justificacion?: string; config: ConfigCalculo };
+
 function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear }: { userPresets: UserPreset[]; onUsar: (cfg: ConfigCalculo) => void; onEliminarPreset: (id: string) => void; onCrear: () => void }) {
   const [detalle, setDetalle] = useState<{ nombre: string; tipo: string; caldo: string; config: ConfigCalculo } | null>(null);
+  const [sugeridos, setSugeridos] = useState<SugeridoPreset[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/dosis-presets/sugeridos")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setSugeridos(Array.isArray(d) ? d : []))
+      .catch(() => setSugeridos([]));
+  }, []);
 
   const resumen = (cfg: ConfigCalculo) => {
     const p0 = cfg.productos[0];
@@ -770,39 +780,42 @@ function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear }: { userPre
         </div>
       )}
 
-      {/* Sugeridos del sistema */}
-      <div className="mc-card__title mt-12">Sugeridos</div>
-      <div className="grid g-cols-2 gap-16">
-        {PRESETS.map((p, i) => (
-          <div key={i} className="mc-card" style={{ borderTop: `3px solid ${p.color}` }}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div>
-                <div className="mc-card__eyebrow">{p.tipo}</div>
-                <div className="mc-card__title mt-4">{p.nombre}</div>
-              </div>
-              <Badge tone="neutral">{p.productos} prod.</Badge>
-            </div>
-            <div className="grid g-cols-3 gap-8 mt-12">
-              <div>
-                <div className="text-xs text-muted">Dosis</div>
-                <div className="font-semi">{p.dosis}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">Caldo</div>
-                <div className="font-semi">{p.caldo}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">Productos</div>
-                <div className="font-semi">{p.productos}</div>
-              </div>
-            </div>
-            <div className="row gap-8 mt-12">
-              <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setDetalle({ nombre: p.nombre, tipo: p.tipo, caldo: p.caldo, config: p.config })}>Ver detalle</button>
-              <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => onUsar(p.config)}>Usar preset</button>
-            </div>
-          </div>
-        ))}
+      {/* Sugeridos por IA según tus cultivos */}
+      <div className="row mt-12" style={{ alignItems: "center", gap: 8 }}>
+        <div className="mc-card__title">Sugeridos para tus cultivos</div>
+        <IABadge />
       </div>
+      {sugeridos === null ? (
+        <div className="mc-card" style={{ textAlign: "center", color: "var(--mc-text-3)", padding: 22 }}>Analizando tus cultivos…</div>
+      ) : sugeridos.length === 0 ? (
+        <div className="mc-card" style={{ textAlign: "center", color: "var(--mc-text-3)", padding: 22 }}>
+          Cargá cultivos en tus lotes y acá vas a ver mezclas sugeridas según lo que sembrás.
+        </div>
+      ) : (
+        <div className="grid g-cols-2 gap-16">
+          {sugeridos.map((p, i) => (
+            <div key={i} className="mc-card" style={{ borderTop: `3px solid ${p.color}` }}>
+              <div className="row" style={{ justifyContent: "space-between" }}>
+                <div>
+                  <div className="mc-card__eyebrow">{p.tipo} · sugerido</div>
+                  <div className="mc-card__title mt-4">{p.nombre}</div>
+                </div>
+                <Badge tone="neutral">{p.productos} prod.</Badge>
+              </div>
+              {p.justificacion && <div className="text-xs text-muted mt-8" style={{ lineHeight: 1.45 }}>{p.justificacion}</div>}
+              <div className="grid g-cols-3 gap-8 mt-12">
+                <div><div className="text-xs text-muted">Dosis</div><div className="font-semi">{p.dosis}</div></div>
+                <div><div className="text-xs text-muted">Caldo</div><div className="font-semi">{p.caldo}</div></div>
+                <div><div className="text-xs text-muted">Productos</div><div className="font-semi">{p.productos}</div></div>
+              </div>
+              <div className="row gap-8 mt-12">
+                <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setDetalle({ nombre: p.nombre, tipo: p.tipo, caldo: p.caldo, config: p.config })}>Ver detalle</button>
+                <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => onUsar(p.config)}>Usar</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Modal
         open={!!detalle}

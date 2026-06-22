@@ -97,6 +97,7 @@ export function LoteOverlay({
   onEditar,
   onTarea,
   onFicha,
+  vista = "3d",
 }: {
   lote: LoteUI;
   onClose: () => void;
@@ -104,6 +105,7 @@ export function LoteOverlay({
   onEditar: () => void;
   onTarea: () => void;
   onFicha?: () => void;
+  vista?: "3d" | "clasico";
 }) {
   const c = centroide(lote);
   const cultivoColor = (lote.cultivo && CULTIVO_COLOR[lote.cultivo]) || "#5e7733";
@@ -147,8 +149,8 @@ export function LoteOverlay({
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 600, pointerEvents: "none" }}>
-      {/* Columna izquierda: header + chips (corrida del borde para no tapar las herramientas de dibujo) */}
-      <div style={{ position: "absolute", top: 16, left: 58, display: "flex", flexDirection: "column", gap: 12, maxWidth: 340, pointerEvents: "none" }}>
+      {/* Columna izquierda: header + chips. En clásico se corre del borde para no tapar las herramientas de dibujo de Leaflet; en 3D va pegada a la izquierda. */}
+      <div style={{ position: "absolute", top: 16, left: vista === "clasico" ? 58 : 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: 340, pointerEvents: "none" }}>
         <motion.div
           {...fade(0)}
           className="mc-glass"

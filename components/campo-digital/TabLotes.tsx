@@ -224,13 +224,23 @@ export default function TabLotes() {
     }
   };
 
-  const agregarNota = (lote: LoteUI, texto: string) => {
+  const agregarNota = async (lote: LoteUI, texto: string) => {
     const nota = { texto, autor: "Vos", fecha: fechaCorta(new Date()) };
     setLotes((prev) => prev.map((l) => (l.id === lote.id ? { ...l, comentarios: [nota, ...l.comentarios] } : l)));
     setSelected((s) => (s && s.id === lote.id ? { ...s, comentarios: [nota, ...s.comentarios] } : s));
-    toast.show("Comentario georreferenciado agregado");
     setNotaLote(null);
     setComentarioGeneral(false);
+    // Persiste como marcador georreferenciado (tipo Observación) en el centro del lote
+    if (lote.dbId) {
+      const c = centroLote(lote);
+      const res = await fetch("/api/marcadores-geo", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loteId: lote.dbId, latitud: c.lat, longitud: c.lng, tipo: "Observación", titulo: "Nota", descripcion: texto, responsable: "Vos" }),
+      }).catch(() => null);
+      toast.show(res && res.ok ? "Comentario guardado en el lote" : "Comentario agregado (no se pudo guardar en la base)", res && res.ok ? "ok" : "err");
+    } else {
+      toast.show("Comentario agregado");
+    }
   };
 
   return (
@@ -424,6 +434,7 @@ function LotesMapa({
         {selected && (
           <LoteOverlay
             lote={selected}
+            vista={vista}
             onClose={() => onSelect(null)}
             onNota={() => onNota(selected)}
             onEditar={() => onEditar(selected)}
@@ -481,7 +492,8 @@ function LoteFichaTecnica({
   const [suelo, setSuelo] = useState<{ n: number | null; p: number | null; k: number | null; ph: number | null; mo: number | null; fecha: string } | null>(null);
   const [lluvia, setLluvia] = useState<{ dias: { d: string; mm: number }[]; total: number } | null>(null);
   const [alerta, setAlerta] = useState<{ plaga: string; severidad: string; fecha: string } | null>(null);
-  const comentario = lote.comentarios[0];
+  const [notas, setNotas] = useState<{ texto: string; autor: string; fecha: string }[]>([]);
+  const comentario = notas[0] || lote.comentarios[0];
 
   useEffect(() => {
     const dbId = lote.dbId;
@@ -494,8 +506,13 @@ function LoteFichaTecnica({
       fetch("/api/labores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/deteccion-enfermedades").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       lote.geojson ? fetch(`/api/clima?lat=${centroLote(lote).lat}&lon=${centroLote(lote).lng}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) : Promise.resolve(null),
-    ]).then(([detalle, labores, alertas, clima]) => {
+      fetch(`/api/marcadores-geo?loteId=${dbId}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([detalle, labores, alertas, clima, marcadores]) => {
       if (cancel) return;
+
+      // ----- Notas / comentarios reales (marcadores georreferenciados) -----
+      const obs = (Array.isArray(marcadores) ? marcadores : []);
+      setNotas(obs.map((m: any) => ({ texto: m.descripcion || m.titulo, autor: m.responsable || "Vos", fecha: fmt(m.fecha) })));
 
       // ----- Historial (eventos pasados, real) -----
       const hist: HistItem[] = [];
