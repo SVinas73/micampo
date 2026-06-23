@@ -59,9 +59,13 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const toast = useToast();
   const navegar = (tab: string) => router.push(`/campo-digital?tab=${encodeURIComponent(tab)}`);
   const { lotes: scopeLotes } = useLoteScope();
+  // Cuando se monta como pestaña "Planificador de Siembras (IA)" sólo muestra el planificador.
+  // El resto de sub-tabs (Estados, Análisis de Suelo) viven en la pestaña "Cultivos".
+  const planificadorMode = initialSub === "Planificador de Siembra (IA)";
+  const SUB_TABS = ["Estados", "Análisis de Suelo"];
   const subParam = searchParams.get("sub");
   const [sub, setSub] = useState(
-    initialSub || (subParam && ["Estados", "Planificador de Siembra (IA)", "Análisis de Suelo"].includes(subParam) ? subParam : "Estados")
+    subParam && SUB_TABS.includes(subParam) ? subParam : "Estados"
   );
   const [siembraOpen, setSiembraOpen] = useState(searchParams.get("modal") === "siembra");
   const [cosechaOpen, setCosechaOpen] = useState(false);
@@ -85,8 +89,11 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
     );
   }, [scopeLotes]);
 
-  /* ---- Header actions según sub-tab (Figma) ---- */
+  /* ---- Header actions según sub-tab (Figma) ----
+     En modo planificador no hay acciones de header propias (las de siembra/cosecha
+     viven en la pestaña Cultivos; el planificador genera planes con su propio botón IA). */
   useSetHeaderActions(
+    planificadorMode ? null :
     sub === "Análisis de Suelo" ? (
       <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setAnalisisOpen(true)}>
         <Icon name="plus" size={14} />Nuevo Analisis
@@ -101,7 +108,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </button>
       </>
     ),
-    [sub]
+    [sub, planificadorMode]
   );
 
   const guardarSiembra = async (data: SiembraData) => {
@@ -167,16 +174,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
       )}
       <NuevoAnalisisModal open={analisisOpen} onClose={() => setAnalisisOpen(false)} lotes={lotes} toast={toast} />
 
-      {sub === "Estados" && (
-        <div className="grid g-cols-5">
-          <KPI label="Superficie Sembrada" value={demo("235 Ha", "—")} delta={demo("84% del campo", "—")} trend="up" icon="sprout" accent />
-          <KPI label="Cosecha Total" value={demo("2.300 Tn", "—")} delta={demo("+14% vs anterior", "—")} trend="up" icon="wrench" />
-          <KPI label="Próxima Cosecha" value={demo("Lote 5", "—")} delta={demo("06 oct · Soja", "—")} trend="up" icon="calendar" />
-          <KPI label="Lotes Listos" value={demo("3", "0")} delta={demo("Para sembrar", "—")} trend="up" icon="check" />
-          <KPI label="Lotes Vacíos" value={demo("5", "0")} delta={demo("Sin asignar", "—")} trend="warn" icon="alert" />
-        </div>
-      )}
-      {sub === "Planificador de Siembra (IA)" && (
+      {planificadorMode ? (
         <div className="grid g-cols-5">
           <KPI label="Planes Generados" value={demo("3", "0")} delta={demo("2 esta semana", "—")} trend="up" icon="sprout" accent />
           <KPI label="Planes Aprobados" value={demo("2", "0")} delta={demo("67% conversión", "—")} trend="up" icon="check" />
@@ -184,8 +182,15 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
           <KPI label="Inversión Estimada" value={demo("$162.500 USD", "—")} delta={demo("0 ejecutado", "—")} trend="up" icon="dollar" />
           <KPI label="Próxima Siembra" value={demo("03/12/25", "—")} delta={demo("Maíz Tardío", "—")} trend="up" icon="calendar" />
         </div>
-      )}
-      {sub === "Análisis de Suelo" && (
+      ) : sub === "Estados" ? (
+        <div className="grid g-cols-5">
+          <KPI label="Superficie Sembrada" value={demo("235 Ha", "—")} delta={demo("84% del campo", "—")} trend="up" icon="sprout" accent />
+          <KPI label="Cosecha Total" value={demo("2.300 Tn", "—")} delta={demo("+14% vs anterior", "—")} trend="up" icon="wrench" />
+          <KPI label="Próxima Cosecha" value={demo("Lote 5", "—")} delta={demo("06 oct · Soja", "—")} trend="up" icon="calendar" />
+          <KPI label="Lotes Listos" value={demo("3", "0")} delta={demo("Para sembrar", "—")} trend="up" icon="check" />
+          <KPI label="Lotes Vacíos" value={demo("5", "0")} delta={demo("Sin asignar", "—")} trend="warn" icon="alert" />
+        </div>
+      ) : (
         <div className="grid g-cols-5">
           <KPI label="Análisis del Año" value={demo("14", "0")} delta={demo("+3 este mes", "—")} trend="up" icon="leaf" accent />
           <KPI label="Lotes Críticos" value={demo("2", "0")} delta={demo("P bajo · Norte/Oeste", "—")} trend="warn" icon="alert" warn />
@@ -195,11 +200,11 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       )}
 
-      <SubTabs tabs={["Estados", "Planificador de Siembra (IA)", "Análisis de Suelo"]} active={sub} onChange={setSub} />
+      {!planificadorMode && <SubTabs tabs={SUB_TABS} active={sub} onChange={setSub} />}
 
-      {sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={() => navegar("Labores")} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
-      {sub === "Planificador de Siembra (IA)" && <CultivosPlanificador toast={toast} lotes={lotes} onEditar={() => setSiembraOpen(true)} />}
-      {sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} />}
+      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} onEditar={() => setSiembraOpen(true)} />}
+      {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={() => navegar("Labores")} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
+      {!planificadorMode && sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} />}
     </>
   );
 }

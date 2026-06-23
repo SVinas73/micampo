@@ -64,6 +64,8 @@ type Props = {
   layer: string; // "NDVI" | "Satélite" | "Cultivos"
   onSelect: (id: string) => void;
   onDrawn: (data: { geojson: GeoJSON.Polygon; hectareas: number; centro: { lat: number; lng: number }; perimetro: number }) => void;
+  armarDibujo?: boolean;
+  onDibujoIniciado?: () => void;
 };
 
 function ndviColor(v: number) {
@@ -122,7 +124,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
-export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn }: Props) {
+export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -331,6 +333,14 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
     map.doubleClickZoom.disable();
     map.getCanvas().style.cursor = "crosshair";
   };
+
+  // Disparador externo: el botón "Nuevo lote" del header arma el dibujo
+  useEffect(() => {
+    if (!ready || !armarDibujo || drawingRef.current) return;
+    iniciarDibujo();
+    onDibujoIniciado?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, armarDibujo]);
 
   // ---- updates ----
   useEffect(() => {

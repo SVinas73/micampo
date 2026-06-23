@@ -18,9 +18,11 @@ export async function GET() {
       establecimientos.map((e) => ({
         id: e.id,
         nombre: e.nombre,
+        direccion: e.direccion,
         ciudad: e.ciudad,
         provincia: e.provincia,
         pais: e.pais,
+        cuit: e.cuit,
         hectareasTotales: e.hectareasTotales,
         lotesCount: e._count.lotes,
       }))
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
         ciudad: data.ciudad || null,
         provincia: data.provincia || null,
         pais: data.pais || "Uruguay",
+        cuit: data.cuit || null,
         hectareasTotales: data.hectareasTotales ? parseFloat(data.hectareasTotales) : null,
         userId: session.user.id,
       },
