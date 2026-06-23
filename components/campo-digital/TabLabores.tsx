@@ -254,7 +254,7 @@ export default function TabLabores() {
       <div className="grid g-cols-5">
         <KPI label="Programadas" value={String(labores.filter((l) => l.estado === "Programada").length)} delta="próx. 30 días" trend="up" icon="calendar" accent />
         <KPI label="Pendientes" value={String(labores.filter((l) => !["Completada"].includes(l.estado)).length)} delta="Sin asignar: 2" trend="up" icon="wrench" />
-        <KPI label="Atrasadas" value={String(atrasadas.length)} delta={atrasadas.slice(0, 2).map((l) => l.lote.split(" - ")[0]).join(" + ") || "Ninguna"} trend="warn" icon="alert" warn />
+        <KPI label="Atrasadas" value={String(atrasadas.length)} delta={atrasadas.slice(0, 2).map((l) => (l.lote || "").split(" - ")[0]).filter(Boolean).join(" + ") || "Ninguna"} trend="warn" icon="alert" warn />
         <KPI label="% Completadas" value={`${pctCompletadas}%`} delta="vs 76% mes ant." trend="up" icon="check" />
         <KPI label="Completados este mes" value={String(completadasMes)} delta="98% a tiempo" trend="up" icon="activity" />
       </div>
@@ -309,7 +309,7 @@ export default function TabLabores() {
                   </div>
                   <div className="row gap-6" style={{ alignItems: "center", fontSize: 12 }}>
                     <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#5E8F78", color: "white", display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700 }}>
-                      {l.responsable.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                      {(l.responsable || "—").split(" ").filter(Boolean).map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "—"}
                     </div>
                     <div>
                       <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 12 }}>{l.responsable}</div>

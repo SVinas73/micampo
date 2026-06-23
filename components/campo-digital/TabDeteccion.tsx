@@ -117,13 +117,14 @@ export default function TabDeteccion() {
     toast.show(`"${a.recom}" agregado a Labores para ${a.lote}`);
   };
 
-  const generarAlerta = async (data: { loteId?: string; plaga: string; tipo: string; incidencia: number; observaciones: string }) => {
+  const generarAlerta = async (data: { loteId?: string; plaga: string; tipo: string; incidencia: number; observaciones: string; imagenUrl?: string | null }) => {
     if (data.loteId) {
-      await fetch("/api/deteccion-enfermedades", {
+      const res = await fetch("/api/deteccion-enfermedades", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).catch(() => {});
+        body: JSON.stringify({ ...data, metodoDeteccion: "Manual" }),
+      }).catch(() => null);
+      if (!res || !res.ok) { toast.show("No se pudo guardar la alerta", "err"); return; }
     }
     const sevColor: "red" | "amber" | "green" = data.incidencia >= 50 ? "red" : data.incidencia >= 20 ? "amber" : "green";
     setAlertas((prev) => [
@@ -183,12 +184,12 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
           </div>
         </div>
       )}
-      <div className="grid" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
+      <div className="grid mc-2col-resp" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
         <div className="mc-card ia-card">
           <div className="mc-card__head"><div className="mc-card__title">Alertas Activas</div><IABadge /></div>
-          <div className="col gap-8">
+          <div className="col gap-8 mc-hscroll">
             {alertas.map((a, i) => (
-              <div key={i} style={{ padding: "10px 12px", border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "120px 1fr 100px 120px 130px 150px", gap: 10, alignItems: "center" }}>
+              <div key={i} style={{ padding: "10px 12px", border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "120px minmax(160px, 1fr) 100px 120px 130px 150px", gap: 10, alignItems: "center", minWidth: 660 }}>
                 <div style={{ width: 120, height: 80, borderRadius: 8, background: a.imgBg, position: "relative", overflow: "hidden", cursor: "pointer", flexShrink: 0 }} onClick={() => setEnlarged(a)}>
                   <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-60%)", fontSize: 32 }}><Icon name={a.img} size={32} /></div>
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.65)", padding: "4px 6px" }}>
@@ -462,7 +463,7 @@ function EnfermedadesAnalisisIA({
   const datos = resultado;
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: "1.2fr 1fr", gap: 14 }}>
+    <div className="grid mc-2col-resp" style={{ gridTemplateColumns: "1.2fr 1fr", gap: 14 }}>
       <input
         ref={fileRef}
         type="file"

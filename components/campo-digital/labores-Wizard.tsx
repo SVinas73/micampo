@@ -308,7 +308,7 @@ export function NuevaOrdenLaborModal({
                     <div className="font-semi" style={{ marginBottom: 10 }}>1. Operario</div>
                     <div className="row gap-10" style={{ marginBottom: 10 }}>
                       <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#5E8F78", color: "white", display: "grid", placeItems: "center", fontWeight: 700 }}>
-                        {operario.split(" ").map((n) => n[0]).join("")}
+                        {(operario || "").split(" ").filter(Boolean).map((n) => n[0]).join("") || "—"}
                       </div>
                       <div>
                         <div className="font-semi text-sm">{operario}</div>
