@@ -50,12 +50,16 @@ export interface AgregarCampoData {
   valor?: string;
   moneda?: string;
   frecuencia?: string;
+  centro?: { lat: number; lng: number } | null;
 }
+
+type GeoResultado = { display_name: string; lat: string; lon: string };
 
 export function AgregarCampoModal({
   titulo,
   onClose,
   onConfirm,
+  onDibujar,
   defaultHectareas,
   dibujadoEnMapa = false,
   centro,
@@ -65,6 +69,7 @@ export function AgregarCampoModal({
   titulo?: string;
   onClose: () => void;
   onConfirm: (data: AgregarCampoData) => Promise<void> | void;
+  onDibujar?: () => void;
   defaultHectareas?: number;
   dibujadoEnMapa?: boolean;
   centro?: { lat: number; lng: number };
@@ -83,10 +88,18 @@ export function AgregarCampoModal({
   const [frecuencia, setFrecuencia] = useState("Anual");
   const [saving, setSaving] = useState(false);
   const [geocodificando, setGeocodificando] = useState(false);
+  // Búsqueda tipo mapa + coordenadas exactas
+  const [lat, setLat] = useState(centro ? centro.lat.toFixed(6) : "");
+  const [lng, setLng] = useState(centro ? centro.lng.toFixed(6) : "");
+  const [busqueda, setBusqueda] = useState("");
+  const [resultados, setResultados] = useState<GeoResultado[]>([]);
+  const [buscando, setBuscando] = useState(false);
 
   // Al dibujar en el mapa: geocodificación inversa para autocompletar la ubicación.
   useEffect(() => {
     if (!centro) return;
+    setLat(centro.lat.toFixed(6));
+    setLng(centro.lng.toFixed(6));
     setGeocodificando(true);
     const ctrl = new AbortController();
     fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${centro.lat}&lon=${centro.lng}&zoom=14&accept-language=es`, {
@@ -105,10 +118,35 @@ export function AgregarCampoModal({
     return () => ctrl.abort();
   }, [centro]);
 
+  // Búsqueda de lugares (geocodificación directa, estilo Google Maps), con debounce.
+  useEffect(() => {
+    if (busqueda.trim().length < 3) { setResultados([]); return; }
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      setBuscando(true);
+      fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(busqueda)}&limit=5&accept-language=es`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((d) => setResultados(Array.isArray(d) ? d.slice(0, 5) : []))
+        .catch(() => {})
+        .finally(() => setBuscando(false));
+    }, 450);
+    return () => { ctrl.abort(); clearTimeout(t); };
+  }, [busqueda]);
+
+  const elegirResultado = (r: GeoResultado) => {
+    setLat(Number(r.lat).toFixed(6));
+    setLng(Number(r.lon).toFixed(6));
+    setUbicacion(r.display_name.split(",").slice(0, 3).join(", ").trim());
+    setBusqueda("");
+    setResultados([]);
+  };
+
   const guardar = async () => {
     if (!nombre.trim() || saving) return;
+    const latN = parseFloat(lat), lngN = parseFloat(lng);
+    const c = !isNaN(latN) && !isNaN(lngN) ? { lat: latN, lng: lngN } : (centro ?? null);
     setSaving(true);
-    await onConfirm({ nombre: nombre.trim(), ubicacion, hectareas: parseFloat(hectareas) || 0, cultivo: cultivo || null, establecimientoId: establecimientoId || null, tenencia, valor, moneda, frecuencia });
+    await onConfirm({ nombre: nombre.trim(), ubicacion, hectareas: parseFloat(hectareas) || 0, cultivo: cultivo || null, establecimientoId: establecimientoId || null, tenencia, valor, moneda, frecuencia, centro: c });
     setSaving(false);
   };
 
@@ -145,21 +183,80 @@ export function AgregarCampoModal({
                 </div>
               </div>
               <div>
-                <label style={lbl}>{centro ? "Ubicación detectada" : "Vista previa"}</label>
+                <label style={lbl}>{lat && lng ? "Ubicación detectada" : "Vista previa"}</label>
                 <div style={{ minHeight: 86, borderRadius: 8, border: "1.5px solid #c0c5ce", background: "linear-gradient(135deg, #eef5ec 0%, #dfeede 100%)", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--mc-green-600)", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name="map" size={12} /></span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--mc-ink)", lineHeight: 1.25 }}>
-                      {centro ? (geocodificando ? "Detectando lugar…" : (ubicacion || "Ubicación sin nombre")) : "Dibujá el lote en el mapa para detectar la ubicación"}
+                      {lat && lng ? (geocodificando ? "Detectando lugar…" : (ubicacion || "Ubicación sin nombre")) : "Buscá un lugar o pegá coordenadas abajo"}
                     </span>
                   </div>
-                  {centro && (
+                  {lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng)) && (
                     <div style={{ fontFamily: "var(--ff-mono)", fontSize: 11, color: "var(--mc-text-2)", paddingLeft: 29 }}>
-                      {centro.lat.toFixed(5)}°, {centro.lng.toFixed(5)}°
+                      {parseFloat(lat).toFixed(5)}°, {parseFloat(lng).toFixed(5)}°
                     </div>
                   )}
                 </div>
               </div>
+            </div>
+          </Section>
+
+          <Section icon="map" title="Ubicación en el mapa">
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <label style={lbl}>Buscar lugar (como en Google Maps)</label>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }}><Icon name="search" size={15} /></span>
+                <input
+                  style={{ ...inp, paddingLeft: 34 }}
+                  placeholder="Ej: Young, Río Negro · Ruta 3 km 280 · Pergamino..."
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                />
+              </div>
+              {(buscando || resultados.length > 0) && (
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 5, marginTop: 4, background: "#fff", border: "1.5px solid #c0c5ce", borderRadius: 8, boxShadow: "0 12px 28px rgba(0,0,0,0.14)", overflow: "hidden", maxHeight: 220, overflowY: "auto" }}>
+                  {buscando && <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#64748b" }}>Buscando…</div>}
+                  {!buscando && resultados.map((r, i) => (
+                    <button
+                      key={i}
+                      onClick={() => elegirResultado(r)}
+                      style={{ display: "flex", gap: 8, alignItems: "flex-start", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", borderBottom: i < resultados.length - 1 ? "1px solid #eef2f7" : "none", background: "#fff", cursor: "pointer", fontSize: 12.5, color: "var(--mc-ink)" }}
+                    >
+                      <Icon name="map" size={13} style={{ color: "var(--mc-green-600)", flexShrink: 0, marginTop: 1 }} />
+                      <span style={{ lineHeight: 1.3 }}>{r.display_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={lbl}>Latitud</label>
+                <input style={inp} type="number" step="any" placeholder="-32.812345" value={lat} onChange={(e) => setLat(e.target.value)} />
+              </div>
+              <div>
+                <label style={lbl}>Longitud</label>
+                <input style={inp} type="number" step="any" placeholder="-56.012345" value={lng} onChange={(e) => setLng(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+              {onDibujar && (
+                <button
+                  onClick={onDibujar}
+                  className="mc-btn mc-btn--secondary mc-btn--sm"
+                  style={{ gap: 6 }}
+                  title="Dibujar el contorno exacto del lote sobre el mapa"
+                >
+                  <Icon name="pen" size={13} />Dibujar contorno exacto
+                </button>
+              )}
+              <span style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.4, flex: 1, minWidth: 180 }}>
+                {dibujadoEnMapa
+                  ? "Contorno dibujado ✓ — se guardará tal cual."
+                  : lat && lng
+                    ? `Se generará un lote de ~${hectareas || 0} ha centrado en estas coordenadas. Para el contorno exacto, dibujalo.`
+                    : "Buscá un lugar, pegá coordenadas o dibujá el contorno en el mapa."}
+              </span>
             </div>
           </Section>
 

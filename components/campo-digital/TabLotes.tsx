@@ -38,6 +38,25 @@ import {
 } from "./lotes-Modales";
 import { LoteOverlay, CropImg } from "./LoteOverlay";
 
+/** Genera un polígono cuadrado aproximado a partir de un centro (lat/lng) y la
+ *  superficie en hectáreas. Permite crear un lote por coordenadas/búsqueda sin
+ *  tener que dibujarlo a mano: el lote aparece igual en el mapa. */
+function cuadradoDesdeCentro(centro: { lat: number; lng: number }, hectareas: number): DibujoLote {
+  const areaM2 = Math.max(100, (hectareas || 1) * 10000);
+  const lado = Math.sqrt(areaM2); // metros
+  const medio = lado / 2;
+  const dLat = medio / 111320;
+  const dLng = medio / (111320 * Math.cos((centro.lat * Math.PI) / 180) || 1);
+  const ring: number[][] = [
+    [centro.lng - dLng, centro.lat - dLat],
+    [centro.lng + dLng, centro.lat - dLat],
+    [centro.lng + dLng, centro.lat + dLat],
+    [centro.lng - dLng, centro.lat + dLat],
+    [centro.lng - dLng, centro.lat - dLat],
+  ];
+  return { geojson: { type: "Polygon", coordinates: [ring] }, hectareas, centro, perimetro: Math.round(lado * 4) };
+}
+
 /* ========== TAB LOTES (Figma CDLotes) ========== */
 export default function TabLotes() {
   const searchParams = useSearchParams();
@@ -102,7 +121,7 @@ export default function TabLotes() {
       <button className="mc-btn mc-btn--red" onClick={() => setShowEliminarCampo(true)}>
         <Icon name="trash" size={14} />Eliminar campo
       </button>
-      <button className="mc-btn mc-btn--primary" onClick={() => { setSelected(null); setView("mapa"); setDrawArmed(true); }}>
+      <button className="mc-btn mc-btn--primary" onClick={() => { setDibujado(null); setShowAgregar(true); }}>
         <Icon name="plus" size={14} />Nuevo lote
       </button>
     </>,
@@ -127,7 +146,9 @@ export default function TabLotes() {
   /* ---- Acciones conectadas ---- */
   const crearCampo = async (data: AgregarCampoData) => {
     try {
-      const geom = dibujado;
+      // Geometría: 1) polígono dibujado a mano, 2) cuadrado generado desde
+      // coordenadas/búsqueda + hectáreas, 3) sin geometría.
+      const geom = dibujado ?? (data.centro ? cuadradoDesdeCentro(data.centro, data.hectareas) : null);
       const res = await fetch("/api/lotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -247,7 +268,7 @@ export default function TabLotes() {
   return (
     <>
       {toast.node}
-      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} centro={dibujado?.centro} establecimientos={establecimientos} establecimientoActivoId={establecimientoActivo?.id ?? null} />}
+      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} onDibujar={() => { setShowAgregar(false); setSelected(null); setView("mapa"); setDrawArmed(true); }} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} centro={dibujado?.centro} establecimientos={establecimientos} establecimientoActivoId={establecimientoActivo?.id ?? null} />}
       {showEliminar && (
         <EliminarCampoModal
           lotes={enScope.map((l) => ({ id: l.dbId || l.id, nombre: l.name, ha: l.ha, cultivo: l.cultivo }))}

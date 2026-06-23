@@ -101,7 +101,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
     ) : (
       <>
         <button className="mc-btn mc-btn--primary" onClick={() => setSiembraOpen(true)}>
-          <Icon name="sprout" size={14} />Plan de Siembra
+          <Icon name="sprout" size={14} />Nueva Siembra
         </button>
         <button className="mc-btn mc-btn--primary" onClick={() => setCosechaOpen(true)}>
           <Icon name="plus" size={14} />Nueva Cosecha

@@ -18,6 +18,37 @@ export default function EstablecimientosPage() {
   const [guardando, setGuardando] = useState(false);
   const [aEliminar, setAEliminar] = useState<Est | null>(null);
   const [borrando, setBorrando] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+  const [resultados, setResultados] = useState<{ display_name: string; lat: string; lon: string; address?: Record<string, string> }[]>([]);
+  const [buscando, setBuscando] = useState(false);
+
+  // Búsqueda de lugar (geocodificación) que autocompleta dirección/ciudad/provincia/país.
+  useEffect(() => {
+    if (busqueda.trim().length < 3) { setResultados([]); return; }
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      setBuscando(true);
+      fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&q=${encodeURIComponent(busqueda)}&limit=5&accept-language=es`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((d) => setResultados(Array.isArray(d) ? d.slice(0, 5) : []))
+        .catch(() => {})
+        .finally(() => setBuscando(false));
+    }, 450);
+    return () => { ctrl.abort(); clearTimeout(t); };
+  }, [busqueda]);
+
+  const elegirLugar = (r: { display_name: string; address?: Record<string, string> }) => {
+    const a = r.address || {};
+    setForm((f) => ({
+      ...f,
+      direccion: [a.road, a.house_number].filter(Boolean).join(" ") || f.direccion,
+      ciudad: a.city || a.town || a.village || a.hamlet || a.county || f.ciudad,
+      provincia: a.state || a.region || f.provincia,
+      pais: a.country || f.pais,
+    }));
+    setBusqueda("");
+    setResultados([]);
+  };
 
   const cargar = () => {
     setCargando(true);
@@ -168,6 +199,21 @@ export default function EstablecimientosPage() {
           <button className="mc-btn mc-btn--primary" onClick={crear} disabled={guardando}><Icon name="check" size={14} />Crear</button>
         </>}
       >
+        <Field label="Buscar ubicación (autocompleta los datos, como en Google Maps)">
+          <div style={{ position: "relative" }}>
+            <input className="mc-input" placeholder="Ej: Young, Río Negro · Pergamino, Buenos Aires..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+            {(buscando || resultados.length > 0) && (
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 5, marginTop: 4, background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 8, boxShadow: "var(--sh-lg)", maxHeight: 200, overflowY: "auto" }}>
+                {buscando && <div className="text-xs text-muted" style={{ padding: "8px 10px" }}>Buscando…</div>}
+                {!buscando && resultados.map((r, i) => (
+                  <button key={i} className="mc-btn mc-btn--ghost mc-btn--sm" style={{ display: "flex", width: "100%", textAlign: "left", justifyContent: "flex-start", fontSize: 12, whiteSpace: "normal", gap: 6 }} onClick={() => elegirLugar(r)}>
+                    <Icon name="map" size={13} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />{r.display_name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </Field>
         <Field label="Nombre *">
           <input className="mc-input" placeholder="Ej: Establecimiento Don Ramón" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
         </Field>
