@@ -493,6 +493,7 @@ function LoteFichaTecnica({
   const [lluvia, setLluvia] = useState<{ dias: { d: string; mm: number }[]; total: number } | null>(null);
   const [alerta, setAlerta] = useState<{ plaga: string; severidad: string; fecha: string } | null>(null);
   const [notas, setNotas] = useState<{ texto: string; autor: string; fecha: string }[]>([]);
+  const [timeline, setTimeline] = useState<{ fecha: string; categoria: string; titulo: string; detalle: string; icono: string; color: string }[] | null>(null);
   const comentario = notas[0] || lote.comentarios[0];
 
   useEffect(() => {
@@ -500,6 +501,10 @@ function LoteFichaTecnica({
     if (!dbId) { setCargando(false); return; }
     let cancel = false;
     const fmt = (iso?: string) => (iso ? fechaCorta(new Date(iso)) : "—");
+
+    // Historia completa del lote (timeline unificado)
+    setTimeline(null);
+    fetch(`/api/lotes/${dbId}/timeline`).then((r) => (r.ok ? r.json() : null)).then((d) => { if (!cancel && Array.isArray(d?.eventos)) setTimeline(d.eventos); }).catch(() => {});
 
     Promise.all([
       fetch(`/api/lotes/${dbId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
@@ -574,7 +579,7 @@ function LoteFichaTecnica({
       </div>
 
       <div className="row gap-2" style={{ borderBottom: "1px solid var(--mc-line)", padding: 0 }}>
-        {["Resumen", "Historial", "Suelo", "Labores"].map((t) => (
+        {["Resumen", "Historia", "Suelo", "Labores"].map((t) => (
           <button
             key={t}
             onClick={() => setInnerTab(t)}
@@ -643,11 +648,11 @@ function LoteFichaTecnica({
         </>
       )}
 
-      {innerTab === "Historial" && (
-        <div className="col gap-8">
-          {cargando ? <div className="text-xs text-muted">Cargando…</div>
-            : historial.length === 0 ? <FichaVacio texto="Sin eventos registrados. Las siembras, cosechas, análisis y labores aparecerán acá." />
-            : historial.map((h, i) => <HistRow key={i} fecha={h.fecha} tipo={h.tipo} detail={h.detail} />)}
+      {innerTab === "Historia" && (
+        <div>
+          {timeline === null ? <div className="text-xs text-muted">Cargando la historia del lote…</div>
+            : timeline.length === 0 ? <FichaVacio texto="Sin historia todavía. Siembras, cosechas, labores, lluvias, riegos, análisis, detecciones y notas aparecen acá en orden cronológico." />
+            : <LoteTimeline eventos={timeline} />}
         </div>
       )}
 
@@ -694,6 +699,33 @@ function LoteFichaTecnica({
         <button className="mc-btn mc-btn--primary mc-btn--sm flex-1" onClick={onTarea}>
           <Icon name="plus" size={13} />Nueva Tarea
         </button>
+      </div>
+    </div>
+  );
+}
+
+function LoteTimeline({ eventos }: { eventos: { fecha: string; categoria: string; titulo: string; detalle: string; icono: string; color: string }[] }) {
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "2-digit" });
+  return (
+    <div style={{ position: "relative", paddingLeft: 6 }}>
+      {/* Rail vertical */}
+      <div style={{ position: "absolute", left: 16, top: 6, bottom: 6, width: 2, background: "var(--mc-line)" }} />
+      <div className="col gap-2">
+        {eventos.map((e, i) => (
+          <div key={i} className="row" style={{ gap: 12, alignItems: "flex-start", padding: "8px 0", position: "relative" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: `${e.color}1a`, color: e.color, display: "grid", placeItems: "center", flexShrink: 0, zIndex: 1, border: "2px solid var(--mc-surface)" }}>
+              <Icon name={e.icono} size={16} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
+              <div className="row gap-6" style={{ alignItems: "center", flexWrap: "wrap" }}>
+                <span className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{e.titulo}</span>
+                <span className="mc-badge mc-badge--neutral" style={{ fontSize: 9.5 }}>{e.categoria}</span>
+              </div>
+              {e.detalle && <div className="text-xs text-muted" style={{ marginTop: 2 }}>{e.detalle}</div>}
+              <div className="text-xs" style={{ color: "var(--mc-text-3)", marginTop: 2, fontFamily: "var(--ff-mono)" }}>{fmt(e.fecha)}</div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
