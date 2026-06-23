@@ -94,6 +94,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
           { id: "calculadora", label: "Calculadora de Dosis", href: "/calculadora-dosis" },
           { id: "clima", label: "Clima", href: "/clima" },
           { id: "plan-riego", label: "Plan de Riego", href: "/plan-riego" },
+          { id: "cuaderno-campo", label: "Cuaderno de Campo", href: "/cuaderno-campo" },
         ],
       },
       {

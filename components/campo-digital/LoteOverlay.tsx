@@ -132,7 +132,7 @@ export function LoteOverlay({
   const tienePts = (serie?.serie?.length ?? 0) >= 2;
 
   // Predicción de rendimiento (IA) — bajo demanda
-  const [rinde, setRinde] = useState<null | { rendimientoEstimado: number; rangoMin: number; rangoMax: number; confianza: number; factores?: string[]; recomendacion?: string; simulado?: boolean }>(null);
+  const [rinde, setRinde] = useState<null | { rendimientoEstimado: number; rangoMin: number; rangoMax: number; confianza: number; factores?: string[]; recomendacion?: string; simulado?: boolean; backtesting?: { precision: number; casos: { anio: number; predicho: number; real: number; errorPct: number }[] } | null }>(null);
   const [cargandoRinde, setCargandoRinde] = useState(false);
   const predecirRinde = () => {
     const id = lote.dbId || lote.id;
@@ -240,6 +240,11 @@ export function LoteOverlay({
                 {(rinde.rendimientoEstimado / 1000).toFixed(1)} <span style={{ fontSize: 12, color: "var(--mc-text-2)" }}>t/ha</span>
               </div>
               <div className="text-xs text-muted">rango {(rinde.rangoMin / 1000).toFixed(1)}–{(rinde.rangoMax / 1000).toFixed(1)} t/ha</div>
+              {rinde.backtesting && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--mc-green-700)", fontWeight: 600, display: "flex", gap: 5, alignItems: "center" }} title={rinde.backtesting.casos.map((c) => `${c.anio}: predicho ${c.predicho}, real ${c.real} (±${c.errorPct}%)`).join(" · ")}>
+                  <Icon name="check" size={12} /> Precisión histórica: ±{100 - rinde.backtesting.precision}% ({rinde.backtesting.casos.length} campañas)
+                </div>
+              )}
               {rinde.recomendacion && (
                 <div style={{ marginTop: 6, fontSize: 11, color: "var(--mc-text-2)", display: "flex", gap: 5 }}>
                   <Icon name="sprout" size={12} /> {rinde.recomendacion}
