@@ -770,7 +770,7 @@ export default function InicioPage() {
       </div>
 
       {/* Clima + agenda | Salud lotes + suelo */}
-      <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 14 }}>
+      <div className="grid mc-2col-resp" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 14 }}>
         <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} lotes={lotesClima} selectedId={loteClima?.id || ""} onSelect={setScopeLoteId} />
         <div className="col gap-16"><FieldHealth /><SoilHealth /></div>
       </div>

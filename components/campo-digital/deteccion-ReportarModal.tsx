@@ -14,7 +14,7 @@ export function ReportarPlagaModal({
 }: {
   lotes: { id?: string; nombre: string; cultivo?: string }[];
   onClose: () => void;
-  onConfirm: (data: { loteId?: string; plaga: string; tipo: string; incidencia: number; observaciones: string }) => Promise<void> | void;
+  onConfirm: (data: { loteId?: string; plaga: string; tipo: string; incidencia: number; observaciones: string; imagenUrl?: string | null }) => Promise<void> | void;
 }) {
   const lista = lotes.length > 0 ? lotes : demo([{ id: undefined, nombre: "Lote 4 - Maíz (V6)", cultivo: "Maíz" }], [] as { id?: string; nombre: string; cultivo?: string }[]);
   const [loteIdx, setLoteIdx] = useState(0);
@@ -136,8 +136,9 @@ export function ReportarPlagaModal({
           <button onClick={onClose} className="mc-btn mc-btn--secondary">Cancelar</button>
           <button
             className="mc-btn"
-            style={{ background: "#c08a22", color: "white" }}
-            onClick={() => onConfirm({ loteId: lista[loteIdx]?.id, plaga: plaga.split(" (")[0], tipo: categoria === "Insecto" ? "Insecto" : categoria === "Hongo" ? "Hongo" : "Maleza", incidencia, observaciones: notas })}
+            style={{ background: lista[loteIdx]?.id && plaga.trim() ? "#c08a22" : "#d8c79a", color: "white", cursor: lista[loteIdx]?.id && plaga.trim() ? "pointer" : "not-allowed" }}
+            disabled={!lista[loteIdx]?.id || !plaga.trim()}
+            onClick={() => onConfirm({ loteId: lista[loteIdx]?.id, plaga: plaga.split(" (")[0], tipo: categoria === "Insecto" ? "Insecto" : categoria === "Hongo" ? "Hongo" : "Maleza", incidencia, observaciones: notas, imagenUrl: foto })}
           >
             <Icon name="alert" size={14} /> Generar Alerta
           </button>

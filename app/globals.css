@@ -2345,3 +2345,12 @@ a:focus-visible {
 /* Segundo rayo de tormenta (desfasado para que parpadeen alternados) */
 .wx-scene-bolt2 { opacity: 0; animation: wx-flash 6s ease-in-out infinite; animation-delay: -3.2s; }
 @media (prefers-reduced-motion: reduce) { .wx-scene-bolt2 { animation: none; } }
+
+/* Grillas inline de 2 columnas que apilan en mobile */
+@media (max-width: 820px) {
+  .mc-2col-resp { grid-template-columns: 1fr !important; }
+}
+/* Tablas/grillas anchas con scroll horizontal en mobile */
+@media (max-width: 720px) {
+  .mc-hscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
