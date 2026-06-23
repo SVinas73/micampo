@@ -76,7 +76,7 @@ export function AgregarCampoModal({
   establecimientos?: { id: string; nombre: string }[];
   establecimientoActivoId?: string | null;
 }) {
-  const tituloFinal = titulo ?? (dibujadoEnMapa ? "Nuevo lote dibujado en el mapa" : "Crear Nuevo Establecimiento");
+  const tituloFinal = titulo ?? (dibujadoEnMapa ? "Nuevo lote (contorno dibujado)" : "Nuevo lote");
   const [nombre, setNombre] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [hectareas, setHectareas] = useState(defaultHectareas != null ? String(defaultHectareas) : "100");
@@ -166,12 +166,12 @@ export function AgregarCampoModal({
 
         {/* Body */}
         <div style={{ padding: "22px 28px", overflowY: "auto", flex: 1 }}>
-          <Section icon="pen" title="Datos del Establecimiento">
+          <Section icon="pen" title="Datos del lote">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 14 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
                   <label style={lbl}>Nombre</label>
-                  <input style={inp} placeholder="Ej: Campo La Arboleda" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+                  <input style={inp} placeholder="Ej: Lote 7 - La Loma" value={nombre} onChange={(e) => setNombre(e.target.value)} />
                 </div>
                 <div>
                   <label style={lbl}>Ubicación</label>
