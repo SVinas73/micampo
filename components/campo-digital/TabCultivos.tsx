@@ -424,8 +424,8 @@ function DonutResumen({ data }: { data: DistCultivo[] }) {
       ))}
       <circle cx={cx} cy={cy} r={r - sw / 2 - 4} fill="var(--mc-surface)" />
       <circle cx={cx} cy={cy} r={r - sw / 2 - 4} fill="none" stroke="var(--mc-line)" strokeWidth="1" opacity="0.5" />
-      <text x={cx} y={cy - 18} textAnchor="middle" fontSize="11" fontFamily="var(--ff-ui)" fontWeight="700" fill="var(--mc-text-3)" letterSpacing="0.1em">SUPERFICIE</text>
-      <text x={cx} y={cy + 12} textAnchor="middle" fontSize="42" fontFamily="var(--ff-display)" fontWeight="800" fill={vacio ? "var(--mc-text-3)" : "var(--mc-ink)"}>{totalHa}</text>
+      <text x={cx} y={cy - 30} textAnchor="middle" fontSize="11" fontFamily="var(--ff-ui)" fontWeight="700" fill="var(--mc-text-3)" letterSpacing="0.1em">SUPERFICIE</text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fontSize="38" fontFamily="var(--ff-display)" fontWeight="800" fill={vacio ? "var(--mc-text-3)" : "var(--mc-ink)"}>{totalHa}</text>
       <text x={cx} y={cy + 30} textAnchor="middle" fontSize="11" fontFamily="var(--ff-mono)" fontWeight="600" fill="var(--mc-text-2)">Ha Totales</text>
       {data.slice(0, 5).map((d, i) => (
         <circle key={i} cx={cx + (i - (Math.min(data.length, 5) - 1) / 2) * 10} cy={cy + 44} r="3" fill={d.color} />
