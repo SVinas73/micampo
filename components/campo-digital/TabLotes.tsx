@@ -578,13 +578,13 @@ function LoteFichaTecnica({
         </div>
       </div>
 
-      <div className="row gap-2" style={{ borderBottom: "1px solid var(--mc-line)", padding: 0 }}>
+      <div className="row gap-2" style={{ borderBottom: "1px solid var(--mc-line)", padding: 0, overflowX: "auto", flexWrap: "nowrap" }}>
         {["Resumen", "Historia", "Suelo", "Labores", "Prescripción"].map((t) => (
           <button
             key={t}
             onClick={() => setInnerTab(t)}
             style={{
-              padding: "8px 12px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
+              padding: "8px 9px", border: "none", background: "none", cursor: "pointer", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0,
               color: innerTab === t ? "var(--mc-green-700)" : "var(--mc-text-3)",
               borderBottom: innerTab === t ? "2px solid var(--mc-green-600)" : "2px solid transparent", marginBottom: -1,
             }}

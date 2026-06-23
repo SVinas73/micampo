@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, Modal, Field, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
@@ -55,7 +55,9 @@ const PLANES_IA_DEMO: PlanIA[] = [
 
 export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const toast = useToast();
+  const navegar = (tab: string) => router.push(`/campo-digital?tab=${encodeURIComponent(tab)}`);
   const { lotes: scopeLotes } = useLoteScope();
   const subParam = searchParams.get("sub");
   const [sub, setSub] = useState(
@@ -64,16 +66,12 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [siembraOpen, setSiembraOpen] = useState(searchParams.get("modal") === "siembra");
   const [cosechaOpen, setCosechaOpen] = useState(false);
   const [analisisOpen, setAnalisisOpen] = useState(false);
-  const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number }[]>(demo([
-    { nombre: "Lote 1 - Vacío", ha: 70 },
-    { nombre: "Lote 4 - El Bajo", ha: 120 },
-    { nombre: "Lote 5 - Sur", ha: 85 },
-  ], []));
+  const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number; cultivo?: string | null }[]>([]);
   const [distribucion, setDistribucion] = useState<DistCultivo[]>([]);
 
   useEffect(() => {
     const d = scopeLotes;
-    if (d.length > 0) setLotes(d.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0 })));
+    if (d.length > 0) setLotes(d.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0, cultivo: l.cultivo })));
     // Distribución real por cultivo (0 si no hay lotes con cultivo sembrado)
     const porCultivo = new Map<string, number>();
     d.forEach((l) => {
@@ -199,21 +197,32 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
 
       <SubTabs tabs={["Estados", "Planificador de Siembra (IA)", "Análisis de Suelo"]} active={sub} onChange={setSub} />
 
-      {sub === "Estados" && <CultivosEstados onNuevaTarea={(lote) => toast.show(`Creá la tarea para ${lote} desde el tab Labores`)} distribucion={distribucion} />}
+      {sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={() => navegar("Labores")} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
       {sub === "Planificador de Siembra (IA)" && <CultivosPlanificador toast={toast} lotes={lotes} onEditar={() => setSiembraOpen(true)} />}
-      {sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} />}
+      {sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} />}
     </>
   );
 }
 
 /* ========== ESTADOS (Figma CultivosEstados) ========== */
-function CultivosEstados({ onNuevaTarea, distribucion }: { onNuevaTarea: (lote: string) => void; distribucion: DistCultivo[] }) {
+const ESTADO_COLOR: Record<string, { color: string; bg: string }> = {
+  Maíz: { color: "#d9a538", bg: "#fdf6e3" }, Soja: { color: "#768f44", bg: "#f1faf2" }, Trigo: { color: "#c08a22", bg: "#fbf3e6" },
+  Girasol: { color: "#e8b94a", bg: "#fdf7e6" }, Cebada: { color: "#8aa353", bg: "#f3f8ec" }, Sorgo: { color: "#b5762f", bg: "#fbf0e6" }, Alfalfa: { color: "#aabd76", bg: "#f5f9ec" },
+};
+
+function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }: { lotesReales: { id?: string; nombre: string; ha: number; cultivo?: string | null }[]; onNuevaTarea: (lote: string) => void; onVerMapa: () => void; distribucion: DistCultivo[] }) {
   const [filtro, setFiltro] = useState(false);
   const [soloActivos, setSoloActivos] = useState(false);
-  const lotesEstados = demo([
-    { id: "LOTE 4", cultivo: "Maíz", color: "#768f44", bg: "#f1faf2", siembra: "An 9/3/2025", semilla: "DK-7210", densidad: "300 kpa", inversion: "$30.000", estadio: "V6 - Vegetativo", agua: "140 mm", gdd: "450 GDD", fertilizacion: "Últ. Fertilización", monitoreo: "Próx. Monitoreo", cosechaFecha: "Est. 03/6/2026", rinde: "8.5 Tn/Ha ↑", destino: "—", progress: 40, has: 120 },
-    { id: "LOTE 5", cultivo: "Soja", color: "#3aa6d9", bg: "#f0f7fc", siembra: "Junio", semilla: "SY 5x1", densidad: "200 kpa", inversion: "$25.000", estadio: "V6 - Vegetativo", agua: "140 mm", gdd: "450 GDD", fertilizacion: "Últ. Fertilización", monitoreo: "Próx. Monitoreo", cosechaFecha: "Est. 06/10/2026", rinde: "3.2 Tn/Ha →", destino: "—", progress: 28, has: 85 },
-  ], [] as { id: string; cultivo: string; color: string; bg: string; siembra: string; semilla: string; densidad: string; inversion: string; estadio: string; agua: string; gdd: string; fertilizacion: string; monitoreo: string; cosechaFecha: string; rinde: string; destino: string; progress: number; has: number }[]);
+  const base = lotesReales.map((l) => {
+    const c = l.cultivo ? (ESTADO_COLOR[l.cultivo] || { color: "#5e7733", bg: "#f1faf2" }) : { color: "#9aa39a", bg: "var(--mc-surface-2)" };
+    return {
+      id: l.nombre, cultivo: l.cultivo || "Sin cultivo", color: c.color, bg: c.bg,
+      siembra: "—", semilla: "—", densidad: "—", inversion: "—",
+      estadio: l.cultivo ? "Vegetativo" : "—", agua: "—", gdd: "—", fertilizacion: "—", monitoreo: "—",
+      cosechaFecha: "—", rinde: "—", destino: "—", progress: l.cultivo ? 35 : 0, has: Math.round(l.ha), activo: !!l.cultivo,
+    };
+  });
+  const lotesEstados = soloActivos ? base.filter((l) => l.activo) : base;
   return (
     <div className="grid" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
       <div className="mc-card">
@@ -235,6 +244,12 @@ function CultivosEstados({ onNuevaTarea, distribucion }: { onNuevaTarea: (lote: 
           )}
         </div>
         <div className="col gap-14">
+          {lotesEstados.length === 0 && (
+            <div className="mc-empty" style={{ padding: 28 }}>
+              <div className="mc-empty__icon"><Icon name="sprout" size={20} /></div>
+              <div className="mc-empty__text">{soloActivos ? "No hay lotes con cultivo activo." : "Sin lotes. Creá lotes en el tab Lotes y asignales un cultivo."}</div>
+            </div>
+          )}
           {lotesEstados.map((l, i) => (
             <div key={i} style={{ border: `1.5px solid ${l.color}40`, borderRadius: 14, overflow: "hidden" }}>
               <div style={{ background: l.color, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -671,7 +686,7 @@ function CultivosPlanificador({
 /* ========== ANÁLISIS DE SUELO (Figma CultivosAnalisisSuelo) ========== */
 type AnalisisRow = { lote: string; cultivo: string; n: number; p: number; k: number; ph: number; mo: string; phStatus: string; moStatus: string };
 
-function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }) {
+function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof useToast>; onVerMapa: () => void }) {
   const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>(demo([
     { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 40, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
     { lote: "Lote 12 - Norte", cultivo: "Trigo Ciclo Corto · Hace 3 días", n: 95, p: 75, k: 60, ph: 5.2, mo: "1.9%", phStatus: "warn", moStatus: "warn" },
@@ -679,7 +694,6 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
     { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 20, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
   ], [] as AnalisisRow[]));
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
-  const [evolFiltro, setEvolFiltro] = useState<"Tipo" | "Lote">("Tipo");
   const [evolucion, setEvolucion] = useState<{ label: string; ppm: number }[]>([]);
 
   useEffect(() => {
@@ -825,7 +839,7 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
               </div>
               <div className="col gap-4" style={{ minWidth: 110 }}>
                 <div className="row gap-4">
-                  <button className="mc-icon-btn" style={{ width: 28, height: 28 }} title="Ver en mapa" onClick={() => toast.show(`Abrí el tab Lotes para ver ${l.lote} en el mapa`)}>
+                  <button className="mc-icon-btn" style={{ width: 28, height: 28 }} title="Ver en mapa" onClick={onVerMapa}>
                     <Icon name="map" size={13} />
                   </button>
                   <button
@@ -887,11 +901,8 @@ function CultivosAnalisisSuelo({ toast }: { toast: ReturnType<typeof useToast> }
 
         <div className="mc-card">
           <div className="mc-card__head">
-            <div className="mc-card__title">Evolución Histórica:</div>
-            <div className="mc-seg">
-              <button className={evolFiltro === "Tipo" ? "is-on" : ""} onClick={() => setEvolFiltro("Tipo")}>Tipo</button>
-              <button className={evolFiltro === "Lote" ? "is-on" : ""} onClick={() => setEvolFiltro("Lote")}>Lote</button>
-            </div>
+            <div className="mc-card__title">Evolución histórica de Fósforo</div>
+            <span className="text-xs text-muted">ppm · por análisis</span>
           </div>
           {evolucion.length === 0 ? (
             <div className="mc-empty">
