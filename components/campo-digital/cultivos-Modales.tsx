@@ -39,6 +39,7 @@ export function NuevaSiembraModal({
   const [variedad, setVariedad] = useState("");
   const [densidad, setDensidad] = useState("");
   const [inversion, setInversion] = useState("");
+  const [responsable, setResponsable] = useState("");
   const [destinos, setDestinos] = useState<string[]>([]);
   const [usarIA, setUsarIA] = useState(true);
   const [busqueda, setBusqueda] = useState("");
@@ -91,13 +92,8 @@ export function NuevaSiembraModal({
               <input style={inputS} placeholder="Ej. 15000" value={inversion} onChange={(e) => setInversion(e.target.value)} />
             </div>
             <div className="mc-field">
-              <label className="mc-label">Responsable</label>
-              <div className="row gap-4">
-                {["JP", "MG", "CL"].map((r, i) => (
-                  <div key={r} style={{ width: 32, height: 32, borderRadius: "50%", background: ["#5E8F78", "#d9a538", "#c08a22"][i], color: "white", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, marginLeft: i > 0 ? -8 : 0, border: "2px solid var(--mc-surface)" }}>{r}</div>
-                ))}
-                <span className="text-xs text-muted" style={{ marginLeft: 6 }}>Equipo de Siembra</span>
-              </div>
+              <label className="mc-label">Responsable / equipo</label>
+              <input style={inputS} placeholder="Ej. Juan Pérez · Equipo de siembra" value={responsable} onChange={(e) => setResponsable(e.target.value)} />
             </div>
           </div>
 

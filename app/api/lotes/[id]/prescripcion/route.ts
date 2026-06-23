@@ -48,7 +48,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const recortes: GeoJSON.Feature<GeoJSON.Polygon>[] = [];
     grid.features.forEach((cell) => {
       try {
-        const clip = turf.intersect(cell as any, poly as any);
+        const clip = turf.intersect(turf.featureCollection([cell as any, poly as any]));
         if (clip && clip.geometry.type === "Polygon" && turf.area(clip) > 800) recortes.push(clip as GeoJSON.Feature<GeoJSON.Polygon>);
       } catch { /* ignora */ }
     });

@@ -146,7 +146,7 @@ export default function TabDeteccion() {
       {reportarOpen && <ReportarPlagaModal lotes={lotes} onClose={() => setReportarOpen(false)} onConfirm={generarAlerta} />}
 
       <div className="grid g-cols-5">
-        <KPI label="Alertas Activas" value={String(alertas.length)} delta={demo("2 críticas", "—")} trend="warn" icon="alert" warn />
+        <KPI label="Alertas Activas" value={String(alertas.length)} delta={alertas.length ? `${alertas.filter((a) => a.riesgoColor === "red").length} críticas` : "Sin alertas"} trend="warn" icon="alert" warn />
         <KPI label="Confianza IA" value={demo("96%", "—")} delta={demo("Alta precisión", "—")} trend="up" icon="target" accent ia />
         <KPI label="Vigor Promedio (NDVI)" value={demo("0.78", "—")} delta={demo("(Alto)", "—")} trend="up" icon="leaf" />
         <KPI label="Riesgo Economico" value={demo("$1.250", "—")} delta={demo("USD/Ha potencial", "—")} trend="warn" icon="dollar" />

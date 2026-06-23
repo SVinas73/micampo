@@ -340,47 +340,80 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
   );
 }
 
-/* ---------- Salud de los lotes (dona) ---------- */
+/* ---------- Salud de los lotes (dona) — real (alertas sanitarias) ---------- */
 function FieldHealth() {
-  const labels = ["Excelente", "Bueno", "Regular", "Pobre"];
-  const colors = ["#5e7733", "#8ea65a", "#d9a538", "#c93434"];
+  const [conCultivo, setConCultivo] = useState(0);
+  const [conAlerta, setConAlerta] = useState(0);
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/deteccion-enfermedades").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([lotes, alertas]) => {
+      const cc = Array.isArray(lotes) ? lotes.filter((l: { cultivo?: string }) => l.cultivo).length : 0;
+      const lotesAlerta = new Set(Array.isArray(alertas) ? alertas.filter((a: { estado?: string }) => a.estado !== "Resuelta").map((a: { loteId: string }) => a.loteId) : []);
+      setConCultivo(cc);
+      setConAlerta(lotesAlerta.size);
+    });
+  }, []);
+  const sanos = Math.max(0, conCultivo - conAlerta);
+  const vacio = conCultivo === 0;
+  const pct = conCultivo > 0 ? Math.round((sanos / conCultivo) * 100) : 0;
   return (
     <div className="mc-card">
-      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Análisis IA · vegetación &amp; suelo</div><div className="mc-card__title mt-4">Salud de los lotes</div></div><span className="mc-badge mc-badge--neutral">Sin datos</span></div>
+      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Sanidad de los cultivos</div><div className="mc-card__title mt-4">Salud de los lotes</div></div><span className={`mc-badge ${vacio ? "mc-badge--neutral" : conAlerta > 0 ? "mc-badge--amber" : "mc-badge--green"}`}>{vacio ? "Sin datos" : conAlerta > 0 ? `${conAlerta} en alerta` : "Sin alertas"}</span></div>
       <div className="row" style={{ gap: 18, alignItems: "center" }}>
-        <Donut segments={[{ value: 1, color: "var(--mc-surface-3)" }]} size={140} thickness={15} rounded={false}>
-          <span style={{ fontFamily: "var(--ff-display)", fontSize: 36, color: "var(--mc-text-3)", lineHeight: 1 }}>—</span>
-          <span style={{ fontSize: 11, color: "var(--mc-text-3)", fontWeight: 600 }}>Sin análisis</span>
+        <Donut segments={vacio ? [{ value: 1, color: "var(--mc-surface-3)" }] : [{ value: sanos, color: "#5e7733" }, { value: conAlerta, color: "#c93434" }]} size={140} thickness={15} rounded={!vacio}>
+          <span style={{ fontFamily: "var(--ff-display)", fontSize: 36, color: vacio ? "var(--mc-text-3)" : "var(--mc-ink)", lineHeight: 1 }}>{vacio ? "—" : `${pct}%`}</span>
+          <span style={{ fontSize: 11, color: "var(--mc-text-3)", fontWeight: 600 }}>{vacio ? "Sin cultivos" : "saludables"}</span>
         </Donut>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-          {labels.map((label, i) => (
-            <div key={label} className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
-              <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: colors[i] }} /><span style={{ color: "var(--mc-text-2)" }}>{label}</span></div>
-              <span style={{ fontWeight: 600, color: "var(--mc-text-3)", fontVariantNumeric: "tabular-nums" }}>0%</span>
-            </div>
-          ))}
+          <div className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
+            <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: "#5e7733" }} /><span style={{ color: "var(--mc-text-2)" }}>Saludables</span></div>
+            <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{sanos}</span>
+          </div>
+          <div className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
+            <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: "#c93434" }} /><span style={{ color: "var(--mc-text-2)" }}>En alerta</span></div>
+            <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{conAlerta}</span>
+          </div>
+          <div className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
+            <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--mc-surface-3)" }} /><span style={{ color: "var(--mc-text-2)" }}>Lotes con cultivo</span></div>
+            <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{conCultivo}</span>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Salud del suelo (NPK + materia orgánica) ---------- */
+/* ---------- Salud del suelo (NPK + materia orgánica) — real ---------- */
 function SoilHealth() {
+  const [prom, setProm] = useState<{ n: number | null; p: number | null; k: number | null; mo: number | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/analisis-suelo").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d) || d.length === 0) { setProm(null); return; }
+      const avg = (key: string) => {
+        const vals = d.map((a: Record<string, number>) => a[key]).filter((v) => v != null);
+        return vals.length ? Math.round((vals.reduce((s: number, v: number) => s + v, 0) / vals.length) * 10) / 10 : null;
+      };
+      setProm({ n: avg("nitrogeno"), p: avg("fosforo"), k: avg("potasio"), mo: avg("materiaOrganica") });
+    }).catch(() => setProm(null));
+  }, []);
+  const cell = (label: string, v: number | null) => (
+    <div className="mc-nutri" style={{ flex: 1, justifyContent: "center", background: v != null ? "var(--mc-green-50)" : "var(--mc-surface-3)", color: v != null ? "var(--mc-green-700)" : "var(--mc-text-3)" }}>{label} · {v ?? "—"}</div>
+  );
+  const moPct = prom?.mo != null ? Math.min(100, Math.round((prom.mo / 5) * 100)) : 0;
   return (
     <div className="mc-card">
-      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Promedio de todos los lotes</div><div className="mc-card__title mt-4">Salud del suelo</div></div></div>
+      <div className="mc-card__head"><div><div className="mc-card__eyebrow">Promedio de tus análisis</div><div className="mc-card__title mt-4">Salud del suelo</div></div></div>
       <div className="row" style={{ gap: 8, marginBottom: 14 }}>
-        <div className="mc-nutri" style={{ flex: 1, justifyContent: "center", background: "var(--mc-surface-3)", color: "var(--mc-text-3)" }}>N · —</div>
-        <div className="mc-nutri" style={{ flex: 1, justifyContent: "center", background: "var(--mc-surface-3)", color: "var(--mc-text-3)" }}>P · —</div>
-        <div className="mc-nutri" style={{ flex: 1, justifyContent: "center", background: "var(--mc-surface-3)", color: "var(--mc-text-3)" }}>K · —</div>
+        {cell("N", prom?.n ?? null)}{cell("P", prom?.p ?? null)}{cell("K", prom?.k ?? null)}
       </div>
       <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
         <span style={{ color: "var(--mc-text-2)" }}>Materia orgánica</span>
-        <span style={{ fontWeight: 600, color: "var(--mc-text-3)", fontFamily: "var(--ff-mono)" }}>0%</span>
+        <span style={{ fontWeight: 600, color: prom?.mo != null ? "var(--mc-ink)" : "var(--mc-text-3)", fontFamily: "var(--ff-mono)" }}>{prom?.mo != null ? `${prom.mo}%` : "—"}</span>
       </div>
-      <div className="mc-prog"><div className="mc-prog__bar" style={{ width: "0%" }} /></div>
-      <div className="text-xs text-muted mt-8">Sin análisis de suelo cargado</div>
+      <div className="mc-prog"><div className="mc-prog__bar" style={{ width: `${moPct}%` }} /></div>
+      {!prom && <div className="text-xs text-muted mt-8">Sin análisis de suelo cargado. Cargalos en Cultivos → Análisis de Suelo.</div>}
     </div>
   );
 }

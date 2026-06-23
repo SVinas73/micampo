@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon, KPI, Modal, Field, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
@@ -71,6 +72,7 @@ const TIPO_ICON: Record<string, { icon: string; color: string }> = {
 /* ========== TAB LABORES (Figma CDLabores) ========== */
 export default function TabLabores() {
   const toast = useToast();
+  const router = useRouter();
   const { lotes: scopeLotes, loteActivo } = useLoteScope();
   const [laboresRaw, setLabores] = useState<LaborUI[]>(demo(DEMO_LABORES, []));
   // Filtra las labores por el lote activo del alcance global
@@ -388,7 +390,7 @@ export default function TabLabores() {
                       setNuevaFecha(iso(2));
                       if (!target) toast.show("Labor de ejemplo: usá la tabla para reprogramar labores reales");
                     } else if (b.accion === "Solicitar") {
-                      toast.show("Solicitud de insumos enviada a Logística e Inventario");
+                      router.push("/logistica-inventario");
                     } else {
                       setVerDetalle({ titulo: b.titulo, lote: b.lote, detalle: `${b.alertaTitulo} — ${b.alertaSub}` });
                     }
