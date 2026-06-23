@@ -362,7 +362,7 @@ function FieldHealth() {
     <div className="mc-card">
       <div className="mc-card__head"><div><div className="mc-card__eyebrow">Sanidad de los cultivos</div><div className="mc-card__title mt-4">Salud de los lotes</div></div><span className={`mc-badge ${vacio ? "mc-badge--neutral" : conAlerta > 0 ? "mc-badge--amber" : "mc-badge--green"}`}>{vacio ? "Sin datos" : conAlerta > 0 ? `${conAlerta} en alerta` : "Sin alertas"}</span></div>
       <div className="row" style={{ gap: 18, alignItems: "center" }}>
-        <Donut segments={vacio ? [{ value: 1, color: "var(--mc-surface-3)" }] : [{ value: sanos, color: "#5e7733" }, { value: conAlerta, color: "#c93434" }]} size={140} thickness={15} rounded={!vacio}>
+        <Donut segments={vacio ? [{ value: 1, color: "var(--mc-surface-3)" }] : [{ value: sanos, color: "#5e7733" }, { value: conAlerta, color: "#c93434" }].filter((s) => s.value > 0)} size={140} thickness={15} rounded={!vacio}>
           <span style={{ fontFamily: "var(--ff-display)", fontSize: 36, color: vacio ? "var(--mc-text-3)" : "var(--mc-ink)", lineHeight: 1 }}>{vacio ? "—" : `${pct}%`}</span>
           <span style={{ fontSize: 11, color: "var(--mc-text-3)", fontWeight: 600 }}>{vacio ? "Sin cultivos" : "saludables"}</span>
         </Donut>
