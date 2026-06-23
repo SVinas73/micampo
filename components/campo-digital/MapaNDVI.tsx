@@ -30,6 +30,8 @@ type Props = {
   layer: string; // "NDVI" | "Satélite" | "Cultivos"
   onSelect: (id: string) => void;
   onDrawn: (data: { geojson: GeoJSON.Polygon; hectareas: number; centro: { lat: number; lng: number }; perimetro: number }) => void;
+  armarDibujo?: boolean;
+  onDibujoIniciado?: () => void;
 };
 
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
@@ -47,11 +49,12 @@ function ndviColor(v: number) {
   return "#c08a22";
 }
 
-export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }: Props) {
+export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const lotesLayerRef = useRef<L.FeatureGroup | null>(null);
   const ndviLayerRef = useRef<L.TileLayer.WMS | null>(null);
+  const polyDrawOptsRef = useRef<any>(null);
   const onDrawnRef = useRef(onDrawn);
   const onSelectRef = useRef(onSelect);
   onDrawnRef.current = onDrawn;
@@ -102,10 +105,12 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }
     L.control.layers({ Satélite: satelite }, { Lugares: labels }, { collapsed: true, position: "bottomright" }).addTo(map);
 
     // Herramienta de dibujo de lotes
+    const polygonOpts = { allowIntersection: false, showArea: true, shapeOptions: { color: "#d9a538", weight: 3, fillOpacity: 0.1 } };
+    polyDrawOptsRef.current = polygonOpts;
     const drawControl = new (L as any).Control.Draw({
       position: "topleft",
       draw: {
-        polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: "#d9a538", weight: 3, fillOpacity: 0.1 } },
+        polygon: polygonOpts,
         rectangle: { shapeOptions: { color: "#d9a538", weight: 3 } },
         polyline: false, circle: false, marker: false, circlemarker: false,
       },
@@ -136,6 +141,18 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }
       mapRef.current = null;
     };
   }, []);
+
+  // Disparador externo: el botón "Nuevo lote" del header arma el dibujo de polígono
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !armarDibujo) return;
+    try {
+      const handler = new (L as any).Draw.Polygon(map, polyDrawOptsRef.current);
+      handler.enable();
+      onDibujoIniciado?.();
+    } catch { /* leaflet-draw no disponible */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [armarDibujo]);
 
   // Capa NDVI según el toggle
   useEffect(() => {

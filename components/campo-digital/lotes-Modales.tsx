@@ -225,7 +225,7 @@ export function AgregarCampoModal({
         <div style={{ padding: "16px 28px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
           <button className="mc-btn mc-btn--secondary" onClick={onClose}>Cancelar</button>
           <button className="mc-btn mc-btn--primary" style={{ gap: 6 }} disabled={!nombre.trim() || saving} onClick={guardar}>
-            <Icon name="map" size={14} />{saving ? "Guardando..." : "Guardar y Dibujar"}
+            <Icon name="map" size={14} />{saving ? "Guardando..." : dibujadoEnMapa ? "Guardar lote" : "Guardar y Dibujar"}
           </button>
         </div>
       </div>

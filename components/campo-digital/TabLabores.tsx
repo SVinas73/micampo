@@ -144,7 +144,7 @@ export default function TabLabores() {
 
   useSetHeaderActions(
     <button className="mc-btn mc-btn--primary" onClick={() => setWizardOpen(true)}>
-      <Icon name="plus" size={14} />Nueva Tarea
+      <Icon name="plus" size={14} />Nueva labor
     </button>,
     []
   );
@@ -281,9 +281,6 @@ export default function TabLabores() {
               </div>
             </>
           )}
-          <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setWizardOpen(true)}>
-            <Icon name="plus" size={13} />Nueva labor
-          </button>
         </div>
       </div>
 

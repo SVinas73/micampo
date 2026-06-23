@@ -57,6 +57,7 @@ export default function TabLotes() {
   const [notaLote, setNotaLote] = useState<LoteUI | null>(null);
   const [comentarioGeneral, setComentarioGeneral] = useState(false);
   const [dibujado, setDibujado] = useState<DibujoLote | null>(null);
+  const [drawArmed, setDrawArmed] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -101,7 +102,7 @@ export default function TabLotes() {
       <button className="mc-btn mc-btn--red" onClick={() => setShowEliminarCampo(true)}>
         <Icon name="trash" size={14} />Eliminar campo
       </button>
-      <button className="mc-btn mc-btn--primary" onClick={() => setShowAgregar(true)}>
+      <button className="mc-btn mc-btn--primary" onClick={() => { setSelected(null); setView("mapa"); setDrawArmed(true); }}>
         <Icon name="plus" size={14} />Nuevo lote
       </button>
     </>,
@@ -326,6 +327,8 @@ export default function TabLotes() {
           onEditar={(l) => setEditLote(l)}
           onTarea={(l) => setTareaLote(l)}
           onDrawn={(d) => { setDibujado(d); setShowAgregar(true); }}
+          armarDibujo={drawArmed}
+          onDibujoIniciado={() => setDrawArmed(false)}
         />
       )}
       {view === "lista" && (
@@ -341,7 +344,7 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
@@ -352,6 +355,8 @@ function LotesMapa({
   onEditar: (l: LoteUI) => void;
   onTarea: (l: LoteUI) => void;
   onDrawn: (d: { geojson: { type: "Polygon"; coordinates: number[][][] }; hectareas: number; centro: { lat: number; lng: number }; perimetro: number }) => void;
+  armarDibujo?: boolean;
+  onDibujoIniciado?: () => void;
 }) {
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
     NDVI: [
@@ -385,7 +390,7 @@ function LotesMapa({
     const base = idx < 0 ? 0 : (idx + delta + lotes.length) % lotes.length;
     onSelect(lotes[base]);
   };
-  const switcherBtn: React.CSSProperties = { borderRadius: 11, width: 34, height: 34, display: "grid", placeItems: "center", color: "var(--mc-ink)", cursor: "pointer", border: "none", flexShrink: 0 };
+  const switcherBtn: React.CSSProperties = { borderRadius: 11, width: 34, height: 34, padding: 0, lineHeight: 0, display: "grid", placeItems: "center", color: "var(--mc-ink)", cursor: "pointer", border: "none", flexShrink: 0, boxSizing: "border-box" };
 
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -410,6 +415,8 @@ function LotesMapa({
           layer={layer}
           onSelect={(id: string) => onSelect(lotes.find((l) => l.id === id) || null)}
           onDrawn={onDrawn}
+          armarDibujo={armarDibujo}
+          onDibujoIniciado={onDibujoIniciado}
         />
 
         {/* Switcher de lote (arriba-centro) — saltar de lote a lote */}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon, KPI, PageHeader, Modal, Field, useToast } from "@/components/mc";
 import { useLoteScope } from "@/components/LoteScope";
 
-type Est = { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; hectareasTotales?: number | null; lotesCount?: number };
+type Est = { id: string; nombre: string; direccion?: string | null; ciudad?: string | null; provincia?: string | null; pais?: string | null; cuit?: string | null; hectareasTotales?: number | null; lotesCount?: number };
 type Lote = { id: string; nombre: string; hectareas: number; cultivo?: string | null; establecimientoId?: string | null };
 
 export default function EstablecimientosPage() {
@@ -14,7 +14,7 @@ export default function EstablecimientosPage() {
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [cargando, setCargando] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ nombre: "", ciudad: "", provincia: "", hectareasTotales: "" });
+  const [form, setForm] = useState({ nombre: "", direccion: "", ciudad: "", provincia: "", pais: "Uruguay", cuit: "", hectareasTotales: "" });
   const [guardando, setGuardando] = useState(false);
   const [aEliminar, setAEliminar] = useState<Est | null>(null);
   const [borrando, setBorrando] = useState(false);
@@ -41,7 +41,7 @@ export default function EstablecimientosPage() {
       if (!res.ok) throw new Error();
       toast.show("Establecimiento creado");
       setModalOpen(false);
-      setForm({ nombre: "", ciudad: "", provincia: "", hectareasTotales: "" });
+      setForm({ nombre: "", direccion: "", ciudad: "", provincia: "", pais: "Uruguay", cuit: "", hectareasTotales: "" });
       cargar(); recargar();
     } catch { toast.show("No se pudo crear", "err"); } finally { setGuardando(false); }
   };
@@ -104,7 +104,8 @@ export default function EstablecimientosPage() {
                       <span style={{ width: 34, height: 34, borderRadius: 9, background: "var(--mc-green-100)", color: "var(--mc-green-700)", display: "grid", placeItems: "center" }}><Icon name="building" size={17} /></span>
                       <div>
                         <div className="font-semi" style={{ color: "var(--mc-ink)" }}>{e.nombre}</div>
-                        <div className="text-xs text-muted">{[e.ciudad, e.provincia].filter(Boolean).join(", ") || "Sin ubicación"}</div>
+                        <div className="text-xs text-muted">{[e.ciudad, e.provincia, e.pais].filter(Boolean).join(", ") || "Sin ubicación"}</div>
+                        {e.cuit && <div className="text-xs text-muted">CUIT/RUT: {e.cuit}</div>}
                       </div>
                     </div>
                     <div className="row gap-6" style={{ alignItems: "center" }}>
@@ -170,9 +171,20 @@ export default function EstablecimientosPage() {
         <Field label="Nombre *">
           <input className="mc-input" placeholder="Ej: Establecimiento Don Ramón" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
         </Field>
+        <Field label="Dirección">
+          <input className="mc-input" placeholder="Ej: Ruta 5, Km 40" value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} />
+        </Field>
         <div className="grid g-cols-2 gap-12">
           <Field label="Ciudad"><input className="mc-input" value={form.ciudad} onChange={(e) => setForm({ ...form, ciudad: e.target.value })} /></Field>
           <Field label="Provincia / Depto."><input className="mc-input" value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value })} /></Field>
+        </div>
+        <div className="grid g-cols-2 gap-12">
+          <Field label="País">
+            <select className="mc-select" value={form.pais} onChange={(e) => setForm({ ...form, pais: e.target.value })}>
+              {["Uruguay", "Argentina", "Brasil", "Paraguay", "Chile", "Bolivia"].map((p) => <option key={p}>{p}</option>)}
+            </select>
+          </Field>
+          <Field label="CUIT / RUT"><input className="mc-input" placeholder="Identificación fiscal" value={form.cuit} onChange={(e) => setForm({ ...form, cuit: e.target.value })} /></Field>
         </div>
         <Field label="Hectáreas totales">
           <input className="mc-input" type="number" value={form.hectareasTotales} onChange={(e) => setForm({ ...form, hectareasTotales: e.target.value })} />
