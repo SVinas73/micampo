@@ -11,8 +11,20 @@ export const maxDuration = 30;
  * Degrada a un análisis estadístico determinístico cuando no hay IA.
  */
 
-function analisisDeterministico(titulo: string, unidad: string, datos: { label: string; value: number }[]) {
-  if (!datos.length) return { resumen: "Sin datos para analizar.", hallazgos: [], recomendaciones: [] };
+// Acciones (enlaces a módulos) según el dataset, para que cada análisis sea accionable
+const RUTAS: Record<string, { label: string; ruta: string }[]> = {
+  margenPorLote: [{ label: "Ver rotación de cultivos", ruta: "/campo-digital?tab=Cultivos" }, { label: "Revisar costos", ruta: "/costos" }],
+  costoPorLote: [{ label: "Revisar costos", ruta: "/costos" }],
+  costosPorCategoria: [{ label: "Ir a Costos", ruta: "/costos" }],
+  ndviPorLote: [{ label: "Ver lotes y NDVI", ruta: "/campo-digital?tab=Lotes" }, { label: "Plan de riego", ruta: "/plan-riego" }],
+  rindePorCampaña: [{ label: "Planificar siembra", ruta: "/campo-digital?tab=Planificador de Siembras (IA)" }],
+  ingresoPorCampaña: [{ label: "Ir a Comercialización", ruta: "/comercializacion" }],
+  haPorCultivo: [{ label: "Ver cultivos", ruta: "/campo-digital?tab=Cultivos" }],
+  produccionLechera: [{ label: "Producción lechera", ruta: "/produccion-lechera" }],
+};
+
+function analisisDeterministico(id: string, titulo: string, unidad: string, datos: { label: string; value: number }[]) {
+  if (!datos.length) return { resumen: "Sin datos para analizar.", hallazgos: [], recomendaciones: [], acciones: [] };
   const valores = datos.map((d) => d.value);
   const max = datos.reduce((a, b) => (b.value > a.value ? b : a));
   const min = datos.reduce((a, b) => (b.value < a.value ? b : a));
@@ -30,6 +42,7 @@ function analisisDeterministico(titulo: string, unidad: string, datos: { label: 
     recomendaciones: negativos.length
       ? [`Revisá ${negativos[0].label}, que está en rojo.`]
       : [`Tomá ${max.label} como referencia de buena performance.`],
+    acciones: RUTAS[id] || [],
     simulado: true,
   };
 }
@@ -38,14 +51,14 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    const { titulo, unidad, datos } = await request.json();
+    const { id, titulo, unidad, datos } = await request.json();
     if (!Array.isArray(datos) || datos.length === 0) {
       return NextResponse.json({ error: "Sin datos" }, { status: 400 });
     }
 
     const anthropic = getAnthropic();
     if (!anthropic) {
-      return NextResponse.json(analisisDeterministico(titulo, unidad || "", datos));
+      return NextResponse.json(analisisDeterministico(id, titulo, unidad || "", datos));
     }
 
     try {
@@ -71,12 +84,12 @@ Devolvé JSON:
       });
       const text = res.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       const parsed = parseJsonTolerante<any>(text);
-      if (parsed?.resumen) return NextResponse.json({ ...parsed, simulado: false });
+      if (parsed?.resumen) return NextResponse.json({ ...parsed, acciones: RUTAS[id] || [], simulado: false });
     } catch (e) {
       console.error("Análisis IA falló, usando determinístico:", e);
     }
 
-    return NextResponse.json(analisisDeterministico(titulo, unidad || "", datos));
+    return NextResponse.json(analisisDeterministico(id, titulo, unidad || "", datos));
   } catch (error) {
     console.error("Error en análisis:", error);
     return NextResponse.json({ error: "Error al analizar" }, { status: 500 });
