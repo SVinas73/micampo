@@ -385,7 +385,7 @@ function LotesMapa({
     const base = idx < 0 ? 0 : (idx + delta + lotes.length) % lotes.length;
     onSelect(lotes[base]);
   };
-  const switcherBtn: React.CSSProperties = { borderRadius: 11, width: 32, height: 32, display: "grid", placeItems: "center", color: "var(--mc-ink)", cursor: "pointer", border: "none" };
+  const switcherBtn: React.CSSProperties = { borderRadius: 11, width: 34, height: 34, display: "grid", placeItems: "center", color: "var(--mc-ink)", cursor: "pointer", border: "none", flexShrink: 0 };
 
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
@@ -416,8 +416,8 @@ function LotesMapa({
         {lotes.length > 0 && (
           <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 550, display: "flex", alignItems: "center", gap: 6, pointerEvents: "auto" }}>
             <button className="mc-glass" aria-label="Lote anterior" onClick={() => irA(-1)} style={switcherBtn}><Icon name="chevLeft" size={16} /></button>
-            <div className="mc-glass" style={{ borderRadius: 11, padding: "4px 6px", display: "flex", alignItems: "center", gap: 6 }}>
-              <Icon name="map" size={13} style={{ color: "var(--mc-green-700)", marginLeft: 4 }} />
+            <div className="mc-glass" style={{ borderRadius: 11, height: 34, padding: "0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="map" size={13} style={{ color: "var(--mc-green-700)" }} />
               <select
                 value={selected?.id ?? ""}
                 onChange={(e) => onSelect(lotes.find((l) => l.id === e.target.value) || null)}

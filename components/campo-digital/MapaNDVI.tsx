@@ -62,6 +62,7 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn }
     if (!ref.current || mapRef.current) return;
 
     const map = L.map(ref.current, { center: [-33.5, -61.5], zoom: 6, zoomControl: false, attributionControl: true });
+    map.attributionControl.setPosition("bottomleft");
     L.control.zoom({ position: "bottomright" }).addTo(map);
     mapRef.current = map;
 
