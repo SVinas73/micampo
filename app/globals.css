@@ -2354,3 +2354,8 @@ a:focus-visible {
 @media (max-width: 720px) {
   .mc-hscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
+
+/* Celdas de info del clima (temp/humedad/viento/ΔT): 2x2 en mobile */
+@media (max-width: 640px) {
+  .mc-wx-info { grid-template-columns: 1fr 1fr !important; }
+}
