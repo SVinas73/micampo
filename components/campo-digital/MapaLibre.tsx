@@ -373,23 +373,25 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn 
     <div style={{ position: "absolute", inset: 0 }}>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
 
-      {/* Controles dibujo / terreno — barra inferior centrada (no choca con la ficha del lote) */}
-      <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", zIndex: 500, display: "flex", gap: 8 }}>
-        {!drawing ? (
-          <>
-            <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={iniciarDibujo}><Icon name="pen" size={13} />Dibujar lote</button>
-            <button className="mc-glass mc-btn--sm" style={{ borderRadius: 9, padding: "6px 11px", display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, fontSize: 12, color: "var(--mc-ink)", cursor: "pointer" }} onClick={toggleTerrain}>
-              <Icon name="map" size={13} />{terrainOn ? "Vista plana" : "Relieve 3D"}
-            </button>
-          </>
-        ) : (
+      {/* Controles dibujo / terreno */}
+      {!drawing ? (
+        /* Arriba-derecha, debajo de las acciones del lote (Labor/Nota/Editar) cuando hay uno seleccionado */
+        <div style={{ position: "absolute", top: selectedId ? 156 : 14, right: 16, zIndex: 500, display: "flex", flexDirection: "column", gap: 8, width: 152 }}>
+          <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={iniciarDibujo}><Icon name="pen" size={13} />Dibujar lote</button>
+          <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 11px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12, color: "var(--mc-ink)", cursor: "pointer" }} onClick={toggleTerrain}>
+            <Icon name="map" size={13} />{terrainOn ? "Vista plana" : "Relieve 3D"}
+          </button>
+        </div>
+      ) : (
+        /* Modo dibujo: panel inferior centrado */
+        <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", zIndex: 500, display: "flex", gap: 8 }}>
           <div className="mc-glass" style={{ borderRadius: 12, padding: "8px 12px", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--mc-ink)" }}>Tocá los vértices ({drawCount}) · doble click para cerrar</span>
             <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={finalizarDibujo} disabled={drawCount < 3}>Finalizar</button>
             <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={cancelarDibujo}>Cancelar</button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

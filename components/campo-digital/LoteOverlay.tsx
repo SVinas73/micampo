@@ -193,96 +193,62 @@ export function LoteOverlay({
         </div>
       </div>
 
-      {/* Tarjeta de cultivo (abajo-izquierda) */}
-      <motion.div
-        {...fade(3)}
-        className="mc-glass-dark mc-floatcard--b"
-        style={{ position: "absolute", bottom: 16, left: 16, borderRadius: 18, padding: 14, width: 300, pointerEvents: "auto", overflow: "hidden" }}
-      >
-        <div className="row gap-12" style={{ alignItems: "center" }}>
-          <CropImg cultivo={lote.cultivo} style={{ width: 56, height: 56, borderRadius: 12, flexShrink: 0 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="row gap-6" style={{ alignItems: "center" }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: lote.vacio ? "#b8b2a3" : "#7ec47f" }} />
-              <span style={{ fontSize: 11, opacity: 0.85, fontWeight: 600 }}>{lote.vacio ? "Sin sembrar" : "Activo"}</span>
+      {/* Columna abajo-izquierda: tendencia NDVI (real) + predicción de rinde */}
+      <div style={{ position: "absolute", bottom: 30, left: 16, display: "flex", flexDirection: "column", gap: 10, width: 250, pointerEvents: "none" }}>
+        {tienePts && (
+          <motion.div {...fade(4)} className="mc-glass mc-floatcard" style={{ borderRadius: 16, padding: 13, pointerEvents: "auto" }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div className="row gap-6" style={{ alignItems: "center", color: "var(--mc-text-2)", fontSize: 11, fontWeight: 700 }}>
+                <Icon name="activity" size={12} /> Tendencia NDVI · 180 d
+              </div>
+              <span className="mc-badge mc-badge--neutral" style={{ fontSize: 9.5 }}>Satélite</span>
             </div>
-            <div className="font-semi" style={{ fontSize: 16, marginTop: 2 }}>{lote.cultivo || "Sin cultivo"}</div>
-            {lote.variety && <div style={{ fontSize: 11.5, opacity: 0.78 }}>{lote.variety}</div>}
-          </div>
-        </div>
-        <div className="grid g-cols-2 gap-8" style={{ marginTop: 12 }}>
-          <div style={{ background: "rgba(255,255,255,0.10)", borderRadius: 10, padding: "8px 10px" }}>
-            <div style={{ fontSize: 10.5, opacity: 0.78 }}>Estado vegetativo</div>
-            <div className="font-semi" style={{ fontSize: 13, marginTop: 2 }}>{lote.estadio && lote.estadio !== "—" ? lote.estadio : "—"}</div>
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.10)", borderRadius: 10, padding: "8px 10px" }}>
-            <div style={{ fontSize: 10.5, opacity: 0.78 }}>Salud (NDVI)</div>
-            <div className="font-semi" style={{ fontSize: 13, marginTop: 2 }}>{lote.ndvi > 0 ? lote.ndvi.toFixed(2) : "—"}</div>
-          </div>
-        </div>
-
-        {/* Predicción de rendimiento (IA) */}
-        {!rinde ? (
-          <button
-            onClick={predecirRinde}
-            disabled={cargandoRinde}
-            style={{ marginTop: 10, width: "100%", borderRadius: 10, padding: "8px 10px", border: "1px solid rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.08)", color: "#fff", fontWeight: 600, fontSize: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-          >
-            <Icon name="activity" size={13} /> {cargandoRinde ? "Estimando…" : "Predecir rinde (IA)"}
-          </button>
-        ) : (
-          <div style={{ marginTop: 10, padding: "9px 11px", borderRadius: 10, background: "rgba(255,255,255,0.10)" }}>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontSize: 10.5, opacity: 0.8 }}>Rinde estimado {rinde.simulado ? "" : "· IA"}</span>
-              <span style={{ fontSize: 10.5, opacity: 0.8 }}>{rinde.confianza}% conf.</span>
+            <div style={{ marginTop: 6 }}>
+              <Sparkline pts={serie!.serie!.map((p) => p.ndvi)} color={serie!.anomalia === "caida" ? "#c0532a" : "#5e7733"} />
             </div>
-            <div style={{ fontFamily: "var(--ff-display)", fontSize: 19, fontWeight: 700, marginTop: 2 }}>
-              {(rinde.rendimientoEstimado / 1000).toFixed(1)} <span style={{ fontSize: 12, opacity: 0.8 }}>t/ha</span>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+              <div>
+                <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 700, color: "var(--mc-ink)", lineHeight: 1 }}>{serie!.actual?.toFixed(2) ?? "—"}</div>
+                <div className="text-xs text-muted">actual</div>
+              </div>
+              {serie!.variacionPct != null && <AnomaliaBadge anomalia={serie!.anomalia} pct={serie!.variacionPct} />}
             </div>
-            <div style={{ fontSize: 10.5, opacity: 0.72 }}>rango {(rinde.rangoMin / 1000).toFixed(1)}–{(rinde.rangoMax / 1000).toFixed(1)} t/ha</div>
-            {rinde.recomendacion && (
-              <div style={{ marginTop: 6, fontSize: 11, opacity: 0.9, display: "flex", gap: 5 }}>
-                <Icon name="sprout" size={12} /> {rinde.recomendacion}
+            {serie!.anomalia === "caida" && (
+              <div style={{ marginTop: 8, padding: "7px 9px", borderRadius: 9, background: "rgba(192,83,42,0.12)", color: "#a8431f", fontSize: 11, fontWeight: 600, display: "flex", gap: 6, alignItems: "center" }}>
+                <Icon name="alert" size={12} /> Caída de vigor: revisá estrés hídrico o sanidad.
               </div>
             )}
-          </div>
+          </motion.div>
         )}
-      </motion.div>
 
-      {/* Tendencia NDVI + anomalía (abajo-derecha) */}
-      {tienePts && (
-        <motion.div
-          {...fade(4)}
-          className="mc-glass mc-floatcard"
-          style={{ position: "absolute", top: 196, right: 16, borderRadius: 16, padding: 13, width: 234, pointerEvents: "auto" }}
-        >
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-            <div className="row gap-6" style={{ alignItems: "center", color: "var(--mc-text-2)", fontSize: 11, fontWeight: 700 }}>
-              <Icon name="activity" size={12} /> Tendencia NDVI · 180 d
-            </div>
-            <span className="mc-badge mc-badge--neutral" style={{ fontSize: 9.5 }}>Satélite</span>
-          </div>
-          <div style={{ marginTop: 6 }}>
-            <Sparkline pts={serie!.serie!.map((p) => p.ndvi)} color={serie!.anomalia === "caida" ? "#c0532a" : "#5e7733"} />
-          </div>
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+        <motion.div {...fade(3)} className="mc-glass mc-floatcard--b" style={{ borderRadius: 16, padding: 12, pointerEvents: "auto" }}>
+          {!rinde ? (
+            <button
+              onClick={predecirRinde}
+              disabled={cargandoRinde}
+              style={{ width: "100%", borderRadius: 10, padding: "9px 10px", border: "none", background: "var(--mc-green-700)", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            >
+              <Icon name="activity" size={13} /> {cargandoRinde ? "Estimando…" : "Predecir rinde (IA)"}
+            </button>
+          ) : (
             <div>
-              <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 700, color: "var(--mc-ink)", lineHeight: 1 }}>
-                {serie!.actual?.toFixed(2) ?? "—"}
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                <span className="text-xs text-muted">Rinde estimado {rinde.simulado ? "" : "· IA"}</span>
+                <span className="text-xs text-muted">{rinde.confianza}% conf.</span>
               </div>
-              <div className="text-xs text-muted">actual</div>
-            </div>
-            {serie!.variacionPct != null && (
-              <AnomaliaBadge anomalia={serie!.anomalia} pct={serie!.variacionPct} />
-            )}
-          </div>
-          {serie!.anomalia === "caida" && (
-            <div style={{ marginTop: 8, padding: "7px 9px", borderRadius: 9, background: "rgba(192,83,42,0.12)", color: "#a8431f", fontSize: 11, fontWeight: 600, display: "flex", gap: 6, alignItems: "center" }}>
-              <Icon name="alert" size={12} /> Caída de vigor: revisá estrés hídrico o sanidad.
+              <div style={{ fontFamily: "var(--ff-display)", fontSize: 20, fontWeight: 700, color: "var(--mc-ink)", marginTop: 2 }}>
+                {(rinde.rendimientoEstimado / 1000).toFixed(1)} <span style={{ fontSize: 12, color: "var(--mc-text-2)" }}>t/ha</span>
+              </div>
+              <div className="text-xs text-muted">rango {(rinde.rangoMin / 1000).toFixed(1)}–{(rinde.rangoMax / 1000).toFixed(1)} t/ha</div>
+              {rinde.recomendacion && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--mc-text-2)", display: "flex", gap: 5 }}>
+                  <Icon name="sprout" size={12} /> {rinde.recomendacion}
+                </div>
+              )}
             </div>
           )}
         </motion.div>
-      )}
+      </div>
 
       {/* Acciones rápidas (arriba-derecha, en columna para no solaparse) */}
       <motion.div
