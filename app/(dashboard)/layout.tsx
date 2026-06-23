@@ -70,6 +70,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "General",
     items: [
       { id: "inicio", label: "Inicio", icon: "dashboard", type: "single", href: "/dashboard" },
+      { id: "decisiones", label: "Decisiones del día", icon: "sparkles", type: "single", href: "/decisiones" },
       { id: "establecimientos", label: "Establecimientos", icon: "building", type: "single", href: "/establecimientos" },
     ],
   },
