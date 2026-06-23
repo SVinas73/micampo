@@ -260,7 +260,7 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
               <span style={{ fontSize: 11, opacity: 0.78, letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600, marginTop: 2 }}>Ahora</span>
             </div>
           </div>
-          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, overflow: "hidden" }}>
+          <div className="mc-wx-info" style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, overflow: "hidden" }}>
             <InfoCell icon="thermometer" big={<span><span style={{ color: "#ffd28a" }}>{days[0]?.max ?? "—"}°</span><span style={{ opacity: 0.62, margin: "0 6px", fontSize: 13, fontFamily: "var(--ff-mono)", fontWeight: 500 }}>°C</span><span style={{ color: "#9ad8ff" }}>{days[0]?.min ?? "—"}°</span></span>} sub={a ? `Sens. ${a.sensacion}°` : ""} />
             <InfoCell icon="droplet" big={a ? `${a.humedad}%` : "—"} sub={a ? `Rocío ${a.rocio}°` : ""} />
             <InfoCell icon="wind" big={a ? `${a.viento} km/h` : "—"} sub={a ? `${a.vientoDir} · Ráf. ${a.rafaga}` : ""} />
@@ -712,7 +712,7 @@ export default function InicioPage() {
           <input placeholder="Buscar lotes, animales, labores, reportes…" />
         </div>
         <div className="row" style={{ marginLeft: "auto", gap: 8 }}>
-          <button className="mc-icon-btn" title="Notificaciones"><Icon name="bell" size={16} /></button>
+          <button className="mc-icon-btn" title="Decisiones del día" onClick={() => router.push("/decisiones")}><Icon name="bell" size={16} /></button>
           <button className="mc-btn mc-btn--secondary" onClick={descargarReporte}><Icon name="download" size={15} />Reporte semanal</button>
           <button className="mc-btn mc-btn--secondary" onClick={() => setCapturaOpen(true)}><Icon name="camera" size={15} />Cargar por voz</button>
           <button className="mc-btn mc-btn--primary" onClick={() => setLaborModal(true)}><Icon name="plus" size={15} />Nueva labor</button>
