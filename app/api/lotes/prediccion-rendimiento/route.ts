@@ -52,6 +52,22 @@ export async function POST(request: Request) {
     const histStd = hist.length > 1
       ? Math.sqrt(hist.reduce((s, r) => s + (r - histAvg) ** 2, 0) / hist.length)
       : histAvg * 0.12;
+
+    // --- Backtesting (leave-one-out sobre las cosechas reales) ---
+    // Para cada cosecha, "predecimos" con el promedio de las OTRAS y medimos el error.
+    const cosBT = cosechas.filter((c) => c.rendimiento > 0);
+    let backtesting: { precision: number; casos: { anio: number; predicho: number; real: number; errorPct: number }[] } | null = null;
+    if (cosBT.length >= 2) {
+      const casos = cosBT.slice(0, 5).map((c) => {
+        const otras = cosBT.filter((o) => o !== c).map((o) => o.rendimiento);
+        const pred = Math.round(otras.reduce((s, r) => s + r, 0) / otras.length);
+        const errorPct = Math.round((Math.abs(pred - c.rendimiento) / c.rendimiento) * 100);
+        return { anio: new Date(c.fechaCosecha).getFullYear(), predicho: pred, real: Math.round(c.rendimiento), errorPct };
+      });
+      const errProm = casos.reduce((s, x) => s + x.errorPct, 0) / casos.length;
+      backtesting = { precision: Math.max(0, Math.round(100 - errProm)), casos };
+    }
+
     // Factor de vigor: NDVI 0.7 ~ neutro; cada 0.1 mueve ~8%.
     const factorNdvi = ndvi > 0 ? 1 + (ndvi - 0.7) * 0.8 : 1;
     const estimado = Math.round(histAvg * Math.min(1.25, Math.max(0.7, factorNdvi)));
@@ -65,6 +81,7 @@ export async function POST(request: Request) {
       confianza: hist.length >= 3 ? 75 : hist.length >= 1 ? 60 : 45,
       baseHistorica: Math.round(histAvg),
       cosechasUsadas: hist.length,
+      backtesting,
     };
 
     const anthropic = getAnthropic();

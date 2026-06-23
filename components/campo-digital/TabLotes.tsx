@@ -579,7 +579,7 @@ function LoteFichaTecnica({
       </div>
 
       <div className="row gap-2" style={{ borderBottom: "1px solid var(--mc-line)", padding: 0 }}>
-        {["Resumen", "Historia", "Suelo", "Labores"].map((t) => (
+        {["Resumen", "Historia", "Suelo", "Labores", "Prescripción"].map((t) => (
           <button
             key={t}
             onClick={() => setInnerTab(t)}
@@ -689,6 +689,11 @@ function LoteFichaTecnica({
         </div>
       )}
 
+      {innerTab === "Prescripción" && (
+        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} />
+          : <FichaVacio texto="Dibujá el lote en el mapa para generar un mapa de prescripción variable." />
+      )}
+
       <div className="row gap-8" style={{ marginTop: "auto" }}>
         <button className="mc-btn mc-btn--secondary mc-btn--sm flex-1" onClick={onNota}>
           <Icon name="pen" size={13} />Nota
@@ -700,6 +705,105 @@ function LoteFichaTecnica({
           <Icon name="plus" size={13} />Nueva Tarea
         </button>
       </div>
+    </div>
+  );
+}
+
+type Prescripcion = {
+  producto: string; dosisBase: number; estrategia: string; fuente: string; areaHa: number;
+  resumen: { celdas: number; prodTotal: number; prodUniforme: number; ahorroPct: number; zonas: { zona: string; dosis: number; ha: number; color: string }[] };
+  geojson: { type: "FeatureCollection"; features: { geometry: { type: "Polygon"; coordinates: number[][][] }; properties: { ndvi: number; zona: string; dosis: number; color: string } }[] };
+};
+
+function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
+  const [producto, setProducto] = useState("Urea");
+  const [dosisBase, setDosisBase] = useState("120");
+  const [estrategia, setEstrategia] = useState<"compensar" | "potenciar">("compensar");
+  const [res, setRes] = useState<Prescripcion | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const generar = () => {
+    setCargando(true); setError(null); setRes(null);
+    fetch(`/api/lotes/${loteId}/prescripcion`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ producto, dosisBase: Number(dosisBase), estrategia }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.error) setError(d.error); else setRes(d); })
+      .catch(() => setError("No se pudo generar la prescripción"))
+      .finally(() => setCargando(false));
+  };
+
+  const descargar = () => {
+    if (!res) return;
+    const blob = new Blob([JSON.stringify(res.geojson, null, 2)], { type: "application/geo+json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `prescripcion-${loteName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.geojson`;
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  // SVG del mapa zonificado
+  const Mapa = () => {
+    if (!res?.geojson.features.length) return null;
+    const all = res.geojson.features.flatMap((f) => f.geometry.coordinates[0]);
+    const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const W = 360, H = 220, pad = 8;
+    const sc = Math.min((W - 2 * pad) / (maxX - minX || 1), (H - 2 * pad) / (maxY - minY || 1));
+    const ox = (W - (maxX - minX) * sc) / 2, oy = (H - (maxY - minY) * sc) / 2;
+    const proj = (p: number[]) => `${(ox + (p[0] - minX) * sc).toFixed(1)},${(oy + (maxY - p[1]) * sc).toFixed(1)}`;
+    return (
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ borderRadius: 10, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)" }}>
+        {res.geojson.features.map((f, i) => (
+          <polygon key={i} points={f.geometry.coordinates[0].map(proj).join(" ")} fill={f.properties.color} fillOpacity={0.78} stroke="#fff" strokeWidth={0.7}>
+            <title>{f.properties.zona} · NDVI {f.properties.ndvi} · {f.properties.dosis} kg/ha</title>
+          </polygon>
+        ))}
+      </svg>
+    );
+  };
+
+  return (
+    <div className="col gap-12">
+      <div className="text-xs text-muted">Zonifica el lote por vigor (NDVI) y asigna dosis variable por zona. Descargá el mapa para la maquinaria.</div>
+      <div className="grid g-cols-2 gap-8">
+        <div><div className="mc-label" style={{ marginBottom: 4 }}>Producto</div><input className="mc-input" value={producto} onChange={(e) => setProducto(e.target.value)} /></div>
+        <div><div className="mc-label" style={{ marginBottom: 4 }}>Dosis base (kg/ha)</div><input className="mc-input" type="number" value={dosisBase} onChange={(e) => setDosisBase(e.target.value)} /></div>
+      </div>
+      <div>
+        <div className="mc-label" style={{ marginBottom: 4 }}>Estrategia</div>
+        <div className="mc-seg">
+          <button className={estrategia === "compensar" ? "is-on" : ""} onClick={() => setEstrategia("compensar")}>Compensar (más donde rinde poco)</button>
+          <button className={estrategia === "potenciar" ? "is-on" : ""} onClick={() => setEstrategia("potenciar")}>Potenciar (más donde rinde más)</button>
+        </div>
+      </div>
+      <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={generar} disabled={cargando}>
+        <Icon name="map" size={13} />{cargando ? "Generando zonas…" : "Generar mapa de prescripción"}
+      </button>
+      {error && <div className="text-xs" style={{ color: "var(--mc-red)" }}>{error}</div>}
+      {res && (
+        <div className="col gap-10">
+          <Mapa />
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <span className="text-xs text-muted">{res.resumen.celdas} zonas · fuente {res.fuente}</span>
+            {res.resumen.ahorroPct !== 0 && (
+              <span className="mc-badge mc-badge--green" style={{ fontSize: 10.5 }}>{res.resumen.ahorroPct > 0 ? `−${res.resumen.ahorroPct}% insumo` : `+${-res.resumen.ahorroPct}% insumo`} vs dosis fija</span>
+            )}
+          </div>
+          <div className="col gap-6">
+            {res.resumen.zonas.map((z) => (
+              <div key={z.zona} className="row gap-8" style={{ alignItems: "center", fontSize: 12.5 }}>
+                <span style={{ width: 12, height: 12, borderRadius: 3, background: z.color }} />
+                <span className="font-semi" style={{ color: "var(--mc-ink)" }}>Vigor {z.zona}</span>
+                <span className="text-muted">{z.dosis} kg/ha · {z.ha} ha</span>
+              </div>
+            ))}
+          </div>
+          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargar}><Icon name="download" size={13} />Descargar GeoJSON (para maquinaria)</button>
+        </div>
+      )}
     </div>
   );
 }
