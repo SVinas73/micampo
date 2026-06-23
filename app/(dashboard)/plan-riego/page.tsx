@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { Icon, KPI, useToast, PageHeader, SubTabs } from "@/components/mc";
+import { Icon, KPI, useToast, PageHeader } from "@/components/mc";
 import BalanceHidrico, { type PuntoBalance, type SugerenciaIA } from "@/components/plan-riego/BalanceHidrico";
 import AguaUlt30Dias from "@/components/plan-riego/AguaUlt30Dias";
 import RegistrarRiegoModal, { type RegistroRiego } from "@/components/plan-riego/RegistrarRiegoModal";
@@ -19,8 +19,29 @@ import { useLoteScope } from "@/components/LoteScope";
 
 type ClimaDia = { nombre: string; num: number; esHoy: boolean; et0: number; mm: number };
 
-// Coeficiente de cultivo (Kc) aproximado por cultivo (etapa media)
-const KC: Record<string, number> = { Maíz: 1.15, Soja: 1.1, Trigo: 1.05, Girasol: 1.0, Alfalfa: 1.2, Sorgo: 1.05, Cebada: 1.0 };
+// Coeficiente de cultivo (Kc) por ETAPA fenológica (FAO-56, aprox.)
+type Etapa = "Inicial" | "Desarrollo" | "Media" | "Final";
+const ETAPAS: Etapa[] = ["Inicial", "Desarrollo", "Media", "Final"];
+const KC_ETAPA: Record<string, Record<Etapa, number>> = {
+  Maíz: { Inicial: 0.3, Desarrollo: 0.7, Media: 1.15, Final: 0.6 },
+  Soja: { Inicial: 0.4, Desarrollo: 0.75, Media: 1.1, Final: 0.5 },
+  Trigo: { Inicial: 0.3, Desarrollo: 0.7, Media: 1.05, Final: 0.4 },
+  Girasol: { Inicial: 0.35, Desarrollo: 0.7, Media: 1.0, Final: 0.45 },
+  Alfalfa: { Inicial: 0.4, Desarrollo: 0.9, Media: 1.2, Final: 1.1 },
+  Sorgo: { Inicial: 0.3, Desarrollo: 0.7, Media: 1.05, Final: 0.55 },
+  Cebada: { Inicial: 0.3, Desarrollo: 0.7, Media: 1.05, Final: 0.4 },
+};
+const KC_DEFAULT: Record<Etapa, number> = { Inicial: 0.35, Desarrollo: 0.7, Media: 1.05, Final: 0.5 };
+function kcDe(cultivo: string, etapa: Etapa): number {
+  return (KC_ETAPA[cultivo] || KC_DEFAULT)[etapa];
+}
+// Estima la etapa fenológica a partir de los días desde la siembra
+function etapaPorDias(dias: number): Etapa {
+  if (dias < 25) return "Inicial";
+  if (dias < 55) return "Desarrollo";
+  if (dias < 100) return "Media";
+  return "Final";
+}
 const AWC = 120; // mm de agua útil en el perfil (suelo franco, ~1 m)
 const COSTO_MM = 12; // USD/mm (energía + insumo)
 
@@ -34,7 +55,6 @@ export default function PlanRiegoPage() {
 
 function PlanRiegoInner() {
   const toast = useToast();
-  const [sub, setSub] = useState("Inicio");
   const [riegoOpen, setRiegoOpen] = useState(false);
 
   const [estrategia, setEstrategia] = useState(() => {
@@ -46,6 +66,8 @@ function PlanRiegoInner() {
   const [loteId, setLoteId] = useState<string | null>(null);
   const [loteNombre, setLoteNombre] = useState<string>("tu campo");
   const [cultivo, setCultivo] = useState<string>("Maíz");
+  const [etapa, setEtapa] = useState<Etapa>("Media");
+  const [etapaAuto, setEtapaAuto] = useState<{ etapa: Etapa; dias: number } | null>(null);
 
   const [dias, setDias] = useState<ClimaDia[] | null>(null);
   const [s0, setS0] = useState(65); // humedad de suelo inicial estimada (%)
@@ -77,6 +99,16 @@ function PlanRiegoInner() {
       const planes = Array.isArray(d) ? d : [];
       const plan = planes.find((p: { loteId?: string }) => p.loteId === lote.id) || null;
       setPlanRiegoId(plan?.id ?? null);
+    }).catch(() => {});
+
+    // Auto-detecta la etapa fenológica desde la última siembra del lote
+    setEtapaAuto(null);
+    fetch(`/api/lotes/${lote.id}`).then((r) => (r.ok ? r.json() : null)).then((det) => {
+      const siembra = det?.siembras?.[0];
+      if (siembra?.fechaSiembra) {
+        const d = Math.round((Date.now() - new Date(siembra.fechaSiembra).getTime()) / 86400000);
+        if (d >= 0) { const e = etapaPorDias(d); setEtapa(e); setEtapaAuto({ etapa: e, dias: d }); }
+      }
     }).catch(() => {});
 
     // El balance hídrico requiere coordenadas (clima de ese punto)
@@ -114,7 +146,7 @@ function PlanRiegoInner() {
     if (!dias || dias.length === 0) {
       return { balance: [] as PuntoBalance[], sugerencias: [] as SugerenciaIA[], etcDia: 0, proximo: null as SugerenciaIA | null };
     }
-    const kc = KC[cultivo] || 1.05;
+    const kc = kcDe(cultivo, etapa);
     const mmEvento = Math.round(10 + (estrategia / 100) * 12);
     const umbral = 40;
     let sSin = s0, sCon = s0;
@@ -134,7 +166,7 @@ function PlanRiegoInner() {
     });
     const etc0 = Math.round((dias[0].et0 || 4) * kc * 10) / 10;
     return { balance: bal, sugerencias: sugs, etcDia: etc0, proximo: sugs[0] || null };
-  }, [dias, estrategia, s0, cultivo]);
+  }, [dias, estrategia, s0, cultivo, etapa]);
 
   const costoEvento = sugerencias.reduce((s, x) => s + x.costoUSD, 0);
   const aguaUtilMm = Math.round((s0 / 100) * AWC);
@@ -189,6 +221,36 @@ function PlanRiegoInner() {
   const cargandoBalance = tieneCampo === null || (tieneCampo === true && dias === null);
   const estadoHidrico = s0 >= 50 ? "Bien hidratado" : s0 >= 35 ? "Déficit controlado" : "Estrés hídrico";
 
+  const exportarPDF = useCallback(async () => {
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      const hoy = new Date().toLocaleDateString("es-AR");
+      doc.setFontSize(18); doc.setTextColor(34, 60, 30);
+      doc.text("MiCampo — Plan de Riego", 14, 20);
+      doc.setFontSize(10); doc.setTextColor(90, 90, 90);
+      doc.text(`Generado: ${hoy}`, 14, 27);
+      doc.setTextColor(30, 30, 30); doc.setFontSize(11);
+      let y = 40;
+      const line = (t: string) => { doc.text(t, 14, y); y += 7; };
+      line(`Lote: ${loteNombre}`);
+      line(`Cultivo: ${cultivo} · Etapa fenológica: ${etapa} (Kc ${kcDe(cultivo, etapa)})`);
+      line(`Estado hídrico: ${estadoHidrico} · Agua útil estimada: ${s0}% (${aguaUtilMm} mm)`);
+      line(`Consumo diario (ETc): ${etcDia} mm/día`);
+      line(`Estrategia: ${estrategia <= 33 ? "Ahorro de agua" : estrategia >= 66 ? "Maximizar rinde" : "Balanceada"} (${estrategia}/100)`);
+      line(`Costo proyectado de riego: $${costoEvento} USD`);
+      y += 4; doc.setFontSize(13); doc.text("Riegos sugeridos (próximos 7 días)", 14, y); y += 8; doc.setFontSize(11);
+      if (sugerencias.length === 0) { line("Sin riego necesario según el balance proyectado."); }
+      else sugerencias.forEach((s, i) => line(`${i + 1}. ${s.fecha} — ${s.mm} mm · ${s.motivo} · $${s.costoUSD}`));
+      y += 4; doc.setFontSize(13); doc.text("Balance hídrico proyectado (% humedad de suelo)", 14, y); y += 8; doc.setFontSize(10);
+      balance.forEach((b) => line(`${b.dia}:  sin riego ${b.sinRiego}%  ·  con riego ${b.conRiego}%`));
+      doc.setFontSize(8); doc.setTextColor(140, 140, 140);
+      doc.text("Balance estimado con ET0 y lluvia de Open-Meteo + coeficiente de cultivo por etapa.", 14, 285);
+      doc.save(`micampo-plan-riego-${loteNombre.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`);
+      toast.show("Plan de riego descargado en PDF");
+    } catch { toast.show("No se pudo generar el PDF", "err"); }
+  }, [loteNombre, cultivo, etapa, estadoHidrico, s0, aguaUtilMm, etcDia, estrategia, costoEvento, sugerencias, balance, toast]);
+
   return (
     <div className="col gap-20">
       {toast.node}
@@ -198,18 +260,40 @@ function PlanRiegoInner() {
         crumbs={["Agronomía", "Plan de Riego"]}
         title="Plan de Riego"
         subtitle="Balance hídrico proyectado con datos reales de clima y lluvia, y registro de riegos."
-        actions={<button className="mc-btn mc-btn--primary" onClick={() => setRiegoOpen(true)}><Icon name="plus" size={14} />Registrar Riego</button>}
+        actions={<>
+          <button className="mc-btn mc-btn--secondary" onClick={exportarPDF} disabled={sinCampo}><Icon name="download" size={14} />Exportar PDF</button>
+          <button className="mc-btn mc-btn--primary" onClick={() => setRiegoOpen(true)}><Icon name="plus" size={14} />Registrar Riego</button>
+        </>}
       />
 
       <div className="grid g-cols-5">
         <KPI label="Estado Hídrico" value={sinCampo ? "—" : <span style={{ color: s0 >= 50 ? "var(--mc-green-700)" : "var(--mc-amber)" }}>{estadoHidrico}</span>} delta={sinCampo ? "Sin lote" : <span className="row gap-4" style={{ alignItems: "center" }}><Icon name="droplet" size={12} />{loteNombre}</span>} trend="up" icon="droplet" accent />
         <KPI label="Agua Útil (estimada)" value={sinCampo ? "—" : `${s0}%`} delta={sinCampo ? "—" : `${aguaUtilMm} mm disponibles`} trend="up" icon="activity" />
-        <KPI label="Consumo Diario (ETc)" value={!sinCampo && etcDia ? `${etcDia} mm/día` : "—"} delta={sinCampo ? "—" : `${cultivo} · Kc ${KC[cultivo] || 1.05}`} trend="up" icon="thermometer" />
+        <KPI label="Consumo Diario (ETc)" value={!sinCampo && etcDia ? `${etcDia} mm/día` : "—"} delta={sinCampo ? "—" : `${cultivo} · ${etapa} · Kc ${kcDe(cultivo, etapa)}`} trend="up" icon="thermometer" />
         <KPI label="Próximo Riego" value={proximo ? proximo.fecha : "—"} delta={sinCampo ? "—" : proximo ? `+${proximo.mm} mm sugeridos` : "Sin riego necesario"} trend="up" icon="calendar" />
         <KPI label="Costo Proyectado" value={sinCampo ? "—" : `$${costoEvento}`} delta="Energía + insumo" trend="up" icon="dollar" />
       </div>
 
-      <SubTabs tabs={["Inicio"]} active={sub} onChange={setSub} />
+      {/* Estadio fenológico — ajusta el Kc (consumo de agua) del cálculo */}
+      {!sinCampo && (
+        <div className="mc-card" style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div className="row gap-8" style={{ alignItems: "center" }}>
+            <Icon name="sprout" size={16} style={{ color: "var(--mc-green-700)" }} />
+            <span className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13.5 }}>Estadio fenológico</span>
+            {etapaAuto && (
+              <span className="mc-badge mc-badge--green" style={{ fontSize: 10.5 }}>
+                <Icon name="bolt" size={10} />Auto · {etapaAuto.dias} d desde siembra
+              </span>
+            )}
+          </div>
+          <div className="mc-seg">
+            {ETAPAS.map((e) => (
+              <button key={e} className={etapa === e ? "is-on" : ""} onClick={() => setEtapa(e)}>{e}</button>
+            ))}
+          </div>
+          <span className="text-xs text-muted">Kc {kcDe(cultivo, etapa)} · ajusta el consumo (ETc) y el riego sugerido</span>
+        </div>
+      )}
 
       <div className="grid" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
         <BalanceHidrico
