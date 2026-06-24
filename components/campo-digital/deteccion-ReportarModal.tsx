@@ -7,6 +7,15 @@ import { buscarPlagas, type CategoriaPlaga, type EntradaPlaga } from "@/lib/cata
 
 /* ========== MODAL Reportar Plaga o Enfermedad ========== */
 
+// Escala estándar de nivel de daño por incidencia (% de plantas/área afectada).
+// Alineada a los umbrales de severidad del sistema (Baja <20, Media 20–49, Alta ≥50).
+const BANDAS_DANO = [
+  { label: "Traza", min: 1, max: 5, valor: 3, severidad: "Baja", color: "#22a261" },
+  { label: "Leve", min: 6, max: 19, valor: 12, severidad: "Baja", color: "#5fae3f" },
+  { label: "Moderado", min: 20, max: 49, valor: 35, severidad: "Media", color: "#e59700" },
+  { label: "Severo", min: 50, max: 100, valor: 70, severidad: "Alta", color: "#d94040" },
+];
+
 export function ReportarPlagaModal({
   lotes,
   onClose,
@@ -28,6 +37,7 @@ export function ReportarPlagaModal({
   const [foto, setFoto] = useState<string | null>(null);
 
   const incColor = incidencia < 20 ? "#22a261" : incidencia < 50 ? "#e59700" : "#d94040";
+  const nivelDano = BANDAS_DANO.find((b) => incidencia >= b.min && incidencia <= b.max) || BANDAS_DANO[0];
   const resultados = useMemo(() => buscarPlagas(categoria, busqueda, 60), [categoria, busqueda]);
   const totalCategoria = useMemo(() => buscarPlagas(categoria, "", 9999).length, [categoria]);
 
@@ -122,13 +132,33 @@ export function ReportarPlagaModal({
               </div>
             </Section>
 
-            <Section icon="chart" title="Nivel de Daño" right={<span style={{ fontSize: 13, fontWeight: 700, color: incColor }}>Incidencia {incidencia}%</span>}>
+            <Section icon="chart" title="Nivel de Daño" right={<span style={{ fontSize: 13, fontWeight: 700, color: incColor }}>{nivelDano.label} · {incidencia}%</span>}>
+              <div className="row gap-6" style={{ marginBottom: 12 }}>
+                {BANDAS_DANO.map((b) => {
+                  const activa = incidencia >= b.min && incidencia <= b.max;
+                  return (
+                    <button
+                      key={b.label}
+                      onClick={() => setIncidencia(b.valor)}
+                      className="mc-btn mc-btn--sm"
+                      title={`${b.label}: ${b.min}–${b.max}% de incidencia (severidad ${b.severidad})`}
+                      style={{ flex: 1, flexDirection: "column", gap: 1, padding: "6px 4px", background: activa ? b.color : "var(--mc-surface-2)", color: activa ? "white" : "var(--mc-text-2)", border: `1px solid ${activa ? b.color : "var(--mc-line-2)"}` }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 700 }}>{b.label}</span>
+                      <span style={{ fontSize: 9, opacity: 0.85 }}>{b.min}–{b.max}%</span>
+                    </button>
+                  );
+                })}
+              </div>
               <div style={{ position: "relative", height: 10, borderRadius: 6, background: "linear-gradient(to right,#22a261,#e59700,#d94040)", marginBottom: 10 }}>
                 <div style={{ position: "absolute", left: `${incidencia}%`, top: "50%", transform: "translate(-50%,-50%)", width: 18, height: 18, borderRadius: "50%", background: "#fff", border: `2.5px solid ${incColor}`, boxShadow: "0 2px 6px rgba(0,0,0,0.2)", zIndex: 1 }} />
                 <input type="range" min={1} max={100} value={incidencia} onChange={(e) => setIncidencia(+e.target.value)} style={{ width: "100%", opacity: 0, position: "absolute", top: -4, left: 0, height: 18, cursor: "pointer", margin: 0 }} />
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--mc-text-3)" }}>
-                <span>Bajo</span><span>Moderado</span><span>Alto</span>
+                <span>Traza</span><span>Leve</span><span>Moderado</span><span>Severo</span>
+              </div>
+              <div className="text-xs text-muted" style={{ marginTop: 8 }}>
+                Escala estándar de incidencia (% de plantas/área afectada). Define la severidad de la alerta: <b style={{ color: "var(--mc-ink)" }}>{nivelDano.severidad}</b>.
               </div>
             </Section>
           </div>
