@@ -384,7 +384,20 @@ function LotesMapa({
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
   const [vista, setVista] = useState<"3d" | "clasico">("3d");
   const [fichaOpen, setFichaOpen] = useState(false);
+  const [online, setOnline] = useState(true);
   const MapaActivo = vista === "3d" ? Mapa3D : MapaClasico;
+
+  // Estado de conexión: avisa cuándo el mapa está mostrando tiles cacheados.
+  useEffect(() => {
+    const actualizar = () => setOnline(typeof navigator === "undefined" ? true : navigator.onLine);
+    actualizar();
+    window.addEventListener("online", actualizar);
+    window.addEventListener("offline", actualizar);
+    return () => {
+      window.removeEventListener("online", actualizar);
+      window.removeEventListener("offline", actualizar);
+    };
+  }, []);
 
   // Cambio rápido de lote a lote (sin ir a la lista)
   const idx = selected ? lotes.findIndex((l) => l.id === selected.id) : -1;
@@ -421,6 +434,13 @@ function LotesMapa({
           armarDibujo={armarDibujo}
           onDibujoIniciado={onDibujoIniciado}
         />
+
+        {!online && (
+          <div className="mc-glass" style={{ position: "absolute", top: 14, left: 14, zIndex: 560, display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 10, fontSize: 12, fontWeight: 600, color: "var(--mc-ink)" }}>
+            <Icon name="alert" size={13} style={{ color: "var(--mc-amber)" }} />
+            Sin conexión · mostrando mapa en caché
+          </div>
+        )}
 
         {/* Switcher de lote (arriba-centro) — saltar de lote a lote */}
         {lotes.length > 0 && (
