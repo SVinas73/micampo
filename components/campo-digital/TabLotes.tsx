@@ -179,7 +179,7 @@ export default function TabLotes() {
       setShowAgregar(false);
       recargar(); // refresca el selector global de lotes
     } catch {
-      toast.show("No se pudo crear el establecimiento", "err");
+      toast.show("No se pudo crear el lote", "err");
     }
   };
 
