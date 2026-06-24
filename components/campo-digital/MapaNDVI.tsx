@@ -32,6 +32,8 @@ type Props = {
   onDrawn: (data: { geojson: GeoJSON.Polygon; hectareas: number; centro: { lat: number; lng: number }; perimetro: number }) => void;
   armarDibujo?: boolean;
   onDibujoIniciado?: () => void;
+  volarA?: { lat: number; lng: number; nonce: number } | null;
+  establecimientos?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[];
 };
 
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
@@ -49,7 +51,7 @@ function ndviColor(v: number) {
   return "#c08a22";
 }
 
-export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado }: Props) {
+export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const lotesLayerRef = useRef<L.FeatureGroup | null>(null);
@@ -141,6 +143,14 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
       mapRef.current = null;
     };
   }, []);
+
+  // Volar a un lugar buscado (buscador del mapa)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !volarA) return;
+    map.flyTo([volarA.lat, volarA.lng], 15, { duration: 1.2 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [volarA?.nonce]);
 
   // Disparador externo: el botón "Nuevo lote" del header arma el dibujo de polígono
   useEffect(() => {

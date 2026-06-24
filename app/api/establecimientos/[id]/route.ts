@@ -19,15 +19,21 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ error: "Establecimiento no encontrado" }, { status: 404 });
     }
 
-    const { nombre, ciudad, provincia, pais, hectareasTotales } = await request.json();
+    const { nombre, direccion, ciudad, provincia, pais, cuit, hectareasTotales, coordenadas, centroLatitud, centroLongitud, perimetro } = await request.json();
     const updated = await prisma.establecimiento.update({
       where: { id },
       data: {
         ...(nombre !== undefined && { nombre }),
+        ...(direccion !== undefined && { direccion: direccion || null }),
         ...(ciudad !== undefined && { ciudad: ciudad || null }),
         ...(provincia !== undefined && { provincia: provincia || null }),
         ...(pais !== undefined && { pais: pais || null }),
+        ...(cuit !== undefined && { cuit: cuit || null }),
         ...(hectareasTotales !== undefined && { hectareasTotales: hectareasTotales ? parseFloat(hectareasTotales) : null }),
+        ...(coordenadas !== undefined && { coordenadas: coordenadas ? JSON.stringify(coordenadas) : null }),
+        ...(centroLatitud !== undefined && { centroLatitud: centroLatitud != null ? parseFloat(centroLatitud) : null }),
+        ...(centroLongitud !== undefined && { centroLongitud: centroLongitud != null ? parseFloat(centroLongitud) : null }),
+        ...(perimetro !== undefined && { perimetro: perimetro != null ? parseFloat(perimetro) : null }),
       },
     });
     return NextResponse.json(updated);

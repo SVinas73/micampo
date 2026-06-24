@@ -24,6 +24,10 @@ export type EstablecimientoItem = {
   id: string;
   nombre: string;
   lotesCount?: number;
+  coordenadas?: { type: "Polygon"; coordinates: number[][][] } | null;
+  centroLatitud?: number | null;
+  centroLongitud?: number | null;
+  hectareasTotales?: number | null;
 };
 
 type Ctx = {
@@ -81,7 +85,15 @@ export function LoteScopeProvider({ children }: { children: React.ReactNode }) {
             }))
           : [];
         const ests: EstablecimientoItem[] = Array.isArray(ed)
-          ? ed.map((e: any) => ({ id: e.id, nombre: e.nombre, lotesCount: e.lotesCount }))
+          ? ed.map((e: any) => ({
+              id: e.id,
+              nombre: e.nombre,
+              lotesCount: e.lotesCount,
+              coordenadas: e.coordenadas ?? null,
+              centroLatitud: e.centroLatitud ?? null,
+              centroLongitud: e.centroLongitud ?? null,
+              hectareasTotales: e.hectareasTotales ?? null,
+            }))
           : [];
         setTodosLosLotes(lotes);
         setEstablecimientos(ests);

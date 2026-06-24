@@ -1,53 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon, KPI, PageHeader, Modal, Field, useToast } from "@/components/mc";
 import { useLoteScope } from "@/components/LoteScope";
 
-type Est = { id: string; nombre: string; direccion?: string | null; ciudad?: string | null; provincia?: string | null; pais?: string | null; cuit?: string | null; hectareasTotales?: number | null; lotesCount?: number };
+type Est = { id: string; nombre: string; direccion?: string | null; ciudad?: string | null; provincia?: string | null; pais?: string | null; cuit?: string | null; hectareasTotales?: number | null; lotesCount?: number; coordenadas?: unknown; centroLatitud?: number | null };
 type Lote = { id: string; nombre: string; hectareas: number; cultivo?: string | null; establecimientoId?: string | null };
+
+const FORM_VACIO = { nombre: "", direccion: "", ciudad: "", provincia: "", pais: "Uruguay", cuit: "", hectareasTotales: "" };
 
 export default function EstablecimientosPage() {
   const toast = useToast();
+  const router = useRouter();
   const { recargar } = useLoteScope();
   const [ests, setEsts] = useState<Est[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [cargando, setCargando] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ nombre: "", direccion: "", ciudad: "", provincia: "", pais: "Uruguay", cuit: "", hectareasTotales: "" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState(FORM_VACIO);
   const [guardando, setGuardando] = useState(false);
   const [aEliminar, setAEliminar] = useState<Est | null>(null);
   const [borrando, setBorrando] = useState(false);
-  const [busqueda, setBusqueda] = useState("");
-  const [resultados, setResultados] = useState<{ display_name: string; lat: string; lon: string; address?: Record<string, string> }[]>([]);
-  const [buscando, setBuscando] = useState(false);
 
-  // Búsqueda de lugar (geocodificación) que autocompleta dirección/ciudad/provincia/país.
-  useEffect(() => {
-    if (busqueda.trim().length < 3) { setResultados([]); return; }
-    const ctrl = new AbortController();
-    const t = setTimeout(() => {
-      setBuscando(true);
-      fetch(`/api/geo/search?q=${encodeURIComponent(busqueda)}`, { signal: ctrl.signal })
-        .then((r) => (r.ok ? r.json() : { resultados: [] }))
-        .then((d) => setResultados(Array.isArray(d.resultados) ? d.resultados : []))
-        .catch(() => {})
-        .finally(() => setBuscando(false));
-    }, 450);
-    return () => { ctrl.abort(); clearTimeout(t); };
-  }, [busqueda]);
-
-  const elegirLugar = (r: { display_name: string; address?: Record<string, string> }) => {
-    const a = r.address || {};
-    setForm((f) => ({
-      ...f,
-      direccion: [a.road, a.house_number].filter(Boolean).join(" ") || f.direccion,
-      ciudad: a.city || a.town || a.village || a.hamlet || a.county || f.ciudad,
-      provincia: a.state || a.region || f.provincia,
-      pais: a.country || f.pais,
-    }));
-    setBusqueda("");
-    setResultados([]);
+  const abrirNuevo = () => { setEditId(null); setForm(FORM_VACIO); setModalOpen(true); };
+  const abrirEditar = (e: Est) => {
+    setEditId(e.id);
+    setForm({ nombre: e.nombre || "", direccion: e.direccion || "", ciudad: e.ciudad || "", provincia: e.provincia || "", pais: e.pais || "Uruguay", cuit: e.cuit || "", hectareasTotales: e.hectareasTotales != null ? String(e.hectareasTotales) : "" });
+    setModalOpen(true);
   };
 
   const cargar = () => {
@@ -62,19 +43,20 @@ export default function EstablecimientosPage() {
   };
   useEffect(() => { cargar(); }, []);
 
-  const crear = async () => {
+  const guardar = async () => {
     if (!form.nombre.trim()) { toast.show("Poné un nombre", "err"); return; }
     setGuardando(true);
     try {
-      const res = await fetch("/api/establecimientos", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
+      const res = await fetch(editId ? `/api/establecimientos/${editId}` : "/api/establecimientos", {
+        method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error();
-      toast.show("Establecimiento creado");
+      toast.show(editId ? "Establecimiento actualizado" : "Establecimiento creado");
       setModalOpen(false);
-      setForm({ nombre: "", direccion: "", ciudad: "", provincia: "", pais: "Uruguay", cuit: "", hectareasTotales: "" });
+      setEditId(null);
+      setForm(FORM_VACIO);
       cargar(); recargar();
-    } catch { toast.show("No se pudo crear", "err"); } finally { setGuardando(false); }
+    } catch { toast.show("No se pudo guardar", "err"); } finally { setGuardando(false); }
   };
 
   const asignar = async (loteId: string, establecimientoId: string) => {    setLotes((prev) => prev.map((l) => (l.id === loteId ? { ...l, establecimientoId: establecimientoId || null } : l)));
@@ -113,7 +95,7 @@ export default function EstablecimientosPage() {
         crumbs={["MiCampo", "Establecimientos"]}
         title="Establecimientos y lotes"
         subtitle="Organizá tus lotes por establecimiento. El selector global del menú filtra todo el sistema por lo que elijas acá."
-        actions={<button className="mc-btn mc-btn--primary" onClick={() => setModalOpen(true)}><Icon name="plus" size={14} />Nuevo establecimiento</button>}
+        actions={<button className="mc-btn mc-btn--primary" onClick={abrirNuevo}><Icon name="plus" size={14} />Nuevo establecimiento</button>}
       />
 
       <div className="grid g-cols-3">
@@ -128,8 +110,10 @@ export default function EstablecimientosPage() {
         <>
           {ests.length > 0 && (
             <div className="grid g-cols-3">
-              {ests.map((e) => (
-                <div key={e.id} className="mc-card">
+              {ests.map((e) => {
+                const delimitado = !!e.coordenadas;
+                return (
+                <div key={e.id} className="mc-card col gap-12">
                   <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div className="row gap-8" style={{ alignItems: "center" }}>
                       <span style={{ width: 34, height: 34, borderRadius: 9, background: "var(--mc-green-100)", color: "var(--mc-green-700)", display: "grid", placeItems: "center" }}><Icon name="building" size={17} /></span>
@@ -141,13 +125,26 @@ export default function EstablecimientosPage() {
                     </div>
                     <div className="row gap-6" style={{ alignItems: "center" }}>
                       <span className="mc-badge mc-badge--neutral"><span className="mc-badge__dot" />{e.lotesCount ?? 0} lotes</span>
+                      <button className="mc-icon-btn" aria-label={`Editar ${e.nombre}`} title="Editar establecimiento" onClick={() => abrirEditar(e)}>
+                        <Icon name="edit" size={14} />
+                      </button>
                       <button className="mc-icon-btn" aria-label={`Eliminar ${e.nombre}`} title="Eliminar establecimiento" onClick={() => setAEliminar(e)} style={{ color: "var(--mc-red)" }}>
                         <Icon name="trash" size={14} />
                       </button>
                     </div>
                   </div>
+                  <div className="row gap-8" style={{ alignItems: "center", justifyContent: "space-between" }}>
+                    <span className={`mc-badge ${delimitado ? "mc-badge--green" : "mc-badge--neutral"}`} style={{ fontSize: 11 }}>
+                      <Icon name={delimitado ? "check" : "map"} size={11} />
+                      {delimitado ? `Delimitado · ${e.hectareasTotales ? Math.round(e.hectareasTotales) + " ha" : "en el mapa"}` : "Sin delimitar"}
+                    </span>
+                    <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => router.push(`/campo-digital?tab=Lotes&delimitar=${e.id}`)}>
+                      <Icon name="pen" size={12} />{delimitado ? "Re-delimitar" : "Delimitar en el mapa"}
+                    </button>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -192,28 +189,13 @@ export default function EstablecimientosPage() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Nuevo establecimiento"
-        subtitle="Un establecimiento agrupa varios lotes."
+        title={editId ? "Editar establecimiento" : "Nuevo establecimiento"}
+        subtitle={editId ? "Corregí los datos del establecimiento. El límite en el mapa se ajusta con “Delimitar”." : "Cargá los datos. El límite en el mapa lo dibujás después con “Delimitar”."}
         footer={<>
           <button className="mc-btn mc-btn--ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
-          <button className="mc-btn mc-btn--primary" onClick={crear} disabled={guardando}><Icon name="check" size={14} />Crear</button>
+          <button className="mc-btn mc-btn--primary" onClick={guardar} disabled={guardando}><Icon name="check" size={14} />{editId ? "Guardar cambios" : "Crear"}</button>
         </>}
       >
-        <Field label="Buscar ubicación (autocompleta los datos, como en Google Maps)">
-          <div style={{ position: "relative" }}>
-            <input className="mc-input" placeholder="Ej: Young, Río Negro · Pergamino, Buenos Aires..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-            {(buscando || resultados.length > 0) && (
-              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 5, marginTop: 4, background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 8, boxShadow: "var(--sh-lg)", maxHeight: 200, overflowY: "auto" }}>
-                {buscando && <div className="text-xs text-muted" style={{ padding: "8px 10px" }}>Buscando…</div>}
-                {!buscando && resultados.map((r, i) => (
-                  <button key={i} className="mc-btn mc-btn--ghost mc-btn--sm" style={{ display: "flex", width: "100%", textAlign: "left", justifyContent: "flex-start", fontSize: 12, whiteSpace: "normal", gap: 6 }} onClick={() => elegirLugar(r)}>
-                    <Icon name="map" size={13} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />{r.display_name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </Field>
         <Field label="Nombre *">
           <input className="mc-input" placeholder="Ej: Establecimiento Don Ramón" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
         </Field>

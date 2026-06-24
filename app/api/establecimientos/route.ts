@@ -24,6 +24,10 @@ export async function GET() {
         pais: e.pais,
         cuit: e.cuit,
         hectareasTotales: e.hectareasTotales,
+        coordenadas: e.coordenadas ? JSON.parse(e.coordenadas) : null,
+        centroLatitud: e.centroLatitud,
+        centroLongitud: e.centroLongitud,
+        perimetro: e.perimetro,
         lotesCount: e._count.lotes,
       }))
     );
