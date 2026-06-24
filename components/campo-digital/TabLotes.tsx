@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
@@ -38,12 +38,18 @@ import {
 } from "./lotes-Modales";
 import { LoteOverlay, CropImg } from "./LoteOverlay";
 import { cuadradoDesdeCentro } from "@/lib/geo";
+import BuscadorLugar from "./BuscadorLugar";
 
 /* ========== TAB LOTES (Figma CDLotes) ========== */
 export default function TabLotes() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const toast = useToast();
   const { loteIdsEnScope, esTodos, recargar, establecimientos, establecimientoActivo } = useLoteScope();
+  // Modo "delimitar establecimiento": llega desde el card de Establecimientos.
+  const delimitarId = searchParams.get("delimitar");
+  const estDelimitar = delimitarId ? establecimientos.find((e) => e.id === delimitarId) || null : null;
+  const [volarA, setVolarA] = useState<{ lat: number; lng: number; nonce: number } | null>(null);
   const [lotes, setLotes] = useState<LoteUI[]>(demo(LOTES_INICIALES, []));
   const [selected, setSelected] = useState<LoteUI | null>(null);
   const [view, setView] = useState<"mapa" | "lista">("mapa");
@@ -164,6 +170,53 @@ export default function TabLotes() {
       toast.show("No se pudo crear el lote", "err");
     }
   };
+
+  // Guarda el límite dibujado del establecimiento (modo "delimitar").
+  const guardarLimite = async (d: DibujoLote) => {
+    if (!delimitarId) return;
+    try {
+      const res = await fetch(`/api/establecimientos/${delimitarId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          coordenadas: d.geojson,
+          centroLatitud: d.centro.lat,
+          centroLongitud: d.centro.lng,
+          perimetro: d.perimetro,
+          hectareasTotales: d.hectareas,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.show(`Límite de "${estDelimitar?.nombre || "establecimiento"}" guardado (${Math.round(d.hectareas)} ha)`);
+      recargar();
+      router.replace("/campo-digital?tab=Lotes", { scroll: false });
+    } catch {
+      toast.show("No se pudo guardar el límite", "err");
+    }
+  };
+
+  // Al entrar en modo "delimitar": ir al mapa, armar el dibujo y, si el campo ya
+  // tiene centro, volar ahí (si no, el usuario busca el lugar).
+  useEffect(() => {
+    if (!estDelimitar) return;
+    setSelected(null);
+    setView("mapa");
+    setDrawArmed(true);
+    if (estDelimitar.centroLatitud != null && estDelimitar.centroLongitud != null) {
+      setVolarA({ lat: estDelimitar.centroLatitud, lng: estDelimitar.centroLongitud, nonce: Date.now() });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delimitarId, estDelimitar?.id]);
+
+  // Al activar un establecimiento (selector global), centrar el mapa en él para
+  // que encontrarlo y crear lotes adentro sea fácil.
+  useEffect(() => {
+    if (delimitarId) return;
+    if (establecimientoActivo?.centroLatitud != null && establecimientoActivo?.centroLongitud != null) {
+      setVolarA({ lat: establecimientoActivo.centroLatitud, lng: establecimientoActivo.centroLongitud, nonce: Date.now() });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [establecimientoActivo?.id]);
 
   const eliminarLote = async (id: string) => {
     const lote = lotes.find((l) => (l.dbId || l.id) === id);
@@ -329,9 +382,12 @@ export default function TabLotes() {
           onNota={(l) => setNotaLote(l)}
           onEditar={(l) => setEditLote(l)}
           onTarea={(l) => setTareaLote(l)}
-          onDrawn={(d) => { setDibujado(d); setShowAgregar(true); }}
+          onDrawn={(d) => { if (delimitarId) { guardarLimite(d); } else { setDibujado(d); setShowAgregar(true); } }}
           armarDibujo={drawArmed}
           onDibujoIniciado={() => setDrawArmed(false)}
+          volarA={volarA}
+          onBuscar={(p) => setVolarA({ lat: p.lat, lng: p.lng, nonce: Date.now() })}
+          delimitandoNombre={estDelimitar?.nombre ?? null}
         />
       )}
       {view === "lista" && (
@@ -347,7 +403,7 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
@@ -360,6 +416,9 @@ function LotesMapa({
   onDrawn: (d: { geojson: { type: "Polygon"; coordinates: number[][][] }; hectareas: number; centro: { lat: number; lng: number }; perimetro: number }) => void;
   armarDibujo?: boolean;
   onDibujoIniciado?: () => void;
+  volarA?: { lat: number; lng: number; nonce: number } | null;
+  onBuscar?: (p: { lat: number; lng: number; nombre: string }) => void;
+  delimitandoNombre?: string | null;
 }) {
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
     NDVI: [
@@ -382,6 +441,8 @@ function LotesMapa({
   const { establecimientos } = useLoteScope();
   const nombreEst = (id?: string | null) => (id ? establecimientos.find((e) => e.id === id)?.nombre ?? null : null);
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
+  // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
+  const establecimientosGeo = establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, coordenadas: e.coordenadas ?? null }));
   const [vista, setVista] = useState<"3d" | "clasico">("3d");
   const [fichaOpen, setFichaOpen] = useState(false);
   const [online, setOnline] = useState(true);
@@ -421,6 +482,7 @@ function LotesMapa({
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
+          {onBuscar && <BuscadorLugar onElegir={onBuscar} placeholder="Buscar lugar en el mapa…" width={230} />}
         </div>
         <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Tocá un lote para ver su ficha · dibujá nuevos lotes desde el mapa</div>
       </div>
@@ -433,7 +495,16 @@ function LotesMapa({
           onDrawn={onDrawn}
           armarDibujo={armarDibujo}
           onDibujoIniciado={onDibujoIniciado}
+          volarA={volarA}
+          establecimientos={establecimientosGeo}
         />
+
+        {delimitandoNombre && (
+          <div className="mc-glass" style={{ position: "absolute", top: 56, left: "50%", transform: "translateX(-50%)", zIndex: 561, display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, color: "var(--mc-ink)", maxWidth: "90%" }}>
+            <Icon name="pen" size={14} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />
+            Delimitando <b style={{ margin: "0 2px" }}>{delimitandoNombre}</b> · buscá la ubicación y dibujá el contorno (doble click para cerrar)
+          </div>
+        )}
 
         {!online && (
           <div className="mc-glass" style={{ position: "absolute", top: 14, left: 14, zIndex: 560, display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 10, fontSize: 12, fontWeight: 600, color: "var(--mc-ink)" }}>

@@ -3470,6 +3470,12 @@ model Establecimiento {
   pais             String  @default("Uruguay")
   hectareasTotales Float?
 
+  // Límite geográfico del establecimiento (dibujado en el mapa)
+  coordenadas    String? // GeoJSON Polygon del contorno
+  centroLatitud  Float?
+  centroLongitud Float?
+  perimetro      Float? // metros
+
   // ⬇️ AGREGAR ESTAS LÍNEAS
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -66,7 +66,25 @@ type Props = {
   onDrawn: (data: { geojson: GeoJSON.Polygon; hectareas: number; centro: { lat: number; lng: number }; perimetro: number }) => void;
   armarDibujo?: boolean;
   onDibujoIniciado?: () => void;
+  volarA?: { lat: number; lng: number; nonce: number } | null;
+  establecimientos?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[];
 };
+
+/** Contornos de los campos: usa el límite dibujado del establecimiento si existe;
+ *  si no, cae al envolvente (convex hull) de sus lotes. */
+function boundariesFc(lotes: LoteGeo[], ests?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[]): GeoJSON.FeatureCollection {
+  const feats: GeoJSON.Feature[] = [];
+  const conLimite = new Set<string>();
+  (ests || []).forEach((e) => {
+    if (e.coordenadas?.coordinates?.[0]?.length) {
+      conLimite.add(e.id);
+      feats.push({ type: "Feature", geometry: e.coordenadas, properties: { id: e.id, nombre: e.nombre } });
+    }
+  });
+  // Para los establecimientos sin límite dibujado, usar el hull de sus lotes
+  const hull = camposFc(lotes.filter((l) => !l.establecimientoId || !conLimite.has(l.establecimientoId)));
+  return { type: "FeatureCollection", features: [...feats, ...hull.features] };
+}
 
 function ndviColor(v: number) {
   if (!v || v <= 0) return "#9aa39a";
@@ -124,7 +142,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
-export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado }: Props) {
+export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -138,6 +156,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
   const drawingRef = useRef(false);
   const layerRef = useRef(layer);
   const lotesRef = useRef(lotes);
+  const establecimientosRef = useRef(establecimientos);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const campoMarkersRef = useRef<maplibregl.Marker[]>([]);
   onSelectRef.current = onSelect;
@@ -145,6 +164,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
   drawingRef.current = drawing;
   layerRef.current = layer;
   lotesRef.current = lotes;
+  establecimientosRef.current = establecimientos;
 
   // Markers HTML con el nombre de cada lote (no dependen de glyphs)
   const renderMarkers = () => {
@@ -168,7 +188,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     const map = mapRef.current; if (!map) return;
     campoMarkersRef.current.forEach((m) => m.remove());
     campoMarkersRef.current = [];
-    const fc = camposFc(lotesRef.current);
+    const fc = boundariesFc(lotesRef.current, establecimientosRef.current);
     fc.features.forEach((f) => {
       const poly = f.geometry as GeoJSON.Polygon;
       const ring = poly?.coordinates?.[0];
@@ -242,7 +262,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       }
 
       // Envolvente de cada campo (establecimiento)
-      map.addSource("campos", { type: "geojson", data: camposFc(lotes) });
+      map.addSource("campos", { type: "geojson", data: boundariesFc(lotes, establecimientosRef.current) });
       map.addLayer({ id: "campos-fill", type: "fill", source: "campos", paint: { "fill-color": "#f0c75e", "fill-opacity": 0.06 } as any });
       map.addLayer({ id: "campos-line", type: "line", source: "campos", paint: { "line-color": "#f3cf6a", "line-width": 2.4, "line-dasharray": [3, 2], "line-opacity": 0.92 } as any });
 
@@ -342,12 +362,20 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, armarDibujo]);
 
+  // Volar a un lugar buscado (buscador del mapa)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !volarA) return;
+    map.flyTo({ center: [volarA.lng, volarA.lat], zoom: 14.5, duration: 1200 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [volarA?.nonce, ready]);
+
   // ---- updates ----
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     (map.getSource("lotes") as maplibregl.GeoJSONSource)?.setData(fc(lotes, layer));
-    (map.getSource("campos") as maplibregl.GeoJSONSource)?.setData(camposFc(lotes));
+    (map.getSource("campos") as maplibregl.GeoJSONSource)?.setData(boundariesFc(lotes, establecimientosRef.current));
     if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
     if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
     renderMarkers();
