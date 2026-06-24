@@ -37,25 +37,7 @@ import {
   type AgregarCampoData, type EditarLoteData, type NuevaTareaData,
 } from "./lotes-Modales";
 import { LoteOverlay, CropImg } from "./LoteOverlay";
-
-/** Genera un polígono cuadrado aproximado a partir de un centro (lat/lng) y la
- *  superficie en hectáreas. Permite crear un lote por coordenadas/búsqueda sin
- *  tener que dibujarlo a mano: el lote aparece igual en el mapa. */
-function cuadradoDesdeCentro(centro: { lat: number; lng: number }, hectareas: number): DibujoLote {
-  const areaM2 = Math.max(100, (hectareas || 1) * 10000);
-  const lado = Math.sqrt(areaM2); // metros
-  const medio = lado / 2;
-  const dLat = medio / 111320;
-  const dLng = medio / (111320 * Math.cos((centro.lat * Math.PI) / 180) || 1);
-  const ring: number[][] = [
-    [centro.lng - dLng, centro.lat - dLat],
-    [centro.lng + dLng, centro.lat - dLat],
-    [centro.lng + dLng, centro.lat + dLat],
-    [centro.lng - dLng, centro.lat + dLat],
-    [centro.lng - dLng, centro.lat - dLat],
-  ];
-  return { geojson: { type: "Polygon", coordinates: [ring] }, hectareas, centro, perimetro: Math.round(lado * 4) };
-}
+import { cuadradoDesdeCentro } from "@/lib/geo";
 
 /* ========== TAB LOTES (Figma CDLotes) ========== */
 export default function TabLotes() {

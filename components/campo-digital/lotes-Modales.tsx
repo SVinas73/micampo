@@ -102,11 +102,10 @@ export function AgregarCampoModal({
     setLng(centro.lng.toFixed(6));
     setGeocodificando(true);
     const ctrl = new AbortController();
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${centro.lat}&lon=${centro.lng}&zoom=14&accept-language=es`, {
-      headers: { "Accept": "application/json" }, signal: ctrl.signal,
-    })
+    fetch(`/api/geo/reverse?lat=${centro.lat}&lon=${centro.lng}`, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
+      .then((res) => {
+        const d = res?.lugar;
         if (!d) return;
         const a = d.address || {};
         const partes = [a.hamlet || a.village || a.town || a.city || a.county, a.state, a.country].filter(Boolean);
@@ -124,9 +123,9 @@ export function AgregarCampoModal({
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       setBuscando(true);
-      fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(busqueda)}&limit=5&accept-language=es`, { signal: ctrl.signal })
-        .then((r) => (r.ok ? r.json() : []))
-        .then((d) => setResultados(Array.isArray(d) ? d.slice(0, 5) : []))
+      fetch(`/api/geo/search?q=${encodeURIComponent(busqueda)}`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : { resultados: [] }))
+        .then((d) => setResultados(Array.isArray(d.resultados) ? d.resultados : []))
         .catch(() => {})
         .finally(() => setBuscando(false));
     }, 450);

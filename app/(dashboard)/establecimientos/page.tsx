@@ -28,9 +28,9 @@ export default function EstablecimientosPage() {
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       setBuscando(true);
-      fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&q=${encodeURIComponent(busqueda)}&limit=5&accept-language=es`, { signal: ctrl.signal })
-        .then((r) => (r.ok ? r.json() : []))
-        .then((d) => setResultados(Array.isArray(d) ? d.slice(0, 5) : []))
+      fetch(`/api/geo/search?q=${encodeURIComponent(busqueda)}`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : { resultados: [] }))
+        .then((d) => setResultados(Array.isArray(d.resultados) ? d.resultados : []))
         .catch(() => {})
         .finally(() => setBuscando(false));
     }, 450);
