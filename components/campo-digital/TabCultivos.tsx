@@ -700,6 +700,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
   ], [] as AnalisisRow[]));
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
   const [evolucion, setEvolucion] = useState<{ label: string; ppm: number }[]>([]);
+  const [labResults, setLabResults] = useState<{ fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/analisis-suelo")
@@ -712,6 +713,32 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
           .sort((a: { fechaAnalisis: string }, b: { fechaAnalisis: string }) => new Date(a.fechaAnalisis).getTime() - new Date(b.fechaAnalisis).getTime())
           .map((a: { fosforo: number; fechaAnalisis: string }) => ({ label: new Date(a.fechaAnalisis).toLocaleDateString("es-AR", { month: "short", year: "2-digit" }), ppm: Math.round(a.fosforo) }));
         setEvolucion(pts);
+        // Tabla "Últimos Resultados de Laboratorio" con datos reales
+        setLabResults(
+          [...d]
+            .filter((a: { fechaAnalisis?: string }) => a.fechaAnalisis)
+            .sort((a: { fechaAnalisis: string }, b: { fechaAnalisis: string }) => new Date(b.fechaAnalisis).getTime() - new Date(a.fechaAnalisis).getTime())
+            .slice(0, 8)
+            .map((a: { lote?: { nombre: string }; fechaAnalisis: string; profundidad?: string; nitrogeno?: number; fosforo?: number; pH?: number }) => {
+              const p = a.fosforo ?? null;
+              const ph = a.pH ?? null;
+              const pWarn = p != null && p < 15;
+              const phWarn = ph != null && (ph < 5.5 || ph > 7.5);
+              const estado = pWarn || (ph != null && ph < 5.5) ? "Crítico" : phWarn || (p != null && p < 20) ? "Alerta" : "Óptimo";
+              return {
+                fecha: new Date(a.fechaAnalisis).toLocaleDateString("es-AR"),
+                lote: a.lote?.nombre || "Lote",
+                prof: a.profundidad || "0-20",
+                p: p != null ? `${Math.round(p)} ppm` : "—",
+                pWarn,
+                n: a.nitrogeno != null ? Math.round(a.nitrogeno) : 0,
+                ph: ph != null ? String(ph) : "—",
+                phWarn,
+                estado,
+                estadoColor: estado === "Crítico" ? "red" : estado === "Alerta" ? "amber" : "green",
+              };
+            })
+        );
         setLotesAnalisis(
           d.slice(0, 4).map((a: { lote?: { nombre: string }; fechaAnalisis: string; nitrogeno?: number; fosforo?: number; potasio?: number; pH?: number; materiaOrganica?: number }) => ({
             lote: a.lote?.nombre || "Lote",
@@ -729,12 +756,6 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
       .catch(() => {});
   }, []);
 
-  const labResults = demo([
-    { fecha: "15/10/2025", lote: "Lote Norte", prof: "0-20", p: "8 ppm", pWarn: true, n: 45, ph: "5.5", phWarn: true, estado: "Crítico", estadoColor: "red" },
-    { fecha: "14/10/2025", lote: "Lote Sur", prof: "0-20", p: "18 ppm", pWarn: false, n: 60, ph: "6.2", phWarn: false, estado: "Alerta", estadoColor: "amber" },
-    { fecha: "12/10/2025", lote: "Lote Este", prof: "0-20", p: "25 ppm", pWarn: false, n: 75, ph: "6.8", phWarn: false, estado: "Óptimo", estadoColor: "green" },
-    { fecha: "10/10/2025", lote: "Lote Oeste", prof: "20-40", p: "12 ppm", pWarn: true, n: 50, ph: "6.0", phWarn: false, estado: "Alerta", estadoColor: "amber" },
-  ], [] as { fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]);
 
   const descargarPDF = async (titulo: string, lineas: string[]) => {
     const { default: jsPDF } = await import("jspdf");
@@ -873,6 +894,9 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
               <tr><th>Fecha</th><th>Lote</th><th>Prof. (cm)</th><th>P (ppm)</th><th>N (kg/ha)</th><th>pH</th><th>Estado</th><th>PDF</th></tr>
             </thead>
             <tbody>
+              {labResults.length === 0 && (
+                <tr><td colSpan={8} style={{ textAlign: "center", color: "var(--mc-text-3)", padding: "22px 8px", fontSize: 13 }}>Sin análisis cargados. Cargá uno con “Nuevo Análisis” y aparece acá.</td></tr>
+              )}
               {labResults.map((r, i) => (
                 <tr key={i}>
                   <td className="mc-cell--mono">{r.fecha}</td>
