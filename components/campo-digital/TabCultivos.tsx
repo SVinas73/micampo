@@ -72,6 +72,30 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [analisisOpen, setAnalisisOpen] = useState(false);
   const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number; cultivo?: string | null }[]>([]);
   const [distribucion, setDistribucion] = useState<DistCultivo[]>([]);
+  const [planKpis, setPlanKpis] = useState({ generados: 0, aprobados: 0, superficie: 0, inversion: 0, proximaFecha: "", proximaCultivo: "" });
+
+  // KPIs reales del Planificador (a partir de los planes de siembra guardados).
+  useEffect(() => {
+    if (!planificadorMode) return;
+    fetch("/api/planes-siembra")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d: Array<{ estado?: string; hectareas?: number; costoEstimado?: number; cultivo?: string; fechaSiembraRecomendada?: string }>) => {
+        if (!Array.isArray(d)) return;
+        const futuros = d
+          .filter((p) => p.fechaSiembraRecomendada && new Date(p.fechaSiembraRecomendada).getTime() >= Date.now())
+          .sort((a, b) => new Date(a.fechaSiembraRecomendada!).getTime() - new Date(b.fechaSiembraRecomendada!).getTime());
+        const prox = futuros[0];
+        setPlanKpis({
+          generados: d.length,
+          aprobados: d.filter((p) => p.estado === "Aprobado").length,
+          superficie: d.reduce((s, p) => s + (p.hectareas || 0), 0),
+          inversion: d.reduce((s, p) => s + (p.costoEstimado || 0), 0),
+          proximaFecha: prox ? new Date(prox.fechaSiembraRecomendada!).toLocaleDateString("es-AR") : "",
+          proximaCultivo: prox?.cultivo || "",
+        });
+      })
+      .catch(() => {});
+  }, [planificadorMode]);
 
   useEffect(() => {
     const d = scopeLotes;
@@ -176,11 +200,11 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
 
       {planificadorMode ? (
         <div className="grid g-cols-5">
-          <KPI label="Planes Generados" value={demo("3", "0")} delta={demo("2 esta semana", "—")} trend="up" icon="sprout" accent />
-          <KPI label="Planes Aprobados" value={demo("2", "0")} delta={demo("67% conversión", "—")} trend="up" icon="check" />
-          <KPI label="Superficie Planificada" value={demo("850 Ha", "—")} delta={demo("Campaña 25/26", "—")} trend="up" icon="map" />
-          <KPI label="Inversión Estimada" value={demo("$162.500 USD", "—")} delta={demo("0 ejecutado", "—")} trend="up" icon="dollar" />
-          <KPI label="Próxima Siembra" value={demo("03/12/25", "—")} delta={demo("Maíz Tardío", "—")} trend="up" icon="calendar" />
+          <KPI label="Planes Generados" value={String(planKpis.generados)} delta={planKpis.generados ? "Campaña actual" : "Generá con IA"} trend="up" icon="sprout" accent />
+          <KPI label="Planes Aprobados" value={String(planKpis.aprobados)} delta={planKpis.generados ? `${Math.round((planKpis.aprobados / planKpis.generados) * 100)}% conversión` : "—"} trend="up" icon="check" />
+          <KPI label="Superficie Planificada" value={planKpis.superficie ? `${Math.round(planKpis.superficie)} Ha` : "0 Ha"} delta={`${planKpis.generados} plan(es)`} trend="up" icon="map" />
+          <KPI label="Inversión Estimada" value={planKpis.inversion ? `$${Math.round(planKpis.inversion).toLocaleString("es-AR")}` : "$0"} delta="Costo total planificado" trend="up" icon="dollar" />
+          <KPI label="Próxima Siembra" value={planKpis.proximaFecha || "—"} delta={planKpis.proximaCultivo || "Sin planes futuros"} trend="up" icon="calendar" />
         </div>
       ) : sub === "Estados" ? (
         <div className="grid g-cols-5">
