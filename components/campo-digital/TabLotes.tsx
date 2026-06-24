@@ -388,6 +388,8 @@ export default function TabLotes() {
           volarA={volarA}
           onBuscar={(p) => setVolarA({ lat: p.lat, lng: p.lng, nonce: Date.now() })}
           delimitandoNombre={estDelimitar?.nombre ?? null}
+          delimitando={!!delimitarId}
+          onReArmar={() => setDrawArmed(true)}
         />
       )}
       {view === "lista" && (
@@ -403,7 +405,7 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
@@ -419,6 +421,8 @@ function LotesMapa({
   volarA?: { lat: number; lng: number; nonce: number } | null;
   onBuscar?: (p: { lat: number; lng: number; nombre: string }) => void;
   delimitandoNombre?: string | null;
+  delimitando?: boolean;
+  onReArmar?: () => void;
 }) {
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
     NDVI: [
@@ -443,7 +447,14 @@ function LotesMapa({
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
   // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
   const establecimientosGeo = establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, coordenadas: e.coordenadas ?? null }));
-  const [vista, setVista] = useState<"3d" | "clasico">("3d");
+  // Para delimitar conviene la vista clásica (2D, cenital): más cómodo para dibujar.
+  const [vista, setVista] = useState<"3d" | "clasico">(delimitando ? "clasico" : "3d");
+  // Al cambiar de vista se desmonta/monta otro mapa; si estábamos delimitando hay
+  // que re-armar el dibujo para no perder el cursor (queda en modo "mover" si no).
+  const cambiarVista = (v: "3d" | "clasico") => {
+    setVista(v);
+    if (delimitando) onReArmar?.();
+  };
   const [fichaOpen, setFichaOpen] = useState(false);
   const [online, setOnline] = useState(true);
   const MapaActivo = vista === "3d" ? Mapa3D : MapaClasico;
@@ -474,8 +485,8 @@ function LotesMapa({
       <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)", gap: 12, flexWrap: "wrap" }}>
         <div className="row gap-10" style={{ alignItems: "center", flexWrap: "wrap" }}>
           <div className="mc-seg">
-            <button className={vista === "3d" ? "is-on" : ""} onClick={() => setVista("3d")}><Icon name="map" size={12} /> 3D</button>
-            <button className={vista === "clasico" ? "is-on" : ""} onClick={() => setVista("clasico")}>Clásico</button>
+            <button className={vista === "3d" ? "is-on" : ""} onClick={() => cambiarVista("3d")}><Icon name="map" size={12} /> 3D</button>
+            <button className={vista === "clasico" ? "is-on" : ""} onClick={() => cambiarVista("clasico")}>Clásico</button>
           </div>
           <div className="mc-seg">
             {["NDVI", "Satélite", "Cultivos"].map((l) => (
