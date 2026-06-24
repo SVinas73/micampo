@@ -1,14 +1,17 @@
 /**
  * Modo demo del sistema.
  *
- * Con `MODO_DEMO = false` el sistema arranca completamente en 0/vacío:
- * no se muestra ningún dato de ejemplo y la interfaz queda lista para
- * cargar datos reales (las pantallas siguen reemplazando estos valores
- * con lo que devuelven las APIs cuando hay datos en la base).
+ * Por defecto el sistema arranca en 0/vacío: no se muestra ningún dato de
+ * ejemplo y la interfaz queda lista para datos reales (las pantallas reemplazan
+ * estos valores con lo que devuelven las APIs cuando hay datos en la base).
  *
- * Para volver a mostrar los datos de demostración, poné `MODO_DEMO = true`.
+ * Robustez: el modo demo SOLO puede activarse fuera de producción y de forma
+ * explícita (NEXT_PUBLIC_DEMO_MODE="true"). Aunque alguien deje la flag activa
+ * por error, en producción NUNCA se renderizan datos de ejemplo. Esto protege
+ * la regla "dato real o en 0" frente a un cliente.
  */
-export const MODO_DEMO = false;
+const flagDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+export const MODO_DEMO = flagDemo && process.env.NODE_ENV !== "production";
 
 /**
  * Devuelve el valor de ejemplo cuando el modo demo está activo,
