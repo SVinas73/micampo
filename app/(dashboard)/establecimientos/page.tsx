@@ -13,7 +13,7 @@ const FORM_VACIO = { nombre: "", direccion: "", ciudad: "", provincia: "", pais:
 export default function EstablecimientosPage() {
   const toast = useToast();
   const router = useRouter();
-  const { recargar } = useLoteScope();
+  const { recargar, setEstablecimientoId } = useLoteScope();
   const [ests, setEsts] = useState<Est[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -138,14 +138,19 @@ export default function EstablecimientosPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="row gap-8" style={{ alignItems: "center", justifyContent: "space-between" }}>
-                    <span className={`mc-badge ${delimitado ? "mc-badge--green" : "mc-badge--neutral"}`} style={{ fontSize: 11 }}>
+                  <div className="col gap-8">
+                    <span className={`mc-badge ${delimitado ? "mc-badge--green" : "mc-badge--neutral"}`} style={{ fontSize: 11, alignSelf: "flex-start" }}>
                       <Icon name={delimitado ? "check" : "map"} size={11} />
                       {delimitado ? `Delimitado · ${e.hectareasTotales ? Math.round(e.hectareasTotales) + " ha" : "en el mapa"}` : "Sin delimitar"}
                     </span>
-                    <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => router.push(`/campo-digital?tab=Lotes&delimitar=${e.id}`)}>
-                      <Icon name="pen" size={12} />{delimitado ? "Re-delimitar" : "Delimitar en el mapa"}
-                    </button>
+                    <div className="row gap-8">
+                      <button className="mc-btn mc-btn--primary mc-btn--sm flex-1" style={{ justifyContent: "center" }} onClick={() => { setEstablecimientoId(e.id); router.push("/campo-digital?tab=Lotes"); }}>
+                        <Icon name="map" size={12} />Ver en el mapa
+                      </button>
+                      <button className="mc-btn mc-btn--secondary mc-btn--sm flex-1" style={{ justifyContent: "center" }} onClick={() => router.push(`/campo-digital?tab=Lotes&delimitar=${e.id}`)}>
+                        <Icon name="pen" size={12} />{delimitado ? "Re-delimitar" : "Delimitar"}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 );

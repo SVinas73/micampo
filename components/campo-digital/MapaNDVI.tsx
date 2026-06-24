@@ -51,10 +51,11 @@ function ndviColor(v: number) {
   return "#c08a22";
 }
 
-export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA }: Props) {
+export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const lotesLayerRef = useRef<L.FeatureGroup | null>(null);
+  const camposLayerRef = useRef<L.FeatureGroup | null>(null);
   const ndviLayerRef = useRef<L.TileLayer.WMS | null>(null);
   const polyDrawOptsRef = useRef<any>(null);
   const drawHandlerRef = useRef<any>(null);
@@ -100,9 +101,11 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
       } as L.WMSOptions);
     }
 
-    const drawn = new L.FeatureGroup().addTo(map);
+    const camposFg = new L.FeatureGroup().addTo(map); // contornos de establecimientos (debajo de los lotes)
+    camposLayerRef.current = camposFg;
     const lotesFg = new L.FeatureGroup().addTo(map);
     lotesLayerRef.current = lotesFg;
+    const drawn = new L.FeatureGroup().addTo(map);
 
     // Controles de capas base
     L.control.layers({ Satélite: satelite }, { Lugares: labels }, { collapsed: true, position: "bottomright" }).addTo(map);
@@ -152,6 +155,22 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
     map.flyTo([volarA.lat, volarA.lng], 15, { duration: 1.2 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volarA?.nonce]);
+
+  // Contornos de establecimientos (línea punteada), igual que en la vista 3D.
+  useEffect(() => {
+    const map = mapRef.current;
+    const fg = camposLayerRef.current;
+    if (!map || !fg) return;
+    fg.clearLayers();
+    (establecimientos || []).forEach((e) => {
+      const ring = e.coordenadas?.coordinates?.[0];
+      if (!ring?.length) return;
+      const latlngs = ring.map(([lng, lat]) => [lat, lng] as [number, number]);
+      const poly = L.polygon(latlngs, { color: "#f3cf6a", weight: 2.5, dashArray: "6 6", fill: false, opacity: 0.95 });
+      poly.bindTooltip(e.nombre, { direction: "top", sticky: true });
+      fg.addLayer(poly);
+    });
+  }, [establecimientos]);
 
   // Disparador externo: arma el dibujo de polígono. Sirve para "Nuevo lote" y para
   // re-armar tras buscar un lugar (así no se pierde el cursor de delimitación).
