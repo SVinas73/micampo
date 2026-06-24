@@ -2168,6 +2168,7 @@ a:focus-visible {
 .mc-sb__scope select {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
   background: transparent;
   border: none;
   outline: none;
@@ -2175,6 +2176,9 @@ a:focus-visible {
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mc-sb__scope select option {
   color: #2a281f;
@@ -2336,6 +2340,22 @@ a:focus-visible {
   pointer-events: none;
   transform: translateY(-6px);
 }
+/* Etiqueta del campo en la vista clásica (Leaflet tooltip) — mismo look que el marcador 3D */
+.leaflet-tooltip.mc-campo-tip {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #4a3a12;
+  background: rgba(243, 207, 106, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+.leaflet-tooltip.mc-campo-tip::before { display: none; } /* sin flechita */
 
 /* Campo Digital: subir los controles del mapa para que el orbe del Copiloto
    (fijo abajo-derecha) no los tape. Scopeado al contenedor del mapa. */

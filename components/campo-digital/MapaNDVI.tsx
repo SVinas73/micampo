@@ -167,7 +167,9 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
       if (!ring?.length) return;
       const latlngs = ring.map(([lng, lat]) => [lat, lng] as [number, number]);
       const poly = L.polygon(latlngs, { color: "#f3cf6a", weight: 2.5, dashArray: "6 6", fill: false, opacity: 0.95 });
-      poly.bindTooltip(e.nombre, { direction: "top", sticky: true });
+      // Etiqueta permanente con el nombre del campo (no interactiva → no estorba al dibujar),
+      // igual que el marcador del establecimiento en 3D.
+      poly.bindTooltip(e.nombre, { permanent: true, direction: "top", className: "mc-campo-tip", opacity: 1 });
       fg.addLayer(poly);
     });
   }, [establecimientos]);
