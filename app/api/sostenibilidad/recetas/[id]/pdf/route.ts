@@ -23,7 +23,7 @@ export async function GET(
       },
     });
 
-    if (!receta) {
+    if (!receta || receta.establecimiento?.userId !== session.user.id) {
       return NextResponse.json(
         { error: "Receta no encontrada" },
         { status: 404 }

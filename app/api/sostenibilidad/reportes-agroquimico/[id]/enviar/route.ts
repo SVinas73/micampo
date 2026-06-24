@@ -14,6 +14,17 @@ export async function POST(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const existente = await prisma.reporteAgroquimico.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Reporte no encontrado" },
+        { status: 404 }
+      );
+    }
+
     const body = await req.json();
     const { organismoDestino, funcionarioReceptor, email } = body;
 

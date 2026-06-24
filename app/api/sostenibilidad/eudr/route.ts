@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     }
 
     const declaraciones = await prisma.complianceEUDR.findMany({
-      where: { establecimientoId },
+      where: { establecimientoId, establecimiento: { userId: session.user.id } },
       orderBy: { createdAt: "desc" },
       include: {
         establecimiento: {
@@ -72,6 +72,14 @@ export async function POST(req: Request) {
         { error: "Faltan campos requeridos" },
         { status: 400 }
       );
+    }
+
+    const est = await prisma.establecimiento.findUnique({
+      where: { id: establecimientoId },
+      select: { userId: true },
+    });
+    if (!est || est.userId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     // Generar número de declaración

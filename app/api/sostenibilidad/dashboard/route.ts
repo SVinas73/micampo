@@ -20,6 +20,15 @@ export async function GET(req: Request) {
       );
     }
 
+    // Verificar que el establecimiento pertenece al usuario
+    const establecimiento = await prisma.establecimiento.findUnique({
+      where: { id: establecimientoId },
+      select: { userId: true },
+    });
+    if (!establecimiento || establecimiento.userId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
     // ============================================
     // 1. HUELLA DE CARBONO
     // ============================================

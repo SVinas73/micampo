@@ -21,7 +21,7 @@ export async function GET(
       },
     });
 
-    if (!declaracion) {
+    if (!declaracion || declaracion.establecimiento?.userId !== session.user.id) {
       return NextResponse.json(
         { error: "Declaración no encontrada" },
         { status: 404 }
@@ -59,6 +59,17 @@ export async function PATCH(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const existente = await prisma.complianceEUDR.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Declaración no encontrada" },
+        { status: 404 }
+      );
+    }
+
     const body = await req.json();
 
     const declaracion = await prisma.complianceEUDR.update({
@@ -85,6 +96,17 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const existente = await prisma.complianceEUDR.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Declaración no encontrada" },
+        { status: 404 }
+      );
     }
 
     await prisma.complianceEUDR.delete({

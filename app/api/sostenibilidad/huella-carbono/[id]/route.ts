@@ -21,12 +21,13 @@ export async function GET(
           select: {
             nombre: true,
             hectareasTotales: true,
+            userId: true,
           },
         },
       },
     });
 
-    if (!huella) {
+    if (!huella || huella.establecimiento?.userId !== session.user.id) {
       return NextResponse.json(
         { error: "Huella de carbono no encontrada" },
         { status: 404 }
@@ -66,6 +67,17 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const existente = await prisma.huellaCarbono.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Huella de carbono no encontrada" },
+        { status: 404 }
+      );
     }
 
     await prisma.huellaCarbono.delete({

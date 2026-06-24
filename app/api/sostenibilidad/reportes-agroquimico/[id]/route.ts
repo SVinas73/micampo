@@ -21,7 +21,7 @@ export async function GET(
       },
     });
 
-    if (!reporte) {
+    if (!reporte || reporte.establecimiento?.userId !== session.user.id) {
       return NextResponse.json(
         { error: "Reporte no encontrado" },
         { status: 404 }
@@ -47,6 +47,17 @@ export async function PATCH(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const existente = await prisma.reporteAgroquimico.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Reporte no encontrado" },
+        { status: 404 }
+      );
     }
 
     const body = await req.json();
@@ -95,6 +106,17 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const existente = await prisma.reporteAgroquimico.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Reporte no encontrado" },
+        { status: 404 }
+      );
     }
 
     await prisma.reporteAgroquimico.delete({

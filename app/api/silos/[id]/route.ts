@@ -14,6 +14,11 @@ export async function PATCH(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const existente = await prisma.silo.findUnique({ where: { id: params.id } });
+    if (!existente || existente.userId !== session.user.id) {
+      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    }
+
     const data = await request.json();
 
     const porcentaje = (data.stockActual / data.capacidadTotal) * 100;
@@ -42,6 +47,11 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const existente = await prisma.silo.findUnique({ where: { id: params.id } });
+    if (!existente || existente.userId !== session.user.id) {
+      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
     }
 
     await prisma.silo.delete({ where: { id: params.id } });

@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     }
 
     const certificaciones = await prisma.certificacionSostenibilidad.findMany({
-      where: { establecimientoId },
+      where: { establecimientoId, establecimiento: { userId: session.user.id } },
       include: {
         _count: {
           select: {
@@ -74,6 +74,14 @@ export async function POST(req: Request) {
         { error: "Faltan campos requeridos" },
         { status: 400 }
       );
+    }
+
+    const est = await prisma.establecimiento.findUnique({
+      where: { id: establecimientoId },
+      select: { userId: true },
+    });
+    if (!est || est.userId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     const certificacion = await prisma.certificacionSostenibilidad.create({
