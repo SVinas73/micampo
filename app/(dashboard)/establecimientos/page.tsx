@@ -8,7 +8,7 @@ import { useLoteScope } from "@/components/LoteScope";
 type Est = { id: string; nombre: string; direccion?: string | null; ciudad?: string | null; provincia?: string | null; pais?: string | null; cuit?: string | null; hectareasTotales?: number | null; lotesCount?: number; coordenadas?: unknown; centroLatitud?: number | null };
 type Lote = { id: string; nombre: string; hectareas: number; cultivo?: string | null; establecimientoId?: string | null };
 
-const FORM_VACIO = { nombre: "", direccion: "", ciudad: "", provincia: "", pais: "Uruguay", cuit: "", hectareasTotales: "" };
+const FORM_VACIO = { nombre: "", direccion: "", ciudad: "", provincia: "", pais: "Uruguay", cuit: "" };
 
 export default function EstablecimientosPage() {
   const toast = useToast();
@@ -27,7 +27,7 @@ export default function EstablecimientosPage() {
   const abrirNuevo = () => { setEditId(null); setForm(FORM_VACIO); setModalOpen(true); };
   const abrirEditar = (e: Est) => {
     setEditId(e.id);
-    setForm({ nombre: e.nombre || "", direccion: e.direccion || "", ciudad: e.ciudad || "", provincia: e.provincia || "", pais: e.pais || "Uruguay", cuit: e.cuit || "", hectareasTotales: e.hectareasTotales != null ? String(e.hectareasTotales) : "" });
+    setForm({ nombre: e.nombre || "", direccion: e.direccion || "", ciudad: e.ciudad || "", provincia: e.provincia || "", pais: e.pais || "Uruguay", cuit: e.cuit || "" });
     setModalOpen(true);
   };
 
@@ -50,13 +50,18 @@ export default function EstablecimientosPage() {
       const res = await fetch(editId ? `/api/establecimientos/${editId}` : "/api/establecimientos", {
         method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e?.error || `HTTP ${res.status}`);
+      }
       toast.show(editId ? "Establecimiento actualizado" : "Establecimiento creado");
       setModalOpen(false);
       setEditId(null);
       setForm(FORM_VACIO);
       cargar(); recargar();
-    } catch { toast.show("No se pudo guardar", "err"); } finally { setGuardando(false); }
+    } catch (err) {
+      toast.show(`No se pudo guardar${err instanceof Error && err.message ? `: ${err.message}` : ""}`, "err");
+    } finally { setGuardando(false); }
   };
 
   const asignar = async (loteId: string, establecimientoId: string) => {    setLotes((prev) => prev.map((l) => (l.id === loteId ? { ...l, establecimientoId: establecimientoId || null } : l)));
@@ -214,9 +219,10 @@ export default function EstablecimientosPage() {
           </Field>
           <Field label="CUIT / RUT"><input className="mc-input" placeholder="Identificación fiscal" value={form.cuit} onChange={(e) => setForm({ ...form, cuit: e.target.value })} /></Field>
         </div>
-        <Field label="Hectáreas totales">
-          <input className="mc-input" type="number" value={form.hectareasTotales} onChange={(e) => setForm({ ...form, hectareasTotales: e.target.value })} />
-        </Field>
+        <div style={{ padding: "10px 12px", background: "var(--mc-surface-2)", borderRadius: 8, fontSize: 12.5, color: "var(--mc-text-2)", display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon name="map" size={14} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />
+          La superficie (hectáreas) se calcula sola cuando delimitás el establecimiento en el mapa.
+        </div>
       </Modal>
 
       <Modal
