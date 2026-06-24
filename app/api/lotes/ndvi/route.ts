@@ -43,6 +43,14 @@ export async function POST(request: Request) {
         if (r) {
           resultados[l.id] = r;
           await saveInsight(userId, clave, "ndvi", r, "sentinel-2-l2a");
+          return;
+        }
+        // Sentinel caído o sin pasada reciente: caemos a la última medición
+        // conocida (aunque sea vieja). Un NDVI de hace semanas es mucho mejor
+        // que dejar el lote sin dato en el campo con mala señal.
+        const ultimo = await getInsight<NdviLote>(userId, clave, 60 * 24 * 365);
+        if (ultimo && typeof ultimo.ndvi === "number") {
+          resultados[l.id] = { ...ultimo, stale: true };
         }
       })
     );

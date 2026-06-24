@@ -62,7 +62,7 @@ async function getToken(): Promise<string | null> {
   }
 }
 
-export type NdviLote = { ndvi: number; fecha: string | null };
+export type NdviLote = { ndvi: number; fecha: string | null; stale?: boolean };
 export type NdviPunto = { fecha: string; ndvi: number };
 export type NdviSerie = {
   serie: NdviPunto[];
