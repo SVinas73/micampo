@@ -22,10 +22,10 @@ function LoteSelectorSidebar() {
       {establecimientos.length > 0 && (
         <div className="mc-sb__scope">
           <Icon name="building" size={13} />
-          <select value={establecimientoId} onChange={(e) => setEstablecimientoId(e.target.value)} aria-label="Establecimiento activo">
+          <select value={establecimientoId} onChange={(e) => setEstablecimientoId(e.target.value)} aria-label="Establecimiento activo" title={establecimientos.find((e) => e.id === establecimientoId)?.nombre || "Todos los establecimientos"}>
             <option value="todos">Todos los establecimientos</option>
             {establecimientos.map((e) => (
-              <option key={e.id} value={e.id}>{e.nombre}{e.lotesCount != null ? ` (${e.lotesCount})` : ""}</option>
+              <option key={e.id} value={e.id} title={e.nombre}>{e.nombre}{e.lotesCount != null ? ` (${e.lotesCount})` : ""}</option>
             ))}
           </select>
         </div>
@@ -33,10 +33,10 @@ function LoteSelectorSidebar() {
       {lotes.length > 0 && (
         <div className="mc-sb__scope">
           <Icon name="map" size={13} />
-          <select value={loteId} onChange={(e) => setLoteId(e.target.value)} aria-label="Lote activo">
+          <select value={loteId} onChange={(e) => setLoteId(e.target.value)} aria-label="Lote activo" title={lotes.find((l) => l.id === loteId)?.nombre || "Todos los lotes"}>
             <option value="todos">Todos los lotes</option>
             {lotes.map((l) => (
-              <option key={l.id} value={l.id}>{l.nombre}</option>
+              <option key={l.id} value={l.id} title={l.nombre}>{l.nombre}</option>
             ))}
           </select>
         </div>
