@@ -493,7 +493,13 @@ function LotesMapa({
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
-          {onBuscar && <BuscadorLugar onElegir={onBuscar} placeholder="Buscar lugar en el mapa…" width={230} />}
+          {onBuscar && (
+            <BuscadorLugar
+              onElegir={(p) => { onBuscar(p); if (delimitando) onReArmar?.(); }}
+              placeholder="Buscar lugar en el mapa…"
+              width={230}
+            />
+          )}
         </div>
         <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Tocá un lote para ver su ficha · dibujá nuevos lotes desde el mapa</div>
       </div>

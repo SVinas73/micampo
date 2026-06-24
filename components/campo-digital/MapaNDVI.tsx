@@ -57,6 +57,7 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
   const lotesLayerRef = useRef<L.FeatureGroup | null>(null);
   const ndviLayerRef = useRef<L.TileLayer.WMS | null>(null);
   const polyDrawOptsRef = useRef<any>(null);
+  const drawHandlerRef = useRef<any>(null);
   const onDrawnRef = useRef(onDrawn);
   const onSelectRef = useRef(onSelect);
   onDrawnRef.current = onDrawn;
@@ -79,7 +80,7 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
     const labels = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
       { maxZoom: 19, opacity: 0.9 }
-    );
+    ).addTo(map); // nombres de lugares visibles por defecto (orientación al delimitar)
 
     // Capa NDVI real (Sentinel Hub) si está configurada
     if (SENTINEL_INSTANCE) {
@@ -152,12 +153,15 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volarA?.nonce]);
 
-  // Disparador externo: el botón "Nuevo lote" del header arma el dibujo de polígono
+  // Disparador externo: arma el dibujo de polígono. Sirve para "Nuevo lote" y para
+  // re-armar tras buscar un lugar (así no se pierde el cursor de delimitación).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !armarDibujo) return;
     try {
+      if (drawHandlerRef.current) drawHandlerRef.current.disable(); // evita apilar handlers
       const handler = new (L as any).Draw.Polygon(map, polyDrawOptsRef.current);
+      drawHandlerRef.current = handler;
       handler.enable();
       onDibujoIniciado?.();
     } catch { /* leaflet-draw no disponible */ }
