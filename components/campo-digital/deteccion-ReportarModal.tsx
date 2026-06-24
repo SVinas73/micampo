@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Icon } from "@/components/mc";
 import { demo } from "@/lib/demo";
+import { buscarPlagas, type CategoriaPlaga, type EntradaPlaga } from "@/lib/catalogo-plagas";
 
-/* ========== MODAL Reportar Plaga o Enfermedad (Figma) ========== */
-const SUGERENCIAS = ["Roya Común (Puccinia)", "Pulgón Verde", "Oruga Cogollera (Spodoptera)", "Mancha Marrón", "Esclerotinia", "Fusarium", "Mildiu", "Carbón"];
+/* ========== MODAL Reportar Plaga o Enfermedad ========== */
 
 export function ReportarPlagaModal({
   lotes,
@@ -18,16 +18,24 @@ export function ReportarPlagaModal({
 }) {
   const lista = lotes.length > 0 ? lotes : demo([{ id: undefined, nombre: "Lote 4 - Maíz (V6)", cultivo: "Maíz" }], [] as { id?: string; nombre: string; cultivo?: string }[]);
   const [loteIdx, setLoteIdx] = useState(0);
-  const [categoria, setCategoria] = useState<"Insecto" | "Hongo" | "Maleza">("Insecto");
+  const [categoria, setCategoria] = useState<CategoriaPlaga>("Insecto");
   const [busqueda, setBusqueda] = useState("");
-  const [plaga, setPlaga] = useState("Oruga Cogollera (Spodoptera)");
+  const [foco, setFoco] = useState(false);
+  const [seleccion, setSeleccion] = useState<EntradaPlaga | null>(null);
   const [incidencia, setIncidencia] = useState(15);
   const [notas, setNotas] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [foto, setFoto] = useState<string | null>(null);
 
   const incColor = incidencia < 20 ? "#22a261" : incidencia < 50 ? "#e59700" : "#d94040";
-  const filtradas = busqueda.length > 1 ? SUGERENCIAS.filter((s) => s.toLowerCase().includes(busqueda.toLowerCase())) : [];
+  const resultados = useMemo(() => buscarPlagas(categoria, busqueda, 60), [categoria, busqueda]);
+  const totalCategoria = useMemo(() => buscarPlagas(categoria, "", 9999).length, [categoria]);
+
+  const elegirCategoria = (c: CategoriaPlaga) => {
+    setCategoria(c);
+    setSeleccion(null);
+    setBusqueda("");
+  };
 
   const onFile = (file: File) => {
     const reader = new FileReader();
@@ -58,33 +66,59 @@ export function ReportarPlagaModal({
 
             <Section icon="search" title="Identificación">
               <div className="row gap-6" style={{ marginBottom: 10 }}>
-                {(["Insecto", "Hongo", "Maleza"] as const).map((c) => (
+                {(["Insecto", "Enfermedad", "Maleza"] as const).map((c) => (
                   <button
                     key={c}
-                    onClick={() => setCategoria(c)}
+                    onClick={() => elegirCategoria(c)}
                     className="mc-btn mc-btn--sm"
                     style={{ flex: 1, background: categoria === c ? "var(--mc-green-600)" : "var(--mc-surface-2)", color: categoria === c ? "white" : "var(--mc-text-2)", border: "1px solid var(--mc-line-2)" }}
                   >
-                    <Icon name={c === "Insecto" ? "bug" : c === "Hongo" ? "sprout" : "leaf"} size={13} /> {c}
+                    <Icon name={c === "Insecto" ? "bug" : c === "Enfermedad" ? "sprout" : "leaf"} size={13} /> {c}
                   </button>
                 ))}
               </div>
               <div style={{ position: "relative" }}>
-                <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar Plaga o Enfermedad..." style={inp} />
-                {filtradas.length > 0 && (
-                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--mc-surface)", border: "1.5px solid var(--mc-line)", borderRadius: 8, zIndex: 10, boxShadow: "var(--sh-lg)", overflow: "hidden", marginTop: 4 }}>
-                    {filtradas.slice(0, 5).map((s) => (
-                      <div key={s} onClick={() => { setPlaga(s); setBusqueda(""); }} style={{ padding: "9px 14px", cursor: "pointer", fontSize: 13, color: "var(--mc-ink)" }}>{s}</div>
-                    ))}
+                <input
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  onFocus={() => setFoco(true)}
+                  onBlur={() => setTimeout(() => setFoco(false), 150)}
+                  placeholder={`Buscar entre ${totalCategoria} ${categoria === "Insecto" ? "insectos" : categoria === "Enfermedad" ? "enfermedades" : "malezas"}… (nombre o científico)`}
+                  style={inp}
+                />
+                {foco && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--mc-surface)", border: "1.5px solid var(--mc-line)", borderRadius: 8, zIndex: 10, boxShadow: "var(--sh-lg)", overflowY: "auto", maxHeight: 240, marginTop: 4 }}>
+                    {resultados.length === 0 ? (
+                      <div style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--mc-text-3)" }}>Sin coincidencias. Probá otro término o cambiá la categoría.</div>
+                    ) : (
+                      resultados.map((p) => (
+                        <div
+                          key={`${p.nombre}-${p.cientifico}`}
+                          onMouseDown={() => { setSeleccion(p); setBusqueda(""); setFoco(false); }}
+                          style={{ padding: "8px 14px", cursor: "pointer", borderBottom: "1px solid var(--mc-surface-2)" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--mc-surface-2)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <div className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{p.nombre}</div>
+                          <div className="text-xs text-muted" style={{ fontStyle: "italic" }}>{p.cientifico}</div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
-              <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--mc-surface-2)", borderRadius: 8, border: "1px solid var(--mc-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{plaga}</div>
-                  <div className="text-xs text-muted" style={{ fontStyle: "italic" }}>{plaga}</div>
-                </div>
-                <Icon name="alert" size={16} style={{ color: "var(--mc-amber)" }} />
+              <div style={{ marginTop: 12, padding: "10px 14px", background: seleccion ? "var(--mc-green-50)" : "var(--mc-surface-2)", borderRadius: 8, border: `1px solid ${seleccion ? "var(--mc-green-200)" : "var(--mc-line)"}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                {seleccion ? (
+                  <>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{seleccion.nombre}</div>
+                      <div className="text-xs text-muted" style={{ fontStyle: "italic" }}>{seleccion.cientifico} · {categoria}</div>
+                    </div>
+                    <button onClick={() => setSeleccion(null)} className="mc-icon-btn" title="Quitar selección" style={{ flexShrink: 0 }}><Icon name="x" size={14} /></button>
+                  </>
+                ) : (
+                  <div className="text-xs text-muted">Elegí una {categoria === "Insecto" ? "plaga" : categoria === "Enfermedad" ? "enfermedad" : "maleza"} de la lista.</div>
+                )}
               </div>
             </Section>
 
@@ -136,9 +170,9 @@ export function ReportarPlagaModal({
           <button onClick={onClose} className="mc-btn mc-btn--secondary">Cancelar</button>
           <button
             className="mc-btn"
-            style={{ background: lista[loteIdx]?.id && plaga.trim() ? "#c08a22" : "#d8c79a", color: "white", cursor: lista[loteIdx]?.id && plaga.trim() ? "pointer" : "not-allowed" }}
-            disabled={!lista[loteIdx]?.id || !plaga.trim()}
-            onClick={() => onConfirm({ loteId: lista[loteIdx]?.id, plaga: plaga.split(" (")[0], tipo: categoria === "Insecto" ? "Insecto" : categoria === "Hongo" ? "Hongo" : "Maleza", incidencia, observaciones: notas, imagenUrl: foto })}
+            style={{ background: lista[loteIdx]?.id && seleccion ? "#c08a22" : "#d8c79a", color: "white", cursor: lista[loteIdx]?.id && seleccion ? "pointer" : "not-allowed" }}
+            disabled={!lista[loteIdx]?.id || !seleccion}
+            onClick={() => seleccion && onConfirm({ loteId: lista[loteIdx]?.id, plaga: seleccion.nombre, tipo: categoria, incidencia, observaciones: `${seleccion.cientifico}${notas ? " · " + notas : ""}`, imagenUrl: foto })}
           >
             <Icon name="alert" size={14} /> Generar Alerta
           </button>
