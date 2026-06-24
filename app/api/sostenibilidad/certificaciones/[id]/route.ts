@@ -32,7 +32,11 @@ export async function GET(
       },
     });
 
-    if (!certificacion) {
+    const owner = await prisma.certificacionSostenibilidad.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!certificacion || !owner || owner.establecimiento?.userId !== session.user.id) {
       return NextResponse.json(
         { error: "Certificación no encontrada" },
         { status: 404 }
@@ -73,6 +77,17 @@ export async function PATCH(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const existente = await prisma.certificacionSostenibilidad.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Certificación no encontrada" },
+        { status: 404 }
+      );
+    }
+
     const body = await req.json();
 
     const certificacion = await prisma.certificacionSostenibilidad.update({
@@ -99,6 +114,17 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const existente = await prisma.certificacionSostenibilidad.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Certificación no encontrada" },
+        { status: 404 }
+      );
     }
 
     await prisma.certificacionSostenibilidad.delete({

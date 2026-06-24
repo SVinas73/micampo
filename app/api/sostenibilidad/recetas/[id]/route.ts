@@ -25,12 +25,13 @@ export async function GET(
             nombre: true,
             cuit: true,
             direccion: true,
+            userId: true,
           },
         },
       },
     });
 
-    if (!receta) {
+    if (!receta || receta.establecimiento?.userId !== session.user.id) {
       return NextResponse.json(
         { error: "Receta no encontrada" },
         { status: 404 }
@@ -56,6 +57,17 @@ export async function PATCH(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const existente = await prisma.recetaAgronomica.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Receta no encontrada" },
+        { status: 404 }
+      );
     }
 
     const body = await req.json();
@@ -107,6 +119,17 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const existente = await prisma.recetaAgronomica.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!existente || existente.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Receta no encontrada" },
+        { status: 404 }
+      );
     }
 
     await prisma.recetaAgronomica.delete({

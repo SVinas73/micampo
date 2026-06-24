@@ -21,7 +21,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const where: any = { establecimientoId };
+    const where: any = {
+      establecimientoId,
+      establecimiento: { userId: session.user.id },
+    };
     if (estado) {
       where.estado = estado;
     }
@@ -108,6 +111,26 @@ export async function POST(req: Request) {
         { error: "Faltan campos requeridos" },
         { status: 400 }
       );
+    }
+
+    // Verificar que el establecimiento pertenece al usuario
+    const establecimiento = await prisma.establecimiento.findUnique({
+      where: { id: establecimientoId },
+      select: { userId: true },
+    });
+    if (!establecimiento || establecimiento.userId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
+    // Si se especifica un lote, verificar que pertenece al usuario
+    if (loteId) {
+      const lote = await prisma.lote.findUnique({
+        where: { id: loteId },
+        select: { userId: true },
+      });
+      if (!lote || lote.userId !== session.user.id) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+      }
     }
 
     // Generar número de receta único

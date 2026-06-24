@@ -14,6 +14,17 @@ export async function GET(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const certificacion = await prisma.certificacionSostenibilidad.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!certificacion || certificacion.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "No encontrada" },
+        { status: 404 }
+      );
+    }
+
     const documentos = await prisma.documentoCertificacion.findMany({
       where: { certificacionId: params.id },
       orderBy: { createdAt: "desc" },
@@ -51,6 +62,17 @@ export async function POST(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const certificacion = await prisma.certificacionSostenibilidad.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!certificacion || certificacion.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "No encontrada" },
+        { status: 404 }
+      );
     }
 
     const body = await req.json();

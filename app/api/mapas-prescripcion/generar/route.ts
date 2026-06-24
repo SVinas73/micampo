@@ -20,6 +20,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verificar que el lote pertenece al usuario
+    const lote = await prisma.lote.findUnique({
+      where: { id: loteId },
+      select: { userId: true },
+    });
+    if (!lote || lote.userId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
     // Obtener zonas de manejo del lote
     const zonas = await prisma.zonaManejo.findMany({
       where: { loteId },

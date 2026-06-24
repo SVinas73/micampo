@@ -14,6 +14,11 @@ export async function DELETE(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const existente = await prisma.loteInsumo.findUnique({ where: { id: params.id } });
+    if (!existente || existente.userId !== session.user.id) {
+      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    }
+
     await prisma.loteInsumo.delete({ where: { id: params.id } });
     return NextResponse.json({ message: "Eliminado" });
   } catch (error) {

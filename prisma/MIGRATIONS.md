@@ -30,7 +30,7 @@ Antes de confiar en las migraciones, confirmá que coinciden:
 ```bash
 npx prisma migrate diff \
   --from-url "$DATABASE_URL" \
-  --to-migrations ./prisma/migrations \
+  --to-schema-datamodel ./prisma/schema.prisma \
   --script
 ```
 

@@ -21,7 +21,10 @@ export async function GET(req: Request) {
     }
 
     const reportes = await prisma.reporteAgroquimico.findMany({
-      where: { establecimientoId },
+      where: {
+        establecimientoId,
+        establecimiento: { userId: session.user.id },
+      },
       orderBy: { fechaInicio: "desc" },
       include: {
         establecimiento: {
@@ -57,6 +60,15 @@ export async function POST(req: Request) {
         { error: "Faltan campos requeridos" },
         { status: 400 }
       );
+    }
+
+    // Verificar que el establecimiento pertenece al usuario
+    const establecimiento = await prisma.establecimiento.findUnique({
+      where: { id: establecimientoId },
+      select: { userId: true },
+    });
+    if (!establecimiento || establecimiento.userId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     const inicio = new Date(fechaInicio);

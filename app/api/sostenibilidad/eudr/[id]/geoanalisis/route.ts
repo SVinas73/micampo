@@ -14,6 +14,17 @@ export async function POST(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const eudr = await prisma.complianceEUDR.findUnique({
+      where: { id: params.id },
+      include: { establecimiento: { select: { userId: true } } },
+    });
+    if (!eudr || eudr.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "No encontrada" },
+        { status: 404 }
+      );
+    }
+
     const body = await req.json();
     const {
       imagenSatelital2019,

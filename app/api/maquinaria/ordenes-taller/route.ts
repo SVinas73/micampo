@@ -7,16 +7,8 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -27,7 +19,7 @@ export async function GET(request: Request) {
       where: {
         maquinaria: {
           establecimiento: {
-            // Agregar filtro por usuario si tu modelo lo requiere
+            userId: session.user.id,
           },
         },
         ...(estado && { estado }),
@@ -79,7 +71,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
@@ -110,6 +102,15 @@ export async function POST(request: Request) {
         },
         { status: 400 }
       );
+    }
+
+    // Verificar que la maquinaria pertenece al usuario
+    const maq = await prisma.maquinaria.findUnique({
+      where: { id: maquinariaId },
+      select: { establecimiento: { select: { userId: true } } },
+    });
+    if (!maq || maq.establecimiento?.userId !== session.user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     // Generar número de orden

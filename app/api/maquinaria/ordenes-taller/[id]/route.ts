@@ -11,8 +11,21 @@ export async function GET(
   const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const ordenAuth = await prisma.ordenTaller.findUnique({
+      where: { id: params.id },
+      include: {
+        maquinaria: { select: { establecimiento: { select: { userId: true } } } },
+      },
+    });
+    if (
+      !ordenAuth ||
+      ordenAuth.maquinaria?.establecimiento?.userId !== session.user.id
+    ) {
+      return NextResponse.json({ error: "No encontrada" }, { status: 404 });
     }
 
     const orden = await prisma.ordenTaller.findUnique({
@@ -43,8 +56,21 @@ export async function PATCH(
   const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const ordenAuth = await prisma.ordenTaller.findUnique({
+      where: { id: params.id },
+      include: {
+        maquinaria: { select: { establecimiento: { select: { userId: true } } } },
+      },
+    });
+    if (
+      !ordenAuth ||
+      ordenAuth.maquinaria?.establecimiento?.userId !== session.user.id
+    ) {
+      return NextResponse.json({ error: "No encontrada" }, { status: 404 });
     }
 
     const body = await request.json();
@@ -99,8 +125,21 @@ export async function DELETE(
   const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const ordenAuth = await prisma.ordenTaller.findUnique({
+      where: { id: params.id },
+      include: {
+        maquinaria: { select: { establecimiento: { select: { userId: true } } } },
+      },
+    });
+    if (
+      !ordenAuth ||
+      ordenAuth.maquinaria?.establecimiento?.userId !== session.user.id
+    ) {
+      return NextResponse.json({ error: "No encontrada" }, { status: 404 });
     }
 
     await prisma.ordenTaller.delete({
