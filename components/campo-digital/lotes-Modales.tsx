@@ -360,7 +360,7 @@ export function EliminarCampoEstModal({
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", display: "flex", alignItems: "center", gap: 10 }}>
               <Icon name="alert" size={26} /> Eliminar Campo
             </div>
-            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>Se elimina el establecimiento. Sus lotes NO se borran.</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>Se elimina el establecimiento y TODOS sus lotes.</div>
           </div>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8, width: 34, height: 34, cursor: "pointer", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
             <Icon name="x" size={15} />
@@ -386,7 +386,7 @@ export function EliminarCampoEstModal({
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "#b91c1c", marginBottom: 4 }}>¡Atención!</div>
                   <div style={{ fontSize: 13, color: "#7f1d1d", lineHeight: 1.5 }}>
-                    Vas a eliminar el campo <strong>{sel?.nombre}</strong>. {sel?.lotesCount ? <>Sus <strong>{sel.lotesCount} lote(s)</strong> NO se eliminan: quedan “Sin asignar” y los podés reasignar.</> : "No tiene lotes asignados."}
+                    Vas a eliminar el campo <strong>{sel?.nombre}</strong>. {sel?.lotesCount ? <>Sus <strong>{sel.lotesCount} lote(s)</strong> se eliminan también, con todos sus datos.</> : "No tiene lotes asignados."}
                   </div>
                 </div>
               </div>

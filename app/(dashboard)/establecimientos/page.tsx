@@ -86,10 +86,22 @@ export default function EstablecimientosPage() {
       const res = await fetch(`/api/establecimientos/${aEliminar.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       const d = await res.json().catch(() => ({}));
-      toast.show(d.lotesLiberados ? `Establecimiento eliminado · ${d.lotesLiberados} lote(s) quedaron sin asignar` : "Establecimiento eliminado");
+      toast.show(d.lotesEliminados ? `Establecimiento y ${d.lotesEliminados} lote(s) eliminados` : "Establecimiento eliminado");
       setAEliminar(null);
       cargar(); recargar();
     } catch { toast.show("No se pudo eliminar", "err"); } finally { setBorrando(false); }
+  };
+
+  const eliminarLote = async (l: Lote) => {
+    if (!confirm(`¿Eliminar el lote "${l.nombre}" y todos sus datos? Esta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch(`/api/lotes/${l.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast.show(`Lote "${l.nombre}" eliminado`);
+      cargar(); recargar();
+    } catch {
+      toast.show("No se pudo eliminar el lote", "err");
+    }
   };
 
   const totalHa = lotes.reduce((s, l) => s + (l.hectareas || 0), 0);
@@ -170,7 +182,7 @@ export default function EstablecimientosPage() {
               </div>
             ) : (
               <table className="mc-table">
-                <thead><tr><th>Lote</th><th>Cultivo</th><th className="mc-cell--num">Hectáreas</th><th>Establecimiento</th></tr></thead>
+                <thead><tr><th>Lote</th><th>Cultivo</th><th className="mc-cell--num">Hectáreas</th><th>Establecimiento</th><th></th></tr></thead>
                 <tbody>
                   {lotes.map((l) => (
                     <tr key={l.id}>
@@ -187,6 +199,11 @@ export default function EstablecimientosPage() {
                           <option value="">— Sin asignar —</option>
                           {ests.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
                         </select>
+                      </td>
+                      <td>
+                        <button className="mc-icon-btn" title="Eliminar lote" style={{ color: "var(--mc-red)" }} onClick={() => eliminarLote(l)}>
+                          <Icon name="trash" size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -244,7 +261,7 @@ export default function EstablecimientosPage() {
         open={!!aEliminar}
         onClose={() => setAEliminar(null)}
         title={`Eliminar ${aEliminar?.nombre || "establecimiento"}`}
-        subtitle="Se elimina el establecimiento. Sus lotes NO se borran: quedan sin asignar y los podés reasignar."
+        subtitle="Se elimina el establecimiento y TODOS sus lotes (con sus datos asociados). Esta acción no se puede deshacer."
         footer={<>
           <button className="mc-btn mc-btn--ghost" onClick={() => setAEliminar(null)}>Cancelar</button>
           <button className="mc-btn" style={{ background: "var(--mc-red)", color: "#fff", border: "none" }} onClick={eliminar} disabled={borrando}>
@@ -254,7 +271,7 @@ export default function EstablecimientosPage() {
       >
         <div style={{ fontSize: 13.5, color: "var(--mc-text-2)", lineHeight: 1.55 }}>
           {aEliminar?.lotesCount ? (
-            <>El establecimiento <strong>{aEliminar.nombre}</strong> tiene <strong>{aEliminar.lotesCount} lote(s)</strong>. No se eliminan: pasarán a “Sin asignar”.</>
+            <>El establecimiento <strong>{aEliminar.nombre}</strong> y sus <strong>{aEliminar.lotesCount} lote(s)</strong> se eliminarán por completo, junto con sus datos (siembras, cosechas, labores, etc.).</>
           ) : (
             <>El establecimiento <strong>{aEliminar?.nombre}</strong> no tiene lotes asignados.</>
           )}
