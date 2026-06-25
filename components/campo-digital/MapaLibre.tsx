@@ -288,7 +288,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
 
       map.addSource("lotes", { type: "geojson", data: fc(lotes, layer) });
       map.addLayer({ id: "lotes-fill", type: "fill", source: "lotes", paint: { "fill-color": ["get", "color"], "fill-opacity": fillOpacity(layerRef.current, selectedId ?? null) } as any });
-      map.addLayer({ id: "lotes-line", type: "line", source: "lotes", paint: { "line-color": "#ffffff", "line-width": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6], "line-opacity": 0.95 } as any });
+      map.addLayer({ id: "lotes-line", type: "line", source: "lotes", paint: { "line-color": layerRef.current === "Topografía" ? "#111111" : "#ffffff", "line-width": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6], "line-opacity": 0.95 } as any });
       renderMarkers();
       renderCampoMarkers();
       map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -407,6 +407,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
     if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
     if (map.getLayer("topo")) map.setLayoutProperty("topo", "visibility", layer === "Topografía" ? "visible" : "none");
+    if (map.getLayer("lotes-line")) map.setPaintProperty("lotes-line", "line-color", layer === "Topografía" ? "#111111" : "#ffffff");
     renderMarkers();
     renderCampoMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps

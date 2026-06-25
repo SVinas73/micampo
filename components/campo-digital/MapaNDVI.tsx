@@ -181,7 +181,8 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
       if (lm) lm.setView(e.latlng, Math.min(19, map.getZoom() + 2), { animate: false });
       if (wrap) { wrap.style.left = `${e.containerPoint.x - 70}px`; wrap.style.top = `${e.containerPoint.y - 165}px`; }
     });
-    // Si el dibujo se cancela (Escape), apagar la lupa
+    // La lupa se enciende con cualquier dibujo (incluida la herramienta de lote)
+    map.on((L as any).Draw.Event.DRAWSTART, () => setDibujando(true));
     map.on((L as any).Draw.Event.DRAWSTOP, () => setDibujando(false));
 
     return () => {
@@ -297,8 +298,8 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
         layer === "NDVI" && SENTINEL_INSTANCE ? "transparent" :
         ndviColor(l.ndvi);
       const poly = L.polygon(ring, {
-        color: sel ? "#ffffff" : "#1a1f1c",
-        weight: sel ? 3.5 : 1.5,
+        color: layer === "Topografía" ? "#111111" : (sel ? "#ffffff" : "#1a1f1c"),
+        weight: sel ? 3.5 : (layer === "Topografía" ? 2.4 : 1.5),
         opacity: 0.95,
         fillColor: fill,
         fillOpacity: fill === "transparent" ? 0 : sel ? 0.5 : 0.4,

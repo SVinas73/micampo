@@ -28,6 +28,9 @@ export type EstablecimientoItem = {
   centroLatitud?: number | null;
   centroLongitud?: number | null;
   hectareasTotales?: number | null;
+  ciudad?: string | null;
+  provincia?: string | null;
+  pais?: string | null;
 };
 
 type Ctx = {
@@ -93,6 +96,9 @@ export function LoteScopeProvider({ children }: { children: React.ReactNode }) {
               centroLatitud: e.centroLatitud ?? null,
               centroLongitud: e.centroLongitud ?? null,
               hectareasTotales: e.hectareasTotales ?? null,
+              ciudad: e.ciudad ?? null,
+              provincia: e.provincia ?? null,
+              pais: e.pais ?? null,
             }))
           : [];
         setTodosLosLotes(lotes);

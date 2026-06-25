@@ -201,6 +201,19 @@ export default function TabLotes() {
     setDrawArmed(true);
     if (estDelimitar.centroLatitud != null && estDelimitar.centroLongitud != null) {
       setVolarA({ lat: estDelimitar.centroLatitud, lng: estDelimitar.centroLongitud, nonce: Date.now() });
+    } else {
+      // Aún sin delimitar: geocodificar la ubicación cargada (ciudad/provincia/país)
+      // y volar directo al lugar, para que el usuario solo tenga que dibujar.
+      const q = [estDelimitar.ciudad, estDelimitar.provincia, estDelimitar.pais].filter(Boolean).join(", ");
+      if (q.length >= 3) {
+        fetch(`/api/geo/search?q=${encodeURIComponent(q)}`)
+          .then((r) => (r.ok ? r.json() : { resultados: [] }))
+          .then((d) => {
+            const r0 = d.resultados?.[0];
+            if (r0) setVolarA({ lat: Number(r0.lat), lng: Number(r0.lon), nonce: Date.now() });
+          })
+          .catch(() => {});
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [delimitarId, estDelimitar?.id]);
