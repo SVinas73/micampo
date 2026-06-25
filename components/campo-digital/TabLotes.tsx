@@ -37,7 +37,7 @@ import {
   type AgregarCampoData, type EditarLoteData, type NuevaTareaData,
 } from "./lotes-Modales";
 import { LoteOverlay, CropImg } from "./LoteOverlay";
-import { cuadradoDesdeCentro } from "@/lib/geo";
+import { cuadradoDesdeCentro, puntoEnPoligono } from "@/lib/geo";
 import BuscadorLugar from "./BuscadorLugar";
 
 /* ========== TAB LOTES (Figma CDLotes) ========== */
@@ -65,6 +65,8 @@ export default function TabLotes() {
   const [comentarioGeneral, setComentarioGeneral] = useState(false);
   const [dibujado, setDibujado] = useState<DibujoLote | null>(null);
   const [drawArmed, setDrawArmed] = useState(false);
+  const [modoNota, setModoNota] = useState(false);
+  const [notaPunto, setNotaPunto] = useState<{ lat: number; lng: number; loteId?: string; establecimientoId?: string; nombre: string } | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -295,6 +297,32 @@ export default function TabLotes() {
     }
   };
 
+  // Modo Nota: al tocar un punto, se asigna al lote que lo contiene; si cae fuera,
+  // al establecimiento (su contorno, o el activo). Después se escribe la nota.
+  const onPuntoNota = (lat: number, lng: number) => {
+    setModoNota(false);
+    const lote = visibles.find((l) => l.geojson?.coordinates?.[0] && puntoEnPoligono(lng, lat, l.geojson.coordinates[0]));
+    if (lote?.dbId) { setNotaPunto({ lat, lng, loteId: lote.dbId, nombre: lote.name }); return; }
+    const est = establecimientos.find((e) => e.coordenadas?.coordinates?.[0] && puntoEnPoligono(lng, lat, e.coordenadas.coordinates[0]));
+    if (est) { setNotaPunto({ lat, lng, establecimientoId: est.id, nombre: est.nombre }); return; }
+    if (establecimientoActivo) { setNotaPunto({ lat, lng, establecimientoId: establecimientoActivo.id, nombre: establecimientoActivo.nombre }); return; }
+    toast.show("Marcá un punto dentro de un lote o de un establecimiento delimitado", "err");
+  };
+
+  const guardarNotaPunto = async (texto: string) => {
+    if (!notaPunto) return;
+    const res = await fetch("/api/marcadores-geo", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        loteId: notaPunto.loteId, establecimientoId: notaPunto.establecimientoId,
+        latitud: notaPunto.lat, longitud: notaPunto.lng,
+        tipo: "Observación", titulo: "Nota", descripcion: texto, responsable: "Vos",
+      }),
+    }).catch(() => null);
+    toast.show(res && res.ok ? `Nota guardada en ${notaPunto.nombre}` : "No se pudo guardar la nota", res && res.ok ? "ok" : "err");
+    setNotaPunto(null);
+  };
+
   return (
     <>
       {toast.node}
@@ -321,6 +349,15 @@ export default function TabLotes() {
           lote={notaLote || selected || visibles[0]}
           onClose={() => { setNotaLote(null); setComentarioGeneral(false); }}
           onConfirm={agregarNota}
+        />
+      )}
+      {notaPunto && (
+        <NotaPuntoModal
+          nombre={notaPunto.nombre}
+          lat={notaPunto.lat}
+          lng={notaPunto.lng}
+          onClose={() => setNotaPunto(null)}
+          onConfirm={guardarNotaPunto}
         />
       )}
 
@@ -397,6 +434,9 @@ export default function TabLotes() {
           delimitandoNombre={estDelimitar?.nombre ?? null}
           delimitando={!!delimitarId}
           onReArmar={() => setDrawArmed(true)}
+          modoNota={modoNota}
+          onToggleNota={() => { setSelected(null); setModoNota((v) => !v); }}
+          onPuntoNota={onPuntoNota}
         />
       )}
       {view === "lista" && (
@@ -412,7 +452,7 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
@@ -430,6 +470,9 @@ function LotesMapa({
   delimitandoNombre?: string | null;
   delimitando?: boolean;
   onReArmar?: () => void;
+  modoNota?: boolean;
+  onToggleNota?: () => void;
+  onPuntoNota?: (lat: number, lng: number) => void;
 }) {
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
     NDVI: [
@@ -447,6 +490,17 @@ function LotesMapa({
       { color: "#9aa39a", label: "En descanso" },
     ],
     "Satélite": [],
+    Topografía: [
+      { color: "#7a5230", label: "Relieve / curvas de nivel" },
+      { color: "#cdbf9a", label: "Llano" },
+    ],
+    Humedad: [
+      { color: "#08519c", label: "Muy húmedo" },
+      { color: "#4292c6", label: "Húmedo" },
+      { color: "#9ecae1", label: "Medio" },
+      { color: "#deebf7", label: "Seco" },
+      { color: "#9aa39a", label: "Sin medición" },
+    ],
   };
   const legend = legendByLayer[layer] || [];
   const { establecimientos } = useLoteScope();
@@ -487,7 +541,7 @@ function LotesMapa({
             <button className={vista === "clasico" ? "is-on" : ""} onClick={() => cambiarVista("clasico")}>Clásico</button>
           </div>
           <div className="mc-seg">
-            {["NDVI", "Satélite", "Cultivos"].map((l) => (
+            {["NDVI", "Satélite", "Cultivos", "Topografía", "Humedad"].map((l) => (
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
@@ -505,13 +559,20 @@ function LotesMapa({
             </div>
           )}
         </div>
-        {onBuscar && (
-          <BuscadorLugar
-            onElegir={(p) => { onBuscar(p); if (delimitando) onReArmar?.(); }}
-            placeholder="Buscar lugar en el mapa…"
-            width={250}
-          />
-        )}
+        <div className="row gap-8" style={{ alignItems: "center" }}>
+          {onToggleNota && (
+            <button className={`mc-btn mc-btn--sm ${modoNota ? "mc-btn--primary" : "mc-btn--secondary"}`} onClick={onToggleNota} title="Marcar una nota en un punto del mapa">
+              <Icon name="pen" size={13} />{modoNota ? "Tocá el punto…" : "Nota"}
+            </button>
+          )}
+          {onBuscar && (
+            <BuscadorLugar
+              onElegir={(p) => { onBuscar(p); if (delimitando) onReArmar?.(); }}
+              placeholder="Buscar lugar en el mapa…"
+              width={250}
+            />
+          )}
+        </div>
       </div>
       <div className="mc-mapwrap" style={{ height: 640, position: "relative" }}>
         <MapaActivo
@@ -524,12 +585,21 @@ function LotesMapa({
           onDibujoIniciado={onDibujoIniciado}
           volarA={volarA}
           establecimientos={establecimientosGeo}
+          modoNota={modoNota}
+          onPuntoNota={onPuntoNota}
         />
 
         {delimitandoNombre && (
           <div className="mc-glass" style={{ position: "absolute", top: 56, left: "50%", transform: "translateX(-50%)", zIndex: 561, display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, color: "var(--mc-ink)", maxWidth: "90%" }}>
             <Icon name="pen" size={14} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />
             Delimitando <b style={{ margin: "0 2px" }}>{delimitandoNombre}</b> · buscá la ubicación y dibujá el contorno (doble click para cerrar)
+          </div>
+        )}
+
+        {modoNota && (
+          <div className="mc-glass" style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 561, display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, color: "var(--mc-ink)" }}>
+            <Icon name="pen" size={14} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />
+            Tocá un punto en el mapa para ubicar la nota
           </div>
         )}
 
@@ -1212,6 +1282,39 @@ function LotesListaDetallada({
 }
 
 /* ========== MODAL NOTA GEORREFERENCIADA ========== */
+function NotaPuntoModal({
+  nombre, lat, lng, onClose, onConfirm,
+}: {
+  nombre: string;
+  lat: number;
+  lng: number;
+  onClose: () => void;
+  onConfirm: (texto: string) => void;
+}) {
+  const [texto, setTexto] = useState("");
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onClose}>
+      <div style={{ background: "var(--mc-surface)", borderRadius: 16, width: 460, maxWidth: "100%", boxShadow: "var(--sh-lg)", padding: 22 }} onClick={(e) => e.stopPropagation()}>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
+          <div>
+            <div className="mc-card__eyebrow">Comentario Georreferenciado</div>
+            <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 16, marginTop: 2 }}>{nombre}</div>
+            <div className="text-xs text-muted" style={{ fontFamily: "var(--ff-mono)", marginTop: 2 }}>{lat.toFixed(5)}°, {lng.toFixed(5)}°</div>
+          </div>
+          <button className="mc-icon-btn" onClick={onClose}><Icon name="x" size={14} /></button>
+        </div>
+        <textarea className="mc-textarea" placeholder="Ej: Sector bajo con encharcamiento tras la lluvia. Revisar drenaje." value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus />
+        <div className="row gap-8 mt-12" style={{ justifyContent: "flex-end" }}>
+          <button className="mc-btn mc-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button className="mc-btn mc-btn--primary" disabled={!texto.trim()} onClick={() => onConfirm(texto.trim())}>
+            <Icon name="pen" size={13} />Guardar nota
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NotaModal({
   lote, onClose, onConfirm,
 }: {

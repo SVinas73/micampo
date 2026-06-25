@@ -56,6 +56,7 @@ export async function POST(request: Request) {
 
     const {
       loteId,
+      establecimientoId,
       latitud,
       longitud,
       tipo,
@@ -65,16 +66,30 @@ export async function POST(request: Request) {
       responsable,
     } = await request.json();
 
-    if (!loteId || !latitud || !longitud || !tipo || !titulo) {
+    if ((!loteId && !establecimientoId) || !latitud || !longitud || !tipo || !titulo) {
       return NextResponse.json(
-        { error: "Campos requeridos faltantes" },
+        { error: "Faltan campos requeridos (lote o establecimiento + ubicación + tipo + título)" },
         { status: 400 }
       );
     }
 
+    // Verificar propiedad del lote o establecimiento al que se asocia la nota
+    if (loteId) {
+      const lote = await prisma.lote.findUnique({ where: { id: loteId }, select: { userId: true } });
+      if (!lote || lote.userId !== session.user.id) {
+        return NextResponse.json({ error: "Lote no encontrado" }, { status: 404 });
+      }
+    } else if (establecimientoId) {
+      const est = await prisma.establecimiento.findUnique({ where: { id: establecimientoId }, select: { userId: true } });
+      if (!est || est.userId !== session.user.id) {
+        return NextResponse.json({ error: "Establecimiento no encontrado" }, { status: 404 });
+      }
+    }
+
     const marcador = await prisma.marcadorGeorreferenciado.create({
       data: {
-        loteId,
+        loteId: loteId || null,
+        establecimientoId: establecimientoId || null,
         latitud: parseFloat(latitud),
         longitud: parseFloat(longitud),
         tipo,

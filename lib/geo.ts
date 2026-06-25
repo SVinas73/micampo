@@ -35,6 +35,21 @@ export function cuadradoDesdeCentro(centro: Punto, hectareas: number): PoligonoL
   return { geojson: { type: "Polygon", coordinates: [ring] }, hectareas, centro, perimetro: Math.round(lado * 4) };
 }
 
+/**
+ * ¿El punto (lng, lat) cae dentro del anillo [lng, lat][]? Ray casting.
+ * Sirve para asignar una nota al lote/establecimiento donde se marcó.
+ */
+export function puntoEnPoligono(lng: number, lat: number, ring: number[][]): boolean {
+  let dentro = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    const cruza = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (cruza) dentro = !dentro;
+  }
+  return dentro;
+}
+
 /** Centroide simple (promedio) de un anillo de coordenadas [lng, lat][]. */
 export function centroideAnillo(ring: number[][]): Punto {
   const n = ring.length || 1;
