@@ -222,7 +222,8 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
         fillOpacity: fill === "transparent" ? 0 : sel ? 0.5 : 0.4,
       });
       poly.on("click", () => onSelectRef.current(l.id));
-      poly.bindTooltip(`${l.name}${l.ndvi ? ` · NDVI ${l.ndvi.toFixed(2)}` : ""}`, { sticky: true });
+      // Etiqueta permanente con el nombre del lote (igual que en 3D), no interactiva
+      poly.bindTooltip(l.name, { permanent: true, direction: "center", className: "mc-lote-tip", opacity: 1 });
       fg.addLayer(poly);
     });
 

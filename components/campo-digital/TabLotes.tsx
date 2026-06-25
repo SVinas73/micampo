@@ -45,7 +45,7 @@ export default function TabLotes() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { loteIdsEnScope, esTodos, recargar, establecimientos, establecimientoActivo } = useLoteScope();
+  const { loteIdsEnScope, esTodos, recargar, establecimientos, establecimientoActivo, establecimientoId, setEstablecimientoId } = useLoteScope();
   // Modo "delimitar establecimiento": llega desde el card de Establecimientos.
   const delimitarId = searchParams.get("delimitar");
   const estDelimitar = delimitarId ? establecimientos.find((e) => e.id === delimitarId) || null : null;
@@ -103,16 +103,11 @@ export default function TabLotes() {
     return () => { cancelado = true; };
   }, []);
 
-  /* ---- Acción de header: crear lote (la eliminación va en la toolbar del mapa) ---- */
+  /* ---- Acción de header. El lote se crea dibujándolo en el mapa ("Dibujar lote"). ---- */
   useSetHeaderActions(
-    <>
-      <button className="mc-btn mc-btn--red" onClick={() => setShowEliminarCampo(true)}>
-        <Icon name="trash" size={14} />Eliminar campo
-      </button>
-      <button className="mc-btn mc-btn--primary" onClick={() => { setDibujado(null); setShowAgregar(true); }}>
-        <Icon name="plus" size={14} />Nuevo lote
-      </button>
-    </>,
+    <button className="mc-btn mc-btn--red" onClick={() => setShowEliminarCampo(true)}>
+      <Icon name="trash" size={14} />Eliminar campo
+    </button>,
     []
   );
 
@@ -347,9 +342,21 @@ export default function TabLotes() {
               <Icon name="list" size={13} /> Vista Lista
             </button>
           </div>
-          <span className="mc-badge mc-badge--neutral" style={{ alignSelf: "center" }}>
-            <Icon name="building" size={11} />{establecimientoActivo ? establecimientoActivo.nombre : "Todos los establecimientos"}
-          </span>
+          {establecimientos.length > 0 && (
+            <div className="mc-seg" style={{ alignSelf: "center", display: "flex", alignItems: "center", paddingLeft: 8 }} title="Cambiar de establecimiento">
+              <Icon name="building" size={13} style={{ color: "var(--mc-green-700)" }} />
+              <select
+                value={establecimientoId}
+                onChange={(e) => setEstablecimientoId(e.target.value)}
+                style={{ border: "none", background: "transparent", fontWeight: 600, fontSize: 13, color: "var(--mc-ink)", cursor: "pointer", outline: "none", padding: "6px 8px", maxWidth: 220 }}
+              >
+                <option value="todos">Todos los establecimientos</option>
+                {establecimientos.map((e) => (
+                  <option key={e.id} value={e.id}>{e.nombre}{e.lotesCount != null ? ` (${e.lotesCount})` : ""}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className="row gap-8" style={{ position: "relative" }}>
           <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setShowFiltros(!showFiltros)}>
@@ -471,15 +478,6 @@ function LotesMapa({
     };
   }, []);
 
-  // Cambio rápido de lote a lote (sin ir a la lista)
-  const idx = selected ? lotes.findIndex((l) => l.id === selected.id) : -1;
-  const irA = (delta: number) => {
-    if (lotes.length === 0) return;
-    const base = idx < 0 ? 0 : (idx + delta + lotes.length) % lotes.length;
-    onSelect(lotes[base]);
-  };
-  const switcherBtn: React.CSSProperties = { borderRadius: 11, width: 34, height: 34, padding: 0, lineHeight: 0, display: "grid", placeItems: "center", color: "var(--mc-ink)", cursor: "pointer", border: "none", flexShrink: 0, boxSizing: "border-box" };
-
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)", gap: 12, flexWrap: "wrap" }}>
@@ -493,15 +491,27 @@ function LotesMapa({
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
-          {onBuscar && (
-            <BuscadorLugar
-              onElegir={(p) => { onBuscar(p); if (delimitando) onReArmar?.(); }}
-              placeholder="Buscar lugar en el mapa…"
-              width={230}
-            />
+          {lotes.length > 0 && (
+            <div className="mc-seg" style={{ display: "flex", alignItems: "center", paddingLeft: 8 }} title="Elegir lote">
+              <Icon name="map" size={13} style={{ color: "var(--mc-green-700)" }} />
+              <select
+                value={selected?.id ?? ""}
+                onChange={(e) => onSelect(lotes.find((l) => l.id === e.target.value) || null)}
+                style={{ border: "none", background: "transparent", fontWeight: 600, fontSize: 13, color: "var(--mc-ink)", cursor: "pointer", outline: "none", padding: "6px 8px", maxWidth: 200 }}
+              >
+                <option value="">Elegí un lote…</option>
+                {lotes.map((l) => <option key={l.id} value={l.id}>{l.name}{l.cultivo ? ` · ${l.cultivo}` : ""}</option>)}
+              </select>
+            </div>
           )}
         </div>
-        <div className="text-xs text-muted row gap-4"><Icon name="map" size={13} /> Tocá un lote para ver su ficha · dibujá nuevos lotes desde el mapa</div>
+        {onBuscar && (
+          <BuscadorLugar
+            onElegir={(p) => { onBuscar(p); if (delimitando) onReArmar?.(); }}
+            placeholder="Buscar lugar en el mapa…"
+            width={250}
+          />
+        )}
       </div>
       <div className="mc-mapwrap" style={{ height: 640, position: "relative" }}>
         <MapaActivo
@@ -530,24 +540,6 @@ function LotesMapa({
           </div>
         )}
 
-        {/* Switcher de lote (arriba-centro) — saltar de lote a lote */}
-        {lotes.length > 0 && (
-          <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 550, display: "flex", alignItems: "center", gap: 6, pointerEvents: "auto" }}>
-            <button className="mc-glass" aria-label="Lote anterior" onClick={() => irA(-1)} style={switcherBtn}><Icon name="chevLeft" size={16} /></button>
-            <div className="mc-glass" style={{ borderRadius: 11, height: 34, padding: "0 10px", display: "flex", alignItems: "center", gap: 6 }}>
-              <Icon name="map" size={13} style={{ color: "var(--mc-green-700)" }} />
-              <select
-                value={selected?.id ?? ""}
-                onChange={(e) => onSelect(lotes.find((l) => l.id === e.target.value) || null)}
-                style={{ border: "none", background: "transparent", fontWeight: 700, fontSize: 13, color: "var(--mc-ink)", cursor: "pointer", maxWidth: 200, outline: "none" }}
-              >
-                <option value="" disabled>Elegí un lote…</option>
-                {lotes.map((l) => <option key={l.id} value={l.id}>{l.name}{l.cultivo ? ` · ${l.cultivo}` : ""}</option>)}
-              </select>
-            </div>
-            <button className="mc-glass" aria-label="Lote siguiente" onClick={() => irA(1)} style={switcherBtn}><Icon name="chevRight" size={16} /></button>
-          </div>
-        )}
 
         {selected && (
           <LoteOverlay
