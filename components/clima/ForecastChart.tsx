@@ -33,10 +33,13 @@ export function ForecastChart({
 }) {
   return (
     <div
+      className="mc-hscroll"
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(${days.length || 1}, minmax(0, 1fr))`,
+        gridTemplateColumns: `repeat(${days.length || 1}, minmax(118px, 1fr))`,
         gap: 12,
+        overflowX: "auto",
+        paddingBottom: 4,
       }}
     >
       {days.map((d, i) => {

@@ -416,8 +416,8 @@ function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marca
           <WeatherScene cond={actual.cond || actual.icono} windy={(actual.viento ?? 0) >= 25} style={{ color: "#fff" }}>
           <div style={{ padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 18, position: "relative" }}>
-              <span style={{ width: 84, height: 84, borderRadius: "50%", background: "rgba(255,255,255,0.20)", display: "grid", placeItems: "center", boxShadow: "0 6px 18px rgba(0,0,0,0.18)", flexShrink: 0 }}>
-                <AnimatedWeatherIcon cond={actual.cond || actual.icono} size={62} />
+              <span style={{ width: 92, height: 92, borderRadius: "50%", background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", display: "grid", placeItems: "center", boxShadow: "0 8px 22px rgba(0,0,0,0.18)", flexShrink: 0, backdropFilter: "blur(10px) saturate(1.1)", WebkitBackdropFilter: "blur(10px) saturate(1.1)" }}>
+                <AnimatedWeatherIcon cond={actual.cond || actual.icono} size={66} />
               </span>
               <div>
                 <div style={{ fontSize: 11, opacity: 0.85, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700 }}>Ahora · {lugar}</div>
@@ -432,9 +432,9 @@ function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marca
                 { icon: "thermometer", label: "Rocío", val: `${actual.rocio}°` },
                 { icon: "activity", label: "Delta T", val: `${actual.deltaT}${actual.aptoPulverizacion ? " · apto" : ""}` },
               ].map((m) => (
-                <div key={m.label} style={{ background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 12, padding: "8px 12px", minWidth: 92, backdropFilter: "blur(2px)" }}>
-                  <div className="row gap-6" style={{ alignItems: "center", fontSize: 11, opacity: 0.85, fontWeight: 600 }}><Icon name={m.icon} size={12} />{m.label}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2, whiteSpace: "nowrap" }}>{m.val}</div>
+                <div key={m.label} style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 14, padding: "13px 18px", minWidth: 118, backdropFilter: "blur(10px) saturate(1.1)", WebkitBackdropFilter: "blur(10px) saturate(1.1)" }}>
+                  <div className="row gap-6" style={{ alignItems: "center", fontSize: 12, opacity: 0.9, fontWeight: 600 }}><Icon name={m.icon} size={14} />{m.label}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, marginTop: 4, whiteSpace: "nowrap" }}>{m.val}</div>
                 </div>
               ))}
             </div>
@@ -446,7 +446,7 @@ function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marca
         <div className="mc-card__head">
           <div>
             <div className="mc-card__eyebrow">Pronóstico Open-Meteo · {lugar}</div>
-            <div className="mc-card__title mt-4">Próximos {dias.length || 7} días</div>
+            <div className="mc-card__title mt-4">Próximos {dias.length || 10} días</div>
           </div>
           <div className="row gap-12" style={{ alignItems: "center" }}>
             <div

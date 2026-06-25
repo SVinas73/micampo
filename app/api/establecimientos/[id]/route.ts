@@ -57,12 +57,15 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       return NextResponse.json({ error: "Establecimiento no encontrado" }, { status: 404 });
     }
 
-    const lotesLiberados = est._count.lotes;
+    // Al eliminar el establecimiento se eliminan TAMBIÉN sus lotes (y en cascada
+    // toda su data: siembras, cosechas, labores, marcadores, etc.).
+    const lotesEliminados = est._count.lotes;
+    await prisma.lote.deleteMany({ where: { establecimientoId: id, userId: session.user.id } });
     await prisma.establecimiento.delete({ where: { id } });
 
     return NextResponse.json({
-      message: "Establecimiento eliminado",
-      lotesLiberados,
+      message: "Establecimiento y sus lotes eliminados",
+      lotesEliminados,
     });
   } catch (error) {
     console.error("Error al eliminar establecimiento:", error);

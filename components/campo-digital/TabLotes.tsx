@@ -233,7 +233,7 @@ export default function TabLotes() {
     const res = await fetch(`/api/establecimientos/${id}`, { method: "DELETE" }).catch(() => null);
     if (!res || !res.ok) { toast.show("No se pudo eliminar el campo", "err"); return; }
     const d = await res.json().catch(() => ({}));
-    toast.show(d.lotesLiberados ? `Campo "${camp?.nombre || ""}" eliminado · ${d.lotesLiberados} lote(s) sin asignar` : `Campo "${camp?.nombre || ""}" eliminado`);
+    toast.show(d.lotesEliminados ? `Campo "${camp?.nombre || ""}" y ${d.lotesEliminados} lote(s) eliminados` : `Campo "${camp?.nombre || ""}" eliminado`);
     setShowEliminarCampo(false);
     recargar();
   };
