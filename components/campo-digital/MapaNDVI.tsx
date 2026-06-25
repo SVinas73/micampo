@@ -79,6 +79,13 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
   const drawnRef = useRef<L.FeatureGroup | null>(null);
   const editLayerRef = useRef<any>(null);
   const [editando, setEditando] = useState(false);
+  // Lupa (magnifier) mientras se dibuja
+  const lupaWrapRef = useRef<HTMLDivElement>(null);
+  const lupaMapDivRef = useRef<HTMLDivElement>(null);
+  const lupaMapRef = useRef<L.Map | null>(null);
+  const [dibujando, setDibujando] = useState(false);
+  const dibujandoRef = useRef(false);
+  dibujandoRef.current = dibujando;
   const onDrawnRef = useRef(onDrawn);
   const onSelectRef = useRef(onSelect);
   onDrawnRef.current = onDrawn;
@@ -159,12 +166,23 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
       editLayerRef.current = lyr;
       try { lyr.editing?.enable(); } catch { /* leaflet-draw sin edición */ }
       setEditando(true);
+      setDibujando(false); // apaga la lupa; pasa a edición de vértices
     });
 
     // Modo "Nota": el próximo click en el mapa marca el punto de la nota.
     map.on("click", (e: any) => {
       if (modoNotaRef.current && onPuntoNotaRef.current) onPuntoNotaRef.current(e.latlng.lat, e.latlng.lng);
     });
+
+    // Lupa: mientras se dibuja, sigue el cursor y muestra la zona ampliada (+2 zoom).
+    map.on("mousemove", (e: any) => {
+      if (!dibujandoRef.current) return;
+      const lm = lupaMapRef.current, wrap = lupaWrapRef.current;
+      if (lm) lm.setView(e.latlng, Math.min(19, map.getZoom() + 2), { animate: false });
+      if (wrap) { wrap.style.left = `${e.containerPoint.x - 70}px`; wrap.style.top = `${e.containerPoint.y - 165}px`; }
+    });
+    // Si el dibujo se cancela (Escape), apagar la lupa
+    map.on((L as any).Draw.Event.DRAWSTOP, () => setDibujando(false));
 
     return () => {
       map.remove();
@@ -177,6 +195,24 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
     const map = mapRef.current;
     if (map) map.getContainer().style.cursor = modoNota ? "crosshair" : "";
   }, [modoNota]);
+
+  // Mini-mapa de la lupa (se crea una vez, satélite, sin controles)
+  useEffect(() => {
+    if (!lupaMapDivRef.current || lupaMapRef.current) return;
+    const lm = L.map(lupaMapDivRef.current, {
+      zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false,
+      doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false,
+      center: [-33.5, -61.5], zoom: 17, fadeAnimation: false, zoomAnimation: false,
+    });
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 }).addTo(lm);
+    lupaMapRef.current = lm;
+    return () => { lm.remove(); lupaMapRef.current = null; };
+  }, []);
+
+  // Al activar la lupa hay que recalcular su tamaño (estaba con opacidad 0)
+  useEffect(() => {
+    if (dibujando) setTimeout(() => lupaMapRef.current?.invalidateSize(), 60);
+  }, [dibujando]);
 
   // Volar a un lugar buscado (buscador del mapa)
   useEffect(() => {
@@ -222,6 +258,7 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
       drawHandlerRef.current = handler;
       handler.enable();
       onDibujoIniciado?.();
+      setDibujando(true);
     } catch { /* leaflet-draw no disponible */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [armarDibujo]);
@@ -311,6 +348,13 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%", minHeight: 600 }}>
       <div ref={ref} style={{ width: "100%", height: "100%", minHeight: 600 }} />
+
+      {/* Lupa: zona ampliada que sigue el cursor mientras se dibuja */}
+      <div ref={lupaWrapRef} style={{ position: "absolute", width: 140, height: 140, left: 0, top: 0, zIndex: 1200, pointerEvents: "none", opacity: dibujando ? 1 : 0, transition: "opacity .12s" }}>
+        <div ref={lupaMapDivRef} style={{ width: 140, height: 140, borderRadius: "50%", overflow: "hidden", border: "3px solid #fff", boxShadow: "0 6px 20px rgba(0,0,0,0.45)" }} />
+        <div style={{ position: "absolute", left: "50%", top: "50%", width: 14, height: 14, transform: "translate(-50%,-50%)", borderRadius: "50%", border: "2px solid #d9a538", boxShadow: "0 0 0 1px rgba(0,0,0,0.45)" }} />
+      </div>
+
       {editando && (
         <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 1000, display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.96)", border: "1px solid var(--mc-line)", borderRadius: 12, boxShadow: "var(--sh-lg)", padding: "8px 12px" }}>
           <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--mc-ink)" }}>Arrastrá los puntos para ajustar el contorno</span>
