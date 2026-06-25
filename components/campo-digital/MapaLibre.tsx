@@ -19,6 +19,7 @@ export type LoteGeo = {
   id: string;
   name: string;
   ndvi: number;
+  humedad?: number;
   vacio?: boolean;
   cultivoColor?: string | null;
   geojson?: GeoJSON.Polygon | null;
@@ -97,17 +98,18 @@ function ndviColor(v: number) {
   return "#c08a22";
 }
 
-function moistureColor(v: number) {
-  if (!v || v <= 0) return "#9aa39a";
-  if (v >= 0.7) return "#08519c";
-  if (v >= 0.55) return "#4292c6";
-  if (v >= 0.4) return "#9ecae1";
-  return "#deebf7";
+// Humedad de suelo real (Open-Meteo, m³/m³) → rampa azul. Sin dato → gris.
+function moistureColor(v?: number) {
+  if (v == null || v <= 0) return "#9aa39a";
+  if (v >= 0.33) return "#08519c"; // muy húmedo
+  if (v >= 0.25) return "#4292c6"; // húmedo
+  if (v >= 0.17) return "#9ecae1"; // medio
+  return "#deebf7"; // seco
 }
 
 function colorDe(l: LoteGeo, layer: string) {
   if (layer === "NDVI") return ndviColor(l.ndvi);
-  if (layer === "Humedad") return moistureColor(l.ndvi);
+  if (layer === "Humedad") return moistureColor(l.humedad);
   if (l.vacio || !l.cultivoColor) return "#9aa39a";
   return l.cultivoColor;
 }

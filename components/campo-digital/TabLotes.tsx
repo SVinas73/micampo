@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
@@ -112,6 +112,30 @@ export default function TabLotes() {
     </button>,
     []
   );
+
+  // Humedad de suelo real (Open-Meteo) — se carga al activar la capa "Humedad".
+  const humedadCargadaRef = useRef(false);
+  useEffect(() => {
+    if (layer !== "Humedad" || humedadCargadaRef.current) return;
+    const conGeo = lotes.filter((l) => l.geojson?.coordinates?.[0]?.length && l.dbId);
+    if (conGeo.length === 0) return;
+    humedadCargadaRef.current = true;
+    fetch("/api/lotes/humedad", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lotes: conGeo.map((l) => ({ id: l.dbId, geojson: l.geojson })) }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const resultados = d?.resultados as Record<string, { humedad: number }> | undefined;
+        if (!resultados) return;
+        setLotes((prev) => prev.map((l) => {
+          const m = l.dbId ? resultados[l.dbId] : undefined;
+          return m && typeof m.humedad === "number" ? { ...l, humedad: m.humedad } : l;
+        }));
+      })
+      .catch(() => {});
+  }, [layer, lotes]);
 
   // Lotes dentro del alcance global (establecimiento + lote)
   const enScope = useMemo(
@@ -518,7 +542,7 @@ function LotesMapa({
   const legend = legendByLayer[layer] || [];
   const { establecimientos } = useLoteScope();
   const nombreEst = (id?: string | null) => (id ? establecimientos.find((e) => e.id === id)?.nombre ?? null : null);
-  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
+  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
   // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
   const establecimientosGeo = establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, coordenadas: e.coordenadas ?? null }));
   // Para delimitar conviene la vista clásica (2D, cenital): más cómodo para dibujar.

@@ -16,6 +16,7 @@ export interface LoteUI {
   variety?: string;
   estadio?: string;
   ndvi: number;
+  humedad?: number; // humedad de suelo real (Open-Meteo, m³/m³)
   aguaUtil: number;
   sano: boolean;
   vacio?: boolean;
