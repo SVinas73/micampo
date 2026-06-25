@@ -35,6 +35,8 @@ type Props = {
   onDibujoIniciado?: () => void;
   volarA?: { lat: number; lng: number; nonce: number } | null;
   establecimientos?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[];
+  modoNota?: boolean;
+  onPuntoNota?: (lat: number, lng: number) => void;
 };
 
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
@@ -61,10 +63,14 @@ function moistureColor(v: number) {
   return "#deebf7";
 }
 
-export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos }: Props) {
+export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const topoLayerRef = useRef<L.TileLayer | null>(null);
+  const modoNotaRef = useRef(false);
+  const onPuntoNotaRef = useRef(onPuntoNota);
+  modoNotaRef.current = !!modoNota;
+  onPuntoNotaRef.current = onPuntoNota;
   const lotesLayerRef = useRef<L.FeatureGroup | null>(null);
   const camposLayerRef = useRef<L.FeatureGroup | null>(null);
   const ndviLayerRef = useRef<L.TileLayer.WMS | null>(null);
@@ -155,11 +161,22 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
       setEditando(true);
     });
 
+    // Modo "Nota": el próximo click en el mapa marca el punto de la nota.
+    map.on("click", (e: any) => {
+      if (modoNotaRef.current && onPuntoNotaRef.current) onPuntoNotaRef.current(e.latlng.lat, e.latlng.lng);
+    });
+
     return () => {
       map.remove();
       mapRef.current = null;
     };
   }, []);
+
+  // Cursor de "marcar nota"
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map) map.getContainer().style.cursor = modoNota ? "crosshair" : "";
+  }, [modoNota]);
 
   // Volar a un lugar buscado (buscador del mapa)
   useEffect(() => {
@@ -249,7 +266,7 @@ export default function MapaNDVI({ lotes, selectedId, layer, onSelect, onDrawn, 
         fillColor: fill,
         fillOpacity: fill === "transparent" ? 0 : sel ? 0.5 : 0.4,
       });
-      poly.on("click", () => onSelectRef.current(l.id));
+      poly.on("click", () => { if (!modoNotaRef.current) onSelectRef.current(l.id); });
       // Etiqueta permanente con el nombre del lote (igual que en 3D), no interactiva
       poly.bindTooltip(l.name, { permanent: true, direction: "center", className: "mc-lote-tip", opacity: 1 });
       fg.addLayer(poly);

@@ -68,6 +68,8 @@ type Props = {
   onDibujoIniciado?: () => void;
   volarA?: { lat: number; lng: number; nonce: number } | null;
   establecimientos?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[];
+  modoNota?: boolean;
+  onPuntoNota?: (lat: number, lng: number) => void;
 };
 
 /** Contornos de los campos: usa el límite dibujado del establecimiento si existe;
@@ -152,7 +154,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
-export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos }: Props) {
+export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -167,6 +169,10 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
   const layerRef = useRef(layer);
   const lotesRef = useRef(lotes);
   const establecimientosRef = useRef(establecimientos);
+  const modoNotaRef = useRef(false);
+  const onPuntoNotaRef = useRef(onPuntoNota);
+  modoNotaRef.current = !!modoNota;
+  onPuntoNotaRef.current = onPuntoNota;
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const campoMarkersRef = useRef<maplibregl.Marker[]>([]);
   onSelectRef.current = onSelect;
@@ -188,7 +194,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       const el = document.createElement("div");
       el.className = "mc-lote-marker";
       el.textContent = l.name;
-      el.onclick = () => { if (!drawingRef.current) onSelectRef.current(l.id); };
+      el.onclick = () => { if (!drawingRef.current && !modoNotaRef.current) onSelectRef.current(l.id); };
       markersRef.current.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map));
     });
   };
@@ -298,15 +304,16 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       }
 
       map.on("click", "lotes-fill", (e) => {
-        if (drawingRef.current) return;
+        if (drawingRef.current || modoNotaRef.current) return;
         const id = e.features?.[0]?.properties?.id;
         if (id) onSelectRef.current(String(id));
       });
-      map.on("mouseenter", "lotes-fill", () => { if (!drawingRef.current) map.getCanvas().style.cursor = "pointer"; });
-      map.on("mouseleave", "lotes-fill", () => { map.getCanvas().style.cursor = ""; });
+      map.on("mouseenter", "lotes-fill", () => { if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "lotes-fill", () => { if (!modoNotaRef.current) map.getCanvas().style.cursor = ""; });
 
-      // dibujo por click
+      // dibujo por click / marcar nota
       map.on("click", (e) => {
+        if (modoNotaRef.current && onPuntoNotaRef.current) { onPuntoNotaRef.current(e.lngLat.lat, e.lngLat.lng); return; }
         if (!drawingRef.current) return;
         drawPtsRef.current.push([e.lngLat.lng, e.lngLat.lat]);
         setDrawCount(drawPtsRef.current.length);
@@ -383,6 +390,13 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     map.flyTo({ center: [volarA.lng, volarA.lat], zoom: 14.5, duration: 1200 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volarA?.nonce, ready]);
+
+  // Cursor de "marcar nota"
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && ready && !drawingRef.current) map.getCanvas().style.cursor = modoNota ? "crosshair" : "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoNota, ready]);
 
   // ---- updates ----
   useEffect(() => {

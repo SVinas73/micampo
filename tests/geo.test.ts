@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as turf from "@turf/turf";
-import { cuadradoDesdeCentro, centroideAnillo } from "@/lib/geo";
+import { cuadradoDesdeCentro, centroideAnillo, puntoEnPoligono } from "@/lib/geo";
 
 describe("geo · cuadradoDesdeCentro", () => {
   const centro = { lat: -32.8, lng: -56.0 };
@@ -48,6 +48,22 @@ describe("geo · cuadradoDesdeCentro", () => {
     const anchoEc = ecuador.geojson.coordinates[0][1][0] - ecuador.geojson.coordinates[0][0][0];
     const anchoSur = sur.geojson.coordinates[0][1][0] - sur.geojson.coordinates[0][0][0];
     expect(anchoSur).toBeGreaterThan(anchoEc); // a mayor latitud, más grados de lng por metro
+  });
+});
+
+describe("geo · puntoEnPoligono", () => {
+  const cuadrado = [[-56, -33], [-54, -33], [-54, -31], [-56, -31], [-56, -33]];
+  it("detecta un punto interior", () => {
+    expect(puntoEnPoligono(-55, -32, cuadrado)).toBe(true);
+  });
+  it("detecta un punto exterior", () => {
+    expect(puntoEnPoligono(-50, -32, cuadrado)).toBe(false);
+    expect(puntoEnPoligono(-55, -40, cuadrado)).toBe(false);
+  });
+  it("funciona con el cuadrado generado desde un centro", () => {
+    const { geojson } = cuadradoDesdeCentro({ lat: -32.8, lng: -56 }, 100);
+    expect(puntoEnPoligono(-56, -32.8, geojson.coordinates[0])).toBe(true);
+    expect(puntoEnPoligono(-50, -32.8, geojson.coordinates[0])).toBe(false);
   });
 });
 

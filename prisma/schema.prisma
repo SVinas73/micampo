@@ -1070,9 +1070,13 @@ model EtapaTrazabilidad {
 }
 
 model MarcadorGeorreferenciado {
-  id     String @id @default(cuid())
-  loteId String
-  lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  id     String  @id @default(cuid())
+  loteId String?
+  lote   Lote?   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+
+  // Nota a nivel establecimiento (cuando el punto cae fuera de un lote)
+  establecimientoId String?
+  establecimiento   Establecimiento? @relation(fields: [establecimientoId], references: [id], onDelete: Cascade)
 
   latitud     Float
   longitud    Float
@@ -1093,6 +1097,7 @@ model MarcadorGeorreferenciado {
   updatedAt DateTime @updatedAt
 
   @@index([loteId])
+  @@index([establecimientoId])
   @@index([userId])
   @@index([fecha])
 }
@@ -3492,6 +3497,7 @@ model Establecimiento {
   reportesAgroquimicos ReporteAgroquimico[]
   certificaciones      CertificacionSostenibilidad[]
   declaracionesEUDR    ComplianceEUDR[]
+  marcadoresGeo        MarcadorGeorreferenciado[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
