@@ -74,7 +74,7 @@ export async function GET(request: Request) {
       `&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,` +
       `precipitation_probability_max,wind_speed_10m_max,et0_fao_evapotranspiration` +
-      `&timezone=auto&forecast_days=7`;
+      `&timezone=auto&forecast_days=10`;
 
     const r = await fetch(url, { headers: { Accept: "application/json" }, next: { revalidate: 900 } });
     if (!r.ok) throw new Error(`Open-Meteo ${r.status}`);
