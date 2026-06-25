@@ -447,6 +447,17 @@ function LotesMapa({
       { color: "#9aa39a", label: "En descanso" },
     ],
     "Satélite": [],
+    Topografía: [
+      { color: "#7a5230", label: "Relieve / curvas de nivel" },
+      { color: "#cdbf9a", label: "Llano" },
+    ],
+    Humedad: [
+      { color: "#08519c", label: "Muy húmedo" },
+      { color: "#4292c6", label: "Húmedo" },
+      { color: "#9ecae1", label: "Medio" },
+      { color: "#deebf7", label: "Seco" },
+      { color: "#9aa39a", label: "Sin medición" },
+    ],
   };
   const legend = legendByLayer[layer] || [];
   const { establecimientos } = useLoteScope();
@@ -487,7 +498,7 @@ function LotesMapa({
             <button className={vista === "clasico" ? "is-on" : ""} onClick={() => cambiarVista("clasico")}>Clásico</button>
           </div>
           <div className="mc-seg">
-            {["NDVI", "Satélite", "Cultivos"].map((l) => (
+            {["NDVI", "Satélite", "Cultivos", "Topografía", "Humedad"].map((l) => (
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>

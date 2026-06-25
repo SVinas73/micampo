@@ -95,8 +95,17 @@ function ndviColor(v: number) {
   return "#c08a22";
 }
 
+function moistureColor(v: number) {
+  if (!v || v <= 0) return "#9aa39a";
+  if (v >= 0.7) return "#08519c";
+  if (v >= 0.55) return "#4292c6";
+  if (v >= 0.4) return "#9ecae1";
+  return "#deebf7";
+}
+
 function colorDe(l: LoteGeo, layer: string) {
   if (layer === "NDVI") return ndviColor(l.ndvi);
+  if (layer === "Humedad") return moistureColor(l.ndvi);
   if (l.vacio || !l.cultivoColor) return "#9aa39a";
   return l.cultivoColor;
 }
@@ -137,8 +146,9 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   if (layer === "NDVI" && SENTINEL_INSTANCE) {
     return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 0.18, 0.04];
   }
-  const base = layer === "Satélite" ? 0.12 : 0.46;
-  const sel = layer === "Satélite" ? 0.38 : 0.66;
+  const transparente = layer === "Satélite" || layer === "Topografía";
+  const base = transparente ? 0.12 : 0.46;
+  const sel = transparente ? 0.38 : 0.66;
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
@@ -261,6 +271,10 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
         map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: layerRef.current === "NDVI" ? "visible" : "none" }, paint: { "raster-opacity": 0.85 } as any }, "etiquetas");
       }
 
+      // Capa de Topografía (OpenTopoMap: relieve + curvas de nivel)
+      map.addSource("topo", { type: "raster", tiles: ["https://a.tile.opentopomap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 17, attribution: "© OpenTopoMap (CC-BY-SA)" });
+      map.addLayer({ id: "topo", type: "raster", source: "topo", layout: { visibility: layerRef.current === "Topografía" ? "visible" : "none" }, paint: { "raster-opacity": 0.92 } as any }, "etiquetas");
+
       // Envolvente de cada campo (establecimiento)
       map.addSource("campos", { type: "geojson", data: boundariesFc(lotes, establecimientosRef.current) });
       map.addLayer({ id: "campos-fill", type: "fill", source: "campos", paint: { "fill-color": "#f0c75e", "fill-opacity": 0.06 } as any });
@@ -378,6 +392,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     (map.getSource("campos") as maplibregl.GeoJSONSource)?.setData(boundariesFc(lotes, establecimientosRef.current));
     if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
     if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
+    if (map.getLayer("topo")) map.setLayoutProperty("topo", "visibility", layer === "Topografía" ? "visible" : "none");
     renderMarkers();
     renderCampoMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
