@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, KPI, PageHeader, Modal, Field, useToast } from "@/components/mc";
 import { useLoteScope } from "@/components/LoteScope";
+import { DIVISIONES_POR_PAIS } from "@/lib/divisiones-administrativas";
 
 type Est = { id: string; nombre: string; direccion?: string | null; ciudad?: string | null; provincia?: string | null; pais?: string | null; cuit?: string | null; hectareasTotales?: number | null; lotesCount?: number; coordenadas?: unknown; centroLatitud?: number | null };
 type Lote = { id: string; nombre: string; hectareas: number; cultivo?: string | null; establecimientoId?: string | null };
@@ -213,15 +214,24 @@ export default function EstablecimientosPage() {
           <input className="mc-input" placeholder="Ej: Ruta 5, Km 40" value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} />
         </Field>
         <div className="grid g-cols-2 gap-12">
-          <Field label="Ciudad"><input className="mc-input" value={form.ciudad} onChange={(e) => setForm({ ...form, ciudad: e.target.value })} /></Field>
-          <Field label="Provincia / Depto."><input className="mc-input" value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value })} /></Field>
-        </div>
-        <div className="grid g-cols-2 gap-12">
           <Field label="País">
-            <select className="mc-select" value={form.pais} onChange={(e) => setForm({ ...form, pais: e.target.value })}>
-              {["Uruguay", "Argentina", "Brasil", "Paraguay", "Chile", "Bolivia"].map((p) => <option key={p}>{p}</option>)}
+            <select className="mc-select" value={form.pais} onChange={(e) => setForm({ ...form, pais: e.target.value, provincia: "" })}>
+              {Object.keys(DIVISIONES_POR_PAIS).map((p) => <option key={p}>{p}</option>)}
             </select>
           </Field>
+          <Field label="Provincia / Depto.">
+            {DIVISIONES_POR_PAIS[form.pais] ? (
+              <select className="mc-select" value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value })}>
+                <option value="">Elegí…</option>
+                {DIVISIONES_POR_PAIS[form.pais].map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            ) : (
+              <input className="mc-input" value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value })} />
+            )}
+          </Field>
+        </div>
+        <div className="grid g-cols-2 gap-12">
+          <Field label="Ciudad / Localidad"><input className="mc-input" value={form.ciudad} onChange={(e) => setForm({ ...form, ciudad: e.target.value })} /></Field>
           <Field label="CUIT / RUT"><input className="mc-input" placeholder="Identificación fiscal" value={form.cuit} onChange={(e) => setForm({ ...form, cuit: e.target.value })} /></Field>
         </div>
         <div style={{ padding: "10px 12px", background: "var(--mc-surface-2)", borderRadius: 8, fontSize: 12.5, color: "var(--mc-text-2)", display: "flex", alignItems: "center", gap: 8 }}>
