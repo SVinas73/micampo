@@ -17,6 +17,7 @@ const SKY: Record<WxCond, string> = {
   rain: "linear-gradient(120deg, #294258 0%, #3b596f 100%)",
   snow: "linear-gradient(120deg, #5a7791 0%, #84a1b9 100%)",
   storm: "linear-gradient(120deg, #242140 0%, #3b3759 100%)",
+  wind: "linear-gradient(120deg, #4a6076 0%, #6f8aa0 100%)",
 };
 
 /* ---------- Sol realista: disco con halo + rayos girando ---------- */
@@ -162,7 +163,8 @@ export function WeatherScene({
           </>
         )}
         {c === "snow" && (<><Clouds defs={[{ top: "6%", w: 140, dur: 46, delay: 0, dark: true }]} /><Snow /></>)}
-        {windy && c !== "storm" && c !== "rain" && <Wind />}
+        {c === "wind" && (<><Clouds defs={[{ top: "14%", w: 138, dur: 22, delay: 0, opacity: 0.6 }, { top: "44%", w: 100, dur: 16, delay: -8, opacity: 0.5 }]} /><Wind /></>)}
+        {(windy && c !== "storm" && c !== "rain" && c !== "wind") && <Wind />}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(105deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.12) 38%, rgba(0,0,0,0) 68%)" }} />
       </div>
       <div style={{ position: "relative", zIndex: 1 }}>{children}</div>

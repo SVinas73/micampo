@@ -520,7 +520,7 @@ export default function TabLotes() {
               </div>
             </>
           )}
-          <button className="mc-btn mc-btn--red mc-btn--sm" style={{ background: "transparent", color: "var(--mc-red)", border: "1px solid var(--mc-red)" }} onClick={() => setShowEliminarCampo(true)}>
+          <button className="mc-btn mc-btn--red mc-btn--sm" onClick={() => setShowEliminarCampo(true)}>
             <Icon name="trash" size={13} />Eliminar campo
           </button>
           <button className="mc-btn mc-btn--red mc-btn--sm" onClick={() => setShowEliminar(true)}>

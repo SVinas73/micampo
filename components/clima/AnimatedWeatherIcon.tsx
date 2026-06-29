@@ -8,16 +8,18 @@ import React from "react";
  * Liviano y nítido (no necesita three.js para íconos de este tamaño).
  */
 
-export type WxCond = "sun" | "partly" | "cloud" | "fog" | "rain" | "snow" | "storm";
+export type WxCond = "sun" | "partly" | "cloud" | "fog" | "rain" | "snow" | "storm" | "wind";
 
 export function condFrom(input?: string | null): WxCond {
   const k = (input || "").toLowerCase();
-  if (["sun", "partly", "cloud", "fog", "rain", "snow", "storm"].includes(k)) return k as WxCond;
+  if (["sun", "partly", "cloud", "fog", "rain", "snow", "storm", "wind"].includes(k)) return k as WxCond;
   if (k.includes("torm") || k.includes("bolt") || k.includes("storm")) return "storm";
-  if (k.includes("niev") || k.includes("snow")) return "snow";
+  // "chubascos de nieve" / "nevadas" → nieve
+  if (k.includes("niev") || k.includes("neva") || k.includes("snow")) return "snow";
   if (k.includes("lluv") || k.includes("llov") || k.includes("chubas") || k.includes("rain") || k.includes("droplet")) return "rain";
-  if (k.includes("niebla") || k.includes("fog")) return "fog";
-  if (k.includes("parcial") || k.includes("partly")) return "partly";
+  if (k.includes("niebla") || k.includes("fog") || k.includes("bruma") || k.includes("neblina")) return "fog";
+  if (k.includes("vien") || k.includes("ráfag") || k.includes("rafag") || k.includes("wind")) return "wind";
+  if (k.includes("parcial") || k.includes("partly") || k.includes("nubes y sol") || k.includes("algo de sol")) return "partly";
   if (k.includes("despej") || k.includes("sol") || k.includes("clear")) return "sun";
   return "cloud";
 }
@@ -25,7 +27,6 @@ export function condFrom(input?: string | null): WxCond {
 const SUN = "#f0a32f";
 const SUN_2 = "#ffd778";
 const DROP = "#3a93d6";
-const DROP_2 = "#7cc0ee";
 const BOLT = "#e8a13a";
 
 function Sun({ cx = 32, cy = 26, r = 11 }: { cx?: number; cy?: number; r?: number }) {
@@ -114,8 +115,19 @@ export function AnimatedWeatherIcon({ cond, size = 64 }: { cond: WxCond | string
           <>
             <Cloud y={-2} scale={1} />
             {[22, 32, 42].map((dx, i) => (
-              <text key={i} className="wx-flake" style={{ animationDelay: `${i * 0.5}s` }} x={dx} y="53" fontSize="9" fill={DROP_2} textAnchor="middle">❄</text>
+              <circle key={i} className="wx-flake" style={{ animationDelay: `${i * 0.45}s`, transformBox: "fill-box", transformOrigin: "center" }} cx={dx} cy="50" r="2.4" fill="#f4f9ff" stroke="#cfe3f5" strokeWidth="0.5" />
             ))}
+          </>
+        )}
+
+        {c === "wind" && (
+          <>
+            <Cloud x={-3} y={-3} scale={0.9} />
+            <g className="wx-gust" fill="none" stroke="#dce8f3" strokeWidth="2.6" strokeLinecap="round">
+              <path d="M14 42 H40 a4.5 4.5 0 1 0 -4.5 -4.5" />
+              <path d="M14 50 H31 a3.6 3.6 0 1 1 -3.6 3.6" />
+              <path d="M14 58 H24" opacity="0.8" />
+            </g>
           </>
         )}
 

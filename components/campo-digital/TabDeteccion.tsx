@@ -141,17 +141,18 @@ export default function TabDeteccion() {
         <KPI label="Monitoreo Semanal" value={demo("85%", "—")} delta={demo("17/20 lotes", "—")} trend="up" icon="check" />
       </div>
 
-      {/* Acciones del submódulo, debajo de los KPIs (alineadas a la derecha) */}
-      <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-        <button className="mc-btn mc-btn--primary" onClick={() => { setSub("Análisis (IA)"); setTimeout(() => fileRef.current?.click(), 100); }}>
-          <Icon name="upload" size={14} />Cargar Imagen de Lote
-        </button>
-        <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setReportarOpen(true)}>
-          <Icon name="alert" size={14} />Reportar Plaga
-        </button>
+      {/* Subtabs + acciones del submódulo a la misma altura (acciones a la derecha) */}
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <SubTabs tabs={["Información", "Análisis (IA)"]} active={sub} onChange={setSub} />
+        <div className="row gap-8">
+          <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => { setSub("Análisis (IA)"); setTimeout(() => fileRef.current?.click(), 100); }}>
+            <Icon name="upload" size={13} />Cargar Imagen de Lote
+          </button>
+          <button className="mc-btn mc-btn--sm" style={{ background: "#c08a22", color: "white" }} onClick={() => setReportarOpen(true)}>
+            <Icon name="alert" size={13} />Reportar Plaga
+          </button>
+        </div>
       </div>
-
-      <SubTabs tabs={["Información", "Análisis (IA)"]} active={sub} onChange={setSub} />
 
       {sub === "Información" && <EnfermedadesInfo alertas={alertas} onAgregar={agregarALabores} />}
       {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} />}

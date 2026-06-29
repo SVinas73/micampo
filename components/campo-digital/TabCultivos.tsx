@@ -203,27 +203,28 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       )}
 
-      {/* Acciones del submódulo, debajo de los KPIs (alineadas a la derecha) */}
+      {/* Subtabs + acciones del submódulo a la misma altura (acciones a la derecha) */}
       {!planificadorMode && (
-        <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-          {sub === "Análisis de Suelo" ? (
-            <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setAnalisisOpen(true)}>
-              <Icon name="plus" size={14} />Nuevo Analisis
-            </button>
-          ) : (
-            <>
-              <button className="mc-btn mc-btn--primary" onClick={() => setSiembraOpen(true)}>
-                <Icon name="sprout" size={14} />Nueva Siembra
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <SubTabs tabs={SUB_TABS} active={sub} onChange={setSub} />
+          <div className="row gap-8">
+            {sub === "Análisis de Suelo" ? (
+              <button className="mc-btn mc-btn--sm" style={{ background: "#c08a22", color: "white" }} onClick={() => setAnalisisOpen(true)}>
+                <Icon name="plus" size={13} />Nuevo Analisis
               </button>
-              <button className="mc-btn mc-btn--primary" onClick={() => setCosechaOpen(true)}>
-                <Icon name="plus" size={14} />Nueva Cosecha
-              </button>
-            </>
-          )}
+            ) : (
+              <>
+                <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setSiembraOpen(true)}>
+                  <Icon name="sprout" size={13} />Nueva Siembra
+                </button>
+                <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setCosechaOpen(true)}>
+                  <Icon name="plus" size={13} />Nueva Cosecha
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
-
-      {!planificadorMode && <SubTabs tabs={SUB_TABS} active={sub} onChange={setSub} />}
 
       {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} onEditar={() => setSiembraOpen(true)} />}
       {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={(loteId) => abrirNuevaLabor(loteId)} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
