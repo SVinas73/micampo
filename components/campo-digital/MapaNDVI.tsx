@@ -38,6 +38,7 @@ type Props = {
   establecimientos?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[];
   modoNota?: boolean;
   onPuntoNota?: (lat: number, lng: number) => void;
+  onCampoConLotes?: () => void;
 };
 
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";

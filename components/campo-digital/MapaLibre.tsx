@@ -71,6 +71,7 @@ type Props = {
   establecimientos?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[];
   modoNota?: boolean;
   onPuntoNota?: (lat: number, lng: number) => void;
+  onCampoConLotes?: () => void;
 };
 
 /** Contornos de los campos: usa el límite dibujado del establecimiento si existe;
@@ -156,7 +157,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
-export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota }: Props) {
+export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onCampoConLotes }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -448,6 +449,11 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
         /* Arriba-derecha, debajo de las acciones del lote (Labor/Nota/Editar) cuando hay uno seleccionado */
         <div style={{ position: "absolute", top: selectedId ? 156 : 14, right: 16, zIndex: 500, display: "flex", flexDirection: "column", gap: 8, width: 152 }}>
           <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={iniciarDibujo}><Icon name="pen" size={13} />Dibujar lote</button>
+          {onCampoConLotes && (
+            <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 11px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12, color: "var(--mc-ink)", cursor: "pointer", textAlign: "center", lineHeight: 1.2 }} onClick={onCampoConLotes} title="Crear un establecimiento dibujando sus lotes">
+              <Icon name="building" size={13} />Campo con lotes
+            </button>
+          )}
           <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 11px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12, color: "var(--mc-ink)", cursor: "pointer" }} onClick={toggleTerrain}>
             <Icon name="map" size={13} />{terrainOn ? "Vista plana" : "Relieve 3D"}
           </button>
