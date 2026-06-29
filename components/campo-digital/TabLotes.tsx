@@ -327,12 +327,21 @@ export default function TabLotes() {
 
   // Al filtrar por un establecimiento (local), centrar el mapa en él.
   useEffect(() => {
-    if (delimitarId) return;
+    if (delimitarId || localEstId === "todos") return;
+    // 1) centro guardado del establecimiento (si está delimitado)
     if (localEst?.centroLatitud != null && localEst?.centroLongitud != null) {
       setVolarA({ lat: localEst.centroLatitud, lng: localEst.centroLongitud, nonce: Date.now() });
+      return;
+    }
+    // 2) sin centro guardado: volar al promedio de los lotes del campo
+    const conGeo = enScope.filter((l) => l.geojson?.coordinates?.[0]?.length);
+    if (conGeo.length) {
+      let sLat = 0, sLng = 0, n = 0;
+      conGeo.forEach((l) => l.geojson!.coordinates[0].forEach((p) => { sLng += p[0]; sLat += p[1]; n++; }));
+      if (n) setVolarA({ lat: sLat / n, lng: sLng / n, nonce: Date.now() });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localEstId]);
+  }, [localEstId, lotes]);
 
   const eliminarLote = async (id: string) => {
     const lote = lotes.find((l) => (l.dbId || l.id) === id);
