@@ -1,24 +1,39 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getAnthropic, IA_VISION_MODEL, parseJsonTolerante } from "@/lib/ia";
+import { getAnthropic, IA_VISION_MODEL, parseJsonTolerante, modeloPropio, type TareaIA } from "@/lib/ia";
 
 export const maxDuration = 45;
 
 /**
  * Visión IA — "sacá una foto y resolvé".
- * Recibe una imagen + un modo (maleza/plaga, condición corporal, forraje, general)
- * y devuelve un análisis estructurado con Claude vision. Degrada con 503 si no hay
- * API key. Nunca inventa: pide más foto/contexto cuando no puede.
+ * Recibe una imagen + un modo (maleza/plaga, maquinaria, condición corporal,
+ * forraje, general) y devuelve un análisis estructurado. Rutea en 3 niveles:
+ * modelo propio de MiCampo → Claude vision → 503. Nunca inventa: pide más
+ * foto/contexto cuando no puede.
  */
 
 type AnthropicMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+
+/** Mapea cada modo de visión a la tarea estable del modelo propio. */
+const TAREA_POR_MODO: Record<string, TareaIA> = {
+  maleza: "vision.cultivo",
+  maquinaria: "vision.maquinaria",
+  "condicion-corporal": "vision.animal",
+  forraje: "vision.animal",
+  general: "vision.cultivo",
+};
 
 const MODOS: Record<string, { titulo: string; instruccion: string }> = {
   maleza: {
     titulo: "Identificación de maleza/plaga",
     instruccion:
       "Identificá la maleza, plaga o insecto de la foto. Indicá nombre común y científico si lo reconocés, su nivel de infestación aparente y el control recomendado (mecánico/químico). Si recomendás un principio activo, aclará que la dosis exacta se calcula en la Calculadora de Dosis.",
+  },
+  maquinaria: {
+    titulo: "Diagnóstico de maquinaria",
+    instruccion:
+      "Sos un mecánico experto en maquinaria agrícola (tractores, cosechadoras, sembradoras, pulverizadoras) de todas las marcas y antigüedades. Mirá la foto: identificá la pieza o componente, el problema visible (desgaste, rotura, fuga, fisura, corrosión, correa/manguera dañada, etc.) y su gravedad. Indicá la causa probable, la acción recomendada (ajuste/reemplazo/revisión en taller) y la urgencia (inmediata / esta semana / monitorear). Si ves una chapa o número de pieza, transcribilo. Si no podés diagnosticar con confianza, pedí una foto más cercana o de otro ángulo.",
   },
   "condicion-corporal": {
     titulo: "Condición corporal del animal",
@@ -54,6 +69,30 @@ export async function POST(request: Request) {
     else if (file.type === "image/webp") mediaType = "image/webp";
     else return NextResponse.json({ error: "Formato no soportado (usá JPEG, PNG, GIF o WebP)" }, { status: 400 });
 
+    const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+    const cfg = MODOS[modo] || MODOS.general;
+
+    // 1) Modelo propio de MiCampo (si está configurado) — visión entrenada a medida.
+    const tarea = TAREA_POR_MODO[modo] || "vision.cultivo";
+    const propio = await modeloPropio<{
+      resultado?: string; confianza?: number; detalle?: string;
+      metricas?: { label: string; valor: string }[]; recomendaciones?: string[];
+    }>(tarea, { modo, mediaType, imagenBase64: base64 });
+    if (propio?.resultado) {
+      return NextResponse.json({
+        modo,
+        titulo: cfg.titulo,
+        resultado: propio.resultado,
+        confianza: propio.confianza ?? 0,
+        detalle: propio.detalle || "",
+        metricas: Array.isArray(propio.metricas) ? propio.metricas : [],
+        recomendaciones: Array.isArray(propio.recomendaciones) ? propio.recomendaciones : [],
+        simulado: false,
+        fuente: "modelo-propio",
+      });
+    }
+
+    // 2) Claude vision (si hay API key).
     const anthropic = getAnthropic();
     if (!anthropic) {
       return NextResponse.json(
@@ -61,9 +100,6 @@ export async function POST(request: Request) {
         { status: 503 }
       );
     }
-
-    const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const cfg = MODOS[modo] || MODOS.general;
 
     const message = await anthropic.messages.create({
       model: IA_VISION_MODEL,

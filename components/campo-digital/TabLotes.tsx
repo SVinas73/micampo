@@ -1294,7 +1294,7 @@ function LoteCroquis({ lote }: { lote: LoteUI }) {
   );
 }
 
-type EcoLote = { margenPorHa: number; costoPorHa: number; porcentajeMargen: number; fuente: string };
+type EcoLote = { margenPorHa: number; costoPorHa: number; porcentajeMargen: number; fuente: string; costoMaquinariaPorHa: number };
 type AlertaLote = { plaga: string; severidad: string };
 
 function LotesListaDetallada({
@@ -1312,7 +1312,7 @@ function LotesListaDetallada({
     fetch("/api/economia/lotes").then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (!d?.lotes) return;
       const m: Record<string, EcoLote> = {};
-      d.lotes.forEach((l: any) => { m[l.loteId] = { margenPorHa: l.margenPorHa, costoPorHa: l.costoPorHa, porcentajeMargen: l.porcentajeMargen, fuente: l.fuente }; });
+      d.lotes.forEach((l: any) => { m[l.loteId] = { margenPorHa: l.margenPorHa, costoPorHa: l.costoPorHa, porcentajeMargen: l.porcentajeMargen, fuente: l.fuente, costoMaquinariaPorHa: l.costoMaquinariaPorHa || 0 }; });
       setEconomia(m);
     }).catch(() => {});
     fetch("/api/deteccion-enfermedades").then((r) => (r.ok ? r.json() : [])).then((d) => {
@@ -1380,6 +1380,9 @@ function LotesListaDetallada({
                       <div className="mc-prog__bar" style={{ width: `${Math.max(4, Math.min(100, Math.abs(eco!.porcentajeMargen)))}%`, background: eco!.margenPorHa >= 0 ? "var(--mc-green-500)" : "var(--mc-red)" }}></div>
                     </div>
                     <div className="text-xs text-muted mt-4">Costo ${Math.round(eco!.costoPorHa).toLocaleString("es-AR")}/ha</div>
+                    {eco!.costoMaquinariaPorHa > 0 && (
+                      <div className="text-xs text-muted">Maquinaria ${Math.round(eco!.costoMaquinariaPorHa).toLocaleString("es-AR")}/ha</div>
+                    )}
                   </>
                 ) : (
                   <span className="text-xs text-muted">Sin datos de costos</span>

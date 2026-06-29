@@ -15,6 +15,7 @@ type Resultado = {
 
 const MODOS = [
   { k: "maleza", label: "Maleza / Plaga", icon: "bug", desc: "Identificá una maleza, plaga o insecto y obtené el control recomendado." },
+  { k: "maquinaria", label: "Maquinaria", icon: "wrench", desc: "Sacá una foto de una pieza o falla y obtené el diagnóstico y la acción." },
   { k: "condicion-corporal", label: "Condición corporal", icon: "cow", desc: "Estimá la condición corporal de un animal (escala 1–5)." },
   { k: "forraje", label: "Forraje / Potrero", icon: "leaf", desc: "Evaluá la disponibilidad y calidad del forraje de un potrero." },
   { k: "general", label: "General", icon: "camera", desc: "Análisis libre de cualquier imagen del campo." },
@@ -71,7 +72,7 @@ export default function VisionPage() {
       />
 
       {/* Selector de modo */}
-      <div className="grid g-cols-4">
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
         {MODOS.map((m) => (
           <button
             key={m.k}

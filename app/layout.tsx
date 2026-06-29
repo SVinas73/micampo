@@ -6,6 +6,11 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 export const metadata: Metadata = {
   title: "MiCampo - Gestión Agropecuaria",
   description: "El sistema nervioso central del agro moderno",
+  appleWebApp: { capable: true, title: "MiCampo", statusBarStyle: "default" },
+};
+
+export const viewport = {
+  themeColor: "#5e7733",
 };
 
 export default function RootLayout({

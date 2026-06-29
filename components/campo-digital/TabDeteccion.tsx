@@ -303,7 +303,8 @@ function EstrategiaVacia() {
   );
 }
 
-type RiesgoClima = { amenaza: string; cultivo: string; lote: string; nivel: "Alto" | "Medio" | "Bajo"; probabilidad: number; ventana: string; causa: string };
+type Prescripcion = { producto: string; principioActivo: string; dosis: string; costoHa: number; perdidaPotencialHa: number; ahorroHa: number; roi: number; resumen: string };
+type RiesgoClima = { amenaza: string; cultivo: string; lote: string; nivel: "Alto" | "Medio" | "Bajo"; probabilidad: number; ventana: string; causa: string; prescripcion?: Prescripcion };
 
 function Probabilidades() {
   const [riesgos, setRiesgos] = useState<RiesgoClima[]>([]);
@@ -363,6 +364,20 @@ function Probabilidades() {
                   <span style={{ color, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="cloud" size={13} /> {p.causa}</span>
                   <span style={{ padding: "2px 8px", background: "var(--mc-surface)", border: `1px solid ${color}40`, borderRadius: 999, fontSize: 10, fontWeight: 700, color }}>{p.lote}</span>
                 </div>
+                {p.prescripcion && (
+                  <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)", borderRadius: 9 }}>
+                    <div className="row gap-6" style={{ alignItems: "center", marginBottom: 4 }}>
+                      <Icon name="flask" size={13} style={{ color: "var(--mc-green-700)" }} />
+                      <span className="font-semi text-xs" style={{ color: "var(--mc-green-700)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Acción recomendada</span>
+                      <span className="mc-badge mc-badge--green" style={{ marginLeft: "auto", fontSize: 10 }}>ROI {p.prescripcion.roi}x</span>
+                    </div>
+                    <div className="text-xs" style={{ color: "var(--mc-ink)", lineHeight: 1.45 }}>{p.prescripcion.resumen}</div>
+                    <div className="row gap-10 mt-4" style={{ fontSize: 10.5, color: "var(--mc-text-2)" }}>
+                      <span><b style={{ color: "var(--mc-ink)" }}>Costo</b> US${p.prescripcion.costoHa}/ha</span>
+                      <span><b style={{ color: "var(--mc-ink)" }}>Evita perder</b> US${Math.round(p.prescripcion.ahorroHa)}/ha</span>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
