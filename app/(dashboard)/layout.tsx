@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@/components/mc/Icon";
 import { Copiloto } from "@/components/Copiloto";
+import OfflineSync from "@/components/OfflineSync";
 import { LoteScopeProvider, useLoteScope } from "@/components/LoteScope";
 
 function EstablecimientoLabel() {
@@ -544,6 +545,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
       <main className="mc-main" data-modulo={moduloDeRuta(pathname)}>{children}</main>
 
+      <OfflineSync />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onAskCopilot={askCopilot} />
       <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)} />
       <Copiloto

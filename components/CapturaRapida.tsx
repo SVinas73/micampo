@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon, Modal, Field, useToast } from "@/components/mc";
+import { postOffline } from "@/lib/offline";
 
 type Draft = {
   tipoLabor: string;
@@ -98,19 +99,16 @@ export function CapturaRapida({
     }
     setGuardando(true);
     try {
-      const res = await fetch("/api/labores", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: draft.tipoLabor,
-          fecha: draft.fechaISO,
-          loteId: draft.loteId,
-          descripcion: draft.descripcion,
-          estado: "Programada",
-        }),
-      });
-      if (!res.ok) throw new Error();
-      toast.show("Labor registrada");
+      // Tolerante a la falta de señal: si no hay red, se guarda local y se sincroniza solo.
+      const r = await postOffline("/api/labores", {
+        tipo: draft.tipoLabor,
+        fecha: draft.fechaISO,
+        loteId: draft.loteId,
+        descripcion: draft.descripcion,
+        estado: "Programada",
+      }, `${draft.tipoLabor} en ${draft.loteNombre || "lote"}`);
+      if (!r.ok) { toast.show("No se pudo guardar la labor", "err"); return; }
+      toast.show(r.offline ? "Guardado sin conexión · se sincroniza al reconectar" : "Labor registrada");
       onCreada?.();
       onClose();
     } catch {
