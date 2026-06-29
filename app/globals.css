@@ -2190,7 +2190,8 @@ a:focus-visible {
 
 /* ===================== Íconos de clima animados ===================== */
 .wx { display: inline-block; line-height: 0; }
-.wx svg { display: block; overflow: visible; }
+/* overflow hidden: la lluvia/nieve animada cae dentro del ícono y NO se sale del card */
+.wx svg { display: block; overflow: hidden; }
 @keyframes wx-spin { to { transform: rotate(360deg); } }
 @keyframes wx-pulse { 0%, 100% { transform: scale(1); opacity: 0.95; } 50% { transform: scale(1.07); opacity: 1; } }
 @keyframes wx-drift { 0%, 100% { transform: translateX(-1.4px); } 50% { transform: translateX(1.4px); } }
@@ -2205,8 +2206,10 @@ a:focus-visible {
 .wx-flake { animation: wx-flake 2.4s linear infinite; }
 .wx-bolt { animation: wx-flash 3.2s ease-in-out infinite; }
 .wx-fogline { animation: wx-fog 4s ease-in-out infinite; }
+@keyframes wx-gust { 0%, 100% { transform: translateX(-1.6px); opacity: 0.85; } 50% { transform: translateX(2.2px); opacity: 1; } }
+.wx-gust { animation: wx-gust 2.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .wx-rays, .wx-suncore, .wx-cloud, .wx-drop, .wx-flake, .wx-bolt, .wx-fogline { animation: none; }
+  .wx-rays, .wx-suncore, .wx-cloud, .wx-drop, .wx-flake, .wx-bolt, .wx-fogline, .wx-gust { animation: none; }
 }
 
 /* ===================== Glassmorphism flotante (overlay de lote) ===================== */
