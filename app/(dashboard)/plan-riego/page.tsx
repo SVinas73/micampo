@@ -260,10 +260,6 @@ function PlanRiegoInner() {
         crumbs={["Agronomía", "Plan de Riego"]}
         title="Plan de Riego"
         subtitle="Balance hídrico proyectado con datos reales de clima y lluvia, y registro de riegos."
-        actions={<>
-          <button className="mc-btn mc-btn--secondary" onClick={exportarPDF} disabled={sinCampo}><Icon name="download" size={14} />Exportar PDF</button>
-          <button className="mc-btn mc-btn--primary" onClick={() => setRiegoOpen(true)}><Icon name="plus" size={14} />Registrar Riego</button>
-        </>}
       />
 
       <div className="grid g-cols-5">
@@ -272,6 +268,12 @@ function PlanRiegoInner() {
         <KPI label="Consumo Diario (ETc)" value={!sinCampo && etcDia ? `${etcDia} mm/día` : "—"} delta={sinCampo ? "—" : `${cultivo} · ${etapa} · Kc ${kcDe(cultivo, etapa)}`} trend="up" icon="thermometer" />
         <KPI label="Próximo Riego" value={proximo ? proximo.fecha : "—"} delta={sinCampo ? "—" : proximo ? `+${proximo.mm} mm sugeridos` : "Sin riego necesario"} trend="up" icon="calendar" />
         <KPI label="Costo Proyectado" value={sinCampo ? "—" : `$${costoEvento}`} delta="Energía + insumo" trend="up" icon="dollar" />
+      </div>
+
+      {/* Acciones del submódulo, debajo de los KPIs (alineadas a la derecha) */}
+      <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <button className="mc-btn mc-btn--secondary" onClick={exportarPDF} disabled={sinCampo}><Icon name="download" size={14} />Exportar PDF</button>
+        <button className="mc-btn mc-btn--primary" onClick={() => setRiegoOpen(true)}><Icon name="plus" size={14} />Registrar Riego</button>
       </div>
 
       {/* Estadio fenológico — ajusta el Kc (consumo de agua) del cálculo */}

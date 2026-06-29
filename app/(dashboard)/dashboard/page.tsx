@@ -206,11 +206,10 @@ function SummaryCard({ tone, eyebrow, value, sub, badge, icon, onVer, spark }: {
 }
 
 /* ---------- Clima de hoy + pronóstico 7 días + agenda semanal ---------- */
-function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVerAgenda: () => void; clima: ClimaData | null; lotes: { id: string; nombre: string }[]; selectedId: string; onSelect: (id: string) => void }) {
-  const loteSel = lotes.find((l) => l.id === selectedId);
-  const lugar = loteSel?.nombre || "Ubicación principal";
+function ClimaSemana({ onVerAgenda, clima }: { onVerAgenda: () => void; clima: ClimaData | null }) {
   const a = clima?.actual ?? null;
-  const days = (clima?.dias ?? []).map((d) => ({ name: d.nombre, num: d.num, isToday: d.esHoy, ic: d.icono, cond: (d as { cond?: string }).cond, max: d.max, min: d.min, mm: d.mm, wind: `${d.viento} km/h` }));
+  // 7 días: más no entra en el ancho de la card.
+  const days = (clima?.dias ?? []).slice(0, 7).map((d) => ({ name: d.nombre, num: d.num, isToday: d.esHoy, ic: d.icono, cond: (d as { cond?: string }).cond, max: d.max, min: d.min, mm: d.mm, wind: `${d.viento} km/h` }));
   const hoyFecha = new Date().toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
   const events: { titulo: string; inicio: number; dur: number; color: string; icon: string }[] = [];
   const rows: (typeof events)[] = [];
@@ -234,19 +233,8 @@ function ClimaSemana({ onVerAgenda, clima, lotes, selectedId, onSelect }: { onVe
       <WeatherScene cond={(a as { cond?: string } | null)?.cond || a?.icono} windy={(a?.viento ?? 0) >= 25} style={{ color: "white", padding: "18px 22px 20px" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
           <div className="row" style={{ gap: 8, alignItems: "center" }}>
-            <Icon name="map" size={13} />
-            {lotes.length > 1 ? (
-              <select
-                value={selectedId}
-                onChange={(e) => onSelect(e.target.value)}
-                style={{ background: "rgba(255,255,255,0.16)", color: "white", border: "1px solid rgba(255,255,255,0.28)", borderRadius: 8, padding: "3px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", maxWidth: 180 }}
-              >
-                {lotes.map((l) => <option key={l.id} value={l.id} style={{ color: "#2a281f" }}>{l.nombre}</option>)}
-              </select>
-            ) : (
-              <span style={{ fontSize: 10.5, opacity: 0.82, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>{lugar}</span>
-            )}
-            <span style={{ fontSize: 10.5, opacity: 0.7 }}>· {hoyFecha}</span>
+            <Icon name="calendar" size={13} />
+            <span style={{ fontSize: 10.5, opacity: 0.82, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>{hoyFecha}</span>
           </div>
           <div style={{ fontSize: 11, opacity: 0.9, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>{a?.descripcion ?? "Cargando…"}</div>
         </div>
@@ -565,7 +553,7 @@ export default function InicioPage() {
   const [balance, setBalance] = useState<{ meses: string[]; ingresos: number[]; gastos: number[] } | null>(null);
   const [cultivos, setCultivos] = useState<{ label: string; ha: string; pct: number; color: string }[] | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
-  const { lotes: scopeLotes, loteActivo, setLoteId: setScopeLoteId } = useLoteScope();
+  const { lotes: scopeLotes, establecimientoActivo } = useLoteScope();
   const [laboresPend, setLaboresPend] = useState(0);
   const [laboresAtr, setLaboresAtr] = useState(0);
   const [brief, setBrief] = useState<BriefData | null>(null);
@@ -637,21 +625,25 @@ export default function InicioPage() {
     }).catch(() => {});
   }, []);
 
-  // Lotes con coordenadas (del scope global), para el clima real (Open-Meteo)
-  const lotesClima = useMemo(
-    () => scopeLotes.filter((l) => l.centroLatitud && l.centroLongitud).map((l) => ({ id: l.id, nombre: l.nombre, lat: l.centroLatitud!, lon: l.centroLongitud! })),
-    [scopeLotes]
-  );
-  // Lote para el clima: el activo del selector global (si tiene coords) o el primero con coords
-  const loteClima = useMemo(() => {
-    if (loteActivo && loteActivo.centroLatitud && loteActivo.centroLongitud) return lotesClima.find((l) => l.id === loteActivo.id) || null;
-    return lotesClima[0] || null;
-  }, [loteActivo, lotesClima]);
+  // Ubicación del clima: el ESTABLECIMIENTO activo del sidebar (centro propio, o el
+  // promedio de los centroides de sus lotes si no tiene centro guardado). El clima
+  // del inicio es por establecimiento, no por lote.
+  const climaLoc = useMemo(() => {
+    if (establecimientoActivo?.centroLatitud != null && establecimientoActivo?.centroLongitud != null)
+      return { lat: establecimientoActivo.centroLatitud, lon: establecimientoActivo.centroLongitud };
+    const conGeo = scopeLotes.filter((l) => l.centroLatitud != null && l.centroLongitud != null);
+    if (conGeo.length) {
+      const lat = conGeo.reduce((s, l) => s + (l.centroLatitud as number), 0) / conGeo.length;
+      const lon = conGeo.reduce((s, l) => s + (l.centroLongitud as number), 0) / conGeo.length;
+      return { lat, lon };
+    }
+    return null;
+  }, [establecimientoActivo, scopeLotes]);
 
   useEffect(() => {
-    const q = loteClima ? `?lat=${loteClima.lat}&lon=${loteClima.lon}` : "";
+    const q = climaLoc ? `?lat=${climaLoc.lat}&lon=${climaLoc.lon}` : "";
     fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.actual) setClima(c); }).catch(() => {});
-  }, [loteClima?.id]);
+  }, [climaLoc?.lat, climaLoc?.lon]);
 
   const kpis = useMemo(() => KPIS_BASE.map((k) => ({ ...k, ...(kpiValues[k.key] || {}) })), [kpiValues]);
 
@@ -771,7 +763,7 @@ export default function InicioPage() {
 
       {/* Clima + agenda | Salud lotes + suelo */}
       <div className="grid mc-2col-resp" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 14 }}>
-        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} lotes={lotesClima} selectedId={loteClima?.id || ""} onSelect={setScopeLoteId} />
+        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} />
         <div className="col gap-16"><FieldHealth /><SoilHealth /></div>
       </div>
 

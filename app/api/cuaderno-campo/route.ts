@@ -17,6 +17,10 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const loteId = searchParams.get("loteId");
+    // Alcance (sidebar): lista de lotes del establecimiento activo. Si viene el
+    // parámetro `loteIds`, se restringe a esos lotes (aunque esté vacío → nada).
+    const loteIdsParam = searchParams.get("loteIds");
+    const loteIds = loteIdsParam !== null ? loteIdsParam.split(",").filter(Boolean) : null;
     const desde = searchParams.get("desde");
     const hasta = searchParams.get("hasta");
     const rango: any = {};
@@ -24,7 +28,8 @@ export async function GET(request: Request) {
     if (hasta) rango.lte = new Date(hasta);
     const fechaFiltro = (desde || hasta) ? rango : undefined;
 
-    const where: any = { userId, ...(loteId ? { loteId } : {}) };
+    const loteWhere = loteId ? { loteId } : loteIds !== null ? { loteId: { in: loteIds } } : {};
+    const where: any = { userId, ...loteWhere };
 
     const [labores, siembras, cosechas] = await Promise.all([
       prisma.labor.findMany({

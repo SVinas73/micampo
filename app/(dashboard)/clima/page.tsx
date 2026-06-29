@@ -282,16 +282,6 @@ function ClimaInner() {
         crumbs={["Agronomía", "Clima"]}
         title="Clima"
         subtitle="Pronóstico, alertas, ventana de pulverización y lluvias registradas."
-        actions={
-          <>
-            <button className="mc-btn mc-btn--primary" onClick={() => setShowLluvia(true)}>
-              <Icon name="droplet" size={14} />Registrar Lluvia
-            </button>
-            <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setShowAlerta(true)}>
-              <Icon name="alert" size={14} />Registrar Alerta
-            </button>
-          </>
-        }
       />
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
@@ -301,6 +291,16 @@ function ClimaInner() {
         <KPI label="Delta T" value={clima ? String(clima.actual.deltaT) : "—"} delta={clima ? (clima.actual.aptoPulverizacion ? "Apto pulverizar" : "Fuera de rango") : "—"} trend="up" icon="activity" />
         <KPI label="Lluvia prevista 7d" value={clima ? `${Math.round(clima.dias.reduce((s, d) => s + d.mm, 0))} mm` : "—"} delta={clima ? "pronóstico" : "—"} trend="up" icon="droplet" />
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
+      </div>
+
+      {/* Acciones del submódulo, debajo de los KPIs (alineadas a la derecha) */}
+      <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <button className="mc-btn mc-btn--primary" onClick={() => setShowLluvia(true)}>
+          <Icon name="droplet" size={14} />Registrar Lluvia
+        </button>
+        <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setShowAlerta(true)}>
+          <Icon name="alert" size={14} />Registrar Alerta
+        </button>
       </div>
 
       {tab === "Inicio" && (

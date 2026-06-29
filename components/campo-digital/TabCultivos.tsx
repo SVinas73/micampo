@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, Modal, Field, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
-import { useSetHeaderActions } from "./ActionsContext";
 import { NuevaSiembraModal, NuevaCosechaModal, type SiembraData, type CosechaData } from "./cultivos-Modales";
 import { CropImg } from "./LoteOverlay";
 
@@ -58,6 +57,8 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const router = useRouter();
   const toast = useToast();
   const navegar = (tab: string) => router.push(`/campo-digital?tab=${encodeURIComponent(tab)}`);
+  // Abre el wizard "Nueva Labor" en la pestaña Labores, preseleccionando el lote.
+  const abrirNuevaLabor = (loteId?: string) => router.push(`/campo-digital?tab=Labores&nuevaLabor=${encodeURIComponent(loteId || "1")}`);
   const { lotes: scopeLotes } = useLoteScope();
   // Cuando se monta como pestaña "Planificador de Siembras (IA)" sólo muestra el planificador.
   // El resto de sub-tabs (Estados, Análisis de Suelo) viven en la pestaña "Cultivos".
@@ -112,28 +113,6 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         .map(([nombre, ha]) => ({ nombre, ha: Math.round(ha), pct: Math.round((ha / tot) * 100), color: CULTIVO_COLOR[nombre] || "#5e7733", icon: CULTIVO_ICON[nombre] || "leaf" }))
     );
   }, [scopeLotes]);
-
-  /* ---- Header actions según sub-tab (Figma) ----
-     En modo planificador no hay acciones de header propias (las de siembra/cosecha
-     viven en la pestaña Cultivos; el planificador genera planes con su propio botón IA). */
-  useSetHeaderActions(
-    planificadorMode ? null :
-    sub === "Análisis de Suelo" ? (
-      <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setAnalisisOpen(true)}>
-        <Icon name="plus" size={14} />Nuevo Analisis
-      </button>
-    ) : (
-      <>
-        <button className="mc-btn mc-btn--primary" onClick={() => setSiembraOpen(true)}>
-          <Icon name="sprout" size={14} />Nueva Siembra
-        </button>
-        <button className="mc-btn mc-btn--primary" onClick={() => setCosechaOpen(true)}>
-          <Icon name="plus" size={14} />Nueva Cosecha
-        </button>
-      </>
-    ),
-    [sub, planificadorMode]
-  );
 
   const guardarSiembra = async (data: SiembraData) => {
     try {
@@ -224,10 +203,30 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       )}
 
+      {/* Acciones del submódulo, debajo de los KPIs (alineadas a la derecha) */}
+      {!planificadorMode && (
+        <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+          {sub === "Análisis de Suelo" ? (
+            <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setAnalisisOpen(true)}>
+              <Icon name="plus" size={14} />Nuevo Analisis
+            </button>
+          ) : (
+            <>
+              <button className="mc-btn mc-btn--primary" onClick={() => setSiembraOpen(true)}>
+                <Icon name="sprout" size={14} />Nueva Siembra
+              </button>
+              <button className="mc-btn mc-btn--primary" onClick={() => setCosechaOpen(true)}>
+                <Icon name="plus" size={14} />Nueva Cosecha
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {!planificadorMode && <SubTabs tabs={SUB_TABS} active={sub} onChange={setSub} />}
 
       {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} onEditar={() => setSiembraOpen(true)} />}
-      {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={() => navegar("Labores")} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
+      {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={(loteId) => abrirNuevaLabor(loteId)} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
       {!planificadorMode && sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} />}
     </>
   );
@@ -245,7 +244,7 @@ function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }:
   const base = lotesReales.map((l) => {
     const c = l.cultivo ? (ESTADO_COLOR[l.cultivo] || { color: "#5e7733", bg: "#f1faf2" }) : { color: "#9aa39a", bg: "var(--mc-surface-2)" };
     return {
-      id: l.nombre, cultivo: l.cultivo || "Sin cultivo", color: c.color, bg: c.bg,
+      id: l.nombre, loteId: l.id, cultivo: l.cultivo || "Sin cultivo", color: c.color, bg: c.bg,
       siembra: "—", semilla: "—", densidad: "—", inversion: "—",
       estadio: l.cultivo ? "Vegetativo" : "—", agua: "—", gdd: "—", fertilizacion: "—", monitoreo: "—",
       cosechaFecha: "—", rinde: "—", destino: "—", progress: l.cultivo ? 35 : 0, has: Math.round(l.ha), activo: !!l.cultivo,
@@ -291,7 +290,7 @@ function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }:
                     <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, marginTop: 2 }}>{l.has} Has | Activo</div>
                   </div>
                 </div>
-                <button className="mc-btn mc-btn--sm" style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1.5px solid rgba(255,255,255,0.35)", fontSize: 11 }} onClick={() => onNuevaTarea(l.id)}>
+                <button className="mc-btn mc-btn--sm" style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1.5px solid rgba(255,255,255,0.35)", fontSize: 11 }} onClick={() => onNuevaTarea(l.loteId || "")}>
                   <Icon name="plus" size={10} />Nueva Tarea
                 </button>
               </div>

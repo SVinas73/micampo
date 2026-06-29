@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
-import { useSetHeaderActions } from "./ActionsContext";
 import { ReportarPlagaModal } from "./deteccion-ReportarModal";
 
 /* ========== Tipos ========== */
@@ -90,18 +89,6 @@ export default function TabDeteccion() {
       .catch(() => {});
   }, []);
 
-  useSetHeaderActions(
-    <>
-      <button className="mc-btn mc-btn--primary" onClick={() => { setSub("Análisis (IA)"); setTimeout(() => fileRef.current?.click(), 100); }}>
-        <Icon name="upload" size={14} />Cargar Imagen de Lote
-      </button>
-      <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setReportarOpen(true)}>
-        <Icon name="alert" size={14} />Reportar Plaga
-      </button>
-    </>,
-    []
-  );
-
   const agregarALabores = async (a: AlertaInfo) => {
     if (a.loteId) {
       await fetch("/api/labores", {
@@ -152,6 +139,16 @@ export default function TabDeteccion() {
         <KPI label="Vigor Promedio (NDVI)" value={demo("0.78", "—")} delta={demo("(Alto)", "—")} trend="up" icon="leaf" />
         <KPI label="Riesgo Economico" value={demo("$1.250", "—")} delta={demo("USD/Ha potencial", "—")} trend="warn" icon="dollar" />
         <KPI label="Monitoreo Semanal" value={demo("85%", "—")} delta={demo("17/20 lotes", "—")} trend="up" icon="check" />
+      </div>
+
+      {/* Acciones del submódulo, debajo de los KPIs (alineadas a la derecha) */}
+      <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <button className="mc-btn mc-btn--primary" onClick={() => { setSub("Análisis (IA)"); setTimeout(() => fileRef.current?.click(), 100); }}>
+          <Icon name="upload" size={14} />Cargar Imagen de Lote
+        </button>
+        <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setReportarOpen(true)}>
+          <Icon name="alert" size={14} />Reportar Plaga
+        </button>
       </div>
 
       <SubTabs tabs={["Información", "Análisis (IA)"]} active={sub} onChange={setSub} />
