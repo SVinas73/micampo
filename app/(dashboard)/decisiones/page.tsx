@@ -18,6 +18,25 @@ export default function DecisionesPage() {
   const [decisiones, setDecisiones] = useState<Decision[]>([]);
   const [cargando, setCargando] = useState(true);
   const [generado, setGenerado] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  const enviarAlTelefono = async () => {
+    setEnviando(true);
+    setAviso(null);
+    try {
+      const r = await fetch("/api/alertas/enviar", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const d = await r.json();
+      if (d.sinAlertas) setAviso("Sin alertas urgentes para enviar hoy.");
+      else if (d.enviado) setAviso("Alertas enviadas a tu WhatsApp ✓");
+      else if (!d.configurado) setAviso("WhatsApp aún no configurado: cargá el número para recibir las alertas en el teléfono.");
+      else setAviso("No se pudo enviar. Revisá la configuración de WhatsApp.");
+    } catch {
+      setAviso("No se pudo enviar el resumen.");
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const cargar = () => {
     setCargando(true);
@@ -45,8 +64,18 @@ export default function DecisionesPage() {
         crumbs={["MiCampo", "Decisiones del día"]}
         title="Decisiones del día"
         subtitle="Una sola lista priorizada: clima, satélite, sanidad, riego y economía cruzados para decirte qué hacer hoy."
-        actions={<button className="mc-btn mc-btn--secondary" onClick={cargar}><Icon name="activity" size={14} />Actualizar</button>}
+        actions={<>
+          <button className="mc-btn mc-btn--secondary" onClick={cargar}><Icon name="activity" size={14} />Actualizar</button>
+          <button className="mc-btn mc-btn--primary" onClick={enviarAlTelefono} disabled={enviando || total === 0}><Icon name="send" size={14} />{enviando ? "Enviando…" : "Enviar a mi WhatsApp"}</button>
+        </>}
       />
+
+      {aviso && (
+        <div className="mc-card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderLeft: "3px solid var(--mc-green-600)" }}>
+          <Icon name="send" size={14} style={{ color: "var(--mc-green-700)" }} />
+          <span className="text-sm" style={{ color: "var(--mc-ink)" }}>{aviso}</span>
+        </div>
+      )}
 
       <div className="grid g-cols-3">
         <KPI label="Decisiones de hoy" value={String(total)} delta={generado ? `Actualizado ${new Date(generado).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}` : "—"} trend="up" icon="sparkles" accent />
