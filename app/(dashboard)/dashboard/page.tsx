@@ -10,6 +10,7 @@ import { weatherTone } from "@/components/clima/weatherTone";
 import { AnimatedWeatherIcon } from "@/components/clima/AnimatedWeatherIcon";
 import { WeatherScene } from "@/components/clima/WeatherScene";
 import { CapturaRapida } from "@/components/CapturaRapida";
+import { postOffline } from "@/lib/offline";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
 
 /* ============================================================
@@ -676,9 +677,10 @@ export default function InicioPage() {
   const crearLabor = async () => {
     if (!laborForm.loteId && lotes.length === 0) { toast.show("Creá un lote primero en Campo Digital", "err"); return; }
     try {
-      const res = await fetch("/api/labores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: laborForm.tipo, fecha: laborForm.fecha, loteId: laborForm.loteId || lotes[0]?.id, descripcion: laborForm.tipo, superficieTrabajada: 0 }) });
-      if (!res.ok) throw new Error();
-      toast.show("Labor creada correctamente"); setLaborModal(false);
+      // Tolerante a falta de señal: si no hay red se guarda local y sincroniza solo.
+      const r = await postOffline("/api/labores", { tipo: laborForm.tipo, fecha: laborForm.fecha, loteId: laborForm.loteId || lotes[0]?.id, descripcion: laborForm.tipo, superficieTrabajada: 0 }, `${laborForm.tipo}`);
+      if (!r.ok) { toast.show("No se pudo crear la labor", "err"); return; }
+      toast.show(r.offline ? "Guardado sin conexión · se sincroniza al reconectar" : "Labor creada correctamente"); setLaborModal(false);
     } catch { toast.show("No se pudo crear la labor", "err"); }
   };
 
