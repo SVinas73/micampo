@@ -38,14 +38,33 @@ import {
 } from "./lotes-Modales";
 import { LoteOverlay, CropImg } from "./LoteOverlay";
 import { cuadradoDesdeCentro, puntoEnPoligono } from "@/lib/geo";
+import * as turf from "@turf/turf";
 import BuscadorLugar from "./BuscadorLugar";
+import { DIVISIONES_POR_PAIS } from "@/lib/divisiones-administrativas";
+
+/** Envolvente (convex hull) de un conjunto de lotes → contorno del campo. */
+function hullDeLotes(geojsons: { type: "Polygon"; coordinates: number[][][] }[]): DibujoLote | null {
+  const pts = geojsons.flatMap((g) => (g?.coordinates?.[0] || []).map((p) => turf.point(p)));
+  if (pts.length < 3) return null;
+  try {
+    let hull = turf.convex(turf.featureCollection(pts), { concavity: Infinity });
+    if (!hull) return null;
+    hull = (turf.buffer(hull, 0.05, { units: "kilometers" }) as typeof hull) || hull;
+    const ring = (hull.geometry.coordinates as number[][][])[0];
+    const c = turf.centroid(hull).geometry.coordinates as [number, number];
+    const perim = turf.length(turf.lineString(ring), { units: "kilometers" }) * 1000;
+    return { geojson: { type: "Polygon", coordinates: [ring] }, hectareas: Math.round((turf.area(hull) / 10000) * 100) / 100, centro: { lat: c[1], lng: c[0] }, perimetro: Math.round(perim) };
+  } catch {
+    return null;
+  }
+}
 
 /* ========== TAB LOTES (Figma CDLotes) ========== */
 export default function TabLotes() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { loteIdsEnScope, esTodos, recargar, establecimientos, establecimientoActivo, establecimientoId, setEstablecimientoId } = useLoteScope();
+  const { recargar, establecimientos, establecimientoId } = useLoteScope();
   // Modo "delimitar establecimiento": llega desde el card de Establecimientos.
   const delimitarId = searchParams.get("delimitar");
   const estDelimitar = delimitarId ? establecimientos.find((e) => e.id === delimitarId) || null : null;
@@ -67,6 +86,11 @@ export default function TabLotes() {
   const [drawArmed, setDrawArmed] = useState(false);
   const [modoNota, setModoNota] = useState(false);
   const [notaPunto, setNotaPunto] = useState<{ lat: number; lng: number; loteId?: string; establecimientoId?: string; nombre: string } | null>(null);
+  // Modo "crear establecimiento dibujando lotes"
+  const [modoCampoLotes, setModoCampoLotes] = useState(false);
+  const [lotesNuevos, setLotesNuevos] = useState<{ id: string; geojson: { type: "Polygon"; coordinates: number[][][] } }[]>([]);
+  const [showNuevoEst, setShowNuevoEst] = useState(false);
+  const hullNuevo = useMemo(() => (modoCampoLotes && lotesNuevos.length >= 1 ? hullDeLotes(lotesNuevos.map((l) => l.geojson)) : null), [modoCampoLotes, lotesNuevos]);
 
   useEffect(() => {
     let cancelado = false;
@@ -137,10 +161,20 @@ export default function TabLotes() {
       .catch(() => {});
   }, [layer, lotes]);
 
-  // Lotes dentro del alcance global (establecimiento + lote)
+  // Filtro LOCAL del submódulo Lotes (no toca el alcance global del sidebar).
+  // Arranca siguiendo al alcance global y se sincroniza cuando el sidebar cambia.
+  const [localEstId, setLocalEstId] = useState(establecimientoId);
+  useEffect(() => { setLocalEstId(establecimientoId); }, [establecimientoId]);
+
+  const localEst = useMemo(
+    () => (localEstId === "todos" ? null : establecimientos.find((e) => e.id === localEstId) || null),
+    [establecimientos, localEstId]
+  );
+
+  // Lotes visibles en el submódulo según el filtro local de establecimiento.
   const enScope = useMemo(
-    () => (esTodos ? lotes : lotes.filter((l) => loteIdsEnScope.includes(l.dbId || l.id))),
-    [lotes, loteIdsEnScope, esTodos]
+    () => (localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId)),
+    [lotes, localEstId]
   );
 
   const visibles = useMemo(
@@ -169,7 +203,7 @@ export default function TabLotes() {
           centroLatitud: geom?.centro.lat ?? null,
           centroLongitud: geom?.centro.lng ?? null,
           perimetro: geom?.perimetro ?? null,
-          establecimientoId: data.establecimientoId ?? establecimientoActivo?.id ?? null,
+          establecimientoId: data.establecimientoId ?? localEst?.id ?? null,
         }),
       });
       let dbId: string | undefined;
@@ -180,15 +214,64 @@ export default function TabLotes() {
           id: dbId || `L-${prev.length + 1}`, dbId, name: data.nombre, campo: data.nombre, ha: data.hectareas,
           cultivo: data.cultivo, estadio: data.cultivo ? "Vegetativo" : "—", ndvi: 0, aguaUtil: 0, sano: true, vacio: !data.cultivo, comentarios: [],
           geojson: geom?.geojson ?? null, cultivoColor: data.cultivo ? (CULTIVO_COLORES[data.cultivo] || "#5e7733") : null,
-          establecimientoId: data.establecimientoId ?? establecimientoActivo?.id ?? null,
+          establecimientoId: data.establecimientoId ?? localEst?.id ?? null,
         },
       ]);
       setDibujado(null);
-      toast.show(geom ? `Lote "${data.nombre}" agregado al mapa` : `Lote "${data.nombre}" creado`);
       setShowAgregar(false);
+      // Modo "crear campo con lotes": acumula el lote y rearma el dibujo para el siguiente.
+      if (modoCampoLotes && dbId && geom?.geojson) {
+        setLotesNuevos((prev) => [...prev, { id: dbId!, geojson: geom.geojson }]);
+        toast.show(`Lote "${data.nombre}" agregado · dibujá el próximo o tocá Terminar`);
+        setDrawArmed(true);
+      } else {
+        toast.show(geom ? `Lote "${data.nombre}" agregado al mapa` : `Lote "${data.nombre}" creado`);
+      }
       recargar(); // refresca el selector global de lotes
     } catch {
       toast.show("No se pudo crear el lote", "err");
+    }
+  };
+
+  // Inicia el modo "crear establecimiento dibujando lotes".
+  const iniciarCampoConLotes = () => {
+    setSelected(null);
+    setModoNota(false);
+    setLotesNuevos([]);
+    setModoCampoLotes(true);
+    setView("mapa");
+    setDrawArmed(true);
+    toast.show("Dibujá los lotes del nuevo campo. Cuando termines, tocá “Terminar”.");
+  };
+
+  // Crea el establecimiento con los lotes dibujados y su contorno (hull).
+  const terminarCampoConLotes = async (datos: { nombre: string; direccion: string; ciudad: string; provincia: string; pais: string; cuit: string }) => {
+    const hull = hullDeLotes(lotesNuevos.map((l) => l.geojson));
+    try {
+      const res = await fetch("/api/establecimientos", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos),
+      });
+      if (!res.ok) throw new Error();
+      const est = await res.json();
+      // Asignar los lotes al nuevo establecimiento
+      await Promise.all(lotesNuevos.map((l) => fetch(`/api/lotes/${l.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ establecimientoId: est.id }),
+      }).catch(() => null)));
+      // Guardar el contorno del establecimiento (envolvente de sus lotes)
+      if (hull) {
+        await fetch(`/api/establecimientos/${est.id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ coordenadas: hull.geojson, centroLatitud: hull.centro.lat, centroLongitud: hull.centro.lng, perimetro: hull.perimetro, hectareasTotales: hull.hectareas }),
+        }).catch(() => null);
+      }
+      toast.show(`Campo "${datos.nombre}" creado con ${lotesNuevos.length} lote(s)`);
+      setShowNuevoEst(false);
+      setModoCampoLotes(false);
+      setLotesNuevos([]);
+      setDrawArmed(false);
+      recargar();
+    } catch {
+      toast.show("No se pudo crear el campo", "err");
     }
   };
 
@@ -242,15 +325,14 @@ export default function TabLotes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [delimitarId, estDelimitar?.id]);
 
-  // Al activar un establecimiento (selector global), centrar el mapa en él para
-  // que encontrarlo y crear lotes adentro sea fácil.
+  // Al filtrar por un establecimiento (local), centrar el mapa en él.
   useEffect(() => {
     if (delimitarId) return;
-    if (establecimientoActivo?.centroLatitud != null && establecimientoActivo?.centroLongitud != null) {
-      setVolarA({ lat: establecimientoActivo.centroLatitud, lng: establecimientoActivo.centroLongitud, nonce: Date.now() });
+    if (localEst?.centroLatitud != null && localEst?.centroLongitud != null) {
+      setVolarA({ lat: localEst.centroLatitud, lng: localEst.centroLongitud, nonce: Date.now() });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [establecimientoActivo?.id]);
+  }, [localEstId]);
 
   const eliminarLote = async (id: string) => {
     const lote = lotes.find((l) => (l.dbId || l.id) === id);
@@ -342,7 +424,7 @@ export default function TabLotes() {
     if (lote?.dbId) { setNotaPunto({ lat, lng, loteId: lote.dbId, nombre: lote.name }); return; }
     const est = establecimientos.find((e) => e.coordenadas?.coordinates?.[0] && puntoEnPoligono(lng, lat, e.coordenadas.coordinates[0]));
     if (est) { setNotaPunto({ lat, lng, establecimientoId: est.id, nombre: est.nombre }); return; }
-    if (establecimientoActivo) { setNotaPunto({ lat, lng, establecimientoId: establecimientoActivo.id, nombre: establecimientoActivo.nombre }); return; }
+    if (localEst) { setNotaPunto({ lat, lng, establecimientoId: localEst.id, nombre: localEst.nombre }); return; }
     toast.show("Marcá un punto dentro de un lote o de un establecimiento delimitado", "err");
   };
 
@@ -363,7 +445,7 @@ export default function TabLotes() {
   return (
     <>
       {toast.node}
-      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} onDibujar={() => { setShowAgregar(false); setSelected(null); setView("mapa"); setDrawArmed(true); }} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} centro={dibujado?.centro} establecimientos={establecimientos} establecimientoActivoId={establecimientoActivo?.id ?? null} />}
+      {showAgregar && <AgregarCampoModal onClose={() => { setShowAgregar(false); setDibujado(null); }} onConfirm={crearCampo} onDibujar={() => { setShowAgregar(false); setSelected(null); setView("mapa"); setDrawArmed(true); }} defaultHectareas={dibujado?.hectareas} dibujadoEnMapa={!!dibujado} centro={dibujado?.centro} establecimientos={establecimientos} establecimientoActivoId={localEst?.id ?? null} />}
       {showEliminar && (
         <EliminarCampoModal
           lotes={enScope.map((l) => ({ id: l.dbId || l.id, nombre: l.name, ha: l.ha, cultivo: l.cultivo }))}
@@ -397,10 +479,18 @@ export default function TabLotes() {
           onConfirm={guardarNotaPunto}
         />
       )}
+      {showNuevoEst && (
+        <NuevoEstablecimientoModal
+          lotesCount={lotesNuevos.length}
+          hectareas={hullNuevo?.hectareas ?? 0}
+          onClose={() => setShowNuevoEst(false)}
+          onConfirm={terminarCampoConLotes}
+        />
+      )}
 
       <div className="grid g-cols-5">
-        <KPI label="Establecimientos" value={String(establecimientos.length)} delta={establecimientoActivo ? establecimientoActivo.nombre : "Todos"} trend="up" icon="building" accent />
-        <KPI label="Lotes en vista" value={String(enScope.length)} delta={esTodos ? `${lotes.length} en total` : "Filtrado"} trend="up" icon="sprout" />
+        <KPI label="Establecimientos" value={String(establecimientos.length)} delta={localEst ? localEst.nombre : "Todos"} trend="up" icon="building" accent />
+        <KPI label="Lotes en vista" value={String(enScope.length)} delta={localEstId === "todos" ? `${lotes.length} en total` : "Filtrado por campo"} trend="up" icon="sprout" />
         <KPI label="Total de hectáreas" value={`${Math.round(totalHa)} Ha`} delta={`${Math.round(sembradas)} sembradas`} trend="up" icon="activity" />
         <KPI label="Lotes sin asignar" value={String(sinAsignar.length)} delta={sinAsignar.map((l) => l.name).slice(0, 2).join(" + ") || "Ninguno"} trend="warn" icon="alert" />
         <KPI label="Marcadores" value={demo("14", "0")} delta="Pozos, silos, casas" trend="up" icon="target" />
@@ -417,11 +507,11 @@ export default function TabLotes() {
             </button>
           </div>
           {establecimientos.length > 0 && (
-            <div className="mc-seg" style={{ alignSelf: "center", display: "flex", alignItems: "center", paddingLeft: 8 }} title="Cambiar de establecimiento">
+            <div className="mc-seg" style={{ alignSelf: "center", display: "flex", alignItems: "center", paddingLeft: 8 }} title="Filtrar la vista por establecimiento (solo este módulo)">
               <Icon name="building" size={13} style={{ color: "var(--mc-green-700)" }} />
               <select
-                value={establecimientoId}
-                onChange={(e) => setEstablecimientoId(e.target.value)}
+                value={localEstId}
+                onChange={(e) => { setLocalEstId(e.target.value); setSelected(null); }}
                 style={{ border: "none", background: "transparent", fontWeight: 600, fontSize: 13, color: "var(--mc-ink)", cursor: "pointer", outline: "none", padding: "6px 8px", maxWidth: 220 }}
               >
                 <option value="todos">Todos los establecimientos</option>
@@ -474,6 +564,11 @@ export default function TabLotes() {
           modoNota={modoNota}
           onToggleNota={() => { setSelected(null); setModoNota((v) => !v); }}
           onPuntoNota={onPuntoNota}
+          onCampoConLotes={iniciarCampoConLotes}
+          hullPreview={hullNuevo?.geojson ?? null}
+          campoConLotesCount={modoCampoLotes ? lotesNuevos.length : null}
+          onTerminarCampo={() => setShowNuevoEst(true)}
+          onCancelarCampo={() => { setModoCampoLotes(false); setLotesNuevos([]); setDrawArmed(false); }}
         />
       )}
       {view === "lista" && (
@@ -489,7 +584,7 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota, onCampoConLotes, hullPreview, campoConLotesCount, onTerminarCampo, onCancelarCampo,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
@@ -510,6 +605,11 @@ function LotesMapa({
   modoNota?: boolean;
   onToggleNota?: () => void;
   onPuntoNota?: (lat: number, lng: number) => void;
+  onCampoConLotes?: () => void;
+  hullPreview?: { type: "Polygon"; coordinates: number[][][] } | null;
+  campoConLotesCount?: number | null;
+  onTerminarCampo?: () => void;
+  onCancelarCampo?: () => void;
 }) {
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
     NDVI: [
@@ -544,7 +644,10 @@ function LotesMapa({
   const nombreEst = (id?: string | null) => (id ? establecimientos.find((e) => e.id === id)?.nombre ?? null : null);
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
   // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
-  const establecimientosGeo = establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, coordenadas: e.coordenadas ?? null }));
+  const establecimientosGeo = [
+    ...establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, coordenadas: e.coordenadas ?? null })),
+    ...(hullPreview ? [{ id: "__nuevo__", nombre: "Nuevo campo", coordenadas: hullPreview }] : []),
+  ];
   // Para delimitar conviene la vista clásica (2D, cenital): más cómodo para dibujar.
   const [vista, setVista] = useState<"3d" | "clasico">(delimitando ? "clasico" : "3d");
   // Al cambiar de vista se desmonta/monta otro mapa; si estábamos delimitando hay
@@ -624,7 +727,17 @@ function LotesMapa({
           establecimientos={establecimientosGeo}
           modoNota={modoNota}
           onPuntoNota={onPuntoNota}
+          onCampoConLotes={onCampoConLotes}
         />
+
+        {campoConLotesCount != null && (
+          <div className="mc-glass" style={{ position: "absolute", top: 56, left: "50%", transform: "translateX(-50%)", zIndex: 562, display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, color: "var(--mc-ink)", maxWidth: "92%" }}>
+            <Icon name="building" size={14} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />
+            Nuevo campo · {campoConLotesCount} lote(s) dibujado(s)
+            <button className="mc-btn mc-btn--primary mc-btn--sm" disabled={!campoConLotesCount} onClick={onTerminarCampo}><Icon name="check" size={12} />Terminar</button>
+            <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={onCancelarCampo}>Cancelar</button>
+          </div>
+        )}
 
         {delimitandoNombre && (
           <div className="mc-glass" style={{ position: "absolute", top: 56, left: "50%", transform: "translateX(-50%)", zIndex: 561, display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, color: "var(--mc-ink)", maxWidth: "90%" }}>
@@ -1345,6 +1458,60 @@ function NotaPuntoModal({
           <button className="mc-btn mc-btn--ghost" onClick={onClose}>Cancelar</button>
           <button className="mc-btn mc-btn--primary" disabled={!texto.trim()} onClick={() => onConfirm(texto.trim())}>
             <Icon name="pen" size={13} />Guardar nota
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NuevoEstablecimientoModal({
+  lotesCount, hectareas, onClose, onConfirm,
+}: {
+  lotesCount: number;
+  hectareas: number;
+  onClose: () => void;
+  onConfirm: (d: { nombre: string; direccion: string; ciudad: string; provincia: string; pais: string; cuit: string }) => void;
+}) {
+  const [form, setForm] = useState({ nombre: "", direccion: "", ciudad: "", provincia: "", pais: "Uruguay", cuit: "" });
+  const [saving, setSaving] = useState(false);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onClose}>
+      <div style={{ background: "var(--mc-surface)", borderRadius: 16, width: 520, maxWidth: "100%", boxShadow: "var(--sh-lg)", padding: 22, maxHeight: "92vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+          <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 18 }}>Nuevo establecimiento</div>
+          <button className="mc-icon-btn" onClick={onClose}><Icon name="x" size={14} /></button>
+        </div>
+        <div className="text-xs text-muted" style={{ marginBottom: 14 }}>Lo creás con <b>{lotesCount} lote(s)</b> dibujados · {Math.round(hectareas)} ha. El contorno se calcula solo a partir de los lotes.</div>
+        <div className="col gap-12">
+          <div><div className="mc-label" style={{ marginBottom: 4 }}>Nombre *</div><input className="mc-input" placeholder="Ej: Establecimiento Don Ramón" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} /></div>
+          <div><div className="mc-label" style={{ marginBottom: 4 }}>Dirección</div><input className="mc-input" placeholder="Ej: Ruta 5, Km 40" value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} /></div>
+          <div className="grid g-cols-2 gap-12">
+            <div><div className="mc-label" style={{ marginBottom: 4 }}>País</div>
+              <select className="mc-select" value={form.pais} onChange={(e) => setForm({ ...form, pais: e.target.value, provincia: "" })}>
+                {Object.keys(DIVISIONES_POR_PAIS).map((p) => <option key={p}>{p}</option>)}
+              </select>
+            </div>
+            <div><div className="mc-label" style={{ marginBottom: 4 }}>Provincia / Depto.</div>
+              {DIVISIONES_POR_PAIS[form.pais] ? (
+                <select className="mc-select" value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value })}>
+                  <option value="">Elegí…</option>
+                  {DIVISIONES_POR_PAIS[form.pais].map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              ) : (
+                <input className="mc-input" value={form.provincia} onChange={(e) => setForm({ ...form, provincia: e.target.value })} />
+              )}
+            </div>
+          </div>
+          <div className="grid g-cols-2 gap-12">
+            <div><div className="mc-label" style={{ marginBottom: 4 }}>Ciudad / Localidad</div><input className="mc-input" value={form.ciudad} onChange={(e) => setForm({ ...form, ciudad: e.target.value })} /></div>
+            <div><div className="mc-label" style={{ marginBottom: 4 }}>CUIT / RUT</div><input className="mc-input" placeholder="Identificación fiscal" value={form.cuit} onChange={(e) => setForm({ ...form, cuit: e.target.value })} /></div>
+          </div>
+        </div>
+        <div className="row gap-8 mt-12" style={{ justifyContent: "flex-end" }}>
+          <button className="mc-btn mc-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button className="mc-btn mc-btn--primary" disabled={!form.nombre.trim() || saving} onClick={async () => { setSaving(true); await onConfirm(form); setSaving(false); }}>
+            <Icon name="check" size={13} />{saving ? "Creando…" : "Crear campo"}
           </button>
         </div>
       </div>
