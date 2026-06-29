@@ -15,6 +15,7 @@ export async function GET() {
     const totalHa = lotes.reduce((s, l) => s + l.hectareas, 0);
     const margenTotal = lotes.reduce((s, l) => s + l.margen, 0);
     const costoTotal = lotes.reduce((s, l) => s + l.costos, 0);
+    const costoMaquinariaTotal = lotes.reduce((s, l) => s + l.costoMaquinaria, 0);
 
     return NextResponse.json({
       lotes,
@@ -22,6 +23,7 @@ export async function GET() {
         lotesConDatos: conDatos.length,
         margenTotal,
         costoTotal,
+        costoMaquinariaTotal,
         margenPorHaPromedio: totalHa > 0 ? margenTotal / totalHa : 0,
       },
     });

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getAnthropic, IA_MODEL, parseJsonTolerante } from "@/lib/ia";
+import { getAnthropic, IA_MODEL, parseJsonTolerante, modeloPropio } from "@/lib/ia";
 import { getInsight, saveInsight } from "@/lib/insight";
+import { prescripcionPara, PRECIO_GRANO_REF, type Prescripcion } from "@/lib/tratamientos";
 
 /**
  * GET /api/lotes/presion-plagas
@@ -20,6 +21,7 @@ type Riesgo = {
   probabilidad: number; // 0-100
   ventana: string;
   causa: string;
+  prescripcion?: Prescripcion; // orden accionable: producto, dosis, costo, ROI
 };
 
 export async function GET() {
@@ -63,7 +65,24 @@ export async function GET() {
 
     const riesgos = reglasDeterministicas(lotes.map((l) => ({ nombre: l.nombre, cultivo: l.cultivo as string })), dias);
 
-    // Refinamiento con IA (si hay key): mejora redacción y prioriza.
+    // Precios de grano del usuario (para valuar la pérdida potencial).
+    const precios = await prisma.precioReferencia.findMany({ where: { userId: session.user.id }, orderBy: { fecha: "desc" } }).catch(() => []);
+    const precioGrano = (cultivo: string) => precios.find((p) => p.producto === cultivo)?.precio ?? PRECIO_GRANO_REF[cultivo];
+    // Agrega la prescripción accionable (producto/dosis/costo/ROI) a cada riesgo.
+    const enriquecer = (rs: Riesgo[]): Riesgo[] => rs.map((r) => ({
+      ...r,
+      prescripcion: prescripcionPara({ amenaza: r.amenaza, cultivo: r.cultivo, probabilidad: r.probabilidad, ventana: r.ventana, precioGranoUSDton: precioGrano(r.cultivo) }),
+    }));
+
+    // 1) Modelo propio de MiCampo (si está configurado) — tarea "presion.plagas".
+    const propio = await modeloPropio<{ riesgos: Riesgo[] }>("presion.plagas", { dias, lotes: lotes.map((l) => ({ lote: l.nombre, cultivo: l.cultivo })) });
+    if (propio?.riesgos?.length) {
+      const out = { riesgos: enriquecer(propio.riesgos).slice(0, 4), simulado: false, fuente: "modelo-propio" };
+      await saveInsight(session.user.id, "presion-plagas", "presion-plagas", out, "modelo-propio");
+      return NextResponse.json(out);
+    }
+
+    // 2) Refinamiento con IA (si hay key): mejora redacción y prioriza.
     const anthropic = getAnthropic();
     if (anthropic && riesgos.length > 0) {
       try {
@@ -84,14 +103,14 @@ Respondé SOLO con JSON: {"riesgos":[{"amenaza","cultivo","lote","nivel":"Alto|M
         const text = msg.content[0].type === "text" ? msg.content[0].text : "";
         const parsed = parseJsonTolerante<{ riesgos: Riesgo[] }>(text);
         if (parsed?.riesgos?.length) {
-          const out = { riesgos: parsed.riesgos.slice(0, 4), simulado: false };
+          const out = { riesgos: enriquecer(parsed.riesgos).slice(0, 4), simulado: false };
           await saveInsight(session.user.id, "presion-plagas", "presion-plagas", out, IA_MODEL);
           return NextResponse.json(out);
         }
       } catch { /* cae al determinístico */ }
     }
 
-    const out = { riesgos: riesgos.slice(0, 4), simulado: true };
+    const out = { riesgos: enriquecer(riesgos).slice(0, 4), simulado: true };
     await saveInsight(session.user.id, "presion-plagas", "presion-plagas", out, "reglas");
     return NextResponse.json(out);
   } catch (error) {
