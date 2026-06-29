@@ -54,7 +54,8 @@ export type TareaIA =
   | "presion.plagas"      // pronóstico de presión de plagas
   | "decisiones.dia"      // feed de decisiones del día
   | "copiloto"            // asistente conversacional
-  | "captura.texto";      // texto/voz → registro estructurado
+  | "captura.texto"       // texto → registro estructurado (labor)
+  | "captura.voz";        // audio (nota de voz) → texto transcripto
 
 export function modeloPropioDisponible(): boolean {
   return Boolean(MODELO_PROPIO_URL);
