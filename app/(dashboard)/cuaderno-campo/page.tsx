@@ -18,15 +18,24 @@ export default function CuadernoCampoPage() {
   const [loteFiltro, setLoteFiltro] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("Todos");
 
+  // IDs de lotes del establecimiento activo (alcance del sidebar). Estable para deps.
+  const scopeIds = useMemo(() => scopeLotes.map((l) => l.id).join(","), [scopeLotes]);
+
+  // Si el lote filtrado deja de estar en el alcance (cambió el establecimiento), se limpia.
+  useEffect(() => {
+    if (loteFiltro && !scopeLotes.some((l) => l.id === loteFiltro)) setLoteFiltro("");
+  }, [scopeLotes, loteFiltro]);
+
   useEffect(() => {
     setCargando(true);
-    const q = loteFiltro ? `?loteId=${loteFiltro}` : "";
+    // Sin lote puntual → se restringe a los lotes del establecimiento activo.
+    const q = loteFiltro ? `?loteId=${loteFiltro}` : `?loteIds=${scopeIds}`;
     fetch(`/api/cuaderno-campo${q}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.registros) setRegistros(d.registros); })
       .catch(() => {})
       .finally(() => setCargando(false));
-  }, [loteFiltro]);
+  }, [loteFiltro, scopeIds]);
 
   const tipos = useMemo(() => ["Todos", ...Array.from(new Set(registros.map((r) => r.tipo)))], [registros]);
   const visibles = useMemo(() => registros.filter((r) => tipoFiltro === "Todos" || r.tipo === tipoFiltro), [registros, tipoFiltro]);
@@ -75,13 +84,17 @@ export default function CuadernoCampoPage() {
         crumbs={["Agronomía", "Cuaderno de Campo"]}
         title="Cuaderno de Campo"
         subtitle="Registro de trazabilidad por lote: labores, aplicaciones de productos, siembras y cosechas. Exportable para certificaciones."
-        actions={<button className="mc-btn mc-btn--primary" onClick={exportarPDF} disabled={visibles.length === 0}><Icon name="download" size={14} />Exportar PDF</button>}
       />
 
       <div className="grid g-cols-3">
         <KPI label="Registros" value={String(registros.length)} delta="Labores, siembras, cosechas" trend="up" icon="list" accent />
         <KPI label="Aplicaciones de producto" value={String(aplicaciones)} delta="Con principio activo y dosis" trend="up" icon="droplet" />
         <KPI label="Lotes con registro" value={String(lotesUnicos)} delta="Trazabilidad" trend="up" icon="map" />
+      </div>
+
+      {/* Acción del submódulo, debajo de los KPIs (alineada a la derecha) */}
+      <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <button className="mc-btn mc-btn--primary" onClick={exportarPDF} disabled={visibles.length === 0}><Icon name="download" size={14} />Exportar PDF</button>
       </div>
 
       <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>

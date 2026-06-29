@@ -61,11 +61,13 @@ export function NuevaOrdenLaborModal({
   onClose,
   onEmitir,
   onBorrador,
+  preselectLoteId,
 }: {
   lotesDisponibles: { id?: string; nombre: string; ha: number; tag?: string }[];
   onClose: () => void;
   onEmitir: (orden: OrdenLabor) => Promise<void> | void;
   onBorrador: (orden: OrdenLabor) => void;
+  preselectLoteId?: string;
 }) {
   const [step, setStep] = useState(0);
   const [prioridad, setPrioridad] = useState<"Normal" | "Urgente">("Normal");
@@ -85,6 +87,13 @@ export function NuevaOrdenLaborModal({
   useEffect(() => {
     setParametros(defaultsPara(actividad, categoria));
   }, [actividad, categoria]);
+
+  // Preselecciona el lote (cuando se abre desde un botón "Nueva Tarea" de un lote).
+  useEffect(() => {
+    if (!preselectLoteId) return;
+    const idx = lotesDisponibles.findIndex((l) => l.id === preselectLoteId);
+    if (idx >= 0) setLotesSel(new Set([idx]));
+  }, [preselectLoteId, lotesDisponibles]);
 
   const haNetas = useMemo(() => {
     const bruta = Array.from(lotesSel).reduce((s, i) => s + (lotesDisponibles[i]?.ha || 0), 0);

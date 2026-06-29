@@ -6,7 +6,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
-import { useSetHeaderActions } from "./ActionsContext";
 import {
   LOTES_INICIALES, mapLotesApi, fechaCorta, CULTIVO_COLORES,
   type LoteUI,
@@ -33,8 +32,8 @@ const MapaClasico = dynamic(() => import("./MapaNDVI"), {
 
 type DibujoLote = { geojson: { type: "Polygon"; coordinates: number[][][] }; hectareas: number; centro: { lat: number; lng: number }; perimetro: number };
 import {
-  AgregarCampoModal, EliminarCampoModal, EliminarCampoEstModal, EditarLoteModal, NuevaTareaModal,
-  type AgregarCampoData, type EditarLoteData, type NuevaTareaData,
+  AgregarCampoModal, EliminarCampoModal, EliminarCampoEstModal, EditarLoteModal,
+  type AgregarCampoData, type EditarLoteData,
 } from "./lotes-Modales";
 import { LoteOverlay, CropImg } from "./LoteOverlay";
 import { cuadradoDesdeCentro, puntoEnPoligono } from "@/lib/geo";
@@ -79,7 +78,6 @@ export default function TabLotes() {
   const [showFiltros, setShowFiltros] = useState(false);
   const [filtroCultivo, setFiltroCultivo] = useState("Todos");
   const [editLote, setEditLote] = useState<LoteUI | null>(null);
-  const [tareaLote, setTareaLote] = useState<LoteUI | null>(null);
   const [notaLote, setNotaLote] = useState<LoteUI | null>(null);
   const [comentarioGeneral, setComentarioGeneral] = useState(false);
   const [dibujado, setDibujado] = useState<DibujoLote | null>(null);
@@ -129,13 +127,6 @@ export default function TabLotes() {
     return () => { cancelado = true; };
   }, []);
 
-  /* ---- Acción de header. El lote se crea dibujándolo en el mapa ("Dibujar lote"). ---- */
-  useSetHeaderActions(
-    <button className="mc-btn mc-btn--red" onClick={() => setShowEliminarCampo(true)}>
-      <Icon name="trash" size={14} />Eliminar campo
-    </button>,
-    []
-  );
 
   // Humedad de suelo real (Open-Meteo) — se carga al activar la capa "Humedad".
   const humedadCargadaRef = useRef(false);
@@ -385,26 +376,10 @@ export default function TabLotes() {
     setEditLote(null);
   };
 
-  const crearTarea = async (data: NuevaTareaData) => {
-    if (!tareaLote) return;
-    try {
-      if (tareaLote.dbId) {
-        const res = await fetch("/api/labores", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tipo: data.tipo, fecha: data.fecha, loteId: tareaLote.dbId,
-            descripcion: data.descripcion || data.tipo, superficieTrabajada: tareaLote.ha,
-          }),
-        });
-        if (!res.ok) throw new Error();
-      }
-      toast.show(`Tarea "${data.tipo}" creada para ${tareaLote.name}`);
-      setTareaLote(null);
-    } catch {
-      toast.show("No se pudo crear la tarea", "err");
-    }
-  };
+  // "Nueva Tarea" de un lote → abre el wizard "Nueva Labor" (pestaña Labores)
+  // con el lote preseleccionado. Unifica la creación de labores en un solo flujo.
+  const abrirNuevaLabor = (l: LoteUI) =>
+    router.push(`/campo-digital?tab=Labores&nuevaLabor=${encodeURIComponent(l.dbId || "1")}`);
 
   const agregarNota = async (lote: LoteUI, texto: string) => {
     const nota = { texto, autor: "Vos", fecha: fechaCorta(new Date()) };
@@ -471,7 +446,6 @@ export default function TabLotes() {
         />
       )}
       {editLote && <EditarLoteModal lote={editLote} onClose={() => setEditLote(null)} onConfirm={guardarEdicion} />}
-      {tareaLote && <NuevaTareaModal lote={tareaLote} onClose={() => setTareaLote(null)} onConfirm={crearTarea} />}
       {(notaLote || comentarioGeneral) && (
         <NotaModal
           lote={notaLote || selected || visibles[0]}
@@ -546,6 +520,9 @@ export default function TabLotes() {
               </div>
             </>
           )}
+          <button className="mc-btn mc-btn--red mc-btn--sm" style={{ background: "transparent", color: "var(--mc-red)", border: "1px solid var(--mc-red)" }} onClick={() => setShowEliminarCampo(true)}>
+            <Icon name="trash" size={13} />Eliminar campo
+          </button>
           <button className="mc-btn mc-btn--red mc-btn--sm" onClick={() => setShowEliminar(true)}>
             <Icon name="trash" size={13} />Eliminar lote
           </button>
@@ -561,7 +538,7 @@ export default function TabLotes() {
           onLayerChange={setLayer}
           onNota={(l) => setNotaLote(l)}
           onEditar={(l) => setEditLote(l)}
-          onTarea={(l) => setTareaLote(l)}
+          onTarea={(l) => abrirNuevaLabor(l)}
           onDrawn={(d) => { if (delimitarId) { guardarLimite(d); } else { setDibujado(d); setShowAgregar(true); } }}
           armarDibujo={drawArmed}
           onDibujoIniciado={() => setDrawArmed(false)}
@@ -584,7 +561,7 @@ export default function TabLotes() {
         <LotesListaDetallada
           lotes={visibles}
           onVer={(l) => { setSelected(l); setView("mapa"); }}
-          onTarea={(l) => setTareaLote(l)}
+          onTarea={(l) => abrirNuevaLabor(l)}
         />
       )}
     </>

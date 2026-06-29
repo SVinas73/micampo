@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Icon, KPI, Modal, Field, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
-import { useSetHeaderActions } from "./ActionsContext";
 import { NuevaOrdenLaborModal, type OrdenLabor } from "./labores-Wizard";
 
 /* ============ Tipos y datos demo (Figma) ============ */
@@ -73,6 +72,7 @@ const TIPO_ICON: Record<string, { icon: string; color: string }> = {
 export default function TabLabores() {
   const toast = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { lotes: scopeLotes, loteActivo } = useLoteScope();
   const [laboresRaw, setLabores] = useState<LaborUI[]>(demo(DEMO_LABORES, []));
   // Filtra las labores por el lote activo del alcance global
@@ -87,6 +87,7 @@ export default function TabLabores() {
   ], []));
   const [view, setView] = useState<"kanban" | "tabla" | "calendario">("kanban");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [preselectLoteId, setPreselectLoteId] = useState<string | undefined>(undefined);
   const [calDate, setCalDate] = useState(() => new Date());
   const [dragId, setDragId] = useState<string | null>(null);
   const [reportar, setReportar] = useState<LaborUI | null>(null);
@@ -142,12 +143,18 @@ export default function TabLabores() {
     if (scopeLotes.length > 0) setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0, tag: l.cultivo || "Disponible" })));
   }, [scopeLotes]);
 
-  useSetHeaderActions(
-    <button className="mc-btn mc-btn--primary" onClick={() => setWizardOpen(true)}>
-      <Icon name="plus" size={14} />Nueva labor
-    </button>,
-    []
-  );
+  // Abre el wizard "Nueva Labor" cuando se llega con ?nuevaLabor=<loteId|1>
+  // (desde los botones "Nueva Tarea" de los lotes). Limpia el param al abrir.
+  useEffect(() => {
+    const nl = searchParams.get("nuevaLabor");
+    if (!nl) return;
+    setPreselectLoteId(nl !== "1" ? nl : undefined);
+    setWizardOpen(true);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("nuevaLabor");
+    router.replace(`/campo-digital?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const patchLabor = async (l: LaborUI, cambios: Record<string, unknown>, msg: string) => {
     if (l.dbId) {
@@ -239,7 +246,8 @@ export default function TabLabores() {
       {wizardOpen && (
         <NuevaOrdenLaborModal
           lotesDisponibles={lotes}
-          onClose={() => setWizardOpen(false)}
+          preselectLoteId={preselectLoteId}
+          onClose={() => { setWizardOpen(false); setPreselectLoteId(undefined); }}
           onEmitir={emitirOrden}
           onBorrador={(o) => {
             try {
@@ -247,6 +255,7 @@ export default function TabLabores() {
             } catch {}
             toast.show("Borrador guardado");
             setWizardOpen(false);
+            setPreselectLoteId(undefined);
           }}
         />
       )}
@@ -268,6 +277,9 @@ export default function TabLabores() {
         <div className="row gap-8">
           <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setFiltroOpen(!filtroOpen)}>
             <Icon name="filter" size={13} />Filtros
+          </button>
+          <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setWizardOpen(true)}>
+            <Icon name="plus" size={13} />Nueva labor
           </button>
           {filtroOpen && (
             <>
