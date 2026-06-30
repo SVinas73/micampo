@@ -290,6 +290,19 @@ export default function TabLotes() {
     }
   };
 
+  // Lotes del campo que se está delimitando, con polígono dibujado.
+  const lotesGeoDelCampo = useMemo(
+    () => (delimitarId ? lotes.filter((l) => l.establecimientoId === delimitarId && l.geojson?.coordinates?.[0]?.length) : []),
+    [delimitarId, lotes]
+  );
+
+  // Delimita el campo AUTOMÁTICAMENTE a partir del contorno de sus lotes dibujados.
+  const delimitarConMisLotes = () => {
+    const hull = hullDeLotes(lotesGeoDelCampo.map((l) => l.geojson!));
+    if (!hull) { toast.show("Este campo todavía no tiene lotes dibujados para calcular el contorno", "err"); return; }
+    guardarLimite(hull);
+  };
+
   // Al entrar en modo "delimitar": ir al mapa, armar el dibujo y, si el campo ya
   // tiene centro, volar ahí (si no, el usuario busca el lugar).
   useEffect(() => {
@@ -528,6 +541,23 @@ export default function TabLotes() {
           </button>
         </div>
       </div>
+
+      {delimitarId && (
+        <div className="mc-card" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", borderLeft: "3px solid var(--mc-green-600)" }}>
+          <Icon name="pen" size={16} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13.5 }}>Delimitando “{estDelimitar?.nombre || "campo"}”</div>
+            <div className="text-xs text-muted">
+              {lotesGeoDelCampo.length > 0
+                ? `Tiene ${lotesGeoDelCampo.length} lote(s) dibujado(s): podés generar el contorno automáticamente con ellos, o dibujarlo a mano.`
+                : "Dibujá el contorno del campo en el mapa. (No hay lotes dibujados para generarlo automáticamente.)"}
+            </div>
+          </div>
+          <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={delimitarConMisLotes} disabled={lotesGeoDelCampo.length === 0}>
+            <Icon name="map" size={13} />Delimitar con mis lotes
+          </button>
+        </div>
+      )}
 
       {view === "mapa" && visibles.length > 0 && visibles.every((l) => !l.geojson?.coordinates?.[0]?.length) && (
         <div className="mc-card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderLeft: "3px solid var(--mc-amber)" }}>
