@@ -40,7 +40,7 @@ const SEV_COLOR: Record<string, string> = { alta: "#c93434", media: "#d9a538", b
 
 const capitalizar = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; presion: number; deltaT: number; aptoPulverizacion: boolean; icono: string; descripcion: string };
+type ClimaActual = { temperatura: number; sensacion: number; humedad: number; rocio: number; viento: number; vientoDir: string; rafaga: number; presion: number; deltaT: number; aptoPulverizacion: boolean; icono: string; descripcion: string; esDeNoche?: boolean };
 type ClimaDia = { nombre: string; num: number; esHoy: boolean; icono: string; max: number; min: number; mm: number; probLluvia: number; viento: number; et0: number };
 type ClimaData = { actual: ClimaActual; dias: ClimaDia[]; ubicacion?: { nombre?: string } };
 
@@ -231,7 +231,7 @@ function ClimaSemana({ onVerAgenda, clima }: { onVerAgenda: () => void; clima: C
 
   return (
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
-      <WeatherScene cond={(a as { cond?: string } | null)?.cond || a?.icono} windy={(a?.viento ?? 0) >= 25} style={{ color: "white", padding: "18px 22px 20px" }}>
+      <WeatherScene cond={(a as { cond?: string } | null)?.cond || a?.icono} windy={(a?.viento ?? 0) >= 25} night={a?.esDeNoche} style={{ color: "white", padding: "18px 22px 20px" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
           <div className="row" style={{ gap: 8, alignItems: "center" }}>
             <Icon name="calendar" size={13} />
@@ -242,7 +242,7 @@ function ClimaSemana({ onVerAgenda, clima }: { onVerAgenda: () => void; clima: C
         <div className="row" style={{ alignItems: "stretch", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 18, borderRight: "1px solid rgba(255,255,255,0.22)" }}>
             <span style={{ width: 66, height: 66, borderRadius: "50%", background: "rgba(255,255,255,0.18)", display: "grid", placeItems: "center", boxShadow: "0 6px 16px rgba(0,0,0,0.22)", flexShrink: 0 }}>
-              <AnimatedWeatherIcon cond={(a as { cond?: string } | null)?.cond || a?.icono || "cloud"} size={48} />
+              <AnimatedWeatherIcon cond={(a as { cond?: string } | null)?.cond || a?.icono || "cloud"} size={48} night={a?.esDeNoche} />
             </span>
             <div className="col" style={{ gap: 0 }}>
               <span style={{ fontFamily: "var(--ff-display)", fontSize: 56, lineHeight: 0.92, fontWeight: 600 }}>{a ? `${a.temperatura}°` : "—"}</span>

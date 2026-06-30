@@ -48,6 +48,20 @@ function Sun({ cx = 32, cy = 26, r = 11 }: { cx?: number; cy?: number; r?: numbe
   );
 }
 
+function Moon({ cx = 32, cy = 28, r = 12 }: { cx?: number; cy?: number; r?: number }) {
+  return <circle className="wx-suncore" cx={cx} cy={cy} r={r} fill="url(#wxMoon)" mask="url(#wxMoonMask)" style={{ transformBox: "fill-box", transformOrigin: "center" }} />;
+}
+
+function Stars({ pts }: { pts: { x: number; y: number; r: number }[] }) {
+  return (
+    <>
+      {pts.map((p, i) => (
+        <circle key={i} className="wx-twinkle" style={{ animationDelay: `${i * 0.5}s` }} cx={p.x} cy={p.y} r={p.r} fill="#fff7d6" />
+      ))}
+    </>
+  );
+}
+
 function Cloud({ x = 0, y = 0, scale = 1, dark = false }: { x?: number; y?: number; scale?: number; dark?: boolean }) {
   return (
     <g className="wx-cloud" transform={`translate(${x} ${y}) scale(${scale})`}>
@@ -59,8 +73,9 @@ function Cloud({ x = 0, y = 0, scale = 1, dark = false }: { x?: number; y?: numb
   );
 }
 
-export function AnimatedWeatherIcon({ cond, size = 64 }: { cond: WxCond | string; size?: number }) {
+export function AnimatedWeatherIcon({ cond, size = 64, night = false }: { cond: WxCond | string; size?: number; night?: boolean }) {
   const c = condFrom(typeof cond === "string" ? cond : cond);
+  const estrellas = [{ x: 14, y: 16, r: 1.4 }, { x: 50, y: 14, r: 1.1 }, { x: 45, y: 30, r: 1.3 }, { x: 20, y: 34, r: 1 }];
   const drops = (color: string) =>
     [22, 32, 42].map((dx, i) => (
       <line key={i} className="wx-drop" style={{ animationDelay: `${i * 0.35}s` }} x1={dx} y1="48" x2={dx - 2} y2="53" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
@@ -82,13 +97,25 @@ export function AnimatedWeatherIcon({ cond, size = 64 }: { cond: WxCond | string
             <stop offset="0%" stopColor="#c2cedd" />
             <stop offset="100%" stopColor="#8f9fb3" />
           </linearGradient>
+          {night && (
+            <>
+              <radialGradient id="wxMoon" cx="40%" cy="36%" r="68%">
+                <stop offset="0%" stopColor="#fdf6dc" />
+                <stop offset="100%" stopColor="#e6d79f" />
+              </radialGradient>
+              <mask id="wxMoonMask">
+                <rect x="0" y="0" width="64" height="64" fill="#fff" />
+                <circle cx="37" cy="25" r="12" fill="#000" />
+              </mask>
+            </>
+          )}
         </defs>
 
-        {c === "sun" && <Sun cx={32} cy={30} r={13} />}
+        {c === "sun" && (night ? <><Stars pts={estrellas} /><Moon cx={32} cy={28} r={12} /></> : <Sun cx={32} cy={30} r={13} />)}
 
         {c === "partly" && (
           <>
-            <Sun cx={42} cy={22} r={9} />
+            {night ? <><Stars pts={[{ x: 16, y: 14, r: 1.2 }, { x: 52, y: 30, r: 1.1 }]} /><Moon cx={42} cy={21} r={9} /></> : <Sun cx={42} cy={22} r={9} />}
             <Cloud x={-4} y={4} scale={0.92} />
           </>
         )}
@@ -115,7 +142,7 @@ export function AnimatedWeatherIcon({ cond, size = 64 }: { cond: WxCond | string
           <>
             <Cloud y={-2} scale={1} />
             {[22, 32, 42].map((dx, i) => (
-              <circle key={i} className="wx-flake" style={{ animationDelay: `${i * 0.45}s`, transformBox: "fill-box", transformOrigin: "center" }} cx={dx} cy="50" r="2.4" fill="#f4f9ff" stroke="#cfe3f5" strokeWidth="0.5" />
+              <circle key={i} className="wx-flake" style={{ animationDelay: `${i * 0.45}s`, transformBox: "fill-box", transformOrigin: "center" }} cx={dx} cy="50" r="2.5" fill="#cfe2fb" stroke="#5b86bd" strokeWidth="1" />
             ))}
           </>
         )}

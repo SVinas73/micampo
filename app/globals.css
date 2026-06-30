@@ -2208,8 +2208,10 @@ a:focus-visible {
 .wx-fogline { animation: wx-fog 4s ease-in-out infinite; }
 @keyframes wx-gust { 0%, 100% { transform: translateX(-1.6px); opacity: 0.85; } 50% { transform: translateX(2.2px); opacity: 1; } }
 .wx-gust { animation: wx-gust 2.6s ease-in-out infinite; }
+@keyframes wx-twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.wx-twinkle { animation: wx-twinkle 2.8s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .wx-rays, .wx-suncore, .wx-cloud, .wx-drop, .wx-flake, .wx-bolt, .wx-fogline, .wx-gust { animation: none; }
+  .wx-rays, .wx-suncore, .wx-cloud, .wx-drop, .wx-flake, .wx-bolt, .wx-fogline, .wx-gust, .wx-twinkle { animation: none; }
 }
 
 /* ===================== Glassmorphism flotante (overlay de lote) ===================== */
@@ -2315,6 +2317,11 @@ a:focus-visible {
   20% { opacity: 1; }
   100% { transform: translate(16px,170px); opacity: 0; }
 }
+.wx-scene-star {
+  position: absolute; border-radius: 50%;
+  background: #fff7d6; box-shadow: 0 0 4px rgba(255,247,214,0.75);
+  animation: wx-twinkle 2.8s ease-in-out infinite;
+}
 .wx-scene-fogband {
   position: absolute; left: -10%; width: 120%; height: 20px;
   background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0) 100%);
@@ -2334,7 +2341,7 @@ a:focus-visible {
 .wx-scene-flash { position: absolute; inset: 0; background: rgba(255,255,255,0.7); opacity: 0; animation: wx-flash 6s ease-in-out infinite; }
 .wx-scene-bolt { opacity: 0; animation: wx-flash 6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .wx-scene-cloud-wrap, .wx-scene-rays-g, .wx-scene-pulse, .wx-scene-raindrop, .wx-scene-flake, .wx-scene-fogband, .wx-scene-gust, .wx-scene-flash, .wx-scene-bolt { animation: none; }
+  .wx-scene-cloud-wrap, .wx-scene-rays-g, .wx-scene-pulse, .wx-scene-raindrop, .wx-scene-flake, .wx-scene-fogband, .wx-scene-gust, .wx-scene-flash, .wx-scene-bolt, .wx-scene-star { animation: none; }
 }
 
 /* Drawer lateral (ficha técnica del lote) */

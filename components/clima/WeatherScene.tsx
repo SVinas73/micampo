@@ -20,6 +20,60 @@ const SKY: Record<WxCond, string> = {
   wind: "linear-gradient(120deg, #4a6076 0%, #6f8aa0 100%)",
 };
 
+// Cielos nocturnos (oscuros) para cada condición.
+const SKY_NIGHT: Record<WxCond, string> = {
+  sun: "linear-gradient(160deg, #0a1430 0%, #182a4d 58%, #243a5e 120%)",
+  partly: "linear-gradient(160deg, #0e1a36 0%, #1f3155 60%, #2a3f63 120%)",
+  cloud: "linear-gradient(160deg, #19212f 0%, #2a3445 100%)",
+  fog: "linear-gradient(160deg, #1d242d 0%, #353d48 100%)",
+  rain: "linear-gradient(160deg, #0c1722 0%, #1b2937 100%)",
+  snow: "linear-gradient(160deg, #1a2838 0%, #31465d 100%)",
+  storm: "linear-gradient(160deg, #07071a 0%, #1a1830 100%)",
+  wind: "linear-gradient(160deg, #161f2c 0%, #2a3846 100%)",
+};
+
+/* ---------- Luna realista: disco con halo + cráter recortado (creciente) ---------- */
+function MoonSVG({ size = 120 }: { size?: number }) {
+  const id = useId();
+  return (
+    <svg viewBox="0 0 140 140" width={size} height={size} style={{ display: "block" }}>
+      <defs>
+        <radialGradient id={`${id}-glow`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fdf6dc" stopOpacity="0.5" />
+          <stop offset="60%" stopColor="#e9dca6" stopOpacity="0.16" />
+          <stop offset="80%" stopColor="#e9dca6" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={`${id}-core`} cx="40%" cy="36%" r="70%">
+          <stop offset="0%" stopColor="#fdf8e6" />
+          <stop offset="100%" stopColor="#dccd96" />
+        </radialGradient>
+        <mask id={`${id}-mask`}>
+          <rect x="0" y="0" width="140" height="140" fill="#fff" />
+          <circle cx="92" cy="54" r="44" fill="#000" />
+        </mask>
+      </defs>
+      <circle cx="70" cy="70" r="66" fill={`url(#${id}-glow)`} className="wx-scene-pulse" />
+      <circle cx="70" cy="70" r="44" fill={`url(#${id}-core)`} mask={`url(#${id}-mask)`} />
+    </svg>
+  );
+}
+
+/* ---------- Estrellas: titilan en el cielo nocturno despejado ---------- */
+function StarsScene({ n = 22 }: { n?: number }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }} aria-hidden>
+      {Array.from({ length: n }).map((_, i) => {
+        const x = (i * 67) % 100;
+        const y = (i * 37) % 62; // mitad superior del cielo
+        const s = i % 4 === 0 ? 3 : 2;
+        return (
+          <span key={i} className="wx-scene-star" style={{ left: `${x}%`, top: `${y}%`, width: s, height: s, animationDelay: `${-(i % 6) * 0.5}s` }} />
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------- Sol realista: disco con halo + rayos girando ---------- */
 function SunSVG({ size = 150 }: { size?: number }) {
   const id = useId();
@@ -119,24 +173,35 @@ function Wind() {
 export function WeatherScene({
   cond,
   windy,
+  night = false,
   children,
   style,
   className,
 }: {
   cond?: string | WxCond | null;
   windy?: boolean;
+  night?: boolean;
   children?: React.ReactNode;
   style?: React.CSSProperties;
   className?: string;
 }) {
   const c = condFrom(cond ?? "cloud");
+  const cieloDespejado = c === "sun" || c === "partly";
   return (
-    <div className={className} style={{ position: "relative", overflow: "hidden", background: SKY[c], ...style }}>
+    <div className={className} style={{ position: "relative", overflow: "hidden", background: (night ? SKY_NIGHT : SKY)[c], ...style }}>
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden>
-        {(c === "sun" || c === "partly") && (
-          <div style={{ position: "absolute", top: c === "sun" ? -34 : -22, right: c === "sun" ? -8 : 56 }}>
-            <SunSVG size={c === "sun" ? 168 : 120} />
-          </div>
+        {/* De noche con cielo despejado/parcial: estrellas titilando */}
+        {night && cieloDespejado && <StarsScene n={c === "sun" ? 24 : 16} />}
+        {cieloDespejado && (
+          night ? (
+            <div style={{ position: "absolute", top: c === "sun" ? -16 : -10, right: c === "sun" ? 10 : 60 }}>
+              <MoonSVG size={c === "sun" ? 122 : 96} />
+            </div>
+          ) : (
+            <div style={{ position: "absolute", top: c === "sun" ? -34 : -22, right: c === "sun" ? -8 : 56 }}>
+              <SunSVG size={c === "sun" ? 168 : 120} />
+            </div>
+          )
         )}
         {c === "partly" && <Clouds defs={[{ top: "44%", w: 130, dur: 32, delay: -4, opacity: 0.78 }, { top: "16%", w: 88, dur: 46, delay: -20, opacity: 0.7 }]} />}
         {c === "cloud" && <Clouds defs={[{ top: "12%", w: 150, dur: 38, delay: 0, opacity: 0.5 }, { top: "40%", w: 116, dur: 30, delay: -12, opacity: 0.42 }, { top: "60%", w: 92, dur: 52, delay: -26, opacity: 0.38 }]} />}
