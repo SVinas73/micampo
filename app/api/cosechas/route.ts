@@ -53,9 +53,26 @@ export async function POST(request: Request) {
 
     const { fechaCosecha, rendimiento, calidad, precioVenta, siembraId, loteId } = await request.json();
 
-    if (!fechaCosecha || !rendimiento || !siembraId || !loteId) {
+    if (!fechaCosecha || !rendimiento || !loteId) {
       return NextResponse.json(
-        { error: "Todos los campos son requeridos" },
+        { error: "Faltan fecha, rendimiento o lote" },
+        { status: 400 }
+      );
+    }
+
+    // Si no viene siembraId, lo resolvemos con la última siembra del lote.
+    let siembraIdFinal: string | undefined = siembraId;
+    if (!siembraIdFinal) {
+      const ultima = await prisma.siembra.findFirst({
+        where: { loteId, userId: session.user.id },
+        orderBy: { fechaSiembra: "desc" },
+        select: { id: true },
+      });
+      siembraIdFinal = ultima?.id;
+    }
+    if (!siembraIdFinal) {
+      return NextResponse.json(
+        { error: "Este lote no tiene una siembra registrada. Cargá la siembra antes de la cosecha." },
         { status: 400 }
       );
     }
@@ -66,7 +83,7 @@ export async function POST(request: Request) {
         rendimiento: parseFloat(rendimiento),
         calidad: calidad || null,
         precioVenta: precioVenta ? parseFloat(precioVenta) : null,
-        siembraId,
+        siembraId: siembraIdFinal,
         loteId,
         userId: session.user.id,
       },

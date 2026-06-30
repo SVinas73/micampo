@@ -104,7 +104,6 @@ export default function VisionPage() {
             ref={inputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             style={{ display: "none" }}
             onChange={(e) => elegir(e.target.files?.[0] || null)}
           />

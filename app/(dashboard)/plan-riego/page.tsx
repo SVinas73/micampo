@@ -122,10 +122,12 @@ function PlanRiegoInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loteObjetivo?.id]);
 
-  // Lluvia + riego reales (crudos, últimos 30 días) → se filtran por período en el card
+  // Lluvia + riego reales (crudos, últimos 30 días) → se filtran por período en el card.
+  // Respeta el establecimiento del sidebar (loteIds) para no mezclar campos.
+  const scopeIds = scopeLotes.map((l) => l.id).join(",");
   useEffect(() => {
     const hace30 = Date.now() - 30 * 86400000;
-    fetch("/api/registro-pluviometrico").then((r) => (r.ok ? r.json() : [])).then((d) => {
+    fetch(`/api/registro-pluviometrico?dias=60&loteIds=${scopeIds}`).then((r) => (r.ok ? r.json() : [])).then((d) => {
       if (!Array.isArray(d)) return;
       const recientes = d.filter((r: { fecha: string }) => new Date(r.fecha).getTime() >= hace30);
       setLluvias(recientes.map((r: { fecha: string; milimetros: number; lote?: { nombre: string } }) => ({ t: new Date(r.fecha).getTime(), mm: r.milimetros || 0, lugar: r.lote?.nombre || "" })));
@@ -139,7 +141,8 @@ function PlanRiegoInner() {
       if (!Array.isArray(d)) return;
       setRiegos(d.map((e: { fechaProgramada: string; laminaAplicada?: number; estado?: string; observaciones?: string }) => ({ t: new Date(e.fechaProgramada).getTime(), mm: e.laminaAplicada || 0, estado: e.estado || "", ia: (e.observaciones || "").toLowerCase().includes("ia") })));
     }).catch(() => {});
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeIds]);
 
   // Cálculo determinístico del balance hídrico (real: ET0 + lluvia)
   const { balance, sugerencias, etcDia, proximo } = useMemo(() => {

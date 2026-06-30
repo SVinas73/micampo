@@ -115,23 +115,23 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   }, [scopeLotes]);
 
   const guardarSiembra = async (data: SiembraData) => {
+    if (!data.loteId) { toast.show("Elegí un lote real para registrar la siembra", "err"); return; }
     try {
-      if (data.loteId) {
-        await fetch("/api/siembras", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            loteId: data.loteId,
-            cultivo: data.cultivo,
-            variedad: data.variedad || null,
-            fechaSiembra: data.fecha,
-            hectareas: lotes.find((l) => l.id === data.loteId)?.ha || 0,
-            densidad: data.densidad ? parseFloat(data.densidad) : null,
-            costoSemilla: data.inversion ? parseFloat(data.inversion) : null,
-            observaciones: `Destino: ${data.destinos.join(", ") || "—"} · Recomendación IA insumos: ${data.usarIA ? "Sí" : "No"}`,
-          }),
-        }).catch(() => {});
-      }
+      const res = await fetch("/api/siembras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          loteId: data.loteId,
+          cultivo: data.cultivo,
+          variedad: data.variedad || null,
+          fechaSiembra: data.fecha,
+          hectareas: lotes.find((l) => l.id === data.loteId)?.ha || 0,
+          densidad: data.densidad ? parseFloat(data.densidad) : null,
+          costoSemilla: data.inversion ? parseFloat(data.inversion) : null,
+          observaciones: `Destino: ${data.destinos.join(", ") || "—"} · Recomendación IA insumos: ${data.usarIA ? "Sí" : "No"}`,
+        }),
+      });
+      if (!res.ok) throw new Error();
       toast.show(`Siembra de ${data.cultivo} en ${data.loteNombre} guardada`);
       setSiembraOpen(false);
     } catch {
@@ -140,19 +140,22 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   };
 
   const guardarCosecha = async (data: CosechaData) => {
+    if (!data.loteId) { toast.show("Elegí un lote real para registrar la cosecha", "err"); return; }
     try {
-      if (data.loteId) {
-        await fetch("/api/cosechas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            loteId: data.loteId,
-            fechaCosecha: new Date().toISOString().slice(0, 10),
-            rendimiento: parseFloat(data.rendimiento) || 0,
-            humedad: parseFloat(data.humedad) || null,
-            observaciones: `Impurezas ${data.impurezas}% · ${data.costoTipo} $${data.costoLabor}/Ha · Destino: ${data.destinos.join(", ") || "—"} · Remito: ${data.remito || "—"}${data.cerrarLote ? " · Lote cerrado" : ""}`,
-          }),
-        }).catch(() => {});
+      const res = await fetch("/api/cosechas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          loteId: data.loteId,
+          fechaCosecha: new Date().toISOString().slice(0, 10),
+          rendimiento: parseFloat(data.rendimiento) || 0,
+          calidad: `Impurezas ${data.impurezas}% · Destino: ${data.destinos.join(", ") || "—"}${data.remito ? ` · Remito: ${data.remito}` : ""}`,
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        toast.show(e?.error || "No se pudo registrar la cosecha", "err");
+        return;
       }
       toast.show(`Cosecha de ${data.cultivo} registrada: ${data.rendimiento} Tn${data.cerrarLote ? " · Lote cerrado" : ""}`);
       setCosechaOpen(false);

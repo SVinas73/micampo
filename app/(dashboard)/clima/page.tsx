@@ -142,7 +142,7 @@ function ClimaInner() {
 
     fetch("/api/alertas-climaticas")
       .then((r) => (r.ok ? r.json() : []))
-      .then((d) => { if (Array.isArray(d) && d.length) setAlertas(d.map(mapAlertaApi)); })
+      .then((d) => { if (Array.isArray(d)) setAlertas(d.map(mapAlertaApi)); })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeIds]);
@@ -185,14 +185,14 @@ function ClimaInner() {
   };
 
   const editarLluvia = async (r: LluviaResult) => {
+    const obs = `Duración: ${r.duracion}h${r.condiciones.length ? " · Condiciones: " + r.condiciones.join(", ") : ""}`;
     if (editLluvia?.id) {
-      try {
-        await fetch(`/api/registro-pluviometrico/${editLluvia.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ milimetros: r.mm }),
-        });
-      } catch {}
+      const res = await fetch(`/api/registro-pluviometrico/${editLluvia.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ milimetros: r.mm, observaciones: obs }),
+      }).catch(() => null);
+      if (!res || !res.ok) { toast.show("No se pudo actualizar el registro", "err"); return; }
     }
     setLluvias((prev) =>
       prev.map((x) =>
@@ -258,7 +258,9 @@ function ClimaInner() {
   };
 
   const gestionarTareas = async (a: AlertaRow) => {
-    const lote = lotes.find((l) => l.id);
+    // Preferí el lote al que apunta la alerta (por su "lugar"); si no, el primero con id.
+    const porLugar = a.lugar ? lotes.find((l) => l.id && l.nombre && a.lugar!.toLowerCase().includes(l.nombre.toLowerCase())) : null;
+    const lote = porLugar || lotes.find((l) => l.id);
     if (!lote?.id) {
       toast.show("Creá un lote primero para asignarle la tarea", "err");
       return;
@@ -293,7 +295,7 @@ function ClimaInner() {
       {editLluvia && (
         <RegistrarLluviaModal
           lotes={lotes}
-          initial={{ mm: editLluvia.mm }}
+          initial={{ mm: editLluvia.mm, fecha: editLluvia.fechaRaw?.slice(0, 10), condiciones: editLluvia.tags.map((t) => t.label) }}
           onClose={() => setEditLluvia(null)}
           onSave={editarLluvia}
         />
@@ -311,7 +313,7 @@ function ClimaInner() {
         <KPI label="Temperatura" value={clima ? `${clima.actual.temperatura} °C` : "—"} delta={clima ? `Sensación ${clima.actual.sensacion}°` : "—"} trend="up" icon="thermometer" accent />
         <KPI label="Viento" value={clima ? `${clima.actual.viento} km/h` : "—"} delta={clima ? `${clima.actual.vientoDir} · ráfagas ${clima.actual.rafaga}` : "—"} trend="up" icon="wind" />
         <KPI label="Delta T" value={clima ? String(clima.actual.deltaT) : "—"} delta={clima ? (clima.actual.aptoPulverizacion ? "Apto pulverizar" : "Fuera de rango") : "—"} trend="up" icon="activity" />
-        <KPI label="Lluvia prevista 7d" value={clima ? `${Math.round(clima.dias.reduce((s, d) => s + d.mm, 0))} mm` : "—"} delta={clima ? "pronóstico" : "—"} trend="up" icon="droplet" />
+        <KPI label="Lluvia prevista 7d" value={clima ? `${Math.round(clima.dias.slice(0, 7).reduce((s, d) => s + d.mm, 0))} mm` : "—"} delta={clima ? "pronóstico" : "—"} trend="up" icon="droplet" />
         <KPI label="Alertas Climáticas" value={String(alertasCount)} delta={`${criticasCount} críticas`} trend="warn" icon="alert" warn />
       </div>
 

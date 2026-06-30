@@ -158,11 +158,12 @@ export default function TabLabores() {
 
   const patchLabor = async (l: LaborUI, cambios: Record<string, unknown>, msg: string) => {
     if (l.dbId) {
-      await fetch(`/api/labores/${l.dbId}`, {
+      const res = await fetch(`/api/labores/${l.dbId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(cambios),
-      }).catch(() => {});
+      }).catch(() => null);
+      if (!res || !res.ok) { toast.show("No se pudo actualizar la labor", "err"); return; }
     }
     setLabores((prev) =>
       prev.map((x) => {
@@ -181,36 +182,35 @@ export default function TabLabores() {
   };
 
   const emitirOrden = async (orden: OrdenLabor) => {
-    const loteSel = orden.lotes[0];
+    // Una labor por CADA lote seleccionado con id real (el wizard permite multi-lote).
+    const conId = orden.lotes.filter((l) => l.id);
+    if (conId.length === 0) { toast.show("Elegí al menos un lote guardado para emitir la orden", "err"); return; }
+    const params = Object.entries(orden.parametros).map(([k, v]) => `${k.split(" (")[0]}: ${v}`).join(", ");
+    const obs = `Operario: ${orden.operario} · ${orden.tractor} + ${orden.implemento} · Insumos: ${orden.insumos.map((i) => `${i.nombre} ${i.dosis} ${i.unidad}`).join(", ") || "—"}${params ? ` · Parámetros: ${params}` : ""} · Costo est: $${orden.costoTotal} USD`;
     try {
-      let dbId: string | undefined;
-      if (loteSel?.id) {
+      const creadas: LaborUI[] = [];
+      for (const lote of conId) {
         const res = await fetch("/api/labores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tipo: orden.actividad,
-            fecha: hoyISO(),
-            loteId: loteSel.id,
-            superficieTrabajada: orden.haNetas,
-            descripcion: orden.actividad,
-            observaciones: `Operario: ${orden.operario} · ${orden.tractor} + ${orden.implemento} · Insumos: ${orden.insumos.map((i) => i.nombre).join(", ") || "—"} · Costo est: $${orden.costoTotal} USD`,
-            prioridad: orden.prioridad,
-            operarios: orden.operario,
+            tipo: orden.actividad, fecha: hoyISO(), loteId: lote.id,
+            superficieTrabajada: lote.ha || 0, descripcion: orden.actividad,
+            observaciones: obs, prioridad: orden.prioridad, operarios: orden.operario,
           }),
         });
-        if (res.ok) dbId = (await res.json()).id;
-      }
-      setLabores((prev) => [
-        {
-          id: dbId || `n${Date.now()}`, dbId, tarea: orden.actividad, tipo: orden.actividad,
-          lote: loteSel?.nombre || "—", loteId: loteSel?.id, cultivo: "—",
+        if (!res.ok) continue;
+        const d = await res.json();
+        creadas.push({
+          id: d.id, dbId: d.id, tarea: orden.actividad, tipo: orden.actividad,
+          lote: lote.nombre || "—", loteId: lote.id, cultivo: "—",
           responsable: orden.operario, fecha: hoyCorta(), fechaISO: hoyISO(),
           prioridad: orden.prioridad === "Urgente" ? "alta" : "media", estado: "Hoy",
-        },
-        ...prev,
-      ]);
-      toast.show(`Orden "${orden.actividad}" emitida y notificada (${orden.haNetas} Ha · $${orden.costoTotal.toLocaleString("es-AR")} USD)`);
+        });
+      }
+      if (creadas.length === 0) { toast.show("No se pudo emitir la orden", "err"); return; }
+      setLabores((prev) => [...creadas, ...prev]);
+      toast.show(`Orden "${orden.actividad}" emitida para ${creadas.length} lote(s)`);
       setWizardOpen(false);
     } catch {
       toast.show("No se pudo emitir la orden", "err");
