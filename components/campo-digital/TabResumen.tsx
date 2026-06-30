@@ -349,7 +349,6 @@ function UltimasActividadesCard({ actividades, cargando, onVerTodo }: { activida
                   <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb}{" "}
                   <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en{" "}
                   <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span>
-                  <Icon name={a.icon} size={13} style={{ marginLeft: 6, verticalAlign: "middle", color: "var(--mc-text-3)" }} />
                 </div>
               </div>
               <div className="mc-act-row__time">{a.time}</div>
