@@ -1,17 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Icon, KPI, PageHeader, Modal, Field, useToast } from "@/components/mc";
 import { useLoteScope } from "@/components/LoteScope";
 import { DIVISIONES_POR_PAIS } from "@/lib/divisiones-administrativas";
-
-// Selector de punto en el mapa (Leaflet), solo en cliente.
-const MapaPunto = dynamic(() => import("@/components/MapaPrecision"), {
-  ssr: false,
-  loading: () => <div style={{ height: 360, display: "grid", placeItems: "center", background: "var(--mc-surface-2)", borderRadius: 12 }} className="text-sm text-muted">Cargando mapa…</div>,
-});
 
 type Est = { id: string; nombre: string; direccion?: string | null; ciudad?: string | null; provincia?: string | null; pais?: string | null; cuit?: string | null; hectareasTotales?: number | null; lotesCount?: number; coordenadas?: unknown; centroLatitud?: number | null; centroLongitud?: number | null };
 type Lote = { id: string; nombre: string; hectareas: number; cultivo?: string | null; establecimientoId?: string | null };
@@ -31,25 +24,6 @@ export default function EstablecimientosPage() {
   const [guardando, setGuardando] = useState(false);
   const [aEliminar, setAEliminar] = useState<Est | null>(null);
   const [borrando, setBorrando] = useState(false);
-  const [ubicEst, setUbicEst] = useState<Est | null>(null);
-  const [ubicPunto, setUbicPunto] = useState<{ lat: number; lng: number } | null>(null);
-  const [guardandoUbic, setGuardandoUbic] = useState(false);
-
-  const guardarUbicacion = async () => {
-    if (!ubicEst || !ubicPunto) { toast.show("Tocá el mapa para marcar la ubicación", "err"); return; }
-    setGuardandoUbic(true);
-    try {
-      const res = await fetch(`/api/establecimientos/${ubicEst.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ centroLatitud: ubicPunto.lat, centroLongitud: ubicPunto.lng }),
-      });
-      if (!res.ok) throw new Error();
-      toast.show(`Ubicación de ${ubicEst.nombre} guardada · el clima ya usa este punto`);
-      setUbicEst(null); setUbicPunto(null);
-      cargar(); recargar();
-    } catch { toast.show("No se pudo guardar la ubicación", "err"); }
-    finally { setGuardandoUbic(false); }
-  };
 
   const abrirNuevo = () => { setEditId(null); setForm(FORM_VACIO); setModalOpen(true); };
   const abrirEditar = (e: Est) => {
@@ -156,6 +130,7 @@ export default function EstablecimientosPage() {
             <div className="grid g-cols-3">
               {ests.map((e) => {
                 const delimitado = !!e.coordenadas;
+                const ubicado = e.centroLatitud != null && e.centroLongitud != null;
                 return (
                 <div key={e.id} className="mc-card col gap-12">
                   <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -169,9 +144,6 @@ export default function EstablecimientosPage() {
                     </div>
                     <div className="row gap-6" style={{ alignItems: "center" }}>
                       <span className="mc-badge mc-badge--neutral"><span className="mc-badge__dot" />{e.lotesCount ?? 0} lotes</span>
-                      <button className="mc-icon-btn" aria-label={`Ubicación de ${e.nombre}`} title="Fijar ubicación (clima)" onClick={() => { setUbicEst(e); setUbicPunto(e.centroLatitud != null && e.centroLongitud != null ? { lat: e.centroLatitud, lng: e.centroLongitud } : null); }}>
-                        <Icon name="map" size={14} />
-                      </button>
                       <button className="mc-icon-btn" aria-label={`Editar ${e.nombre}`} title="Editar establecimiento" onClick={() => abrirEditar(e)}>
                         <Icon name="edit" size={14} />
                       </button>
@@ -181,9 +153,9 @@ export default function EstablecimientosPage() {
                     </div>
                   </div>
                   <div className="col gap-8">
-                    <span className={`mc-badge ${delimitado ? "mc-badge--green" : "mc-badge--neutral"}`} style={{ fontSize: 11, alignSelf: "flex-start" }}>
+                    <span className={`mc-badge ${delimitado ? "mc-badge--green" : ubicado ? "mc-badge--blue" : "mc-badge--neutral"}`} style={{ fontSize: 11, alignSelf: "flex-start" }}>
                       <Icon name={delimitado ? "check" : "map"} size={11} />
-                      {delimitado ? `Delimitado · ${e.hectareasTotales ? Math.round(e.hectareasTotales) + " ha" : "en el mapa"}` : "Sin delimitar"}
+                      {delimitado ? `Delimitado · ${e.hectareasTotales ? Math.round(e.hectareasTotales) + " ha" : "en el mapa"}` : ubicado ? "Ubicado para clima · sin contorno" : "Sin delimitar"}
                     </span>
                     <div className="row gap-8">
                       <button className="mc-btn mc-btn--primary mc-btn--sm flex-1" style={{ justifyContent: "center" }} onClick={() => { setEstablecimientoId(e.id); router.push("/campo-digital?tab=Lotes"); }}>
@@ -283,34 +255,6 @@ export default function EstablecimientosPage() {
         <div style={{ padding: "10px 12px", background: "var(--mc-surface-2)", borderRadius: 8, fontSize: 12.5, color: "var(--mc-text-2)", display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="map" size={14} style={{ color: "var(--mc-green-700)", flexShrink: 0 }} />
           La superficie (hectáreas) se calcula sola cuando delimitás el establecimiento en el mapa.
-        </div>
-      </Modal>
-
-      <Modal
-        open={!!ubicEst}
-        onClose={() => { setUbicEst(null); setUbicPunto(null); }}
-        title={`Ubicación de ${ubicEst?.nombre || "establecimiento"}`}
-        subtitle="Tocá el mapa para marcar dónde está el campo. El clima del Inicio y del módulo Clima van a usar este punto."
-        footer={<>
-          <button className="mc-btn mc-btn--ghost" onClick={() => { setUbicEst(null); setUbicPunto(null); }}>Cancelar</button>
-          <button className="mc-btn mc-btn--primary" onClick={guardarUbicacion} disabled={guardandoUbic || !ubicPunto}>
-            <Icon name="check" size={14} />{guardandoUbic ? "Guardando…" : "Guardar ubicación"}
-          </button>
-        </>}
-      >
-        <div style={{ height: 380, borderRadius: 12, overflow: "hidden", border: "1px solid var(--mc-line)" }}>
-          {ubicEst && (
-            <MapaPunto
-              lotes={[]}
-              modoEdicion
-              centroInicial={ubicPunto ? [ubicPunto.lat, ubicPunto.lng] : [-32.8, -56.0]}
-              zoomInicial={ubicPunto ? 13 : 7}
-              onMarcadorCreado={(lat, lng) => setUbicPunto({ lat, lng })}
-            />
-          )}
-        </div>
-        <div className="text-xs text-muted" style={{ marginTop: 8 }}>
-          {ubicPunto ? `Punto: ${ubicPunto.lat.toFixed(4)}, ${ubicPunto.lng.toFixed(4)}` : "Todavía no marcaste el punto."}
         </div>
       </Modal>
 

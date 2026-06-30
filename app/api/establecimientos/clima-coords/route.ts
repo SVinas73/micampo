@@ -45,16 +45,24 @@ export async function GET(request: Request) {
     if (est.centroLatitud != null && est.centroLongitud != null) {
       return NextResponse.json({ lat: est.centroLatitud, lon: est.centroLongitud, nombre: est.nombre, fuente: "centro" });
     }
-    // 2) Promedio de sus lotes.
+    // 2) Promedio de sus lotes (y lo PERSISTE como centro para que quede estable).
     const p = promedioLotes(est.lotes);
-    if (p) return NextResponse.json({ ...p, nombre: est.nombre, fuente: "promedio-lotes" });
+    if (p) {
+      await prisma.establecimiento.update({ where: { id: est.id }, data: { centroLatitud: p.lat, centroLongitud: p.lon } }).catch(() => {});
+      return NextResponse.json({ ...p, nombre: est.nombre, fuente: "promedio-lotes" });
+    }
 
-    // 3) Geocodificar por ubicación textual y PERSISTIR el centro (auto-corrige a futuro).
-    const query = [est.ciudad, est.provincia, est.pais].filter(Boolean).join(", ") || est.direccion || "";
-    const g = query ? await geocodeUbicacion(query, est.pais || "Uruguay") : null;
+    // 3) Geocodificar por NOMBRE de lugar (la API de Open-Meteo busca por nombre, no
+    //    por dirección con comas). Probamos ciudad, luego provincia. Persistimos el centro.
+    const candidatos = [est.ciudad, est.provincia, est.direccion].map((s) => (s || "").trim()).filter(Boolean);
+    let g: { lat: number; lon: number; nombre: string } | null = null;
+    for (const c of candidatos) {
+      g = await geocodeUbicacion(c, est.pais || "Uruguay");
+      if (g) break;
+    }
     if (g) {
       await prisma.establecimiento.update({ where: { id: est.id }, data: { centroLatitud: g.lat, centroLongitud: g.lon } }).catch(() => {});
-      return NextResponse.json({ lat: g.lat, lon: g.lon, nombre: est.nombre, fuente: "geocode" });
+      return NextResponse.json({ lat: g.lat, lon: g.lon, nombre: g.nombre, fuente: "geocode" });
     }
 
     return NextResponse.json({ lat: null, lon: null, nombre: est.nombre, fuente: "sin-ubicacion" });
