@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import { Icon } from "@/components/mc/Icon";
 import { Copiloto } from "@/components/Copiloto";
 import OfflineSync from "@/components/OfflineSync";
+import { PerfilModal, type Perfil } from "@/components/PerfilModal";
 import { LoteScopeProvider, useLoteScope } from "@/components/LoteScope";
 
 function EstablecimientoLabel() {
@@ -367,6 +368,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tweaksOpen, setTweaksOpen] = useState(false);
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [perfilOpen, setPerfilOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/perfil").then((r) => (r.ok ? r.json() : null)).then((p) => { if (p?.id) setPerfil(p); }).catch(() => {});
+  }, []);
   const [copilotoOpen, setCopilotoOpen] = useState(false);
   const [copilotoSeed, setCopilotoSeed] = useState<string | null>(null);
 
@@ -549,10 +556,15 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         ))}
 
         <div className="mc-sb__foot">
-          <div className="mc-sb__avatar">{userInitials}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="mc-sb__user-name">{userName}</div>
-            <div className="mc-sb__user-role">Administrador</div>
+          <button className="mc-sb__avatar" title="Tu perfil" onClick={() => setPerfilOpen(true)} style={{ overflow: "hidden", border: "none", cursor: "pointer", padding: 0 }}>
+            {perfil?.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={perfil.image} alt="Perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : userInitials}
+          </button>
+          <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setPerfilOpen(true)}>
+            <div className="mc-sb__user-name">{perfil?.name || userName}</div>
+            <div className="mc-sb__user-role">Ver perfil</div>
           </div>
           <button className="mc-icon-btn" title="Preferencias" style={{ width: 28, height: 28 }} onClick={() => setTweaksOpen(!tweaksOpen)}>
             <Icon name="settings" size={14} />
@@ -566,6 +578,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       <main className="mc-main" data-modulo={moduloDeRuta(pathname)}>{children}</main>
 
       <OfflineSync />
+      <PerfilModal open={perfilOpen} onClose={() => setPerfilOpen(false)} perfil={perfil} onSaved={setPerfil} />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onAskCopilot={askCopilot} />
       <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)} />
       <Copiloto
