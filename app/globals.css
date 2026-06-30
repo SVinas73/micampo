@@ -1105,6 +1105,29 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   .g-cols-2, .g-cols-3, .g-cols-4, .g-cols-5, .g-cols-6 { grid-template-columns: 1fr; }
 }
 
+/* ============================================================
+   MOBILE: áreas táctiles mínimas (≥44px, Apple HIG).
+   Solo aplica en teléfono/tablet (≤820px). El desktop queda igual.
+   ============================================================ */
+@media (max-width: 820px) {
+  .mc-btn      { min-height: 44px; }
+  .mc-btn--sm  { min-height: 40px; }
+  .mc-btn--lg  { min-height: 50px; }
+  .mc-icon-btn { width: 44px; height: 44px; }
+
+  /* Inputs y selects táctiles. font-size 16px evita el zoom automático de iOS. */
+  .mc-input, .mc-select, .mc-textarea,
+  input[type="text"], input[type="number"], input[type="date"], input[type="time"],
+  input[type="email"], input[type="password"], input[type="search"], select, textarea {
+    min-height: 44px; font-size: 16px;
+  }
+
+  /* Tabs y segmentos: alto cómodo y scroll horizontal si no entran. */
+  .mc-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .mc-tab { min-height: 40px; }
+  .mc-seg button { min-height: 40px; }
+}
+
 /* Placeholder image */
 .mc-placeholder {
   width: 100%;
