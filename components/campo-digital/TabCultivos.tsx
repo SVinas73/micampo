@@ -149,7 +149,9 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
           loteId: data.loteId,
           fechaCosecha: new Date().toISOString().slice(0, 10),
           rendimiento: parseFloat(data.rendimiento) || 0,
-          calidad: `Impurezas ${data.impurezas}% · Destino: ${data.destinos.join(", ") || "—"}${data.remito ? ` · Remito: ${data.remito}` : ""}`,
+          humedad: data.humedad ? parseFloat(data.humedad) : null,
+          calidad: `Impurezas ${data.impurezas}%`,
+          observaciones: `Destino: ${data.destinos.join(", ") || "—"} · ${data.costoTipo} $${data.costoLabor}/Ha · Remito: ${data.remito || "—"}${data.cerrarLote ? " · Lote cerrado" : ""}`,
         }),
       });
       if (!res.ok) {
