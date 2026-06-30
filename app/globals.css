@@ -1128,6 +1128,23 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   .mc-seg button { min-height: 40px; }
 }
 
+/* ============================================================
+   MOBILE: tablas de datos que NO se rompen en pantallas chicas.
+   La tabla pasa a ser un contenedor con scroll horizontal suave
+   (un box anónimo re-arma la tabla por dentro → columnas alineadas).
+   Solo aplica ≤820px; el desktop queda igual.
+   ============================================================ */
+@media (max-width: 820px) {
+  .mc-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  /* las celdas no se parten: mejor scrollear que encimar texto */
+  .mc-table th, .mc-table td { white-space: nowrap; }
+}
+
 /* Placeholder image */
 .mc-placeholder {
   width: 100%;
