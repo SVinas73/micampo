@@ -136,7 +136,7 @@ export function CapturaRapida({
           <>
             <button className="mc-btn mc-btn--ghost" onClick={onClose}>Cancelar</button>
             <button className="mc-btn mc-btn--primary" onClick={interpretar} disabled={interpretando || !texto.trim()}>
-              <Icon name="sparkles" size={14} />{interpretando ? "Interpretando…" : "Interpretar"}
+              <Icon name="send" size={14} />{interpretando ? "Interpretando…" : "Enviar"}
             </button>
           </>
         )
@@ -161,7 +161,7 @@ export function CapturaRapida({
                 background: escuchando ? "#c93434" : "#5e7733",
               }}
             >
-              <Icon name="camera" size={16} />
+              <Icon name={escuchando ? "pause" : "mic"} size={16} />
               {escuchando && <span className="mc-copilot-orb__pulse" style={{ background: "rgba(201,52,52,0.5)" }} />}
             </button>
           </div>
