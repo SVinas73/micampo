@@ -289,13 +289,13 @@ function CommandPalette({ open, onClose, onAskCopilot }: { open: boolean; onClos
 }
 
 function TweaksPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [tweaks, setTweaks] = useState({ theme: "light", palette: "natural", font: "inter", density: "compact" });
+  const [tweaks, setTweaks] = useState({ theme: "light", palette: "natural", font: "inter", density: "compact", contrast: "normal" });
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("micampo:tweaks");
       if (saved) {
-        const t = JSON.parse(saved);
+        const t = { contrast: "normal", ...JSON.parse(saved) };
         setTweaks(t);
         apply(t);
       }
@@ -308,6 +308,7 @@ function TweaksPanel({ open, onClose }: { open: boolean; onClose: () => void }) 
     r.setAttribute("data-palette", t.palette);
     r.setAttribute("data-font", t.font);
     r.setAttribute("data-density", t.density);
+    r.setAttribute("data-contrast", t.contrast || "normal");
   };
 
   const update = (k: string, v: string) => {
@@ -344,6 +345,7 @@ function TweaksPanel({ open, onClose }: { open: boolean; onClose: () => void }) 
       </div>
       <div className="mc-tweaks__body">
         <Row label="Modo" k="theme" value={tweaks.theme} options={[{ l: "Claro", v: "light" }, { l: "Oscuro", v: "dark" }]} />
+        <Row label="Sol (alto contraste)" k="contrast" value={tweaks.contrast} options={[{ l: "Normal", v: "normal" }, { l: "Sol", v: "sun" }]} />
       </div>
     </div>
   );
@@ -414,6 +416,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         r.setAttribute("data-palette", t.palette || "natural");
         r.setAttribute("data-font", "inter");
         r.setAttribute("data-density", t.density || "compact");
+        r.setAttribute("data-contrast", t.contrast || "normal");
       }
     } catch {}
   }, []);
