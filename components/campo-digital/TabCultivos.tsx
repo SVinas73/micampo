@@ -240,8 +240,9 @@ const ESTADO_COLOR: Record<string, { color: string; bg: string }> = {
 };
 
 function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }: { lotesReales: { id?: string; nombre: string; ha: number; cultivo?: string | null }[]; onNuevaTarea: (lote: string) => void; onVerMapa: () => void; distribucion: DistCultivo[] }) {
-  const [filtro, setFiltro] = useState(false);
   const [soloActivos, setSoloActivos] = useState(false);
+  const [filtroCultivo, setFiltroCultivo] = useState("Todos");
+  const [expandido, setExpandido] = useState<number | null>(null);
   const base = lotesReales.map((l) => {
     const c = l.cultivo ? (ESTADO_COLOR[l.cultivo] || { color: "#5e7733", bg: "#f1faf2" }) : { color: "#9aa39a", bg: "var(--mc-surface-2)" };
     return {
@@ -251,50 +252,52 @@ function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }:
       cosechaFecha: "—", rinde: "—", destino: "—", progress: l.cultivo ? 35 : 0, has: Math.round(l.ha), activo: !!l.cultivo,
     };
   });
-  const lotesEstados = soloActivos ? base.filter((l) => l.activo) : base;
+  const cultivosDisp = ["Todos", ...Array.from(new Set(base.map((l) => l.cultivo)))];
+  const lotesEstados = base
+    .filter((l) => (soloActivos ? l.activo : true))
+    .filter((l) => (filtroCultivo === "Todos" ? true : l.cultivo === filtroCultivo));
   return (
-    <div className="grid" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
+    <div className="grid" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14, alignItems: "start" }}>
       <div className="mc-card">
-        <div className="mc-card__head" style={{ position: "relative" }}>
-          <div className="mc-card__title">Estados de los Cultivos</div>
-          <button className="mc-icon-btn" onClick={() => setFiltro(!filtro)}>
-            <Icon name="filter" size={13} />
+        <div className="mc-card__head" style={{ gap: 8, flexWrap: "wrap" }}>
+          <div className="mc-card__title" style={{ marginRight: "auto" }}>Estados de los Cultivos</div>
+          <span className="text-xs text-muted">{lotesEstados.length} lote{lotesEstados.length === 1 ? "" : "s"}</span>
+          <select className="mc-select" style={{ minWidth: 120, height: 30, padding: "2px 8px", fontSize: 12.5 }} value={filtroCultivo} onChange={(e) => setFiltroCultivo(e.target.value)}>
+            {cultivosDisp.map((c) => <option key={c}>{c}</option>)}
+          </select>
+          <button className={`mc-btn mc-btn--sm ${soloActivos ? "mc-btn--primary" : "mc-btn--secondary"}`} onClick={() => setSoloActivos((v) => !v)}>
+            <Icon name="check" size={12} />Activos
           </button>
-          {filtro && (
-            <>
-              <div onClick={() => setFiltro(false)} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-              <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 51, background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 10, boxShadow: "var(--sh-lg)", padding: 12, width: 200 }}>
-                <label className="row gap-8" style={{ cursor: "pointer", fontSize: 13 }}>
-                  <input type="checkbox" checked={soloActivos} onChange={(e) => setSoloActivos(e.target.checked)} />
-                  Solo lotes activos
-                </label>
-              </div>
-            </>
-          )}
         </div>
-        <div className="col gap-14">
+        <div className="col gap-8">
           {lotesEstados.length === 0 && (
             <div className="mc-empty" style={{ padding: 28 }}>
               <div className="mc-empty__icon"><Icon name="sprout" size={20} /></div>
               <div className="mc-empty__text">{soloActivos ? "No hay lotes con cultivo activo." : "Sin lotes. Creá lotes en el tab Lotes y asignales un cultivo."}</div>
             </div>
           )}
-          {lotesEstados.map((l, i) => (
+          {lotesEstados.map((l, i) => {
+            const abierto = expandido === i;
+            return (
             <div key={i} style={{ border: `1.5px solid ${l.color}40`, borderRadius: 14, overflow: "hidden" }}>
-              <div style={{ background: l.color, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div className="row gap-12" style={{ alignItems: "center" }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.22)", display: "grid", placeItems: "center", fontSize: 22 }}>
-                    <Icon name={l.cultivo === "Maíz" ? "wheat" : "sprout"} size={22} />
+              <div onClick={() => setExpandido(abierto ? null : i)} style={{ background: l.color, padding: "9px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+                <div className="row gap-10" style={{ alignItems: "center", minWidth: 0 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.22)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                    <Icon name={l.cultivo === "Maíz" ? "wheat" : "sprout"} size={17} />
                   </div>
-                  <div>
-                    <div style={{ color: "white", fontWeight: 700, fontSize: 16, fontFamily: "var(--ff-display)", lineHeight: 1.2, display: "flex", alignItems: "center", gap: 4 }}>{l.id} ({l.cultivo}) <Icon name="alert" size={14} /></div>
-                    <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, marginTop: 2 }}>{l.has} Has | Activo</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: "white", fontWeight: 700, fontSize: 14, fontFamily: "var(--ff-display)", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l.id} <span style={{ opacity: 0.85, fontWeight: 500 }}>· {l.cultivo}</span></div>
+                    <div style={{ color: "rgba(255,255,255,0.78)", fontSize: 10.5, marginTop: 1 }}>{l.has} Ha{l.activo ? " · Activo" : ""}{l.activo ? ` · ${l.progress}%` : ""}</div>
                   </div>
                 </div>
-                <button className="mc-btn mc-btn--sm" style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1.5px solid rgba(255,255,255,0.35)", fontSize: 11 }} onClick={() => onNuevaTarea(l.loteId || "")}>
-                  <Icon name="plus" size={10} />Nueva Tarea
-                </button>
+                <div className="row gap-8" style={{ alignItems: "center", flexShrink: 0 }}>
+                  <button className="mc-btn mc-btn--sm" style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1.5px solid rgba(255,255,255,0.35)", fontSize: 11 }} onClick={(e) => { e.stopPropagation(); onNuevaTarea(l.loteId || ""); }}>
+                    <Icon name="plus" size={10} />Tarea
+                  </button>
+                  <Icon name={abierto ? "chevDown" : "chevRight"} size={16} style={{ color: "white" }} />
+                </div>
               </div>
+              {abierto && (<>
               <div style={{ height: 4, background: `${l.color}25` }}></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", background: l.bg }}>
                 <SeccionLote color={l.color} icon="sprout" titulo="Siembra">
@@ -342,12 +345,14 @@ function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }:
                   </div>
                 </SeccionLote>
               </div>
+              </>)}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      <div className="mc-card">
+      <div className="mc-card" style={{ alignSelf: "start" }}>
         <div className="mc-card__head">
           <div>
             <div className="mc-card__eyebrow">Distribución de cultivos</div>

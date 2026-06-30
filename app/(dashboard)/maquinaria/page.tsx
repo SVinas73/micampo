@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DiagnosticoSonido from "@/components/maquinaria/DiagnosticoSonido";
 import {
   Dialog,
   DialogContent,
@@ -1810,6 +1811,7 @@ export default function MaquinariaPage() {
         {/* TAB 5: MANTENIMIENTO PREDICTIVO */}
         {/* ============================================ */}
         <TabsContent value="predictivo" className="space-y-4">
+          <DiagnosticoSonido />
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">Mantenimiento Predictivo</h2>

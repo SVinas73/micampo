@@ -47,6 +47,7 @@ export const MODELO_PROPIO_KEY = process.env.MICAMPO_MODELO_KEY || "";
 export type TareaIA =
   | "vision.cultivo"      // diagnóstico de enfermedad/plaga en foto de planta
   | "vision.maquinaria"   // diagnóstico de pieza/falla en foto de máquina
+  | "audio.maquinaria"    // diagnóstico de falla por sonido de motor
   | "vision.factura"      // OCR de comprobantes
   | "vision.animal"       // condición corporal / forraje
   | "prescripcion.plaga"  // recomendación accionable de control (producto/dosis/ROI)
