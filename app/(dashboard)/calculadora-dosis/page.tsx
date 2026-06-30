@@ -333,6 +333,8 @@ function TabNuevo({
       dosisObjetivo: p0.dosis,
       superficieHa: String(area),
       costoUnitario: p0.costoUnitario || null,
+      // Costo TOTAL real de la mezcla (todos los productos × área), no solo el primero.
+      costoTotal: Math.round(costoPorHaMezcla(config) * Number(area) * 100) / 100 || null,
       aguaPorHa: String(caldo),
       loteId: config.loteId,
       // Guardamos la mezcla completa para poder duplicarla luego (incluye todos los productos)
@@ -882,14 +884,17 @@ function apiToHistRow(c: CalculoApi): HistRow {
   if (c.observaciones?.includes("##CFG##")) {
     try { config = JSON.parse(c.observaciones.split("##CFG##")[1]); } catch { /* ignora */ }
   }
+  // Unidad real del producto principal (Kg/Ha o Lt/Ha), para no mostrar todo como litros.
+  const unidadHa = config?.productos?.[0]?.unidad || "Lt/Ha";
+  const unidad = unidadHa.replace("/Ha", "");
   return {
     id: c.id,
     fecha,
     producto: c.nombreProducto,
     lote: c.lote?.nombre || "—",
     ha: c.superficieHa,
-    dosis: `${c.dosisObjetivo} L/Ha`,
-    total: `${c.cantidadTotal?.toFixed(1) ?? "—"} L`,
+    dosis: `${c.dosisObjetivo} ${unidadHa}`,
+    total: `${c.cantidadTotal?.toFixed(1) ?? "—"} ${unidad}`,
     costo: c.costoTotal != null ? fmtUSD(c.costoTotal) : "—",
     usuario: "Yo",
     config,

@@ -59,7 +59,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const navegar = (tab: string) => router.push(`/campo-digital?tab=${encodeURIComponent(tab)}`);
   // Abre el wizard "Nueva Labor" en la pestaña Labores, preseleccionando el lote.
   const abrirNuevaLabor = (loteId?: string) => router.push(`/campo-digital?tab=Labores&nuevaLabor=${encodeURIComponent(loteId || "1")}`);
-  const { lotes: scopeLotes } = useLoteScope();
+  const { lotes: scopeLotes, loteActivo } = useLoteScope();
   // Cuando se monta como pestaña "Planificador de Siembras (IA)" sólo muestra el planificador.
   // El resto de sub-tabs (Estados, Análisis de Suelo) viven en la pestaña "Cultivos".
   const planificadorMode = initialSub === "Planificador de Siembra (IA)";
@@ -229,7 +229,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       )}
 
-      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} onEditar={() => setSiembraOpen(true)} />}
+      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} onEditar={() => setSiembraOpen(true)} />}
       {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={(loteId) => abrirNuevaLabor(loteId)} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
       {!planificadorMode && sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} />}
     </>
@@ -473,15 +473,18 @@ function DonutResumen({ data }: { data: DistCultivo[] }) {
 
 /* ========== PLANIFICADOR IA (Figma CultivosPlanificador) ========== */
 function CultivosPlanificador({
-  toast, lotes, onEditar,
+  toast, lotes, loteActivoId, onEditar,
 }: {
   toast: ReturnType<typeof useToast>;
   lotes: { id?: string; nombre: string; ha: number }[];
+  loteActivoId?: string;
   onEditar: () => void;
 }) {
   const [activos, setActivos] = useState<PlanActivo[]>(demo(PLANES_ACTIVOS_DEMO, []));
   const [recomendados, setRecomendados] = useState<PlanIA[]>(demo(PLANES_IA_DEMO, []));
   const [generando, setGenerando] = useState(false);
+  // Lote objetivo: el activo del sidebar si tiene id, si no el primero con id.
+  const loteObjetivo = (loteActivoId ? lotes.find((l) => l.id === loteActivoId) : null) || lotes.find((l) => l.id) || null;
 
   useEffect(() => {
     fetch("/api/planes-siembra")
@@ -513,7 +516,7 @@ function CultivosPlanificador({
     if (generando) return;
     setGenerando(true);
     try {
-      const loteReal = lotes.find((l) => l.id);
+      const loteReal = loteObjetivo;
       if (!loteReal) throw new Error("sin lote");
       const res = await fetch("/api/planes-siembra/generar", {
         method: "POST",
@@ -574,18 +577,19 @@ function CultivosPlanificador({
   };
 
   const generarOrden = async (p: PlanActivo) => {
-    const loteReal = lotes.find((l) => l.id);
-    if (loteReal?.id) {
-      await fetch("/api/labores", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo: "Siembra", fecha: new Date().toISOString().slice(0, 10), loteId: loteReal.id,
-          superficieTrabajada: loteReal.ha, descripcion: `Orden de trabajo: ${p.titulo}`,
-          observaciones: `Insumo: ${p.insumo} · Densidad: ${p.densidad} · Inversión: ${p.costo}`,
-        }),
-      }).catch(() => {});
-    }
+    // Lote del plan (por nombre) si coincide; si no, el objetivo del scope.
+    const loteReal = lotes.find((l) => l.id && l.nombre === p.lotes) || loteObjetivo;
+    if (!loteReal?.id) { toast.show("Asigná un lote real al plan para generar la orden", "err"); return; }
+    const res = await fetch("/api/labores", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: "Siembra", fecha: new Date().toISOString().slice(0, 10), loteId: loteReal.id,
+        superficieTrabajada: loteReal.ha, descripcion: `Orden de trabajo: ${p.titulo}`,
+        observaciones: `Insumo: ${p.insumo} · Densidad: ${p.densidad} · Inversión: ${p.costo}`,
+      }),
+    }).catch(() => null);
+    if (!res || !res.ok) { toast.show("No se pudo generar la orden", "err"); return; }
     setActivos((prev) => prev.map((x) => (x === p ? { ...x, steps: Math.min(4, x.steps + 1) } : x)));
     toast.show(`Orden de trabajo generada para "${p.titulo}"`);
   };

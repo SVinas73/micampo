@@ -6,6 +6,7 @@ import { Icon, KPI, SubTabs, IABadge, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import { ReportarPlagaModal } from "./deteccion-ReportarModal";
+import { prescripcionPara } from "@/lib/tratamientos";
 
 /* ========== Tipos ========== */
 type Lesion = { etiqueta: string; confianza: number; x: number; y: number; w: number; h: number };
@@ -241,7 +242,14 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
 }
 
 function EstrategiaControl({ alerta }: { alerta: AlertaInfo }) {
-  const e = alerta.estrategia;
+  // Si el motor de IA aún no completó la estrategia, la derivamos del catálogo de
+  // tratamientos (producto/dosis/costo reales) según la enfermedad y la probabilidad.
+  const e = useMemo(() => {
+    if (alerta.estrategia) return alerta.estrategia;
+    const prob = Number((alerta.riesgo.match(/(\d+)%/) || [])[1]) || 60;
+    const p = prescripcionPara({ amenaza: alerta.enfermedad, probabilidad: prob });
+    return { producto: p.producto, dosis: p.dosis, ventana: "Esta semana", costo: `US$${Math.round(p.costoHa)}/ha`, analisis: p.resumen };
+  }, [alerta]);
   return (
     <div className="mc-card ia-card">
       <div className="mc-card__head">
