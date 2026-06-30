@@ -53,12 +53,13 @@ export async function POST(request: Request) {
       dosisObjetivo,
       superficieHa,
       costoUnitario,
+      costoTotal: costoTotalMezcla,
       aguaPorHa,
       loteId,
       observaciones,
     } = await request.json();
 
-    if (!nombre || !tipoProducto || !nombreProducto || !dosisObjetivo || !superficieHa) {
+    if (!nombre || !tipoProducto || !nombreProducto || dosisObjetivo == null || !superficieHa) {
       return NextResponse.json(
         { error: "Campos requeridos faltantes" },
         { status: 400 }
@@ -67,25 +68,37 @@ export async function POST(request: Request) {
 
     // Cálculos
     const cantidadTotal = parseFloat(dosisObjetivo) * parseFloat(superficieHa);
-    const costoTotal = costoUnitario
-      ? cantidadTotal * parseFloat(costoUnitario)
-      : null;
+    // Si el cliente manda el costo TOTAL de la mezcla (todos los productos), lo usamos;
+    // si no, lo estimamos con el producto principal.
+    const costoTotal =
+      costoTotalMezcla != null && !isNaN(parseFloat(costoTotalMezcla))
+        ? parseFloat(costoTotalMezcla)
+        : costoUnitario
+          ? cantidadTotal * parseFloat(costoUnitario)
+          : null;
     const aguaTotal = aguaPorHa
       ? parseFloat(aguaPorHa) * parseFloat(superficieHa)
       : null;
+
+    // Convierte a número seguro: texto no numérico → null (evita NaN que rompe Prisma).
+    const numOrNull = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = parseFloat(String(v));
+      return isNaN(n) ? null : n;
+    };
 
     const calculo = await prisma.calculoDosis.create({
       data: {
         nombre,
         tipoProducto,
         nombreProducto,
-        concentracion: concentracion ? parseFloat(concentracion) : null,
+        concentracion: numOrNull(concentracion),
         dosisObjetivo: parseFloat(dosisObjetivo),
         superficieHa: parseFloat(superficieHa),
         cantidadTotal,
-        costoUnitario: costoUnitario ? parseFloat(costoUnitario) : null,
+        costoUnitario: numOrNull(costoUnitario),
         costoTotal,
-        aguaPorHa: aguaPorHa ? parseFloat(aguaPorHa) : null,
+        aguaPorHa: numOrNull(aguaPorHa),
         aguaTotal,
         loteId: loteId || null,
         observaciones: observaciones || null,
