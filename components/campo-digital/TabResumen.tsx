@@ -2,12 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon, KPI } from "@/components/mc";
+import { useLoteScope } from "@/components/LoteScope";
 import { CULTIVO_COLORES } from "./lotes-data";
 
 /* ========== TAB RESUMEN — 100% datos reales ========== */
 
 type LoteApi = { hectareas?: number; cultivo?: string | null; establecimientoId?: string | null };
-type EstApi = { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; lotesCount?: number };
+type EstApi = { id: string; nombre: string; ciudad?: string | null; provincia?: string | null; lotesCount?: number; hectareasTotales?: number | null };
 type LaborApi = {
   tipo?: string;
   fecha?: string;
@@ -59,16 +60,20 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
   const [ests, setEsts] = useState<EstApi[]>([]);
   const [cargando, setCargando] = useState(true);
   const [perfil, setPerfil] = useState<{ name?: string | null; image?: string | null } | null>(null);
+  const { establecimientoId } = useLoteScope();
 
   useEffect(() => {
     fetch("/api/perfil").then((r) => (r.ok ? r.json() : null)).then((p) => { if (p?.id) setPerfil(p); }).catch(() => {});
   }, []);
 
   useEffect(() => {
+    // Respeta el establecimiento activo del sidebar (los endpoints filtran por él).
+    const q = establecimientoId && establecimientoId !== "todos" ? `?establecimientoId=${establecimientoId}` : "";
+    setCargando(true);
     Promise.all([
-      fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("/api/labores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("/api/deteccion-enfermedades").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`/api/lotes${q}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`/api/labores${q}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`/api/deteccion-enfermedades${q}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/establecimientos").then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([l, lab, al, es]) => {
       if (Array.isArray(l)) setLotes(l);
@@ -77,13 +82,17 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       if (Array.isArray(es)) setEsts(es);
       setCargando(false);
     });
-  }, []);
+  }, [establecimientoId]);
 
   // ---- Campos (establecimientos) con su superficie real ----
+  // Lista de campos: usa los conteos PROPIOS del establecimiento (globales, no el
+  // scope) para que no se vean en 0 cuando hay un campo filtrado en el sidebar.
   const campos = useMemo(() => {
     return ests.map((e) => {
       const ls = lotes.filter((l) => l.establecimientoId === e.id);
-      return { ...e, lotes: ls.length, ha: Math.round(ls.reduce((s, l) => s + (l.hectareas || 0), 0)) };
+      const lotesN = e.lotesCount ?? ls.length;
+      const haDeriv = Math.round(ls.reduce((s, l) => s + (l.hectareas || 0), 0));
+      return { ...e, lotes: lotesN, ha: e.hectareasTotales != null ? Math.round(e.hectareasTotales) : haDeriv };
     });
   }, [ests, lotes]);
   const lotesSinCampo = lotes.filter((l) => !l.establecimientoId);

@@ -4,15 +4,20 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // Lista las alertas de plagas/enfermedades del usuario.
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    const establecimientoId = new URL(request.url).searchParams.get("establecimientoId");
+
     const alertas = await prisma.alertaPlaga.findMany({
-      where: { userId: session.user.id },
+      where: {
+        userId: session.user.id,
+        ...(establecimientoId && establecimientoId !== "todos" ? { lote: { establecimientoId } } : {}),
+      },
       include: { lote: { select: { nombre: true, cultivo: true } } },
       orderBy: { fechaDeteccion: "desc" },
       take: 50,
