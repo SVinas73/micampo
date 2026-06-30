@@ -363,6 +363,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<string[]>(["agronomia"]);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const [copilotoOpen, setCopilotoOpen] = useState(false);
   const [copilotoSeed, setCopilotoSeed] = useState<string | null>(null);
@@ -398,6 +399,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
+
+  // Cerrar el drawer móvil al navegar
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
   // Aplicar tweaks guardados al montar
   useEffect(() => {
@@ -450,7 +454,20 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <LoteScopeProvider>
     <div className="mc-app">
-      <aside className="mc-sb">
+      {/* Barra superior solo en móvil: abre el menú lateral */}
+      <header className="mc-mbar">
+        <button className="mc-mbar__btn" aria-label="Abrir menú" onClick={() => setSidebarOpen(true)}>
+          <Icon name="list" size={20} />
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="MiCampo" className="mc-mbar__logo" />
+        <span className="mc-mbar__title">{moduloLabel(pathname)}</span>
+      </header>
+      {sidebarOpen && <div className="mc-sb__backdrop" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`mc-sb ${sidebarOpen ? "is-open" : ""}`}>
+        <button className="mc-sb__close" aria-label="Cerrar menú" onClick={() => setSidebarOpen(false)}>
+          <Icon name="x" size={16} />
+        </button>
         <div className="mc-sb__brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="MiCampo" className="mc-sb__logo-full" />
