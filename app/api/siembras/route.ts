@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { cultivo, variedad, fechaSiembra, hectareas, loteId } = await request.json();
+    const { cultivo, variedad, fechaSiembra, hectareas, loteId, densidad, costoSemilla, responsable, observaciones } = await request.json();
 
     if (!cultivo || !fechaSiembra || !hectareas || !loteId) {
       return NextResponse.json(
@@ -55,12 +55,22 @@ export async function POST(request: Request) {
       );
     }
 
+    const num = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === "") return null;
+      const n = parseFloat(String(v));
+      return isNaN(n) ? null : n;
+    };
+
     const siembra = await prisma.siembra.create({
       data: {
         cultivo,
         variedad: variedad || null,
         fechaSiembra: new Date(fechaSiembra),
         hectareas: parseFloat(hectareas),
+        densidad: num(densidad),
+        costoSemilla: num(costoSemilla),
+        responsable: responsable || null,
+        observaciones: observaciones || null,
         loteId,
         userId: session.user.id,
       },

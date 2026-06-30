@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { fechaCosecha, rendimiento, calidad, precioVenta, siembraId, loteId } = await request.json();
+    const { fechaCosecha, rendimiento, calidad, precioVenta, siembraId, loteId, humedad, observaciones } = await request.json();
 
     if (!fechaCosecha || !rendimiento || !loteId) {
       return NextResponse.json(
@@ -82,6 +82,8 @@ export async function POST(request: Request) {
         fechaCosecha: new Date(fechaCosecha),
         rendimiento: parseFloat(rendimiento),
         calidad: calidad || null,
+        humedad: humedad != null && humedad !== "" && !isNaN(parseFloat(String(humedad))) ? parseFloat(String(humedad)) : null,
+        observaciones: observaciones || null,
         precioVenta: precioVenta ? parseFloat(precioVenta) : null,
         siembraId: siembraIdFinal,
         loteId,

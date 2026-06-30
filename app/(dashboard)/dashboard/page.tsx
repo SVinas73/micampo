@@ -336,19 +336,22 @@ function ClimaSemana({ onVerAgenda, clima, lugar }: { onVerAgenda: () => void; c
 
 /* ---------- Salud de los lotes (dona) — real (alertas sanitarias) ---------- */
 function FieldHealth() {
+  const { establecimientoId } = useLoteScope();
   const [conCultivo, setConCultivo] = useState(0);
   const [conAlerta, setConAlerta] = useState(0);
   useEffect(() => {
+    // Respeta el establecimiento del sidebar (antes contaba cultivos de TODOS los campos).
+    const q = establecimientoId && establecimientoId !== "todos" ? `?establecimientoId=${establecimientoId}` : "";
     Promise.all([
-      fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("/api/deteccion-enfermedades").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`/api/lotes${q}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`/api/deteccion-enfermedades${q}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([lotes, alertas]) => {
       const cc = Array.isArray(lotes) ? lotes.filter((l: { cultivo?: string }) => l.cultivo).length : 0;
       const lotesAlerta = new Set(Array.isArray(alertas) ? alertas.filter((a: { estado?: string }) => a.estado !== "Resuelta").map((a: { loteId: string }) => a.loteId) : []);
       setConCultivo(cc);
       setConAlerta(lotesAlerta.size);
     });
-  }, []);
+  }, [establecimientoId]);
   const sanos = Math.max(0, conCultivo - conAlerta);
   const vacio = conCultivo === 0;
   const pct = conCultivo > 0 ? Math.round((sanos / conCultivo) * 100) : 0;

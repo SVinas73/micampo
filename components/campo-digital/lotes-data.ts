@@ -152,7 +152,7 @@ export function mapLotesApi(rows: Array<Record<string, unknown>>): LoteUI[] {
       ha: Number(r.hectareas ?? 0),
       cultivo,
       variety: undefined,
-      estadio: cultivo ? "Vegetativo" : "—",
+      estadio: "—", // estadio fenológico real se deriva de la siembra (no se inventa)
       ndvi: 0, // sin medición satelital aún; se completará con NDVI real
       aguaUtil: 0,
       sano: true,
