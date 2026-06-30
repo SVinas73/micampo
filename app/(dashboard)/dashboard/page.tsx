@@ -11,6 +11,7 @@ import { AnimatedWeatherIcon } from "@/components/clima/AnimatedWeatherIcon";
 import { WeatherScene } from "@/components/clima/WeatherScene";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { postOffline } from "@/lib/offline";
+import { ubicacionClima } from "@/lib/clima-ubicacion";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
 
 /* ============================================================
@@ -626,20 +627,9 @@ export default function InicioPage() {
     }).catch(() => {});
   }, []);
 
-  // Ubicación del clima: el ESTABLECIMIENTO activo del sidebar (centro propio, o el
-  // promedio de los centroides de sus lotes si no tiene centro guardado). El clima
-  // del inicio es por establecimiento, no por lote.
-  const climaLoc = useMemo(() => {
-    if (establecimientoActivo?.centroLatitud != null && establecimientoActivo?.centroLongitud != null)
-      return { lat: establecimientoActivo.centroLatitud, lon: establecimientoActivo.centroLongitud };
-    const conGeo = scopeLotes.filter((l) => l.centroLatitud != null && l.centroLongitud != null);
-    if (conGeo.length) {
-      const lat = conGeo.reduce((s, l) => s + (l.centroLatitud as number), 0) / conGeo.length;
-      const lon = conGeo.reduce((s, l) => s + (l.centroLongitud as number), 0) / conGeo.length;
-      return { lat, lon };
-    }
-    return null;
-  }, [establecimientoActivo, scopeLotes]);
+  // Ubicación del clima: el ESTABLECIMIENTO activo del sidebar (helper compartido con
+  // el módulo Clima → ambos muestran exactamente el mismo pronóstico). Por establecimiento.
+  const climaLoc = useMemo(() => ubicacionClima(establecimientoActivo, scopeLotes), [establecimientoActivo, scopeLotes]);
 
   useEffect(() => {
     const q = climaLoc ? `?lat=${climaLoc.lat}&lon=${climaLoc.lon}` : "";
