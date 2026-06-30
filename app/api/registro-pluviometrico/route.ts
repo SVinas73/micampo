@@ -13,6 +13,11 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const loteId = searchParams.get("loteId");
+    // Alcance (sidebar): lista de lotes del establecimiento activo. Si viene `loteIds`,
+    // se restringe a esos lotes (esto excluye registros de lotes ya borrados, cuyo
+    // loteId quedó en null → no aparece "un campo que no existe").
+    const loteIdsParam = searchParams.get("loteIds");
+    const loteIds = loteIdsParam !== null ? loteIdsParam.split(",").filter(Boolean) : null;
     const dias = parseInt(searchParams.get("dias") || "90");
 
     const fechaDesde = new Date();
@@ -27,6 +32,8 @@ export async function GET(request: Request) {
 
     if (loteId) {
       where.loteId = loteId;
+    } else if (loteIds !== null) {
+      where.loteId = { in: loteIds };
     }
 
     const registros = await prisma.registroPluviometrico.findMany({
