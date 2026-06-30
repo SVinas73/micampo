@@ -786,6 +786,11 @@ function ClimaLluvias({
               <span className="row gap-4"><span style={{ width: 14, height: 3, background: "var(--mc-blue)", borderRadius: 2, display: "inline-block" }} />mm registrados</span>
               {histset.length > 0 && <span className="row gap-4"><span style={{ width: 14, height: 0, borderTop: "2px dashed var(--mc-text-3)", display: "inline-block" }} />Promedio histórico (10 años)</span>}
             </div>
+            {dataset.every((v) => v === 0) && histset.length > 0 && (
+              <div className="text-xs" style={{ color: "var(--mc-text-3)", marginTop: 4, fontStyle: "italic" }}>
+                Todavía no registraste lluvias en este período. La línea punteada es solo el promedio histórico de la zona, como referencia.
+              </div>
+            )}
           </div>
           <div className="mc-seg">
             <button className={scope === "30d" ? "is-on" : ""} onClick={() => setScope("30d")}>Últ. 30 días</button>

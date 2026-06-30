@@ -269,11 +269,12 @@ function BarChartPlantaciones({ data, mode, totalHa }: { data: Plantacion[]; mod
   const getValue = (d: Plantacion) => (mode === "ha" ? d.ha : mode === "lotes" ? d.lotes : Math.round((d.ha / totalHa) * 100));
   const getLabel = (d: Plantacion) => (mode === "ha" ? String(d.ha) : mode === "lotes" ? String(d.lotes) : `${Math.round((d.ha / totalHa) * 100)}%`);
   const maxVal = Math.max(1, ...data.map(getValue));
-  // Escala "linda" para los ticks del eje Y
-  const niceMax = Math.ceil(maxVal / 4) * 4 || 4;
+  // Escala "linda" para los ticks del eje Y, con ~18% de aire arriba para que la
+  // barra más alta NO toque el techo y la etiqueta del valor entre completa.
+  const niceMax = Math.max(4, Math.ceil((maxVal * 1.18) / 4) * 4);
   const yticks = [0, niceMax / 4, niceMax / 2, (niceMax * 3) / 4, niceMax].map((v) => Math.round(v));
   const axisLabel = mode === "ha" ? "Hectáreas" : mode === "lotes" ? "Lotes" : "% del campo";
-  const W = 1400, H = 260, padL = 50, padR = 16, padT = 16, padB = 50;
+  const W = 1400, H = 260, padL = 50, padR = 16, padT = 24, padB = 50;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const groupW = innerW / data.length;
