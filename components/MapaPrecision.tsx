@@ -128,6 +128,16 @@ export default function MapaPrecision({
       });
       map.addControl(drawControl);
 
+      // Tocar el mapa fija/mueve un único marcador de ubicación (sin usar el toolbar).
+      if (onMarcadorCreado) {
+        let puntoMarker: L.Marker | null = null;
+        map.on("click", (e: L.LeafletMouseEvent) => {
+          if (puntoMarker) puntoMarker.setLatLng(e.latlng);
+          else puntoMarker = L.marker(e.latlng).addTo(map);
+          onMarcadorCreado(e.latlng.lat, e.latlng.lng);
+        });
+      }
+
       // Eventos de dibujo
       map.on(L.Draw.Event.CREATED, (e: any) => {
         const layer = e.layer;

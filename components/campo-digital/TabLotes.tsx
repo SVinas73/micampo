@@ -529,6 +529,14 @@ export default function TabLotes() {
         </div>
       </div>
 
+      {view === "mapa" && visibles.length > 0 && visibles.every((l) => !l.geojson?.coordinates?.[0]?.length) && (
+        <div className="mc-card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderLeft: "3px solid var(--mc-amber)" }}>
+          <Icon name="alert" size={15} style={{ color: "var(--mc-amber)", flexShrink: 0 }} />
+          <span className="text-sm" style={{ color: "var(--mc-text-2)" }}>
+            Estos lotes todavía no tienen su polígono dibujado, por eso no se ven en el mapa (en la vista 3D aparecen como parcelas en grilla). Dibujá sus contornos con “Dibujar lote” para verlos acá.
+          </span>
+        </div>
+      )}
       {view === "mapa" && (
         <LotesMapa
           lotes={visibles}
