@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 
 /**
  * Íconos de clima animados (SVG + CSS), en la paleta de MiCampo.
@@ -48,8 +48,21 @@ function Sun({ cx = 32, cy = 26, r = 11 }: { cx?: number; cy?: number; r?: numbe
   );
 }
 
-function Moon({ cx = 32, cy = 28, r = 12 }: { cx?: number; cy?: number; r?: number }) {
-  return <circle className="wx-suncore" cx={cx} cy={cy} r={r} fill="url(#wxMoon)" mask="url(#wxMoonMask)" style={{ transformBox: "fill-box", transformOrigin: "center" }} />;
+function Moon({ cx = 31, cy = 30, r = 14, maskId }: { cx?: number; cy?: number; r?: number; maskId: string }) {
+  // Recorte de la media luna, relativo a la posición/tamaño de la luna.
+  const cutX = cx + r * 0.46, cutY = cy - r * 0.3, cutR = r * 0.98;
+  return (
+    <>
+      <defs>
+        <mask id={maskId}>
+          <rect x="0" y="0" width="64" height="64" fill="#fff" />
+          <circle cx={cutX} cy={cutY} r={cutR} fill="#000" />
+        </mask>
+      </defs>
+      <circle cx={cx} cy={cy} r={r + 6} fill="url(#wxMoonGlow)" />
+      <circle className="wx-suncore" cx={cx} cy={cy} r={r} fill="url(#wxMoon)" stroke="#fff6da" strokeWidth="0.5" mask={`url(#${maskId})`} style={{ transformBox: "fill-box", transformOrigin: "center" }} />
+    </>
+  );
 }
 
 function Stars({ pts }: { pts: { x: number; y: number; r: number }[] }) {
@@ -75,7 +88,8 @@ function Cloud({ x = 0, y = 0, scale = 1, dark = false }: { x?: number; y?: numb
 
 export function AnimatedWeatherIcon({ cond, size = 64, night = false }: { cond: WxCond | string; size?: number; night?: boolean }) {
   const c = condFrom(typeof cond === "string" ? cond : cond);
-  const estrellas = [{ x: 14, y: 16, r: 1.4 }, { x: 50, y: 14, r: 1.1 }, { x: 45, y: 30, r: 1.3 }, { x: 20, y: 34, r: 1 }];
+  const uid = useId();
+  const estrellas = [{ x: 13, y: 15, r: 1.5 }, { x: 51, y: 13, r: 1.2 }, { x: 47, y: 31, r: 1.4 }, { x: 19, y: 35, r: 1.1 }];
   const drops = (color: string) =>
     [22, 32, 42].map((dx, i) => (
       <line key={i} className="wx-drop" style={{ animationDelay: `${i * 0.35}s` }} x1={dx} y1="48" x2={dx - 2} y2="53" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
@@ -99,23 +113,24 @@ export function AnimatedWeatherIcon({ cond, size = 64, night = false }: { cond: 
           </linearGradient>
           {night && (
             <>
-              <radialGradient id="wxMoon" cx="40%" cy="36%" r="68%">
-                <stop offset="0%" stopColor="#fdf6dc" />
-                <stop offset="100%" stopColor="#e6d79f" />
+              <radialGradient id="wxMoon" cx="38%" cy="34%" r="72%">
+                <stop offset="0%" stopColor="#fdf8e6" />
+                <stop offset="100%" stopColor="#e3d290" />
               </radialGradient>
-              <mask id="wxMoonMask">
-                <rect x="0" y="0" width="64" height="64" fill="#fff" />
-                <circle cx="37" cy="25" r="12" fill="#000" />
-              </mask>
+              <radialGradient id="wxMoonGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#fdf6dc" stopOpacity="0.45" />
+                <stop offset="65%" stopColor="#e9dca6" stopOpacity="0.12" />
+                <stop offset="100%" stopColor="#e9dca6" stopOpacity="0" />
+              </radialGradient>
             </>
           )}
         </defs>
 
-        {c === "sun" && (night ? <><Stars pts={estrellas} /><Moon cx={32} cy={28} r={12} /></> : <Sun cx={32} cy={30} r={13} />)}
+        {c === "sun" && (night ? <><Stars pts={estrellas} /><Moon cx={31} cy={30} r={14} maskId={`${uid}-m`} /></> : <Sun cx={32} cy={30} r={13} />)}
 
         {c === "partly" && (
           <>
-            {night ? <><Stars pts={[{ x: 16, y: 14, r: 1.2 }, { x: 52, y: 30, r: 1.1 }]} /><Moon cx={42} cy={21} r={9} /></> : <Sun cx={42} cy={22} r={9} />}
+            {night ? <><Stars pts={[{ x: 15, y: 13, r: 1.3 }, { x: 53, y: 31, r: 1.2 }]} /><Moon cx={41} cy={20} r={11} maskId={`${uid}-mp`} /></> : <Sun cx={42} cy={22} r={9} />}
             <Cloud x={-4} y={4} scale={0.92} />
           </>
         )}
