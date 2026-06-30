@@ -58,6 +58,11 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
   const [alertas, setAlertas] = useState<AlertaApi[]>([]);
   const [ests, setEsts] = useState<EstApi[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [perfil, setPerfil] = useState<{ name?: string | null; image?: string | null } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/perfil").then((r) => (r.ok ? r.json() : null)).then((p) => { if (p?.id) setPerfil(p); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -162,7 +167,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       <PlantacionesCard plantaciones={plantaciones} totalHa={Math.round(totalHa)} cargando={cargando} />
 
       <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 14 }}>
-        <UltimasActividadesCard actividades={actividades} cargando={cargando} onVerTodo={() => onNavigateTab?.("Labores")} />
+        <UltimasActividadesCard actividades={actividades} cargando={cargando} perfil={perfil} onVerTodo={() => onNavigateTab?.("Labores")} />
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Focos de atención</div>
@@ -326,7 +331,9 @@ function BarChartPlantaciones({ data, mode, totalHa }: { data: Plantacion[]; mod
   );
 }
 
-function UltimasActividadesCard({ actividades, cargando, onVerTodo }: { actividades: Actividad[]; cargando: boolean; onVerTodo: () => void }) {
+function UltimasActividadesCard({ actividades, cargando, perfil, onVerTodo }: { actividades: Actividad[]; cargando: boolean; perfil?: { name?: string | null; image?: string | null } | null; onVerTodo: () => void }) {
+  const inicialUser = (perfil?.name || "").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  const nombreCorto = (perfil?.name || "").split(" ")[0];
   return (
     <div className="mc-card">
       <div className="mc-card__head">
@@ -343,10 +350,15 @@ function UltimasActividadesCard({ actividades, cargando, onVerTodo }: { activida
         ) : (
           actividades.map((a, i) => (
             <div key={i} className="mc-act-row">
-              <div className="mc-act-row__avatar" style={{ background: a.color }}>{a.inicial}</div>
+              <div className="mc-act-row__avatar" style={{ background: a.color, overflow: "hidden" }}>
+                {perfil?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={perfil.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (inicialUser || a.inicial)}
+              </div>
               <div className="mc-act-row__content">
                 <div className="mc-act-row__text">
-                  <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb}{" "}
+                  <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{nombreCorto || a.quien}</span> {a.verb}{" "}
                   <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en{" "}
                   <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span>
                 </div>
