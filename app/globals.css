@@ -1145,6 +1145,19 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   .mc-table th, .mc-table td { white-space: nowrap; }
 }
 
+/* ============================================================
+   MOBILE: safe-area (notch / home indicator) para que en modo
+   instalado (standalone) se vea nativo, sin que el contenido
+   quede tapado por la muesca o la barra inferior de iOS.
+   ============================================================ */
+@media (max-width: 820px) {
+  .mc-mbar { padding-top: calc(10px + env(safe-area-inset-top)); }
+  .mc-sb   { padding-top: calc(18px + env(safe-area-inset-top)); }
+  .mc-main { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
+  /* la píldora de sincronización offline, por encima del home indicator */
+  /* (queda fija abajo-izquierda; se respeta el inset inferior) */
+}
+
 /* Placeholder image */
 .mc-placeholder {
   width: 100%;
