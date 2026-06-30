@@ -11,9 +11,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    // Filtros opcionales por alcance del sidebar.
+    const { searchParams } = new URL(request.url);
+    const establecimientoId = searchParams.get("establecimientoId");
+    const loteId = searchParams.get("loteId");
+
     const labores = await prisma.labor.findMany({
       where: {
         userId: session.user.id,
+        ...(loteId ? { loteId } : {}),
+        ...(establecimientoId && establecimientoId !== "todos" ? { lote: { establecimientoId } } : {}),
       },
       include: {
         lote: {
