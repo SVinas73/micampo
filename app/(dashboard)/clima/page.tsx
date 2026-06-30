@@ -22,6 +22,7 @@ import {
 } from "@/components/clima/ClimaModales";
 import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
+import { ubicacionClima } from "@/lib/clima-ubicacion";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
 
 const TABS = ["Inicio", "Alertas", "Registro de Lluvias"];
@@ -56,7 +57,7 @@ function ClimaInner() {
   const searchParams = useSearchParams();
   const toast = useToast();
 
-  const { lotes: scopeLotes, loteActivo } = useLoteScope();
+  const { lotes: scopeLotes, establecimientoActivo } = useLoteScope();
   const initialTab = TABS.includes(searchParams.get("tab") || "") ? (searchParams.get("tab") as string) : "Inicio";
   const [tab, setTab] = useState(initialTab);
   const [showLluvia, setShowLluvia] = useState(searchParams.get("modal") === "lluvia");
@@ -76,13 +77,13 @@ function ClimaInner() {
     if (scopeLotes.length > 0) setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0 })));
   }, [scopeLotes]);
 
-  // Clima real del lote activo (o el primero con coordenadas si "Todos")
+  // Clima real SIEMPRE por el establecimiento activo del sidebar (misma ubicación
+  // que el Inicio → ambos muestran el mismo pronóstico). Cae al promedio de los
+  // lotes del establecimiento si no tiene centro guardado.
+  const loc = ubicacionClima(establecimientoActivo, scopeLotes);
   useEffect(() => {
-    const target = (loteActivo && loteActivo.centroLatitud && loteActivo.centroLongitud)
-      ? loteActivo
-      : scopeLotes.find((l) => l.centroLatitud && l.centroLongitud) || null;
-    if (target) setTieneCampo(true); else setTieneCampo(false);
-    const q = target ? `?lat=${target.centroLatitud}&lon=${target.centroLongitud}` : "";
+    setTieneCampo(!!loc);
+    const q = loc ? `?lat=${loc.lat}&lon=${loc.lon}` : "";
     fetch(`/api/clima${q}`).then((r) => (r.ok ? r.json() : null)).then((c) => {
       if (!c?.actual) return;
       setClima(c);
@@ -90,14 +91,14 @@ function ClimaInner() {
       if (Array.isArray(c.alertas) && c.alertas.length) {
         fetch("/api/alertas-climaticas/sincronizar", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ alertas: c.alertas, ubicacion: target?.nombre || c.ubicacion?.nombre || "Campo", lat: c.ubicacion?.lat, lon: c.ubicacion?.lon }),
+          body: JSON.stringify({ alertas: c.alertas, ubicacion: establecimientoActivo?.nombre || c.ubicacion?.nombre || "Campo", lat: c.ubicacion?.lat, lon: c.ubicacion?.lon }),
         }).then(() => fetch("/api/alertas-climaticas")).then((r) => (r && r.ok ? r.json() : null))
           .then((d) => { if (Array.isArray(d) && d.length) setAlertas(d.map(mapAlertaApi)); }).catch(() => {});
       }
     }).catch(() => {});
     fetch(`/api/clima/historico-lluvia${q}`).then((r) => (r.ok ? r.json() : null)).then((h) => { if (Array.isArray(h?.promedioMensual)) setHistLluvia(h); }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loteActivo?.id, scopeLotes]);
+  }, [loc?.lat, loc?.lon]);
 
   useEffect(() => {
     fetch("/api/registro-pluviometrico")
