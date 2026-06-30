@@ -220,11 +220,11 @@ function ClimaSemana({ onVerAgenda, clima }: { onVerAgenda: () => void; clima: C
   const tY = (t: number) => 34 * (1 - (t - tempLow) / (tempHigh - tempLow || 1)) + 38;
 
   const InfoCell = ({ icon, big, sub, highlight }: { icon: string; big: React.ReactNode; sub: string; highlight?: boolean }) => (
-    <div style={{ padding: "12px 14px", borderRight: "1px solid rgba(255,255,255,0.12)", background: highlight ? "rgba(255,255,255,0.10)" : "transparent", display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(255,255,255,0.20)", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name={icon} size={15} /></div>
+    <div style={{ padding: "10px 12px", background: highlight ? "rgba(255,255,255,0.10)" : "transparent", display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+      <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(255,255,255,0.20)", display: "grid", placeItems: "center", flexShrink: 0 }}><Icon name={icon} size={14} /></div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>{big}</div>
-        <div style={{ fontSize: 10.5, opacity: 0.78, marginTop: 3, whiteSpace: "nowrap" }}>{sub}</div>
+        <div style={{ fontFamily: "var(--ff-display)", fontSize: 17, fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{big}</div>
+        <div style={{ fontSize: 10.5, opacity: 0.78, marginTop: 3, lineHeight: 1.25 }}>{sub}</div>
       </div>
     </div>
   );
@@ -239,8 +239,8 @@ function ClimaSemana({ onVerAgenda, clima }: { onVerAgenda: () => void; clima: C
           </div>
           <div style={{ fontSize: 11, opacity: 0.9, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>{a?.descripcion ?? "Cargando…"}</div>
         </div>
-        <div className="row" style={{ alignItems: "stretch", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 18, borderRight: "1px solid rgba(255,255,255,0.22)" }}>
+        <div className="row" style={{ alignItems: "stretch", gap: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 18, borderRight: "1px solid rgba(255,255,255,0.22)", flexShrink: 0 }}>
             <span style={{ width: 66, height: 66, borderRadius: "50%", background: "rgba(255,255,255,0.18)", display: "grid", placeItems: "center", boxShadow: "0 6px 16px rgba(0,0,0,0.22)", flexShrink: 0 }}>
               <AnimatedWeatherIcon cond={(a as { cond?: string } | null)?.cond || a?.icono || "cloud"} size={48} night={a?.esDeNoche} />
             </span>
@@ -249,7 +249,7 @@ function ClimaSemana({ onVerAgenda, clima }: { onVerAgenda: () => void; clima: C
               <span style={{ fontSize: 11, opacity: 0.78, letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600, marginTop: 2 }}>Ahora</span>
             </div>
           </div>
-          <div className="mc-wx-info" style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, overflow: "hidden" }}>
+          <div className="mc-wx-info" style={{ flex: "1 1 280px", minWidth: 240, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 12, overflow: "hidden" }}>
             <InfoCell icon="thermometer" big={<span><span style={{ color: "#ffd28a" }}>{days[0]?.max ?? "—"}°</span><span style={{ opacity: 0.62, margin: "0 6px", fontSize: 13, fontFamily: "var(--ff-mono)", fontWeight: 500 }}>°C</span><span style={{ color: "#9ad8ff" }}>{days[0]?.min ?? "—"}°</span></span>} sub={a ? `Sens. ${a.sensacion}°` : ""} />
             <InfoCell icon="droplet" big={a ? `${a.humedad}%` : "—"} sub={a ? `Rocío ${a.rocio}°` : ""} />
             <InfoCell icon="wind" big={a ? `${a.viento} km/h` : "—"} sub={a ? `${a.vientoDir} · Ráf. ${a.rafaga}` : ""} />
