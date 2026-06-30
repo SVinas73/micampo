@@ -698,7 +698,7 @@ export default function InicioPage() {
         <div className="row" style={{ marginLeft: "auto", gap: 8 }}>
           <button className="mc-icon-btn" title="Decisiones del día" onClick={() => router.push("/decisiones")}><Icon name="bell" size={16} /></button>
           <button className="mc-btn mc-btn--secondary" onClick={descargarReporte}><Icon name="download" size={15} />Reporte semanal</button>
-          <button className="mc-btn mc-btn--secondary" onClick={() => setCapturaOpen(true)}><Icon name="camera" size={15} />Cargar por voz</button>
+          <button className="mc-btn mc-btn--secondary" onClick={() => setCapturaOpen(true)}><Icon name="mic" size={15} />Cargar por voz</button>
           <button className="mc-btn mc-btn--primary" onClick={() => setLaborModal(true)}><Icon name="plus" size={15} />Nueva labor</button>
         </div>
       </div>
