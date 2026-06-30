@@ -208,7 +208,7 @@ function SummaryCard({ tone, eyebrow, value, sub, badge, icon, onVer, spark }: {
 }
 
 /* ---------- Clima de hoy + pronóstico 7 días + agenda semanal ---------- */
-function ClimaSemana({ onVerAgenda, clima }: { onVerAgenda: () => void; clima: ClimaData | null }) {
+function ClimaSemana({ onVerAgenda, clima, lugar }: { onVerAgenda: () => void; clima: ClimaData | null; lugar?: string }) {
   const a = clima?.actual ?? null;
   // 7 días: más no entra en el ancho de la card.
   const days = (clima?.dias ?? []).slice(0, 7).map((d) => ({ name: d.nombre, num: d.num, isToday: d.esHoy, ic: d.icono, cond: (d as { cond?: string }).cond, max: d.max, min: d.min, mm: d.mm, wind: `${d.viento} km/h` }));
@@ -234,9 +234,13 @@ function ClimaSemana({ onVerAgenda, clima }: { onVerAgenda: () => void; clima: C
     <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
       <WeatherScene cond={(a as { cond?: string } | null)?.cond || a?.icono} windy={(a?.viento ?? 0) >= 25} night={a?.esDeNoche} style={{ color: "white", padding: "18px 22px 20px" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
-          <div className="row" style={{ gap: 8, alignItems: "center" }}>
-            <Icon name="calendar" size={13} />
-            <span style={{ fontSize: 10.5, opacity: 0.82, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>{hoyFecha}</span>
+          <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {lugar && (
+              <span className="row" style={{ gap: 4, alignItems: "center", fontSize: 10.5, opacity: 0.9, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700 }}>
+                <Icon name="map" size={12} />{lugar}
+              </span>
+            )}
+            <span style={{ fontSize: 10.5, opacity: 0.72, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>· {hoyFecha}</span>
           </div>
           <div style={{ fontSize: 11, opacity: 0.9, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>{a?.descripcion ?? "Cargando…"}</div>
         </div>
@@ -555,7 +559,8 @@ export default function InicioPage() {
   const [balance, setBalance] = useState<{ meses: string[]; ingresos: number[]; gastos: number[] } | null>(null);
   const [cultivos, setCultivos] = useState<{ label: string; ha: string; pct: number; color: string }[] | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
-  const { lotes: scopeLotes, establecimientoActivo } = useLoteScope();
+  const { lotes: scopeLotes, establecimientoActivo, establecimientoId } = useLoteScope();
+  const [climaLoc, setClimaLoc] = useState<{ lat: number; lon: number; nombre?: string } | null>(null);
   const [laboresPend, setLaboresPend] = useState(0);
   const [laboresAtr, setLaboresAtr] = useState(0);
   const [brief, setBrief] = useState<BriefData | null>(null);
@@ -627,9 +632,23 @@ export default function InicioPage() {
     }).catch(() => {});
   }, []);
 
-  // Ubicación del clima: el ESTABLECIMIENTO activo del sidebar (helper compartido con
-  // el módulo Clima → ambos muestran exactamente el mismo pronóstico). Por establecimiento.
-  const climaLoc = useMemo(() => ubicacionClima(establecimientoActivo, scopeLotes), [establecimientoActivo, scopeLotes]);
+  // Ubicación del clima: fuente ÚNICA (endpoint) por el establecimiento activo del
+  // sidebar → centro propio, o promedio de sus lotes, o geocodificación de su ciudad.
+  // El módulo Clima usa el mismo endpoint, así ambos muestran el mismo pronóstico.
+  const scopeKey = scopeLotes.map((l) => l.id).join(",");
+  useEffect(() => {
+    let cancel = false;
+    fetch(`/api/establecimientos/clima-coords?id=${establecimientoId || "todos"}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancel) return;
+        if (d && d.lat != null) setClimaLoc({ lat: d.lat, lon: d.lon, nombre: d.nombre });
+        else setClimaLoc(ubicacionClima(establecimientoActivo, scopeLotes)); // fallback local
+      })
+      .catch(() => { if (!cancel) setClimaLoc(ubicacionClima(establecimientoActivo, scopeLotes)); });
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [establecimientoId, scopeKey]);
 
   useEffect(() => {
     const q = climaLoc ? `?lat=${climaLoc.lat}&lon=${climaLoc.lon}` : "";
@@ -755,7 +774,7 @@ export default function InicioPage() {
 
       {/* Clima + agenda | Salud lotes + suelo */}
       <div className="grid mc-2col-resp" style={{ gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1fr)", gap: 14 }}>
-        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} />
+        <ClimaSemana onVerAgenda={() => router.push("/calendario")} clima={clima} lugar={climaLoc?.nombre} />
         <div className="col gap-16"><FieldHealth /><SoilHealth /></div>
       </div>
 

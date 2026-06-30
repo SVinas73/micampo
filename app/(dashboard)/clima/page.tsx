@@ -57,9 +57,10 @@ function ClimaInner() {
   const searchParams = useSearchParams();
   const toast = useToast();
 
-  const { lotes: scopeLotes, establecimientoActivo } = useLoteScope();
+  const { lotes: scopeLotes, establecimientoActivo, establecimientoId } = useLoteScope();
   // IDs de los lotes del establecimiento activo (alcance del sidebar). Estable para deps.
   const scopeIds = scopeLotes.map((l) => l.id).join(",");
+  const [loc, setLoc] = useState<{ lat: number; lon: number; nombre?: string } | null>(null);
   const initialTab = TABS.includes(searchParams.get("tab") || "") ? (searchParams.get("tab") as string) : "Inicio";
   const [tab, setTab] = useState(initialTab);
   const [showLluvia, setShowLluvia] = useState(searchParams.get("modal") === "lluvia");
@@ -82,7 +83,22 @@ function ClimaInner() {
   // Clima real SIEMPRE por el establecimiento activo del sidebar (misma ubicación
   // que el Inicio → ambos muestran el mismo pronóstico). Cae al promedio de los
   // lotes del establecimiento si no tiene centro guardado.
-  const loc = ubicacionClima(establecimientoActivo, scopeLotes);
+  // Ubicación del clima: fuente ÚNICA (mismo endpoint que el Inicio) por el
+  // establecimiento activo → centro / promedio de lotes / geocodificación.
+  useEffect(() => {
+    let cancel = false;
+    fetch(`/api/establecimientos/clima-coords?id=${establecimientoId || "todos"}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancel) return;
+        if (d && d.lat != null) setLoc({ lat: d.lat, lon: d.lon, nombre: d.nombre });
+        else setLoc(ubicacionClima(establecimientoActivo, scopeLotes));
+      })
+      .catch(() => { if (!cancel) setLoc(ubicacionClima(establecimientoActivo, scopeLotes)); });
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [establecimientoId, scopeIds]);
+
   useEffect(() => {
     setTieneCampo(!!loc);
     const q = loc ? `?lat=${loc.lat}&lon=${loc.lon}` : "";
@@ -312,7 +328,7 @@ function ClimaInner() {
       {tab === "Inicio" && (
         <div className="col gap-16">
           <RecomendacionDia clima={clima} />
-          <ClimaInicio actual={clima?.actual ?? null} onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={clima?.ubicacion?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={clima?.ubicacion?.lat ?? -32.8} lon={clima?.ubicacion?.lon ?? -56.0} marcador={tieneCampo} />
+          <ClimaInicio actual={clima?.actual ?? null} onVerDetalle={setDetalle} dias={climaADias(clima)} lugar={loc?.nombre || establecimientoActivo?.nombre || "tu campo"} horas={clima?.horas ?? []} lat={loc?.lat ?? clima?.ubicacion?.lat ?? -32.8} lon={loc?.lon ?? clima?.ubicacion?.lon ?? -56.0} marcador={tieneCampo} />
         </div>
       )}
       {tab === "Alertas" && (
