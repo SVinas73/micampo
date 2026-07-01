@@ -42,8 +42,15 @@ function etapaPorDias(dias: number): Etapa {
   if (dias < 100) return "Media";
   return "Final";
 }
-const AWC = 120; // mm de agua útil en el perfil (suelo franco, ~1 m)
+const AWC_DEFAULT = 120; // mm de agua útil en el perfil (suelo franco ~1 m) por defecto
 const COSTO_MM = 12; // USD/mm (energía + insumo)
+
+// Agua útil del suelo (mm) estimada a partir de la materia orgánica del análisis del
+// lote: más MO → más capacidad de retención. Sin análisis, usa el valor por defecto.
+function awcDeMateriaOrganica(mo: number | null | undefined): number {
+  if (mo == null || isNaN(mo)) return AWC_DEFAULT;
+  return Math.round(Math.max(70, Math.min(190, 90 + mo * 15)));
+}
 
 export default function PlanRiegoPage() {
   return (
@@ -71,6 +78,7 @@ function PlanRiegoInner() {
 
   const [dias, setDias] = useState<ClimaDia[] | null>(null);
   const [s0, setS0] = useState(65); // humedad de suelo inicial estimada (%)
+  const [awc, setAwc] = useState(AWC_DEFAULT); // agua útil del suelo (mm) por lote
   const [tieneCampo, setTieneCampo] = useState<boolean | null>(null); // null=cargando
 
   // Datos crudos para el card "Agua últ. N días" (filtrables por período)
@@ -101,14 +109,18 @@ function PlanRiegoInner() {
       setPlanRiegoId(plan?.id ?? null);
     }).catch(() => {});
 
-    // Auto-detecta la etapa fenológica desde la última siembra del lote
+    // Auto-detecta la etapa fenológica desde la última siembra del lote, y el agua útil
+    // del suelo (AWC) desde su análisis de suelo (materia orgánica).
     setEtapaAuto(null);
+    setAwc(AWC_DEFAULT);
     fetch(`/api/lotes/${lote.id}`).then((r) => (r.ok ? r.json() : null)).then((det) => {
       const siembra = det?.siembras?.[0];
       if (siembra?.fechaSiembra) {
         const d = Math.round((Date.now() - new Date(siembra.fechaSiembra).getTime()) / 86400000);
         if (d >= 0) { const e = etapaPorDias(d); setEtapa(e); setEtapaAuto({ etapa: e, dias: d }); }
       }
+      const suelo = det?.analisisSuelo?.[0];
+      if (suelo?.materiaOrganica != null) setAwc(awcDeMateriaOrganica(suelo.materiaOrganica));
     }).catch(() => {});
 
     // El balance hídrico requiere coordenadas (clima de ese punto)
@@ -122,19 +134,20 @@ function PlanRiegoInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loteObjetivo?.id]);
 
-  // Lluvia + riego reales (crudos, últimos 30 días) → se filtran por período en el card.
-  // Respeta el establecimiento del sidebar (loteIds) para no mezclar campos.
+  // Lluvia + riego reales. Si hay un lote activo, la lluvia y la humedad inicial se
+  // toman de ESE lote (por eso el balance cambia entre lotes); si no, del establecimiento.
   const scopeIds = scopeLotes.map((l) => l.id).join(",");
+  const filtroLluvia = loteActivo?.id ? `loteId=${loteActivo.id}` : `loteIds=${scopeIds}`;
   useEffect(() => {
     const hace30 = Date.now() - 30 * 86400000;
-    fetch(`/api/registro-pluviometrico?dias=60&loteIds=${scopeIds}`).then((r) => (r.ok ? r.json() : [])).then((d) => {
+    fetch(`/api/registro-pluviometrico?dias=60&${filtroLluvia}`).then((r) => (r.ok ? r.json() : [])).then((d) => {
       if (!Array.isArray(d)) return;
       const recientes = d.filter((r: { fecha: string }) => new Date(r.fecha).getTime() >= hace30);
       setLluvias(recientes.map((r: { fecha: string; milimetros: number; lote?: { nombre: string } }) => ({ t: new Date(r.fecha).getTime(), mm: r.milimetros || 0, lugar: r.lote?.nombre || "" })));
-      // humedad inicial estimada por lluvia de los últimos 7 días
+      // humedad inicial estimada por lluvia de los últimos 7 días (sobre el AWC del lote)
       const hace7 = Date.now() - 7 * 86400000;
       const lluvia7 = recientes.filter((r: { fecha: string }) => new Date(r.fecha).getTime() >= hace7).reduce((s: number, r: { milimetros: number }) => s + (r.milimetros || 0), 0);
-      setS0(Math.max(35, Math.min(92, Math.round(50 + (lluvia7 / AWC) * 100))));
+      setS0(Math.max(35, Math.min(92, Math.round(50 + (lluvia7 / awc) * 100))));
     }).catch(() => {});
 
     fetch("/api/eventos-riego").then((r) => (r.ok ? r.json() : [])).then((d) => {
@@ -142,7 +155,7 @@ function PlanRiegoInner() {
       setRiegos(d.map((e: { fechaProgramada: string; laminaAplicada?: number; estado?: string; observaciones?: string }) => ({ t: new Date(e.fechaProgramada).getTime(), mm: e.laminaAplicada || 0, estado: e.estado || "", ia: (e.observaciones || "").toLowerCase().includes("ia") })));
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeIds]);
+  }, [filtroLluvia, awc]);
 
   // Cálculo determinístico del balance hídrico (real: ET0 + lluvia)
   const { balance, sugerencias, etcDia, proximo } = useMemo(() => {
@@ -157,11 +170,11 @@ function PlanRiegoInner() {
     const sugs: SugerenciaIA[] = [];
     dias.forEach((d, i) => {
       const etc = (d.et0 || 4) * kc;
-      const deltaPct = (((d.mm || 0) - etc) / AWC) * 100;
+      const deltaPct = (((d.mm || 0) - etc) / awc) * 100;
       sSin = clamp(sSin + deltaPct, 0, 100);
       let cs = clamp(sCon + deltaPct, 0, 100);
       if (i > 0 && cs < umbral) {
-        cs = clamp(cs + (mmEvento / AWC) * 100, 0, 100);
+        cs = clamp(cs + (mmEvento / awc) * 100, 0, 100);
         sugs.push({ fecha: `${d.nombre} ${d.num}`, mm: mmEvento, motivo: `Humedad proyectada cae a ${Math.round(sSin)}% sin riego`, costoUSD: Math.round(mmEvento * COSTO_MM) });
       }
       sCon = cs;
@@ -169,10 +182,10 @@ function PlanRiegoInner() {
     });
     const etc0 = Math.round((dias[0].et0 || 4) * kc * 10) / 10;
     return { balance: bal, sugerencias: sugs, etcDia: etc0, proximo: sugs[0] || null };
-  }, [dias, estrategia, s0, cultivo, etapa]);
+  }, [dias, estrategia, s0, cultivo, etapa, awc]);
 
   const costoEvento = sugerencias.reduce((s, x) => s + x.costoUSD, 0);
-  const aguaUtilMm = Math.round((s0 / 100) * AWC);
+  const aguaUtilMm = Math.round((s0 / 100) * awc);
 
   // Asegura que el lote tenga un plan de riego (lo crea si no existe)
   const ensurePlan = useCallback(async (): Promise<string | null> => {
