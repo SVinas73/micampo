@@ -1390,13 +1390,13 @@ function LotesListaDetallada({
     <div className="mc-card" style={{ padding: 0, overflow: "auto" }}>
       <div className="mc-lotes-list">
         <div className="mc-lotes-list__head">
-          <div>Identidad</div>
+          <div style={{ textAlign: "center" }}>Identidad</div>
           <div>Cultivo</div>
           <div>Finanzas</div>
           <div>Salud</div>
           <div>Monitoreo</div>
           <div>Proyección</div>
-          <div>Croquis</div>
+          <div style={{ textAlign: "center" }}>Croquis</div>
           <div>Acciones</div>
         </div>
         {lotes.length === 0 && (
@@ -1486,7 +1486,7 @@ function LotesListaDetallada({
                 )}
               </div>
               {/* Croquis */}
-              <div><LoteCroquis lote={l} /></div>
+              <div style={{ display: "flex", justifyContent: "center" }}><LoteCroquis lote={l} /></div>
               {/* Acciones */}
               <div className="col gap-4" onClick={(e) => e.stopPropagation()}>
                 <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "4px 10px", fontSize: 11, justifyContent: "center" }} onClick={() => onTarea(l)}>

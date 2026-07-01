@@ -15,20 +15,43 @@ export const maxDuration = 30;
 
 const PALETA = ["#5e7733", "#768f44", "#8aa353", "#d9a538", "#c08a22", "#2c6bb8", "#64748b", "#c93434"];
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     const userId = session.user.id;
 
-    const [eco, costos, lotes, leche, cosechas, ndviRows] = await Promise.all([
+    // Alcance global Campo → Lote (sidebar). "todos" = sin filtro.
+    const { searchParams } = new URL(request.url);
+    const establecimientoId = searchParams.get("establecimientoId") || "todos";
+    const loteId = searchParams.get("loteId") || "todos";
+
+    const [ecoAll, costosAll, lotesAll, lecheAll, cosechasAll, ndviRows] = await Promise.all([
       resumenEconomicoLotes(userId),
       prisma.costoLote.findMany({ where: { userId } }),
       prisma.lote.findMany({ where: { userId } }),
       prisma.produccionLechera.findMany({ where: { userId }, orderBy: { fecha: "desc" }, take: 14 }),
-      prisma.cosecha.findMany({ where: { userId }, include: { lote: { select: { nombre: true } } } }),
+      prisma.cosecha.findMany({ where: { userId }, include: { lote: { select: { nombre: true, establecimientoId: true } } } }),
       prisma.insight.findMany({ where: { userId, tipo: "ndvi" }, orderBy: { createdAt: "desc" } }),
     ]);
+
+    // Resolver el conjunto de lotes en alcance:
+    //  - lote puntual → solo ese lote
+    //  - campo puntual → todos los lotes de ese establecimiento
+    //  - "todos" → sin filtro (null)
+    let scopeLoteIds: Set<string> | null = null;
+    if (loteId !== "todos") scopeLoteIds = new Set([loteId]);
+    else if (establecimientoId !== "todos") scopeLoteIds = new Set(lotesAll.filter((l) => l.establecimientoId === establecimientoId).map((l) => l.id));
+    const enLote = (id?: string | null) => !scopeLoteIds || (id != null && scopeLoteIds.has(id));
+
+    // Aplicar el alcance a cada fuente antes de armar las series.
+    const lotes = scopeLoteIds ? lotesAll.filter((l) => scopeLoteIds!.has(l.id)) : lotesAll;
+    const eco = ecoAll.filter((l) => enLote(l.loteId));
+    const costos = costosAll.filter((c) => enLote(c.loteId));
+    const cosechas = cosechasAll.filter((c) => enLote(c.loteId));
+    // La producción lechera no es atribuible a un lote/campo, así que solo se muestra
+    // sin filtro de alcance (evita repetir el mismo dato al cambiar de campo/lote).
+    const leche = scopeLoteIds ? [] : lecheAll;
 
     const nombreLote = new Map(lotes.map((l) => [l.id, l.nombre]));
 

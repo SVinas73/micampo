@@ -34,33 +34,41 @@ export default function AnaliticaPage() {
   const [corr, setCorr] = useState<Correlacion | null>(null);
   const [corrLoading, setCorrLoading] = useState(false);
 
+  // Alcance global Campo → Lote del sidebar. Los datasets se piden ya filtrados
+  // por el servidor, así que Analítica IA reacciona al cambiar de establecimiento/lote.
+  const { establecimientoId, loteId, establecimientoActivo, loteActivo, esTodos, cargado } = useLoteScope();
+
   useEffect(() => {
-    fetch("/api/analitica/datasets")
+    if (!cargado) return;
+    setCargando(true);
+    setAnalisis(null);
+    setCorr(null);
+    const qs = new URLSearchParams({ establecimientoId, loteId }).toString();
+    fetch(`/api/analitica/datasets?${qs}`)
       .then((r) => (r.ok ? r.json() : { datasets: [] }))
       .then((d) => {
         const ds: Dataset[] = d.datasets || [];
         setDatasets(ds);
-        if (ds[0]) setActivo(ds[0].id);
+        // Mantener el dataset activo si sigue existiendo; si no, ir al primero.
+        setActivo((prev) => (ds.some((x) => x.id === prev) ? prev : ds[0]?.id || ""));
         // Defaults de correlación: dos datasets de la misma dimensión (ideal: lote)
         const porLote = ds.filter((x) => x.dimension === "lote");
         if (porLote.length >= 2) { setCorrA(porLote[0].id); setCorrB(porLote[1].id); }
         else if (ds.length >= 2) { setCorrA(ds[0].id); setCorrB(ds[1].id); }
+        else { setCorrA(ds[0]?.id || ""); setCorrB(ds[0]?.id || ""); }
       })
       .catch(() => {})
       .finally(() => setCargando(false));
-  }, []);
+  }, [cargado, establecimientoId, loteId]);
 
-  const { lotes: scopeLotes, esTodos } = useLoteScope();
-  // El dataset por-lote (margen) respeta el alcance global de campo/lote
-  const ds = useMemo(() => {
-    const base = datasets.find((d) => d.id === activo);
-    if (!base) return undefined;
-    if (base.id === "margenPorLote" && !esTodos) {
-      const nombres = new Set(scopeLotes.map((l) => l.nombre));
-      return { ...base, datos: base.datos.filter((p) => nombres.has(p.label)) };
-    }
-    return base;
-  }, [datasets, activo, scopeLotes, esTodos]);
+  const ds = useMemo(() => datasets.find((d) => d.id === activo), [datasets, activo]);
+
+  // Texto del alcance activo, para que se vea que Analítica IA respeta el sidebar.
+  const scopeLabel = esTodos
+    ? "Todos los campos"
+    : loteActivo
+      ? `Lote ${loteActivo.nombre}${establecimientoActivo ? ` · ${establecimientoActivo.nombre}` : ""}`
+      : establecimientoActivo?.nombre || "Alcance activo";
 
   const analizar = async () => {
     if (!ds) return;
@@ -70,7 +78,7 @@ export default function AnaliticaPage() {
       const res = await fetch("/api/analisis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: ds.id, titulo: ds.titulo, unidad: ds.unidad, datos: ds.datos }),
+        body: JSON.stringify({ id: ds.id, titulo: ds.titulo, unidad: ds.unidad, datos: ds.datos, contexto: scopeLabel }),
       });
       setAnalisis(await res.json());
     } catch {
@@ -128,6 +136,14 @@ export default function AnaliticaPage() {
         title="Analítica con IA"
         subtitle="Explorá tus datos en gráficas 3D y dejá que la IA encuentre lo que importa."
       />
+
+      <div className="row gap-8" style={{ alignItems: "center", flexWrap: "wrap" }}>
+        <span className="text-xs text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>Alcance</span>
+        <span className="mc-badge mc-badge--green" style={{ fontSize: 11, display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <Icon name={esTodos ? "layers" : loteActivo ? "map" : "building"} size={11} />{scopeLabel}
+        </span>
+        <span className="text-xs text-muted">Los datos y el análisis IA respetan el campo/lote del panel lateral.</span>
+      </div>
 
       {cargando ? (
         <div className="mc-card"><div className="text-sm text-muted">Cargando datos…</div></div>
