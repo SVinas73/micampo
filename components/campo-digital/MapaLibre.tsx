@@ -321,7 +321,10 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       map.addLayer({ id: "topo", type: "raster", source: "topo", layout: { visibility: layerRef.current === "Topografía" ? "visible" : "none" }, paint: { "raster-opacity": 0.92 } as any }, "etiquetas");
 
       // Capa de Relieve (mapa físico coloreado por altitud, Esri World Physical Map)
-      map.addSource("relieve", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 16, attribution: "© Esri — U.S. National Park Service" });
+      // World_Physical_Map solo tiene datos hasta z8; si pedimos más alto, Esri
+      // devuelve el tile "Map data not yet available". Con maxzoom: 8 MapLibre
+      // reescala (overzoom) el tile de z8 y nunca pide niveles inexistentes.
+      map.addSource("relieve", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 8, attribution: "© Esri — U.S. National Park Service" });
       map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: layerRef.current === "Relieve" ? "visible" : "none" }, paint: { "raster-opacity": 0.95 } as any }, "etiquetas");
 
       // Envolvente de cada campo (establecimiento)
