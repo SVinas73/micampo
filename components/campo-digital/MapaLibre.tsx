@@ -321,11 +321,15 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       map.addLayer({ id: "topo", type: "raster", source: "topo", layout: { visibility: layerRef.current === "Topografía" ? "visible" : "none" }, paint: { "raster-opacity": 0.92 } as any }, "etiquetas");
 
       // Capa de Relieve (mapa físico coloreado por altitud, Esri World Physical Map)
-      // World_Physical_Map solo tiene datos hasta z8; si pedimos más alto, Esri
-      // devuelve el tile "Map data not yet available". Con maxzoom: 8 MapLibre
-      // reescala (overzoom) el tile de z8 y nunca pide niveles inexistentes.
+      // Capa de Relieve = tinte hipsométrico (base) + sombreado del DEM real (forma del terreno).
+      // El tinte físico de Esri (World_Physical_Map) solo tiene datos hasta z8; con maxzoom: 8
+      // MapLibre lo reescala y nunca pide niveles inexistentes (evita "Map data not yet available").
+      // A escala de campo la altura es casi uniforme, así que lo importante es el sombreado del
+      // DEM (terrarium, nítido hasta z13): muestra lomas, bajos y pendientes reales del lote.
+      const relieveOn = layerRef.current === "Relieve";
       map.addSource("relieve", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 8, attribution: "© Esri — U.S. National Park Service" });
-      map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: layerRef.current === "Relieve" ? "visible" : "none" }, paint: { "raster-opacity": 0.95 } as any }, "etiquetas");
+      map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 0.55 } as any }, "etiquetas");
+      map.addLayer({ id: "relieve-hs", type: "hillshade", source: "dem", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "hillshade-exaggeration": 0.9, "hillshade-shadow-color": "#4a3719", "hillshade-highlight-color": "#fff4dc", "hillshade-accent-color": "#8a6b3f" } as any }, "etiquetas");
 
       // Envolvente de cada campo (establecimiento)
       map.addSource("campos", { type: "geojson", data: boundariesFc(lotes, establecimientosRef.current) });
@@ -476,6 +480,9 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
     if (map.getLayer("topo")) map.setLayoutProperty("topo", "visibility", layer === "Topografía" ? "visible" : "none");
     if (map.getLayer("relieve")) map.setLayoutProperty("relieve", "visibility", layer === "Relieve" ? "visible" : "none");
+    if (map.getLayer("relieve-hs")) map.setLayoutProperty("relieve-hs", "visibility", layer === "Relieve" ? "visible" : "none");
+    // En Relieve dejamos casi apagada la imagen satelital para que domine el sombreado del terreno.
+    if (map.getLayer("satelite")) map.setPaintProperty("satelite", "raster-opacity", layer === "Relieve" ? 0.18 : 1);
     if (map.getLayer("lotes-line")) map.setPaintProperty("lotes-line", "line-color", layer === "Topografía" || layer === "Relieve" ? "#111111" : "#ffffff");
     renderMarkers();
     renderCampoMarkers();
