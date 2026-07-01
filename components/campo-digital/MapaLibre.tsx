@@ -289,7 +289,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
             tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
             encoding: "terrarium",
             tileSize: 256,
-            maxzoom: 13,
+            maxzoom: 15,
           },
         },
         layers: [
@@ -320,16 +320,16 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       map.addSource("topo", { type: "raster", tiles: ["https://a.tile.opentopomap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 17, attribution: "© OpenTopoMap (CC-BY-SA)" });
       map.addLayer({ id: "topo", type: "raster", source: "topo", layout: { visibility: layerRef.current === "Topografía" ? "visible" : "none" }, paint: { "raster-opacity": 0.92 } as any }, "etiquetas");
 
-      // Capa de Relieve (mapa físico coloreado por altitud, Esri World Physical Map)
-      // Capa de Relieve = tinte hipsométrico (base) + sombreado del DEM real (forma del terreno).
-      // El tinte físico de Esri (World_Physical_Map) solo tiene datos hasta z8; con maxzoom: 8
-      // MapLibre lo reescala y nunca pide niveles inexistentes (evita "Map data not yet available").
-      // A escala de campo la altura es casi uniforme, así que lo importante es el sombreado del
-      // DEM (terrarium, nítido hasta z13): muestra lomas, bajos y pendientes reales del lote.
+      // Capa de Relieve = sombreado de relieve de alta definición + tinte hipsométrico.
+      // "relieve-hs" (Esri World Hillshade) es un sombreado nítido hasta z16 → da toda la
+      //   definición de la forma del terreno (lomas, bajos, pendientes) sin pixelarse al hacer zoom.
+      // "relieve" (World_Physical_Map, tinte de color) solo llega a z8, así que va con baja opacidad
+      //   por encima solo para aportar el color hipsométrico; los bordes nítidos los pone el hillshade.
       const relieveOn = layerRef.current === "Relieve";
+      map.addSource("relieve-hs", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 16, attribution: "© Esri — Sombreado de relieve" });
+      map.addLayer({ id: "relieve-hs", type: "raster", source: "relieve-hs", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 1 } as any }, "etiquetas");
       map.addSource("relieve", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 8, attribution: "© Esri — U.S. National Park Service" });
-      map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 0.55 } as any }, "etiquetas");
-      map.addLayer({ id: "relieve-hs", type: "hillshade", source: "dem", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "hillshade-exaggeration": 0.9, "hillshade-shadow-color": "#4a3719", "hillshade-highlight-color": "#fff4dc", "hillshade-accent-color": "#8a6b3f" } as any }, "etiquetas");
+      map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 0.45 } as any }, "etiquetas");
 
       // Envolvente de cada campo (establecimiento)
       map.addSource("campos", { type: "geojson", data: boundariesFc(lotes, establecimientosRef.current) });
