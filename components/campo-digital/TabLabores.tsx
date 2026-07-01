@@ -41,6 +41,28 @@ function hoyCorta() {
   return corta(0);
 }
 
+// Estados de ciclo de vida que NO dependen de la fecha (los fija el usuario).
+const ESTADOS_FIJOS = ["Completada", "En curso", "Pausada"];
+
+/** Estado según la fecha para una tarea abierta: vencida→Atrasada, hoy→Hoy, futura→Programada. */
+function estadoPorFecha(fechaISO: string): string {
+  const solo = (fechaISO || "").slice(0, 10);
+  const hoy = hoyISO();
+  if (!solo) return "Programada";
+  return solo < hoy ? "Atrasada" : solo === hoy ? "Hoy" : "Programada";
+}
+
+/**
+ * Deriva el estado a mostrar: respeta los estados de ciclo (Completada / En curso /
+ * Pausada) y recalcula el resto por fecha. Así una tarea "Programada" cuya fecha ya
+ * pasó se muestra como "Atrasada" (y no queda "Programada" en el pasado).
+ */
+function derivarEstado(estadoGuardado: string | undefined, fechaISO: string): string {
+  if (estadoGuardado && ESTADOS_FIJOS.includes(estadoGuardado)) return estadoGuardado;
+  if (estadoGuardado === "Bloqueada") return "Atrasada";
+  return estadoPorFecha(fechaISO);
+}
+
 const DEMO_LABORES: LaborUI[] = [
   { id: "d1", tarea: "Pulverización", tipo: "Pulverización", lote: "Lote 2 - Norte", cultivo: "Soja", responsable: "Juan Pérez", fecha: hoyCorta(), fechaISO: hoyISO(), prioridad: "alta", estado: "En curso" },
   { id: "d2", tarea: "Siembra Maíz", tipo: "Siembra", lote: "Lote 4 - El Bajo", cultivo: "Maíz", responsable: "M. Gómez", fecha: hoyCorta(), fechaISO: hoyISO(), prioridad: "media", estado: "Hoy" },
@@ -121,7 +143,6 @@ export default function TabLabores() {
         setLabores(
           d.map((l: { id: string; tipo: string; descripcion?: string; fecha: string; estado?: string; prioridad?: string; operarios?: string; loteId?: string; lote?: { nombre: string }; motivoBloqueo?: string }) => {
             const f = new Date(l.fecha);
-            const estado = l.estado || (f < new Date(hoyISO()) ? "Atrasada" : "Programada");
             return {
               id: l.id, dbId: l.id, tarea: l.descripcion || l.tipo, tipo: l.tipo,
               lote: l.lote?.nombre || "—", loteId: l.loteId, cultivo: "—",
@@ -129,7 +150,7 @@ export default function TabLabores() {
               fecha: `${String(f.getDate()).padStart(2, "0")}/${String(f.getMonth() + 1).padStart(2, "0")}`,
               fechaISO: l.fecha.slice(0, 10),
               prioridad: (l.prioridad === "Urgente" ? "alta" : "media") as "alta" | "media",
-              estado: estado === "Bloqueada" ? "Atrasada" : estado,
+              estado: derivarEstado(l.estado, l.fecha),
               motivoBloqueo: l.motivoBloqueo || undefined,
             };
           })
@@ -562,7 +583,7 @@ export default function TabLabores() {
             <button
               className="mc-btn mc-btn--primary"
               onClick={() => {
-                if (reprogramar) patchLabor(reprogramar, { fecha: nuevaFecha, estado: "Programada", motivoBloqueo: null }, `"${reprogramar.tarea}" reprogramada`);
+                if (reprogramar) patchLabor(reprogramar, { fecha: nuevaFecha, estado: estadoPorFecha(nuevaFecha), motivoBloqueo: null }, `"${reprogramar.tarea}" reprogramada`);
                 setReprogramar(null);
               }}
             >

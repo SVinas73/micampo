@@ -119,7 +119,11 @@ export async function GET() {
         });
       });
 
-    const atrasadas = labores.filter((l) => l.estado === "Atrasada" || (l.estado !== "Completada" && new Date(l.fecha) < hoy));
+    // Atrasada = tarea abierta (no completada ni en ejecución) cuya fecha ya pasó (comparación por día).
+    const hoyDia = hoy.toISOString().slice(0, 10);
+    const atrasadas = labores.filter(
+      (l) => !["Completada", "En curso", "Pausada"].includes(l.estado || "") && new Date(l.fecha).toISOString().slice(0, 10) < hoyDia
+    );
     if (atrasadas.length > 0) {
       items.push({
         severidad: "media",

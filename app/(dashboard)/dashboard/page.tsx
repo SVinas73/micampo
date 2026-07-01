@@ -614,8 +614,14 @@ export default function InicioPage() {
 
     fetch("/api/labores").then((r) => (r.ok ? r.json() : [])).then((d) => {
       if (!Array.isArray(d) || d.length === 0) return;
-      const pend = d.filter((l: { estado?: string }) => l.estado && l.estado !== "Completada").length;
-      const atr = d.filter((l: { estado?: string }) => l.estado === "Atrasada").length;
+      const hoyDia = new Date().toISOString().slice(0, 10);
+      // Atrasada = tarea abierta (no completada/en curso/pausada) cuya fecha ya pasó,
+      // aunque en la base siga marcada como "Programada".
+      const cerrada = (e?: string) => ["Completada", "En curso", "Pausada"].includes(e || "");
+      const pend = d.filter((l: { estado?: string }) => l.estado !== "Completada").length;
+      const atr = d.filter((l: { estado?: string; fecha?: string }) =>
+        !cerrada(l.estado) && !!l.fecha && new Date(l.fecha).toISOString().slice(0, 10) < hoyDia
+      ).length;
       setLaboresPend(pend);
       setLaboresAtr(atr);
       if (pend > 0) setKpiValues((p) => ({ ...p, labores: { value: String(pend), delta: `${atr} atrasadas` } }));
