@@ -261,7 +261,6 @@ export function LoteOverlay({
         style={{ position: "absolute", top: 16, right: 16, display: "flex", flexDirection: "column", gap: 8, width: 152, pointerEvents: "auto" }}
       >
         <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
-        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onNota}><Icon name="pen" size={13} />Nota</button>
         <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onEditar}><Icon name="edit" size={13} />Editar</button>
       </motion.div>
     </div>

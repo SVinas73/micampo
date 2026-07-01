@@ -215,11 +215,11 @@ function TabInicio({ historial, onAbrir, onPreset, onNuevo }: { historial: HistR
         <KPI label="Producto más usado" value={masUsado ? masUsado[0] : "—"} delta={masUsado ? `${masUsado[1]} cálculo(s)` : "—"} trend="up" icon="leaf" />
       </div>
       <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
-        <button className="mc-btn mc-btn--secondary" onClick={onPreset}>
-          <Icon name="book" size={14} />Preestablecidos
+        <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={onPreset}>
+          <Icon name="book" size={13} />Preestablecidos
         </button>
-        <button className="mc-btn mc-btn--primary" onClick={onNuevo}>
-          <Icon name="plus" size={14} />Nuevo cálculo
+        <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={onNuevo}>
+          <Icon name="plus" size={13} />Nuevo cálculo
         </button>
       </div>
       <div className="grid g-cols-3 gap-16">
