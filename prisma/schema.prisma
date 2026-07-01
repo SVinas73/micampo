@@ -4551,3 +4551,29 @@ model Insight {
   @@index([userId, clave])
   @@index([userId, tipo])
 }
+
+/// Historial de análisis de Visión IA (foto → diagnóstico). userId/loteId escalares
+/// (sin relación formal) para no acoplar a User/Lote. Guarda una miniatura para la galería.
+model AnalisisVision {
+  id                    String   @id @default(cuid())
+  userId                String
+  modo                  String // maleza, maquinaria, condicion-corporal, forraje, general
+  titulo                String
+  resultado             String
+  confianza             Float    @default(0)
+  detalle               String? // texto libre
+  metricas              String? // JSON [{label,valor}]
+  recomendaciones       String? // JSON string[]
+  fuente                String? // modelo-propio, claude, simulado
+  imagenesCount         Int      @default(1)
+  thumb                 String? // data URL de miniatura (JPEG chico)
+  loteId                String?
+  loteNombre            String?
+  establecimientoId     String?
+  establecimientoNombre String?
+  alertaPlagaId         String? // si el análisis generó una alerta de plaga
+  createdAt             DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([loteId])
+}

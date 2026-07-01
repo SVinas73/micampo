@@ -140,7 +140,7 @@ export default function AnaliticaPage() {
       <div className="row gap-8" style={{ alignItems: "center", flexWrap: "wrap" }}>
         <span className="text-xs text-muted" style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>Alcance</span>
         <span className="mc-badge mc-badge--green" style={{ fontSize: 11, display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <Icon name={esTodos ? "layers" : loteActivo ? "map" : "building"} size={11} />{scopeLabel}
+          <Icon name={esTodos ? "grid" : loteActivo ? "map" : "building"} size={11} />{scopeLabel}
         </span>
         <span className="text-xs text-muted">Los datos y el análisis IA respetan el campo/lote del panel lateral.</span>
       </div>
