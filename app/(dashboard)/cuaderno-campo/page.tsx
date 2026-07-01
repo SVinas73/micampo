@@ -94,7 +94,7 @@ export default function CuadernoCampoPage() {
 
       {/* Acción del submódulo, debajo de los KPIs (alineada a la derecha) */}
       <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-        <button className="mc-btn mc-btn--primary" onClick={exportarPDF} disabled={visibles.length === 0}><Icon name="download" size={14} />Exportar PDF</button>
+        <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={exportarPDF} disabled={visibles.length === 0}><Icon name="download" size={13} />Exportar PDF</button>
       </div>
 
       <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>

@@ -288,8 +288,8 @@ function PlanRiegoInner() {
 
       {/* Acciones del submódulo, debajo de los KPIs (alineadas a la derecha) */}
       <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-        <button className="mc-btn mc-btn--secondary" onClick={exportarPDF} disabled={sinCampo}><Icon name="download" size={14} />Exportar PDF</button>
-        <button className="mc-btn mc-btn--primary" onClick={() => setRiegoOpen(true)}><Icon name="plus" size={14} />Registrar Riego</button>
+        <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={exportarPDF} disabled={sinCampo}><Icon name="download" size={13} />Exportar PDF</button>
+        <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setRiegoOpen(true)}><Icon name="plus" size={13} />Registrar Riego</button>
       </div>
 
       {/* Estadio fenológico — ajusta el Kc (consumo de agua) del cálculo */}

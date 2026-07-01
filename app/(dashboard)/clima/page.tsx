@@ -319,11 +319,11 @@ function ClimaInner() {
 
       {/* Acciones del submódulo, debajo de los KPIs (alineadas a la derecha) */}
       <div className="row gap-8" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-        <button className="mc-btn mc-btn--primary" onClick={() => setShowLluvia(true)}>
-          <Icon name="droplet" size={14} />Registrar Lluvia
+        <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setShowLluvia(true)}>
+          <Icon name="droplet" size={13} />Registrar Lluvia
         </button>
-        <button className="mc-btn" style={{ background: "#c08a22", color: "white" }} onClick={() => setShowAlerta(true)}>
-          <Icon name="alert" size={14} />Registrar Alerta
+        <button className="mc-btn mc-btn--sm" style={{ background: "#c08a22", color: "white" }} onClick={() => setShowAlerta(true)}>
+          <Icon name="alert" size={13} />Registrar Alerta
         </button>
       </div>
 

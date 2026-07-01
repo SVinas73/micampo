@@ -9,12 +9,10 @@ import TabLotes from "@/components/campo-digital/TabLotes";
 import TabLabores from "@/components/campo-digital/TabLabores";
 import TabCultivos from "@/components/campo-digital/TabCultivos";
 import TabDeteccion from "@/components/campo-digital/TabDeteccion";
-import TabCampo3D from "@/components/campo-digital/TabCampo3D";
 
 const TABS = [
   "Resumen",
   "Lotes",
-  "Campo 3D",
   "Labores",
   "Cultivos",
   "Detección de Enfermedades (IA)",
@@ -54,7 +52,6 @@ function CampoDigitalInner() {
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
       {tab === "Resumen" && <TabResumen onNavigateTab={setTab} />}
       {tab === "Lotes" && <TabLotes />}
-      {tab === "Campo 3D" && <TabCampo3D />}
       {tab === "Labores" && <TabLabores />}
       {tab === "Cultivos" && <TabCultivos />}
       {tab === "Detección de Enfermedades (IA)" && <TabDeteccion />}

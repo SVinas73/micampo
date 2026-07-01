@@ -2507,6 +2507,15 @@ a:focus-visible {
   pointer-events: none;
   transform: translateY(-6px);
 }
+/* Tooltip de nota de un lote (MapLibre popup) — tarjeta limpia y profesional */
+.mc-nota-popup .maplibregl-popup-content {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(229, 72, 77, 0.28);
+  background: #ffffff;
+  box-shadow: 0 8px 26px rgba(24, 32, 18, 0.22);
+}
+.mc-nota-popup .maplibregl-popup-tip { display: none; }
 /* Etiqueta del campo en la vista clásica (Leaflet tooltip) — mismo look que el marcador 3D */
 .leaflet-tooltip.mc-campo-tip {
   font-size: 11px;

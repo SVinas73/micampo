@@ -93,19 +93,15 @@ function StatChip({ icon, label, value, color }: { icon: string; label: string; 
 export function LoteOverlay({
   lote,
   onClose,
-  onNota,
   onEditar,
   onTarea,
   onFicha,
-  vista = "3d",
 }: {
   lote: LoteUI;
   onClose: () => void;
-  onNota: () => void;
   onEditar: () => void;
   onTarea: () => void;
   onFicha?: () => void;
-  vista?: "3d" | "clasico";
 }) {
   const c = centroide(lote);
   const cultivoColor = (lote.cultivo && CULTIVO_COLOR[lote.cultivo]) || "#5e7733";
@@ -150,7 +146,7 @@ export function LoteOverlay({
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 600, pointerEvents: "none" }}>
       {/* Columna izquierda: header + chips. En clásico se corre del borde para no tapar las herramientas de dibujo de Leaflet; en 3D va pegada a la izquierda. */}
-      <div style={{ position: "absolute", top: 16, left: vista === "clasico" ? 58 : 16, display: "flex", flexDirection: "column", gap: 12, width: 366, maxWidth: "calc(100% - 200px)", pointerEvents: "none" }}>
+      <div style={{ position: "absolute", top: 16, left: 16, display: "flex", flexDirection: "column", gap: 12, width: 366, maxWidth: "calc(100% - 200px)", pointerEvents: "none" }}>
         <motion.div
           {...fade(0)}
           className="mc-glass"
@@ -261,7 +257,6 @@ export function LoteOverlay({
         style={{ position: "absolute", top: 16, right: 16, display: "flex", flexDirection: "column", gap: 8, width: 152, pointerEvents: "auto" }}
       >
         <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
-        <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onNota}><Icon name="pen" size={13} />Nota</button>
         <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onEditar}><Icon name="edit" size={13} />Editar</button>
       </motion.div>
     </div>
