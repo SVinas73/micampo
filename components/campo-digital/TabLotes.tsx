@@ -12,20 +12,21 @@ import {
 } from "./lotes-data";
 
 // Mapa satelital con terreno 3D (MapLibre GL) — solo en cliente
+// Vista Clásica: mapa satelital con relieve 3D/plano (MapLibre GL)
 const Mapa3D = dynamic(() => import("./MapaLibre"), {
   ssr: false,
   loading: () => (
     <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
-      Cargando mapa 3D…
+      Cargando mapa…
     </div>
   ),
 });
-// Mapa clásico (Leaflet) — vista 2D con NDVI satelital
-const MapaClasico = dynamic(() => import("./MapaNDVI"), {
+// Campo 3D: gemelo digital (three.js) — mismo componente que la ex-pestaña
+const Campo3D = dynamic(() => import("./Campo3D"), {
   ssr: false,
   loading: () => (
-    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
-      Cargando mapa…
+    <div style={{ height: 520, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>
+      Cargando gemelo 3D…
     </div>
   ),
 });
@@ -655,6 +656,11 @@ function LotesMapa({
       { color: "#7a5230", label: "Relieve / curvas de nivel" },
       { color: "#cdbf9a", label: "Llano" },
     ],
+    Relieve: [
+      { color: "#8c6b3f", label: "Zona alta" },
+      { color: "#d9c48a", label: "Media" },
+      { color: "#a9c48a", label: "Baja / llano" },
+    ],
     Humedad: [
       { color: "#08519c", label: "Muy húmedo" },
       { color: "#4292c6", label: "Húmedo" },
@@ -666,23 +672,51 @@ function LotesMapa({
   const legend = legendByLayer[layer] || [];
   const { establecimientos } = useLoteScope();
   const nombreEst = (id?: string | null) => (id ? establecimientos.find((e) => e.id === id)?.nombre ?? null : null);
-  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
+  // Notas georreferenciadas por lote: la más reciente de cada lote se muestra como
+  // indicador rojo en el mapa y en el tooltip al pasar el mouse por encima.
+  const [notasPorLote, setNotasPorLote] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/marcadores-geo").then((r) => (r.ok ? r.json() : null)).then((rows) => {
+      if (cancelado || !Array.isArray(rows)) return;
+      const m: Record<string, string> = {};
+      // Vienen ordenadas por fecha desc: la primera de cada lote es la más reciente.
+      rows.forEach((n: { loteId?: string | null; titulo?: string | null; descripcion?: string | null }) => {
+        if (!n.loteId || m[n.loteId]) return;
+        m[n.loteId] = [n.titulo, n.descripcion].filter(Boolean).join(" — ") || "Nota";
+      });
+      setNotasPorLote(m);
+    }).catch(() => {});
+    return () => { cancelado = true; };
+  }, [lotes.length]);
+  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId), nota: notasPorLote[l.dbId || l.id] ?? null }));
   // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
   const establecimientosGeo = [
     ...establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, coordenadas: e.coordenadas ?? null })),
     ...(hullPreview ? [{ id: "__nuevo__", nombre: "Nuevo campo", coordenadas: hullPreview }] : []),
   ];
-  // Para delimitar conviene la vista clásica (2D, cenital): más cómodo para dibujar.
-  const [vista, setVista] = useState<"3d" | "clasico">(delimitando ? "clasico" : "3d");
-  // Al cambiar de vista se desmonta/monta otro mapa; si estábamos delimitando hay
-  // que re-armar el dibujo para no perder el cursor (queda en modo "mover" si no).
-  const cambiarVista = (v: "3d" | "clasico") => {
+  // Dos vistas: "clasica" (mapa satelital MapLibre, con relieve 3D y plano) y
+  // "campo3d" (gemelo digital three.js, ex-pestaña Campo 3D).
+  const [vista, setVista] = useState<"clasica" | "campo3d">("clasica");
+  // Si estábamos delimitando y se cambia de vista, re-armar el dibujo.
+  const cambiarVista = (v: "clasica" | "campo3d") => {
+    if (v === "campo3d" && delimitando) return; // no se dibuja en el gemelo 3D
     setVista(v);
     if (delimitando) onReArmar?.();
   };
   const [fichaOpen, setFichaOpen] = useState(false);
   const [online, setOnline] = useState(true);
-  const MapaActivo = vista === "3d" ? Mapa3D : MapaClasico;
+  // Economía por lote para el gemelo Campo 3D (altura/color por margen/costo).
+  const [economia, setEconomia] = useState<Record<string, { margenPorHa: number; costoPorHa: number; margen: number; fuente: string }>>({});
+  useEffect(() => {
+    if (vista !== "campo3d" || Object.keys(economia).length) return;
+    fetch("/api/economia/lotes").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!d?.lotes) return;
+      const m: Record<string, { margenPorHa: number; costoPorHa: number; margen: number; fuente: string }> = {};
+      d.lotes.forEach((l: { loteId: string; margenPorHa: number; costoPorHa: number; margen: number; fuente: string }) => { m[l.loteId] = { margenPorHa: l.margenPorHa, costoPorHa: l.costoPorHa, margen: l.margen, fuente: l.fuente }; });
+      setEconomia(m);
+    }).catch(() => {});
+  }, [vista, economia]);
 
   // Estado de conexión: avisa cuándo el mapa está mostrando tiles cacheados.
   useEffect(() => {
@@ -701,14 +735,16 @@ function LotesMapa({
       <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)", gap: 12, flexWrap: "wrap" }}>
         <div className="row gap-10" style={{ alignItems: "center", flexWrap: "wrap" }}>
           <div className="mc-seg">
-            <button className={vista === "3d" ? "is-on" : ""} onClick={() => cambiarVista("3d")}><Icon name="map" size={12} /> 3D</button>
-            <button className={vista === "clasico" ? "is-on" : ""} onClick={() => cambiarVista("clasico")}>Clásico</button>
+            <button className={vista === "clasica" ? "is-on" : ""} onClick={() => cambiarVista("clasica")}><Icon name="map" size={12} /> Vista Clásica</button>
+            <button className={vista === "campo3d" ? "is-on" : ""} onClick={() => cambiarVista("campo3d")} disabled={delimitando} title={delimitando ? "No disponible mientras delimitás" : "Gemelo digital 3D"}><Icon name="grid" size={12} /> Campo 3D</button>
           </div>
+          {vista === "clasica" && (
           <div className="mc-seg">
-            {["NDVI", "Satélite", "Cultivos", "Topografía", "Humedad"].map((l) => (
+            {["NDVI", "Satélite", "Cultivos", "Topografía", "Relieve", "Humedad"].map((l) => (
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
+          )}
           {lotes.length > 0 && (
             <div className="mc-seg" style={{ display: "flex", alignItems: "center", paddingLeft: 8 }} title="Elegir lote">
               <Icon name="map" size={13} style={{ color: "var(--mc-green-700)" }} />
@@ -723,6 +759,7 @@ function LotesMapa({
             </div>
           )}
         </div>
+        {vista === "clasica" && (
         <div className="row gap-8" style={{ alignItems: "center" }}>
           {onToggleNota && (
             <button className={`mc-btn mc-btn--sm ${modoNota ? "mc-btn--primary" : "mc-btn--secondary"}`} onClick={onToggleNota} title="Marcar una nota en un punto del mapa">
@@ -737,9 +774,22 @@ function LotesMapa({
             />
           )}
         </div>
+        )}
       </div>
+      {vista === "campo3d" ? (
+        <div style={{ padding: "0 0 4px" }}>
+          {lotes.length === 0 ? (
+            <div className="mc-empty" style={{ height: 420 }}>
+              <div className="mc-empty__icon"><Icon name="map" size={22} /></div>
+              <div className="mc-empty__text">Sin lotes para visualizar. Dibujá tus lotes en Vista Clásica.</div>
+            </div>
+          ) : (
+            <Campo3D lotes={lotes} economia={economia} />
+          )}
+        </div>
+      ) : (
       <div className="mc-mapwrap" style={{ height: 640, position: "relative" }}>
-        <MapaActivo
+        <Mapa3D
           lotes={lotesGeo}
           selectedId={selected?.id ?? null}
           layer={layer}
@@ -788,9 +838,7 @@ function LotesMapa({
         {selected && (
           <LoteOverlay
             lote={selected}
-            vista={vista}
             onClose={() => onSelect(null)}
-            onNota={() => onNota(selected)}
             onEditar={() => onEditar(selected)}
             onTarea={() => onTarea(selected)}
             onFicha={() => setFichaOpen(true)}
@@ -823,6 +871,7 @@ function LotesMapa({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

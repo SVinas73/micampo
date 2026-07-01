@@ -25,6 +25,7 @@ export type LoteGeo = {
   geojson?: GeoJSON.Polygon | null;
   establecimientoId?: string | null;
   establecimientoNombre?: string | null;
+  nota?: string | null;
 };
 
 /** Polígono envolvente (convex hull) de cada establecimiento a partir de sus lotes. */
@@ -123,9 +124,43 @@ function fc(lotes: LoteGeo[], layer: string): GeoJSON.FeatureCollection {
       .map((l) => ({
         type: "Feature",
         geometry: l.geojson as GeoJSON.Polygon,
-        properties: { id: l.id, name: l.name, color: colorDe(l, layer) },
+        properties: { id: l.id, name: l.name, color: colorDe(l, layer), nota: l.nota ?? "" },
       })),
   };
+}
+
+/** Puntos (centroides) de los lotes que tienen una nota, para el indicador rojo. */
+function notasFc(lotes: LoteGeo[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: lotes
+      .filter((l) => l.nota && l.geojson?.coordinates?.[0]?.length)
+      .map((l) => {
+        const [lng, lat] = centroideAnillo(l.geojson!.coordinates[0]);
+        return {
+          type: "Feature" as const,
+          geometry: { type: "Point" as const, coordinates: [lng, lat] },
+          properties: { id: l.id, name: l.name, nota: l.nota },
+        };
+      }),
+  };
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+
+/** Tarjeta HTML estilizada para el tooltip de nota de un lote. */
+function notaPopupHtml(nombre: string, nota: string): string {
+  return (
+    `<div style="font-family:inherit;min-width:150px">` +
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">` +
+        `<span style="width:8px;height:8px;border-radius:50%;background:#e5484d;display:inline-block;flex:none"></span>` +
+        `<span style="font-weight:700;font-size:12px;color:#324428;letter-spacing:.01em">${escapeHtml(nombre)}</span>` +
+      `</div>` +
+      `<div style="font-size:12px;line-height:1.4;color:#3a4433;white-space:pre-wrap">${escapeHtml(nota)}</div>` +
+    `</div>`
+  );
 }
 
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
@@ -151,7 +186,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   if (layer === "NDVI" && SENTINEL_INSTANCE) {
     return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 0.18, 0.04];
   }
-  const transparente = layer === "Satélite" || layer === "Topografía";
+  const transparente = layer === "Satélite" || layer === "Topografía" || layer === "Relieve";
   const base = transparente ? 0.12 : 0.46;
   const sel = transparente ? 0.38 : 0.66;
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
@@ -178,6 +213,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
   onPuntoNotaRef.current = onPuntoNota;
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const campoMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const notaPopupRef = useRef<maplibregl.Popup | null>(null);
   onSelectRef.current = onSelect;
   onDrawnRef.current = onDrawn;
   drawingRef.current = drawing;
@@ -284,6 +320,10 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       map.addSource("topo", { type: "raster", tiles: ["https://a.tile.opentopomap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 17, attribution: "© OpenTopoMap (CC-BY-SA)" });
       map.addLayer({ id: "topo", type: "raster", source: "topo", layout: { visibility: layerRef.current === "Topografía" ? "visible" : "none" }, paint: { "raster-opacity": 0.92 } as any }, "etiquetas");
 
+      // Capa de Relieve (mapa físico coloreado por altitud, Esri World Physical Map)
+      map.addSource("relieve", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 16, attribution: "© Esri — U.S. National Park Service" });
+      map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: layerRef.current === "Relieve" ? "visible" : "none" }, paint: { "raster-opacity": 0.95 } as any }, "etiquetas");
+
       // Envolvente de cada campo (establecimiento)
       map.addSource("campos", { type: "geojson", data: boundariesFc(lotes, establecimientosRef.current) });
       map.addLayer({ id: "campos-fill", type: "fill", source: "campos", paint: { "fill-color": "#f0c75e", "fill-opacity": 0.06 } as any });
@@ -291,7 +331,12 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
 
       map.addSource("lotes", { type: "geojson", data: fc(lotes, layer) });
       map.addLayer({ id: "lotes-fill", type: "fill", source: "lotes", paint: { "fill-color": ["get", "color"], "fill-opacity": fillOpacity(layerRef.current, selectedId ?? null) } as any });
-      map.addLayer({ id: "lotes-line", type: "line", source: "lotes", paint: { "line-color": layerRef.current === "Topografía" ? "#111111" : "#ffffff", "line-width": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6], "line-opacity": 0.95 } as any });
+      map.addLayer({ id: "lotes-line", type: "line", source: "lotes", paint: { "line-color": layerRef.current === "Topografía" || layerRef.current === "Relieve" ? "#111111" : "#ffffff", "line-width": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6], "line-opacity": 0.95 } as any });
+
+      // Indicador de nota: punto rojo pulsante en el centroide de los lotes con nota
+      map.addSource("notas", { type: "geojson", data: notasFc(lotes) });
+      map.addLayer({ id: "notas-halo", type: "circle", source: "notas", paint: { "circle-radius": 11, "circle-color": "#e5484d", "circle-opacity": 0.18 } as any });
+      map.addLayer({ id: "notas-dot", type: "circle", source: "notas", paint: { "circle-radius": 6, "circle-color": "#e5484d", "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } as any });
       renderMarkers();
       renderCampoMarkers();
       map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -314,6 +359,22 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       map.on("mouseenter", "lotes-fill", () => { if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", "lotes-fill", () => { if (!modoNotaRef.current) map.getCanvas().style.cursor = ""; });
 
+      // Tooltip de nota: al pasar el mouse por un lote con nota, se ve su contenido.
+      const mostrarNota = (e: maplibregl.MapLayerMouseEvent) => {
+        const f = e.features?.[0];
+        const nombre = f?.properties?.name ? String(f.properties.name) : "";
+        const nota = f?.properties?.nota ? String(f.properties.nota) : "";
+        if (!nota) { ocultarNota(); return; }
+        if (!notaPopupRef.current) {
+          notaPopupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: "mc-nota-popup", maxWidth: "260px" });
+        }
+        notaPopupRef.current.setLngLat(e.lngLat).setHTML(notaPopupHtml(nombre, nota)).addTo(map);
+      };
+      const ocultarNota = () => { notaPopupRef.current?.remove(); };
+      map.on("mouseenter", "notas-dot", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mousemove", "notas-dot", mostrarNota);
+      map.on("mouseleave", "notas-dot", () => { ocultarNota(); if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = ""; });
+
       // dibujo por click / marcar nota
       map.on("click", (e) => {
         if (modoNotaRef.current && onPuntoNotaRef.current) { onPuntoNotaRef.current(e.lngLat.lat, e.lngLat.lng); return; }
@@ -332,7 +393,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       setReady(true);
     });
 
-    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; campoMarkersRef.current.forEach((m) => m.remove()); campoMarkersRef.current = []; map.remove(); mapRef.current = null; readyRef.current = false; };
+    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; campoMarkersRef.current.forEach((m) => m.remove()); campoMarkersRef.current = []; notaPopupRef.current?.remove(); notaPopupRef.current = null; map.remove(); mapRef.current = null; readyRef.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -406,11 +467,13 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     const map = mapRef.current;
     if (!map || !ready) return;
     (map.getSource("lotes") as maplibregl.GeoJSONSource)?.setData(fc(lotes, layer));
+    (map.getSource("notas") as maplibregl.GeoJSONSource)?.setData(notasFc(lotes));
     (map.getSource("campos") as maplibregl.GeoJSONSource)?.setData(boundariesFc(lotes, establecimientosRef.current));
     if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
     if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
     if (map.getLayer("topo")) map.setLayoutProperty("topo", "visibility", layer === "Topografía" ? "visible" : "none");
-    if (map.getLayer("lotes-line")) map.setPaintProperty("lotes-line", "line-color", layer === "Topografía" ? "#111111" : "#ffffff");
+    if (map.getLayer("relieve")) map.setLayoutProperty("relieve", "visibility", layer === "Relieve" ? "visible" : "none");
+    if (map.getLayer("lotes-line")) map.setPaintProperty("lotes-line", "line-color", layer === "Topografía" || layer === "Relieve" ? "#111111" : "#ffffff");
     renderMarkers();
     renderCampoMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
