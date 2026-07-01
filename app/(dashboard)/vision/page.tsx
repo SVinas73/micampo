@@ -21,22 +21,54 @@ const MODOS = [
   { k: "general", label: "General", icon: "camera", desc: "Análisis libre de cualquier imagen del campo." },
 ];
 
+/**
+ * Redimensiona una imagen grande (foto de celular) a un máximo de lado y la
+ * re-codifica a JPEG. Reduce el peso 5-10× → subida más rápida y confiable,
+ * evita timeouts/413 y normaliza el formato. Si algo falla, usa el archivo original.
+ */
+async function prepararImagen(file: File, maxLado = 1600, calidad = 0.85): Promise<File> {
+  try {
+    if (typeof createImageBitmap !== "function") return file;
+    const bitmap = await createImageBitmap(file);
+    const escala = Math.min(1, maxLado / Math.max(bitmap.width, bitmap.height));
+    // Si ya es chica y liviana, no hace falta tocarla.
+    if (escala >= 1 && file.size < 1_200_000) { bitmap.close?.(); return file; }
+    const w = Math.round(bitmap.width * escala);
+    const h = Math.round(bitmap.height * escala);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, "image/jpeg", calidad));
+    if (!blob || blob.size === 0) return file;
+    return new File([blob], (file.name.replace(/\.[^.]+$/, "") || "foto") + ".jpg", { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 export default function VisionPage() {
   const toast = useToast();
   const [modo, setModo] = useState("maleza");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [preparando, setPreparando] = useState(false);
   const [analizando, setAnalizando] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const elegir = (f: File | null) => {
+  const elegir = async (f: File | null) => {
     if (!f) return;
-    setFile(f);
     setResultado(null);
+    setPreparando(true);
+    const optimizada = await prepararImagen(f);
+    setFile(optimizada);
     const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result as string);
-    reader.readAsDataURL(f);
+    reader.onload = () => { setPreview(reader.result as string); setPreparando(false); };
+    reader.onerror = () => setPreparando(false);
+    reader.readAsDataURL(optimizada);
   };
 
   const analizar = async () => {
@@ -135,8 +167,8 @@ export default function VisionPage() {
             </button>
           )}
 
-          <button className="mc-btn mc-btn--primary" style={{ width: "100%", marginTop: 12, justifyContent: "center" }} onClick={analizar} disabled={analizando || !file}>
-            <Icon name="sparkles" size={15} />{analizando ? "Analizando imagen…" : "Analizar con IA"}
+          <button className="mc-btn mc-btn--primary" style={{ width: "100%", marginTop: 12, justifyContent: "center" }} onClick={analizar} disabled={analizando || preparando || !file}>
+            <Icon name="sparkles" size={15} />{preparando ? "Optimizando foto…" : analizando ? "Analizando imagen…" : "Analizar con IA"}
           </button>
         </div>
 

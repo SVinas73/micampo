@@ -51,10 +51,11 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    const { id, titulo, unidad, datos } = await request.json();
+    const { id, titulo, unidad, datos, contexto } = await request.json();
     if (!Array.isArray(datos) || datos.length === 0) {
       return NextResponse.json({ error: "Sin datos" }, { status: 400 });
     }
+    const ctx = typeof contexto === "string" && contexto.trim() ? `Alcance de los datos: ${contexto.trim()}.\n` : "";
 
     const anthropic = getAnthropic();
     if (!anthropic) {
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "user",
-            content: `Serie: "${titulo}" (unidad: ${unidad}).
+            content: `${ctx}Serie: "${titulo}" (unidad: ${unidad}).
 Datos: ${JSON.stringify(datos)}
 
 Devolvé JSON:
