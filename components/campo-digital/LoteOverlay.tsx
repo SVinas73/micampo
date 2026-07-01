@@ -95,12 +95,16 @@ export function LoteOverlay({
   onClose,
   onEditar,
   onTarea,
+  onNota,
+  notaActiva,
   onFicha,
 }: {
   lote: LoteUI;
   onClose: () => void;
   onEditar: () => void;
   onTarea: () => void;
+  onNota?: () => void;
+  notaActiva?: boolean;
   onFicha?: () => void;
 }) {
   const c = centroide(lote);
@@ -258,6 +262,13 @@ export function LoteOverlay({
       >
         <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={onTarea}><Icon name="plus" size={13} />Labor</button>
         <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onEditar}><Icon name="edit" size={13} />Editar</button>
+        {onNota && (
+          notaActiva ? (
+            <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ justifyContent: "center" }} onClick={onNota} title="Tocá un punto del mapa para ubicar la nota"><Icon name="pen" size={13} />Tocá el punto…</button>
+          ) : (
+            <button className="mc-glass mc-btn--sm" style={{ borderRadius: 10, padding: "6px 12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 600, fontSize: 12.5, color: "var(--mc-ink)", cursor: "pointer" }} onClick={onNota} title="Marcar una nota en un punto del mapa"><Icon name="pen" size={13} />Nota</button>
+          )
+        )}
       </motion.div>
     </div>
   );

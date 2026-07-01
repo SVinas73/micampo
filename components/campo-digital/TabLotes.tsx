@@ -587,7 +587,7 @@ export default function TabLotes() {
           delimitando={!!delimitarId}
           onReArmar={() => setDrawArmed(true)}
           modoNota={modoNota}
-          onToggleNota={() => { setSelected(null); setModoNota((v) => !v); }}
+          onToggleNota={() => setModoNota((v) => !v)}
           onPuntoNota={onPuntoNota}
           onCampoConLotes={iniciarCampoConLotes}
           hullPreview={hullNuevo?.geojson ?? null}
@@ -761,11 +761,6 @@ function LotesMapa({
         </div>
         {vista === "clasica" && (
         <div className="row gap-8" style={{ alignItems: "center" }}>
-          {onToggleNota && (
-            <button className={`mc-btn mc-btn--sm ${modoNota ? "mc-btn--primary" : "mc-btn--secondary"}`} onClick={onToggleNota} title="Marcar una nota en un punto del mapa">
-              <Icon name="pen" size={13} />{modoNota ? "Tocá el punto…" : "Nota"}
-            </button>
-          )}
           {onBuscar && (
             <BuscadorLugar
               onElegir={(p) => { onBuscar(p); if (delimitando) onReArmar?.(); }}
@@ -841,6 +836,8 @@ function LotesMapa({
             onClose={() => onSelect(null)}
             onEditar={() => onEditar(selected)}
             onTarea={() => onTarea(selected)}
+            onNota={onToggleNota}
+            notaActiva={modoNota}
             onFicha={() => setFichaOpen(true)}
           />
         )}
