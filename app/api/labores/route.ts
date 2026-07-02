@@ -27,6 +27,7 @@ export async function GET(request: Request) {
           select: {
             nombre: true,
             hectareas: true,
+            cultivo: true,
           },
         },
         maquinaria: {

@@ -569,7 +569,7 @@
   "escenario": "Un campo con 40 labores completadas en toda su historia y 0 este mes mostrará 'Completados este mes: 40', sobre-reportando la actividad mensual.",
   "fix": "Filtrar por mes en curso: labores.filter(l => l.estado==='Completada' && new Date(l.fechaISO).getMonth()===hoy.getMonth() && año igual). O renombrar la KPI a 'Completadas (total)' si se quiere el acumulado.",
   "_id": "4e74914a",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Alertas y labores bloqueadas de ejemplo (BLOQUEADAS_DEMO) siempre visibles en 'Labores Bloqueados / Alertas'",
@@ -621,7 +621,7 @@
   "escenario": "Julio 2026 arranca miércoles; el calendario coloca el 1 bajo LUN, así toda la grilla y los eventos de labores quedan 2 columnas desplazados respecto al día de semana correcto.",
   "fix": "Calcular offset = (new Date(year,month,1).getDay()+6)%7 (lunes=0) y anteponer ese número de celdas vacías antes del día 1, o usar CSS grid-column-start en el primer día.",
   "_id": "0c248557",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Entrada 'Campo 3D' del command palette apunta a un tab inexistente y cae en Resumen",
@@ -647,7 +647,7 @@
   "escenario": "Una labor real de siembra con tractor 'New Holland' asignado muestra 'John Deere 6J' en el card de hoy: información de maquinaria falsa presentada como del campo.",
   "fix": "Mapear la maquinaria real de la labor (l.maquina?.nombre) al UI y mostrar '—' si no hay equipo asignado, en lugar de los literales por tipo.",
   "_id": "683e5b16",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "TabResumen no reacciona al lote activo del sidebar (solo al establecimiento)",
@@ -1437,7 +1437,7 @@
   "fix": "Filtrar por fechaISO dentro del mes/año actuales para el KPI mensual (dejar el conteo total solo para el % si se quiere, con etiqueta acorde).",
   "line_hint": "246, 248, 289",
   "_id": "8a7143ce",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "La columna Cultivo siempre muestra '—': la API no selecciona lote.cultivo",
@@ -1451,7 +1451,7 @@
   "fix": "Agregar `cultivo: true` al select de lote en /api/labores y mapear `cultivo: l.lote?.cultivo || '—'` en el cliente.",
   "line_hint": "148,227,485,512; route.ts 26-30",
   "_id": "6d047be4",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Off-by-one en la fecha dd/MM mostrada (Kanban/Tabla) por parsear DateTime UTC en zona negativa",
@@ -1465,7 +1465,7 @@
   "fix": "Derivar el dd/MM desde `l.fecha.slice(0,10)` (mismo criterio que fechaISO) o construir con `new Date(iso + 'T12:00:00')`, evitando el desfase de zona horaria.",
   "line_hint": "145-150 vs 647",
   "_id": "bc39e3ac",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Wizard 'Nueva Orden' lleno de datos hardcodeados presentados como reales",

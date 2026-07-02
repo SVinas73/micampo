@@ -146,14 +146,16 @@ export default function TabLabores() {
       .then((d) => {
         if (!Array.isArray(d)) return;
         setLabores(
-          d.map((l: { id: string; tipo: string; descripcion?: string; fecha: string; estado?: string; prioridad?: string; operarios?: string; loteId?: string; lote?: { nombre: string }; motivoBloqueo?: string }) => {
-            const f = new Date(l.fecha);
+          d.map((l: { id: string; tipo: string; descripcion?: string; fecha: string; estado?: string; prioridad?: string; operarios?: string; loteId?: string; lote?: { nombre: string; cultivo?: string | null }; motivoBloqueo?: string }) => {
+            // Fecha en UTC (la fecha se guarda a medianoche UTC): evita el corrimiento de un día.
+            const iso = l.fecha.slice(0, 10);
+            const [, mm, dd] = iso.split("-");
             return {
               id: l.id, dbId: l.id, tarea: l.descripcion || l.tipo, tipo: l.tipo,
-              lote: l.lote?.nombre || "—", loteId: l.loteId, cultivo: "—",
+              lote: l.lote?.nombre || "—", loteId: l.loteId, cultivo: l.lote?.cultivo || "—",
               responsable: l.operarios || "Equipo",
-              fecha: `${String(f.getDate()).padStart(2, "0")}/${String(f.getMonth() + 1).padStart(2, "0")}`,
-              fechaISO: l.fecha.slice(0, 10),
+              fecha: `${dd}/${mm}`,
+              fechaISO: iso,
               prioridad: (l.prioridad === "Urgente" ? "alta" : "media") as "alta" | "media",
               estado: derivarEstado(l.estado, l.fecha),
               motivoBloqueo: l.motivoBloqueo || undefined,
@@ -253,9 +255,12 @@ export default function TabLabores() {
     [labores, filtroTipo]
   );
   const tareasHoy = labores.filter((l) => ["Hoy", "En curso", "Pausada"].includes(l.estado)).slice(0, 4);
-  const completadasMes = labores.filter((l) => l.estado === "Completada").length;
+  const completadasTotal = labores.filter((l) => l.estado === "Completada").length;
+  // "Completados este mes" cuenta solo las del mes calendario actual.
+  const mesActualISO = new Date().toISOString().slice(0, 7);
+  const completadasMes = labores.filter((l) => l.estado === "Completada" && (l.fechaISO || "").slice(0, 7) === mesActualISO).length;
   const atrasadas = labores.filter((l) => l.estado === "Atrasada");
-  const pctCompletadas = labores.length ? Math.round((completadasMes / labores.length) * 100) : 0;
+  const pctCompletadas = labores.length ? Math.round((completadasTotal / labores.length) * 100) : 0;
   // Deltas reales (sin números inventados)
   const enCursoN = labores.filter((l) => l.estado === "En curso").length;
   const paraHoyN = labores.filter((l) => l.estado === "Hoy").length;
@@ -299,7 +304,7 @@ export default function TabLabores() {
         <KPI label="Programadas" value={String(labores.filter((l) => l.estado === "Programada").length)} delta={`${paraHoyN} para hoy`} trend="up" icon="calendar" accent />
         <KPI label="Pendientes" value={String(labores.filter((l) => !["Completada"].includes(l.estado)).length)} delta={`${enCursoN} en curso`} trend="up" icon="wrench" />
         <KPI label="Atrasadas" value={String(atrasadas.length)} delta={atrasadas.slice(0, 2).map((l) => (l.lote || "").split(" - ")[0]).filter(Boolean).join(" + ") || "Ninguna"} trend="warn" icon="alert" warn />
-        <KPI label="% Completadas" value={`${pctCompletadas}%`} delta={`${completadasMes}/${labores.length} labores`} trend="up" icon="check" />
+        <KPI label="% Completadas" value={`${pctCompletadas}%`} delta={`${completadasTotal}/${labores.length} labores`} trend="up" icon="check" />
         <KPI label="Completados este mes" value={String(completadasMes)} delta={mesActual} trend="up" icon="activity" />
       </div>
 
@@ -357,7 +362,7 @@ export default function TabLabores() {
                     </div>
                     <div>
                       <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 12 }}>{l.responsable}</div>
-                      <div className="text-xs text-muted">{l.tipo === "Pulverización" ? "Mosquito Metalfor" : l.tipo === "Siembra" ? "John Deere 6J" : "Pivote Valley"}</div>
+                      <div className="text-xs text-muted">{l.cultivo && l.cultivo !== "—" ? l.cultivo : l.tipo}</div>
                     </div>
                   </div>
                   <div className="col gap-4" style={{ alignItems: "stretch" }}>

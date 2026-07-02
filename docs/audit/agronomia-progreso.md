@@ -2,7 +2,7 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 52 HECHO · 2 DIFERIDO · 60 PENDIENTE (de 114).
+**Resumen:** 58 HECHO · 2 DIFERIDO · 54 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
@@ -19,12 +19,6 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `3bf2e284` | media | responsive | components/campo-digital/TabCultivos.tsx:307 | Grillas internas de 4 columnas fijas sin colapso en mobile (overflow) |
 | `f180f8eb` | media | cross-module | components/campo-digital/TabDeteccion.tsx:320 | 'Presión pronosticada' no reacciona al alcance Campo/Lote |
 | `ae0f4b78` | media | kpi-datos | components/campo-digital/TabDeteccion.tsx:139 | KPIs 'Confianza IA', 'NDVI', 'Riesgo Economico' y 'Monitoreo Semanal' son placeholders sin cálculo real (siempre '—') |
-| `4e74914a` | media | kpi-datos | components/campo-digital/TabLabores.tsx:246 | KPI 'Completados este mes' / '% Completadas' cuenta TODAS las completadas, sin filtro de mes |
-| `0c248557` | media | bug | components/campo-digital/TabLabores.tsx:669 | Calendario mensual de Labores no compensa el día de la semana del día 1 (desalineación de fechas) |
-| `683e5b16` | media | dato-falso | components/campo-digital/TabLabores.tsx:346 | Datos de operario/maquinaria inventados en 'Tareas para Hoy' de Labores |
-| `8a7143ce` | media | kpi-datos | components/campo-digital/TabLabores.tsx:246 | KPI 'Completados este mes' cuenta TODAS las labores completadas (sin filtro de mes) |
-| `6d047be4` | media | cross-module | components/campo-digital/TabLabores.tsx:148 | La columna Cultivo siempre muestra '—': la API no selecciona lote.cultivo |
-| `bc39e3ac` | media | bug | components/campo-digital/TabLabores.tsx:150 | Off-by-one en la fecha dd/MM mostrada (Kanban/Tabla) por parsear DateTime UTC en zona negativa |
 | `fb4edadb` | media | bug | components/campo-digital/TabLotes.tsx:691 | Notas georreferenciadas nuevas no aparecen en el mapa hasta remontar (efecto keyed en lotes.length que no cambia) |
 | `05854bf7` | media | scope | components/campo-digital/TabLotes.tsx:67 | El alcance global de LOTE (loteId del sidebar) es ignorado: la pestaña solo reacciona al establecimiento |
 | `877739f9` | media | bug | components/campo-digital/TabLotes.tsx:532 | Filtro de cultivo incompleto: no incluye Cebada/Sorgo/Avena/Trébol, imposible aislar esos lotes |
@@ -131,4 +125,10 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `c7cabc8b` | media | components/campo-digital/TabDeteccion.tsx | TabDeteccion ignora el scope del sidebar: fetch único sin establecimientoId ni re-fetch |
 | `425c0815` | media | components/campo-digital/TabDeteccion.tsx | KPI 'Confianza IA' con IABadge doble y valor placeholder '96%' oculto solo por modo demo |
 | `58fd33b6` | media | components/campo-digital/TabDeteccion.tsx | 'Agregar a Labores' desde Información crea la labor con superficieTrabajada 0 |
+| `4e74914a` | media | components/campo-digital/TabLabores.tsx | KPI 'Completados este mes' / '% Completadas' cuenta TODAS las completadas, sin filtro de mes |
+| `0c248557` | media | components/campo-digital/TabLabores.tsx | Calendario mensual de Labores no compensa el día de la semana del día 1 (desalineación de fechas) |
+| `683e5b16` | media | components/campo-digital/TabLabores.tsx | Datos de operario/maquinaria inventados en 'Tareas para Hoy' de Labores |
+| `8a7143ce` | media | components/campo-digital/TabLabores.tsx | KPI 'Completados este mes' cuenta TODAS las labores completadas (sin filtro de mes) |
+| `6d047be4` | media | components/campo-digital/TabLabores.tsx | La columna Cultivo siempre muestra '—': la API no selecciona lote.cultivo |
+| `bc39e3ac` | media | components/campo-digital/TabLabores.tsx | Off-by-one en la fecha dd/MM mostrada (Kanban/Tabla) por parsear DateTime UTC en zona negativa |
 | `d8fa151b` | baja | components/campo-digital/TabCultivos.tsx | Modal Nueva Cosecha sin cultivos seleccionables en producción (lista demo → vacía) |
