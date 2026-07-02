@@ -4,6 +4,9 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "@/components/mc";
 import type { LoteUI } from "./lotes-data";
 
+// Lista única de cultivos, compartida por Agregar / Editar / Filtro (evita listas divergentes).
+export const CULTIVOS_OPCIONES = ["Soja", "Maíz", "Trigo", "Cebada", "Girasol", "Sorgo", "Alfalfa", "Trébol", "Avena"];
+
 const inp: React.CSSProperties = {
   width: "100%",
   padding: "9px 12px",
@@ -210,7 +213,7 @@ export function AgregarCampoModal({
                 <label style={lbl}>Cultivo</label>
                 <select style={inp} value={cultivo} onChange={(e) => setCultivo(e.target.value)}>
                   <option value="">Sin cultivo</option>
-                  {["Soja", "Maíz", "Trigo", "Cebada", "Girasol", "Sorgo", "Alfalfa", "Trébol", "Avena"].map((c) => <option key={c} value={c}>{c}</option>)}
+                  {CULTIVOS_OPCIONES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -500,7 +503,7 @@ export function EditarLoteModal({
               <label style={lbl}>Cultivo</label>
               <select style={inp} value={cultivo} onChange={(e) => setCultivo(e.target.value)}>
                 <option value="">Sin asignar</option>
-                {["Soja", "Maíz", "Trigo", "Alfalfa", "Girasol", "Trébol"].map((c) => (
+                {CULTIVOS_OPCIONES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -681,7 +684,7 @@ export function FiltrosPopover({
           <div>
             <label style={lbl}>Cultivo</label>
             <select style={inp} value={local.cultivo} onChange={(e) => setLocal({ ...local, cultivo: e.target.value })}>
-              {["Todos", "Soja", "Maíz", "Trigo", "Alfalfa", "Girasol", "Sin asignar"].map((c) => (
+              {["Todos", ...CULTIVOS_OPCIONES, "Sin asignar"].map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>

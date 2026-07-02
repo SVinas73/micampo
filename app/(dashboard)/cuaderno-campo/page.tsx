@@ -38,11 +38,16 @@ export default function CuadernoCampoPage() {
   }, [loteFiltro, scopeIds]);
 
   const tipos = useMemo(() => ["Todos", ...Array.from(new Set(registros.map((r) => r.tipo)))], [registros]);
+  // Si el tipo filtrado ya no existe tras cambiar el scope, volver a "Todos" (evita lista vacía).
+  useEffect(() => {
+    if (tipoFiltro !== "Todos" && !registros.some((r) => r.tipo === tipoFiltro)) setTipoFiltro("Todos");
+  }, [registros, tipoFiltro]);
   const visibles = useMemo(() => registros.filter((r) => tipoFiltro === "Todos" || r.tipo === tipoFiltro), [registros, tipoFiltro]);
   const aplicaciones = registros.reduce((s, r) => s + r.productos.length, 0);
   const lotesUnicos = new Set(registros.map((r) => r.lote)).size;
 
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString("es-AR");
+  // Las fechas representan un día calendario (guardado a medianoche UTC): render en UTC evita el off-by-one.
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { timeZone: "UTC" });
 
   const exportarPDF = async () => {
     try {

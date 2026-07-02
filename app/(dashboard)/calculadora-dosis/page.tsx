@@ -43,7 +43,8 @@ function CalculadoraInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { lotes: scopeLotes } = useLoteScope();
+  const { lotes: scopeLotes, loteIdsEnScope, esTodos } = useLoteScope();
+  const scopeKey = loteIdsEnScope.join(",");
 
   const initialTab = TABS.includes(searchParams.get("tab") || "")
     ? (searchParams.get("tab") as string)
@@ -66,15 +67,19 @@ function CalculadoraInner() {
     setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, hectareas: l.hectareas || 0 })));
   }, [scopeLotes]);
 
-  // carga de historial real
+  // carga de historial real (respeta el alcance Campo → Lote del sidebar)
   useEffect(() => {
     fetch("/api/calculadora-dosis")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
         if (!Array.isArray(d)) return;
-        setHistorial(d.map((c: CalculoApi) => apiToHistRow(c)));
+        const filtradas = esTodos ? d : d.filter((c: CalculoApi) => c.loteId && loteIdsEnScope.includes(c.loteId));
+        setHistorial(filtradas.map((c: CalculoApi) => apiToHistRow(c)));
       })
       .catch(() => {});
+  }, [esTodos, scopeKey]);
+
+  useEffect(() => {
     fetch("/api/dosis-presets")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => { if (Array.isArray(d)) setUserPresets(d); })
@@ -534,7 +539,7 @@ function TabNuevo({
                   <Badge tone="neutral" style={{ fontSize: 10 }}>{p.tipo}</Badge>
                 </div>
                 <ResultRow label="Total producto" value={`${totalProducto(p, area).toFixed(1)} ${unidad}`} detail={`${area} Ha × ${p.dosis} ${p.unidad}`} />
-                <div className="text-xs text-muted mt-2">{porTanque(p, caldo).toFixed(1)} {unidad} / tanque</div>
+                <div className="text-xs text-muted mt-2">{porTanque(p, caldo, tanque).toFixed(1)} {unidad} / tanque</div>
               </div>
             );
           })}
@@ -866,6 +871,7 @@ function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear }: { userPre
 
 type CalculoApi = {
   id: string;
+  loteId?: string | null;
   nombreProducto: string;
   tipoProducto: string;
   dosisObjetivo: number;

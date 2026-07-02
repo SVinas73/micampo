@@ -95,7 +95,7 @@ export default function TabLabores() {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { lotes: scopeLotes, loteActivo } = useLoteScope();
+  const { lotes: scopeLotes, loteActivo, establecimientoId, loteId } = useLoteScope();
   const [laboresRaw, setLabores] = useState<LaborUI[]>(demo(DEMO_LABORES, []));
   // Filtra las labores por el lote activo del alcance global
   const labores = useMemo(
@@ -136,10 +136,15 @@ export default function TabLabores() {
   }, [labores]);
 
   useEffect(() => {
-    fetch("/api/labores")
+    // Respeta el alcance Campo → Lote del sidebar (el endpoint filtra por él).
+    const params = new URLSearchParams();
+    if (establecimientoId && establecimientoId !== "todos") params.set("establecimientoId", establecimientoId);
+    if (loteId && loteId !== "todos") params.set("loteId", loteId);
+    const q = params.toString() ? `?${params.toString()}` : "";
+    fetch(`/api/labores${q}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
-        if (!Array.isArray(d) || d.length === 0) return;
+        if (!Array.isArray(d)) return;
         setLabores(
           d.map((l: { id: string; tipo: string; descripcion?: string; fecha: string; estado?: string; prioridad?: string; operarios?: string; loteId?: string; lote?: { nombre: string }; motivoBloqueo?: string }) => {
             const f = new Date(l.fecha);
@@ -157,7 +162,7 @@ export default function TabLabores() {
         );
       })
       .catch(() => {});
-  }, []);
+  }, [establecimientoId, loteId]);
 
   // Lotes para el dropdown — del alcance global
   useEffect(() => {
@@ -246,6 +251,10 @@ export default function TabLabores() {
   const completadasMes = labores.filter((l) => l.estado === "Completada").length;
   const atrasadas = labores.filter((l) => l.estado === "Atrasada");
   const pctCompletadas = labores.length ? Math.round((completadasMes / labores.length) * 100) : 0;
+  // Deltas reales (sin números inventados)
+  const enCursoN = labores.filter((l) => l.estado === "En curso").length;
+  const paraHoyN = labores.filter((l) => l.estado === "Hoy").length;
+  const mesActual = new Date().toLocaleDateString("es-AR", { month: "long" });
 
   const fmtCrono = (s: number) =>
     `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -282,11 +291,11 @@ export default function TabLabores() {
       )}
 
       <div className="grid g-cols-5">
-        <KPI label="Programadas" value={String(labores.filter((l) => l.estado === "Programada").length)} delta="próx. 30 días" trend="up" icon="calendar" accent />
-        <KPI label="Pendientes" value={String(labores.filter((l) => !["Completada"].includes(l.estado)).length)} delta="Sin asignar: 2" trend="up" icon="wrench" />
+        <KPI label="Programadas" value={String(labores.filter((l) => l.estado === "Programada").length)} delta={`${paraHoyN} para hoy`} trend="up" icon="calendar" accent />
+        <KPI label="Pendientes" value={String(labores.filter((l) => !["Completada"].includes(l.estado)).length)} delta={`${enCursoN} en curso`} trend="up" icon="wrench" />
         <KPI label="Atrasadas" value={String(atrasadas.length)} delta={atrasadas.slice(0, 2).map((l) => (l.lote || "").split(" - ")[0]).filter(Boolean).join(" + ") || "Ninguna"} trend="warn" icon="alert" warn />
-        <KPI label="% Completadas" value={`${pctCompletadas}%`} delta="vs 76% mes ant." trend="up" icon="check" />
-        <KPI label="Completados este mes" value={String(completadasMes)} delta="98% a tiempo" trend="up" icon="activity" />
+        <KPI label="% Completadas" value={`${pctCompletadas}%`} delta={`${completadasMes}/${labores.length} labores`} trend="up" icon="check" />
+        <KPI label="Completados este mes" value={String(completadasMes)} delta={mesActual} trend="up" icon="activity" />
       </div>
 
       <div className="row gap-8" style={{ justifyContent: "space-between", flexWrap: "wrap", position: "relative" }}>
@@ -637,6 +646,8 @@ function CalendarioMes({
   const year = date.getFullYear();
   const month = date.getMonth();
   const days = new Date(year, month + 1, 0).getDate();
+  // Offset del 1° según su día de semana (semana LUN-first) para alinear la grilla.
+  const offsetInicio = (new Date(year, month, 1).getDay() + 6) % 7;
   const hoy = new Date();
   const COLORES: Record<string, string> = {
     Pulverización: "var(--mc-orange-500)", Siembra: "var(--mc-green-500)", Riego: "var(--mc-blue)",
@@ -665,6 +676,9 @@ function CalendarioMes({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
         {["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"].map((d) => (
           <div key={d} className="text-xs text-muted" style={{ textAlign: "center", padding: "8px 0", fontWeight: 600, letterSpacing: "0.06em" }}>{d}</div>
+        ))}
+        {Array.from({ length: offsetInicio }).map((_, i) => (
+          <div key={`empty-${i}`} />
         ))}
         {Array.from({ length: days }).map((_, i) => {
           const day = i + 1;

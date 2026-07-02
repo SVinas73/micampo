@@ -57,7 +57,7 @@ function ClimaInner() {
   const searchParams = useSearchParams();
   const toast = useToast();
 
-  const { lotes: scopeLotes, establecimientoActivo, establecimientoId } = useLoteScope();
+  const { lotes: scopeLotes, establecimientoActivo, establecimientoId, loteActivo } = useLoteScope();
   // IDs de los lotes del establecimiento activo (alcance del sidebar). Estable para deps.
   const scopeIds = scopeLotes.map((l) => l.id).join(",");
   const [loc, setLoc] = useState<{ lat: number; lon: number; nombre?: string } | null>(null);
@@ -119,8 +119,9 @@ function ClimaInner() {
   }, [loc?.lat, loc?.lon]);
 
   useEffect(() => {
-    // Solo lluvias de los lotes del establecimiento activo (excluye lotes borrados).
-    fetch(`/api/registro-pluviometrico?dias=3650&loteIds=${scopeIds}`)
+    // Respeta el lote activo del sidebar; si no hay, los lotes del establecimiento activo.
+    const filtro = loteActivo?.id ? `loteId=${loteActivo.id}` : `loteIds=${scopeIds}`;
+    fetch(`/api/registro-pluviometrico?dias=3650&${filtro}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
         if (!Array.isArray(d)) return;
@@ -145,7 +146,7 @@ function ClimaInner() {
       .then((d) => { if (Array.isArray(d)) setAlertas(d.map(mapAlertaApi)); })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeIds]);
+  }, [scopeIds, loteActivo?.id]);
 
   /* ---- Acciones ---- */
   const guardarLluvia = async (r: LluviaResult) => {

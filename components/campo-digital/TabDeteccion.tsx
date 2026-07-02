@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
@@ -55,18 +55,24 @@ export default function TabDeteccion() {
   const [sub, setSub] = useState("Información");
   const [reportarOpen, setReportarOpen] = useState(searchParams.get("modal") === "reportar");
   // Lotes del alcance global (respeta el establecimiento/lote activo)
-  const { lotes: scopeLotes } = useLoteScope();
+  const { lotes: scopeLotes, establecimientoId, loteId } = useLoteScope();
   const lotes = useMemo(() => scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo ?? undefined })), [scopeLotes]);
   const [alertas, setAlertas] = useState<AlertaInfo[]>(demo(ALERTAS_DEMO, []));
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetch("/api/deteccion-enfermedades")
+  // Carga las alertas VIGENTES del alcance activo (excluye Resueltas/Falsas).
+  const cargarAlertas = useCallback(() => {
+    const params = new URLSearchParams();
+    if (establecimientoId && establecimientoId !== "todos") params.set("establecimientoId", establecimientoId);
+    if (loteId && loteId !== "todos") params.set("loteId", loteId);
+    const q = params.toString() ? `?${params.toString()}` : "";
+    fetch(`/api/deteccion-enfermedades${q}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
-        if (!Array.isArray(d) || d.length === 0) return;
+        if (!Array.isArray(d)) return;
+        const vigentes = d.filter((a: { estado?: string }) => !["Resuelta", "Falsa"].includes(a.estado || ""));
         setAlertas(
-          d.slice(0, 6).map((a: { lote?: { nombre: string; cultivo?: string }; loteId: string; plaga: string; severidad: string; areaAfectada?: number; recomendacion?: string; metodoDeteccion?: string }) => {
+          vigentes.slice(0, 6).map((a: { lote?: { nombre: string; cultivo?: string }; loteId: string; plaga: string; severidad: string; areaAfectada?: number; recomendacion?: string; metodoDeteccion?: string }) => {
             const sevColor: "red" | "amber" | "green" = a.severidad === "Alta" || a.severidad === "Crítica" ? "red" : a.severidad === "Media" ? "amber" : "green";
             return {
               lote: `${a.lote?.nombre || "Lote"} (${a.lote?.cultivo || "—"})`,
@@ -88,7 +94,9 @@ export default function TabDeteccion() {
         );
       })
       .catch(() => {});
-  }, []);
+  }, [establecimientoId, loteId]);
+
+  useEffect(() => { cargarAlertas(); }, [cargarAlertas]);
 
   const agregarALabores = async (a: AlertaInfo) => {
     if (a.loteId) {
@@ -156,7 +164,7 @@ export default function TabDeteccion() {
       </div>
 
       {sub === "Información" && <EnfermedadesInfo alertas={alertas} onAgregar={agregarALabores} />}
-      {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} />}
+      {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} onGuardado={cargarAlertas} />}
     </>
   );
 }
@@ -398,11 +406,12 @@ function Probabilidades() {
 
 /* ========== SUBTAB ANÁLISIS IA — visión real (foto del lote → diagnóstico) ========== */
 function EnfermedadesAnalisisIA({
-  fileRef, lotes, toast,
+  fileRef, lotes, toast, onGuardado,
 }: {
   fileRef: React.RefObject<HTMLInputElement | null>;
   lotes: { id?: string; nombre: string; cultivo?: string }[];
   toast: ReturnType<typeof useToast>;
+  onGuardado?: () => void;
 }) {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [modo, setModo] = useState<"Cajas" | "Mapa de Calor" | "Alto Contraste">("Cajas");
@@ -437,6 +446,7 @@ function EnfermedadesAnalisisIA({
           setError(d.error || "No se pudo analizar la imagen");
         } else {
           setResultado(d);
+          if (d.guardado) onGuardado?.();
           toast.show(
             d.guardado
               ? `Detección guardada: ${d.enfermedad} (${d.confianzaGlobal}%) — ya figura en Información`
