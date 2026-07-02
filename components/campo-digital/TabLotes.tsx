@@ -505,11 +505,11 @@ export default function TabLotes() {
       )}
 
       <div className="grid g-cols-5">
-        <KPI label="Establecimientos" value={String(establecimientos.length)} delta={localEst ? localEst.nombre : "Todos"} trend="up" icon="building" accent />
-        <KPI label="Lotes en vista" value={String(enScope.length)} delta={localEstId === "todos" ? `${lotes.length} en total` : "Filtrado por campo"} trend="up" icon="sprout" />
-        <KPI label="Total de hectáreas" value={`${Math.round(totalHa)} Ha`} delta={`${Math.round(sembradas)} sembradas`} trend="up" icon="activity" />
+        <KPI label="Establecimientos" value={String(establecimientos.length)} delta={localEst ? localEst.nombre : "Todos"} trend="flat" icon="building" accent />
+        <KPI label="Lotes en vista" value={String(enScope.length)} delta={localEstId === "todos" ? `${lotes.length} en total` : "Filtrado por campo"} trend="flat" icon="sprout" />
+        <KPI label="Total de hectáreas" value={`${Math.round(totalHa)} Ha`} delta={`${Math.round(sembradas)} sembradas`} trend="flat" icon="activity" />
         <KPI label="Lotes sin asignar" value={String(sinAsignar.length)} delta={sinAsignar.map((l) => l.name).slice(0, 2).join(" + ") || "Ninguno"} trend="warn" icon="alert" />
-        <KPI label="Marcadores" value={String(marcadoresEnScope)} delta={marcadoresEnScope ? "Notas y puntos del campo" : "Sin marcadores"} trend="up" icon="target" />
+        <KPI label="Marcadores" value={String(marcadoresEnScope)} delta={marcadoresEnScope ? "Notas y puntos del campo" : "Sin marcadores"} trend="flat" icon="target" />
       </div>
 
       <div className="row gap-8" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>

@@ -180,7 +180,7 @@
   "escenario": "En un teléfono (~360px), la tabla 'Histórico · Eventos de Lluvia Registrados' y las tarjetas de alertas se salen del ancho: la barra de progreso de mm y los botones editar/eliminar quedan cortados o fuerzan scroll de toda la página.",
   "fix": "Envolver las listas en un contenedor con overflow-x:auto (mc-hscroll) o agregar media queries que reflowen esas filas a 1 columna / layout apilado en <=640px.",
   "_id": "9d281b08",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Inconsistencia en el % de la barra de mm entre registro nuevo y recargado (base 50 vs máximo real)",
@@ -310,7 +310,7 @@
   "fix": "Quitar trend en las cards cuyo delta es un rótulo (no una variación), o calcular deltas reales (p.ej. comparativa vs período anterior) solo donde exista el dato.",
   "confianza": 0.72,
   "_id": "57ee955e",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Badge 'Saludable' por defecto sin dato: lotes sin NDVI se muestran siempre como saludables",
@@ -505,7 +505,7 @@
   "fix": "Agregar un breakpoint que colapse ese grid a 1 columna en ≤820px (añadir el patrón al selector de globals.css o usar una clase con media query), o rediseñar la tarjeta con flex-wrap.",
   "confianza": 0.72,
   "_id": "05a0822d",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "TabLabores ignora el scope de establecimiento del sidebar (fetch único sin params ni re-fetch)",
@@ -830,7 +830,7 @@
   "escenario": "En un teléfono (~375px) el usuario expande un lote en Estados: las secciones Siembra/Proceso/Cosecha/Tareas se muestran en 4 columnas ilegibles con scroll horizontal.",
   "confianza": 0.8,
   "_id": "3bf2e284",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Endpoint /api/rotaciones-cultivo sin ningún consumidor (feature no cableada)",

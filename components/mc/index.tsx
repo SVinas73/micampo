@@ -159,7 +159,7 @@ export function KPI({
   label: string;
   value: React.ReactNode;
   delta?: React.ReactNode;
-  trend?: "up" | "down" | "warn";
+  trend?: "up" | "down" | "warn" | "flat";
   icon?: string;
   accent?: boolean;
   warn?: boolean;
@@ -170,7 +170,7 @@ export function KPI({
 }) {
   const cls = accent ? "mc-kpi mc-kpi--accent" : warn ? "mc-kpi mc-kpi--warn" : "mc-kpi";
   const tcls =
-    trend === "up" ? "mc-kpi__delta--up" : trend === "down" ? "mc-kpi__delta--down" : "mc-kpi__delta--warn";
+    trend === "up" ? "mc-kpi__delta--up" : trend === "down" ? "mc-kpi__delta--down" : trend === "flat" ? "mc-kpi__delta--flat" : "mc-kpi__delta--warn";
   return (
     <motion.div
       className={cls}
@@ -196,7 +196,7 @@ export function KPI({
       <div className="mc-kpi__value"><AnimatedNumber value={value} /></div>
       {delta && (
         <div className={`mc-kpi__delta ${tcls}`}>
-          {trend && <Icon name={trend === "down" ? "arrowDown" : trend === "warn" ? "alert" : "arrowUp"} size={12} />}
+          {trend && trend !== "flat" && <Icon name={trend === "down" ? "arrowDown" : trend === "warn" ? "alert" : "arrowUp"} size={12} />}
           {delta}
         </div>
       )}
