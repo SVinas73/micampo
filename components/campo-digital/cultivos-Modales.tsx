@@ -12,6 +12,7 @@ export interface SiembraData {
   variedad: string;
   densidad: string;
   inversion: string;
+  responsable: string;
   destinos: string[];
   usarIA: boolean;
 }
@@ -53,7 +54,7 @@ export function NuevaSiembraModal({
     setSaving(true);
     const l = lotes[loteIdx];
     await onConfirm({
-      loteId: l?.id, loteNombre: l?.nombre || "—", fecha, cultivo, variedad, densidad, inversion, destinos, usarIA,
+      loteId: l?.id, loteNombre: l?.nombre || "—", fecha, cultivo, variedad, densidad, inversion, responsable, destinos, usarIA,
     });
     setSaving(false);
   };

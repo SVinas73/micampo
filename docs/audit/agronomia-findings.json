@@ -467,7 +467,8 @@
   "fix": "Centralizar la carga de planes en un solo fetch (o un hook compartido) y derivar tanto las KPIs como las listas de Activos/Recomendados de ese único resultado.",
   "confianza": 0.8,
   "_id": "36b8b998",
-  "_status": "PENDIENTE"
+  "_status": "DIFERIDO",
+  "_nota": "Mismo doble fetch de planes-siembra; requiere compartir estado entre componentes."
  },
  {
   "titulo": "Campo 'Responsable / equipo' del modal Nueva Siembra se captura pero nunca se persiste",
@@ -480,7 +481,7 @@
   "fix": "Agregar `responsable` a SiembraData y al payload de onConfirm/guardarSiembra (p.ej. dentro de observaciones o un campo dedicado), o quitar el input si no se va a persistir.",
   "confianza": 0.9,
   "_id": "8d9bca8f",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Modal Nueva Cosecha sin cultivos seleccionables en producción (lista demo → vacía)",
@@ -675,7 +676,7 @@
   "escenario": "Usuario en etapa 'Final' (Kc distinto) registra un riego; el plan queda guardado como 'Media'/'Franco', descuadrando reportes o futuras lecturas del plan.",
   "fix": "Pasar etapaFenologica: etapa (el estado actual) y derivar tipoSuelo del análisis si está disponible, en el body del POST /api/planes-riego.",
   "_id": "49ec018b",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Cosecha de ejemplo (cultivosListos demo) puede filtrar loteIds reales del scope al modal de cosecha",
@@ -857,7 +858,7 @@
   "escenario": "Usuario sin lotes creados toca 'Regenerar con IA' y recibe el mensaje de configurar ANTHROPIC_API_KEY, cuando el problema es que no tiene lotes.",
   "confianza": 0.8,
   "_id": "cf051573",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Fetch duplicado de /api/planes-siembra en el modo Planificador",
@@ -870,7 +871,8 @@
   "escenario": "Al abrir Planificador de Siembras (IA) se hacen 2 requests idénticos a /api/planes-siembra.",
   "confianza": 0.8,
   "_id": "1b447fd8",
-  "_status": "PENDIENTE"
+  "_status": "DIFERIDO",
+  "_nota": "Dedupe del doble fetch a /api/planes-siembra requiere levantar estado (KPIs y lista en componentes distintos). Menor, sin impacto funcional."
  },
  {
   "titulo": "El KPI 'atrasadas' y los focos de labores atrasadas casi nunca detectan nada (filtran estado guardado en vez de derivarlo por fecha)",
@@ -1104,7 +1106,7 @@
   "fix": "Unificar el vocabulario de estados entre optimista, POST y schema (usar los valores del enum del schema) y mapear todos en el timeline.",
   "confianza": 0.78,
   "_id": "6043e6c5",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "El plan de riego se crea con etapaFenologica y laminaRiego que ignoran la etapa/estrategia real seleccionada",
@@ -1117,7 +1119,7 @@
   "fix": "Pasar la etapa real (estado `etapa`) y, si se dispone, el tipo de suelo del lote al crear el plan.",
   "confianza": 0.75,
   "_id": "d36dee90",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Filtro de tipo queda stale al cambiar de scope: la lista muestra vacío teniendo registros",

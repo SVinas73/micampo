@@ -133,6 +133,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
           hectareas: lotes.find((l) => l.id === data.loteId)?.ha || 0,
           densidad: data.densidad ? parseFloat(data.densidad) : null,
           costoSemilla: data.inversion ? parseFloat(data.inversion) : null,
+          responsable: data.responsable || null,
           observaciones: `Destino: ${data.destinos.join(", ") || "—"} · Recomendación IA insumos: ${data.usarIA ? "Sí" : "No"}`,
         }),
       });
@@ -524,10 +525,10 @@ function CultivosPlanificador({
 
   const regenerar = async () => {
     if (generando) return;
+    const loteReal = loteObjetivo;
+    if (!loteReal) { toast.show("Elegí un lote guardado (en el panel lateral) para generar planes con IA", "err"); return; }
     setGenerando(true);
     try {
-      const loteReal = loteObjetivo;
-      if (!loteReal) throw new Error("sin lote");
       const res = await fetch("/api/planes-siembra/generar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
