@@ -11,11 +11,14 @@ export async function GET() {
     const establecimientos = await prisma.establecimiento.findMany({
       where: { userId: session.user.id },
       orderBy: { nombre: "asc" },
-      include: { _count: { select: { lotes: true } } },
+      include: { _count: { select: { lotes: true } }, lotes: { select: { hectareas: true } } },
     });
 
     return NextResponse.json(
-      establecimientos.map((e) => ({
+      establecimientos.map((e) => {
+        // Si no se cargó la superficie total, se deriva sumando las hectáreas de los lotes.
+        const haLotes = e.lotes.reduce((s, l) => s + (l.hectareas || 0), 0);
+        return {
         id: e.id,
         nombre: e.nombre,
         direccion: e.direccion,
@@ -23,13 +26,14 @@ export async function GET() {
         provincia: e.provincia,
         pais: e.pais,
         cuit: e.cuit,
-        hectareasTotales: e.hectareasTotales,
+        hectareasTotales: e.hectareasTotales ?? (haLotes > 0 ? haLotes : null),
         coordenadas: e.coordenadas ? JSON.parse(e.coordenadas) : null,
         centroLatitud: e.centroLatitud,
         centroLongitud: e.centroLongitud,
         perimetro: e.perimetro,
         lotesCount: e._count.lotes,
-      }))
+        };
+      })
     );
   } catch (error) {
     console.error("Error:", error);

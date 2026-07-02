@@ -920,7 +920,7 @@
   "escenario": "Operario 'C. Martínez' registró una pulverización (operarios='C. Martínez'). En el feed de Resumen aparece 'Santiago completó Pulverización' con la foto de Santiago.",
   "confianza": 0.8,
   "_id": "9428ef27",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Con un establecimiento filtrado, los otros campos de la card 'Campos y lotes' muestran 0 ha si no tienen hectareasTotales cargadas",
@@ -933,7 +933,7 @@
   "escenario": "Productor con 2 campos sin hectareasTotales cargadas. Con scope 'Todos' ambos muestran sus ha. Al filtrar 'Campo A' en el sidebar, la card muestra 'Campo B: N lotes · 0 ha'.",
   "confianza": 0.8,
   "_id": "a38d99c2",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "El KPI 'Cultivos distintos' puede mostrar 'Principal: En descanso' (no es un cultivo)",

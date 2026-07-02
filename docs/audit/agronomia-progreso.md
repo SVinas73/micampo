@@ -2,7 +2,7 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 67 HECHO · 2 DIFERIDO · 45 PENDIENTE (de 114).
+**Resumen:** 69 HECHO · 2 DIFERIDO · 43 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
@@ -21,8 +21,6 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `ae0f4b78` | media | kpi-datos | components/campo-digital/TabDeteccion.tsx:139 | KPIs 'Confianza IA', 'NDVI', 'Riesgo Economico' y 'Monitoreo Semanal' son placeholders sin cálculo real (siempre '—') |
 | `fb4edadb` | media | bug | components/campo-digital/TabLotes.tsx:691 | Notas georreferenciadas nuevas no aparecen en el mapa hasta remontar (efecto keyed en lotes.length que no cambia) |
 | `57ee955e` | media | kpi-datos | components/campo-digital/TabLotes.tsx:489 | Deltas de KPI con flecha verde 'up' placeholder: no representan tendencia real |
-| `9428ef27` | media | dato-falso | components/campo-digital/TabResumen.tsx:135 | Todas las 'Últimas actividades' se atribuyen al usuario logueado (nombre + foto), ignorando operarios/aplicadoPor reales |
-| `a38d99c2` | media | kpi-datos | components/campo-digital/TabResumen.tsx:95 | Con un establecimiento filtrado, los otros campos de la card 'Campos y lotes' muestran 0 ha si no tienen hectareasTotales cargadas |
 | `4bc5d742` | media | dato-falso | components/campo-digital/labores-Wizard.tsx:49 | Wizard 'Nueva Orden' lleno de datos hardcodeados presentados como reales |
 | `bd614e26` | media | bug | components/clima/RadarReal.tsx:30 | El radar no se re-centra al cambiar de establecimiento/lote (queda en el campo anterior) |
 | `2c401f1a` | media | inconsistencia | components/plan-riego/BalanceHidrico.tsx:130 | Inconsistencia de 'agua útil': el KPI de la página usa s0% y el card del gráfico usa conRiego[0]% (números distintos en la misma pantalla) |
@@ -126,6 +124,8 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `877739f9` | media | components/campo-digital/TabLotes.tsx | Filtro de cultivo incompleto: no incluye Cebada/Sorgo/Avena/Trébol, imposible aislar esos lotes |
 | `ec901cc8` | media | components/campo-digital/TabLotes.tsx | Estadio fenológico inventado 'Vegetativo' al crear lote con cultivo (inconsistente con el estado tras recargar) |
 | `e65d5d31` | media | components/campo-digital/TabLotes.tsx | KPI 'Marcadores' en TabLotes hardcodeada (demo '14'/'0') pese a fetchear marcadores reales |
+| `9428ef27` | media | components/campo-digital/TabResumen.tsx | Todas las 'Últimas actividades' se atribuyen al usuario logueado (nombre + foto), ignorando operarios/aplicadoPor reales |
+| `a38d99c2` | media | components/campo-digital/TabResumen.tsx | Con un establecimiento filtrado, los otros campos de la card 'Campos y lotes' muestran 0 ha si no tienen hectareasTotales cargadas |
 | `20ffc892` | media | components/campo-digital/lotes-data.ts | Badge 'Saludable' por defecto sin dato: lotes sin NDVI se muestran siempre como saludables |
 | `c8ed4a6e` | media | components/plan-riego/AguaUlt30Dias.tsx | '% vs histórico' compara lluvia+riego contra un promedio histórico que es sólo lluvia (comparación inflada) |
 | `820ee3aa` | media | components/plan-riego/BalanceHidrico.tsx | Las barras IA del gráfico etiquetan mm por orden de barra, no por sugerencia (desalineación posible) |
