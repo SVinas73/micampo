@@ -530,7 +530,7 @@
   "escenario": "Cliente en prod con detecciones reales cargadas: la primera KPI ('Alertas Activas') muestra el número real, pero las otras 4 quedan en '—', dando aspecto de módulo roto/incompleto en una demo de venta.",
   "fix": "Calcular estas KPIs desde datos reales: Confianza IA promedio de las detecciones IA, NDVI promedio de los lotes en scope (ya disponible vía /api/lotes/ndvi), riesgo económico sumando pérdidas de alertas, y % de lotes monitoreados. Si no hay dato, mostrar 0/vacío honesto en vez de un placeholder fijo.",
   "_id": "4baf90a8",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "KPIs de TabCultivos (Estados y Análisis de Suelo) hardcodeados con demo() ignorando los lotes/análisis reales ya cargados",

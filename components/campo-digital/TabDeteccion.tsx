@@ -58,6 +58,8 @@ export default function TabDeteccion() {
   const { lotes: scopeLotes, establecimientoId, loteId } = useLoteScope();
   const lotes = useMemo(() => scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo ?? undefined })), [scopeLotes]);
   const [alertas, setAlertas] = useState<AlertaInfo[]>(demo(ALERTAS_DEMO, []));
+  // Métricas reales de las detecciones vigentes (para los KPIs, sin datos inventados).
+  const [stats, setStats] = useState({ confianza: 0, lotesAfectados: 0, areaTotal: 0, deteccionesIA: 0, conteo: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Carga las alertas VIGENTES del alcance activo (excluye Resueltas/Falsas).
@@ -71,6 +73,15 @@ export default function TabDeteccion() {
       .then((d) => {
         if (!Array.isArray(d)) return;
         const vigentes = d.filter((a: { estado?: string }) => !["Resuelta", "Falsa"].includes(a.estado || ""));
+        // Estadísticas reales
+        const conf = vigentes.map((a: { confianza?: number }) => a.confianza).filter((c: number | undefined): c is number => typeof c === "number");
+        setStats({
+          conteo: vigentes.length,
+          confianza: conf.length ? Math.round(conf.reduce((s: number, c: number) => s + c, 0) / conf.length) : 0,
+          lotesAfectados: new Set(vigentes.map((a: { loteId?: string }) => a.loteId).filter(Boolean)).size,
+          areaTotal: Math.round(vigentes.reduce((s: number, a: { areaAfectada?: number }) => s + (a.areaAfectada || 0), 0)),
+          deteccionesIA: vigentes.filter((a: { metodoDeteccion?: string }) => (a.metodoDeteccion || "").includes("IA")).length,
+        });
         setAlertas(
           vigentes.slice(0, 6).map((a: { lote?: { nombre: string; cultivo?: string }; loteId: string; plaga: string; severidad: string; areaAfectada?: number; recomendacion?: string; metodoDeteccion?: string }) => {
             const sevColor: "red" | "amber" | "green" = a.severidad === "Alta" || a.severidad === "Crítica" ? "red" : a.severidad === "Media" ? "amber" : "green";
@@ -144,10 +155,10 @@ export default function TabDeteccion() {
 
       <div className="grid g-cols-5">
         <KPI label="Alertas Activas" value={String(alertas.length)} delta={alertas.length ? `${alertas.filter((a) => a.riesgoColor === "red").length} críticas` : "Sin alertas"} trend="warn" icon="alert" warn />
-        <KPI label="Confianza IA" value={demo("96%", "—")} delta={demo("Alta precisión", "—")} trend="up" icon="target" accent ia />
-        <KPI label="Vigor Promedio (NDVI)" value={demo("0.78", "—")} delta={demo("(Alto)", "—")} trend="up" icon="leaf" />
-        <KPI label="Riesgo Economico" value={demo("$1.250", "—")} delta={demo("USD/Ha potencial", "—")} trend="warn" icon="dollar" />
-        <KPI label="Monitoreo Semanal" value={demo("85%", "—")} delta={demo("17/20 lotes", "—")} trend="up" icon="check" />
+        <KPI label="Confianza IA" value={stats.confianza > 0 ? `${stats.confianza}%` : "—"} delta={stats.deteccionesIA ? `${stats.deteccionesIA} detección(es) IA` : "Sin detecciones IA"} trend="up" icon="target" accent ia />
+        <KPI label="Lotes afectados" value={String(stats.lotesAfectados)} delta={stats.conteo ? `${stats.conteo} alerta(s) vigente(s)` : "Sin alertas"} trend="warn" icon="leaf" />
+        <KPI label="Área afectada" value={stats.areaTotal > 0 ? `${stats.areaTotal.toLocaleString("es-AR")} Ha` : "0 Ha"} delta="bajo monitoreo" trend="warn" icon="alert" />
+        <KPI label="Detecciones IA" value={String(stats.deteccionesIA)} delta={stats.conteo ? `de ${stats.conteo} alerta(s)` : "—"} trend="up" icon="check" />
       </div>
 
       {/* Subtabs + acciones del submódulo a la misma altura (acciones a la derecha) */}

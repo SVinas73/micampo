@@ -2,13 +2,12 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 38 HECHO · 2 DIFERIDO · 74 PENDIENTE (de 114).
+**Resumen:** 39 HECHO · 2 DIFERIDO · 73 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
 | id | sev | cat | archivo:línea | hallazgo |
 |----|-----|-----|---------------|----------|
-| `4baf90a8` | alta | dato-falso | components/campo-digital/TabDeteccion.tsx:139 | KPIs de TabDeteccion hardcodeados con demo() → muestran '—' en producción pese a haber datos reales |
 | `71e719d9` | media | bug | app/(dashboard)/calculadora-dosis/page.tsx:171 | Al usar un preestablecido del usuario se arrastra un loteId obsoleto que puede romper el guardado (FK inexistente → 500) |
 | `828d47af` | media | inconsistencia | app/(dashboard)/calculadora-dosis/page.tsx:191 | Botón 'Riego + agroquímico' de Inicio abre una calculadora genérica de herbicida, no de fertirriego |
 | `37140ed1` | media | bug | app/(dashboard)/campo-digital/page.tsx:36 | Mecanismo de header actions (ActionsProvider/useHeaderActions) es código muerto: ningún tab inyecta acciones |
@@ -83,7 +82,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `d29dc56f` | baja | estetica | components/campo-digital/TabResumen.tsx:135 | Color de avatar de actividades (#5E8F78) fuera de la paleta oliva |
 | `8d9bca8f` | baja | bug | components/campo-digital/cultivos-Modales.tsx:96 | Campo 'Responsable / equipo' del modal Nueva Siembra se captura pero nunca se persiste |
 
-## DIFERIDO (cambio mayor / con API key)
+## DIFERIDO
 
 | id | sev | archivo | hallazgo | nota |
 |----|-----|---------|----------|------|
@@ -116,6 +115,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `8b95b7fd` | alta | components/campo-digital/TabCultivos.tsx | KPIs de TabCultivos (Estados y Análisis de Suelo) hardcodeados con demo() ignorando los lotes/análisis reales ya cargados |
 | `620f34eb` | alta | components/campo-digital/TabCultivos.tsx | El Planificador de Siembras (IA) ignora el scope global (establecimiento/lote) |
 | `6be9be6e` | alta | components/campo-digital/TabCultivos.tsx | Estado stale: cambiar a un establecimiento sin lotes conserva los lotes del anterior |
+| `4baf90a8` | alta | components/campo-digital/TabDeteccion.tsx | KPIs de TabDeteccion hardcodeados con demo() → muestran '—' en producción pese a haber datos reales |
 | `ea6d914b` | alta | components/campo-digital/TabDeteccion.tsx | El módulo Detección no conecta con Calculadora de Dosis (flujo detección→calculadora-dosis inexistente) |
 | `a1bc797f` | alta | components/campo-digital/TabDeteccion.tsx | 'Alertas Activas' muestra también alertas Resueltas/Falsas (no filtra por estado) |
 | `2fcb61bb` | alta | components/campo-digital/TabDeteccion.tsx | Detección guardada en Análisis IA no aparece en Información pese a que el toast lo afirma (estado stale) |
