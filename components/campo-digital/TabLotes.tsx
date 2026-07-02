@@ -178,6 +178,17 @@ export default function TabLotes() {
   const sembradas = enScope.filter((l) => !l.vacio).reduce((s, l) => s + l.ha, 0);
   const sinAsignar = enScope.filter((l) => l.vacio);
 
+  // Marcadores reales (notas/puntos georreferenciados) del alcance activo.
+  const [marcadores, setMarcadores] = useState<{ loteId?: string | null; establecimientoId?: string | null }[]>([]);
+  useEffect(() => {
+    fetch("/api/marcadores-geo").then((r) => (r.ok ? r.json() : [])).then((d) => { if (Array.isArray(d)) setMarcadores(d); }).catch(() => {});
+  }, [lotes.length]);
+  const marcadoresEnScope = useMemo(() => {
+    if (localEstId === "todos") return marcadores.length;
+    const ids = new Set(enScope.map((l) => l.dbId || l.id));
+    return marcadores.filter((m) => (m.loteId && ids.has(m.loteId)) || m.establecimientoId === localEstId).length;
+  }, [marcadores, enScope, localEstId]);
+
   /* ---- Acciones conectadas ---- */
   const crearCampo = async (data: AgregarCampoData) => {
     try {
@@ -490,7 +501,7 @@ export default function TabLotes() {
         <KPI label="Lotes en vista" value={String(enScope.length)} delta={localEstId === "todos" ? `${lotes.length} en total` : "Filtrado por campo"} trend="up" icon="sprout" />
         <KPI label="Total de hectáreas" value={`${Math.round(totalHa)} Ha`} delta={`${Math.round(sembradas)} sembradas`} trend="up" icon="activity" />
         <KPI label="Lotes sin asignar" value={String(sinAsignar.length)} delta={sinAsignar.map((l) => l.name).slice(0, 2).join(" + ") || "Ninguno"} trend="warn" icon="alert" />
-        <KPI label="Marcadores" value={demo("14", "0")} delta="Pozos, silos, casas" trend="up" icon="target" />
+        <KPI label="Marcadores" value={String(marcadoresEnScope)} delta={marcadoresEnScope ? "Notas y puntos del campo" : "Sin marcadores"} trend="up" icon="target" />
       </div>
 
       <div className="row gap-8" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>

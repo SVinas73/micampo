@@ -553,9 +553,13 @@ function CultivosPlanificador({
           })
         );
         toast.show(`${d.planes.length} planes generados con IA`);
+      } else if (d.simulado) {
+        toast.show("La generación de planes con IA requiere configurar ANTHROPIC_API_KEY", "err");
+      } else {
+        toast.show("La IA no devolvió planes para este lote. Probá de nuevo.", "err");
       }
     } catch {
-      toast.show("IA no disponible: mostrando recomendaciones de ejemplo (configurá ANTHROPIC_API_KEY)", "err");
+      toast.show("No se pudieron generar los planes en este momento", "err");
     }
     setGenerando(false);
   };

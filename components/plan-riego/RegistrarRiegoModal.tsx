@@ -7,6 +7,7 @@ import type { SugerenciaIA } from "./BalanceHidrico";
 export type RegistroRiego = {
   mm: number;
   fecha: string;
+  fechaISO?: string;
   hora: string;
   metodo: string;
   lotes: string[];
@@ -101,6 +102,7 @@ export default function RegistrarRiegoModal({
       await onRegistrar({
         mm: s.mm,
         fecha: s.fecha,
+        fechaISO: s.fechaISO,
         hora: "05:00",
         metodo: metodoLabel,
         lotes: lotesSel,

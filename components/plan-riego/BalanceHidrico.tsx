@@ -4,7 +4,7 @@ import React from "react";
 import { Icon, IABadge } from "@/components/mc";
 
 export type PuntoBalance = { dia: string; sinRiego: number; conRiego: number };
-export type SugerenciaIA = { fecha: string; mm: number; motivo: string; costoUSD: number };
+export type SugerenciaIA = { fecha: string; fechaISO?: string; mm: number; motivo: string; costoUSD: number };
 
 function Legend({ color, label, mode }: { color: string; label: string; mode: "line" | "dashed" | "dotted" | "bar" }) {
   let line: React.ReactNode;

@@ -175,7 +175,9 @@ function PlanRiegoInner() {
       let cs = clamp(sCon + deltaPct, 0, 100);
       if (i > 0 && cs < umbral) {
         cs = clamp(cs + (mmEvento / awc) * 100, 0, 100);
-        sugs.push({ fecha: `${d.nombre} ${d.num}`, mm: mmEvento, motivo: `Humedad proyectada cae a ${Math.round(sSin)}% sin riego`, costoUSD: Math.round(mmEvento * COSTO_MM) });
+        // La fecha real de la sugerencia = hoy + i días (los días del balance son consecutivos desde hoy).
+        const fecha = new Date(); fecha.setDate(fecha.getDate() + i);
+        sugs.push({ fecha: `${d.nombre} ${d.num}`, fechaISO: fecha.toISOString(), mm: mmEvento, motivo: `Humedad proyectada cae a ${Math.round(sSin)}% sin riego`, costoUSD: Math.round(mmEvento * COSTO_MM) });
       }
       sCon = cs;
       bal.push({ dia: `${d.esHoy ? "HOY" : d.nombre.toUpperCase()} ${d.num}`, sinRiego: Math.round(sSin), conRiego: Math.round(cs) });
@@ -208,11 +210,13 @@ function PlanRiegoInner() {
     } catch { return null; }
   }, [planRiegoId, loteId, loteNombre, cultivo, etcDia, estrategia]);
 
-  const postEvento = useCallback(async (mm: number, fecha: string, observaciones: string) => {
+  const postEvento = useCallback(async (mm: number, fechaISO: string, observaciones: string) => {
     const plan = await ensurePlan();
     if (!plan) return false;
+    // Usa la fecha indicada (sugerencia IA o manual); si viene inválida, hoy.
+    const cuando = fechaISO && !Number.isNaN(new Date(fechaISO).getTime()) ? new Date(fechaISO).toISOString() : new Date().toISOString();
     try {
-      const res = await fetch("/api/eventos-riego", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planRiegoId: plan, fechaProgramada: new Date().toISOString(), laminaAplicada: mm, estado: "Programado", observaciones }) });
+      const res = await fetch("/api/eventos-riego", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planRiegoId: plan, fechaProgramada: cuando, laminaAplicada: mm, estado: "Programado", observaciones }) });
       return res.ok;
     } catch { return false; }
   }, [ensurePlan]);
@@ -220,14 +224,18 @@ function PlanRiegoInner() {
   const aprobarOrden = useCallback(async () => {
     if (sugerencias.length === 0) { toast.show("No hay riego sugerido por ahora", "err"); return; }
     let ok = 0;
-    for (const s of sugerencias) { if (await postEvento(s.mm, s.fecha, s.motivo)) ok++; }
+    for (const s of sugerencias) { if (await postEvento(s.mm, s.fechaISO || "", s.motivo)) ok++; }
     if (ok === 0) { toast.show("No se pudo guardar la orden de riego", "err"); return; }
     setRiegos((prev) => [...sugerencias.map((s) => ({ t: Date.now(), mm: s.mm, estado: "Programado", ia: false })), ...prev]);
     toast.show(`Orden de riego aprobada · ${ok} evento(s) programado(s)`);
   }, [sugerencias, postEvento, toast]);
 
   const registrar = useCallback(async (r: RegistroRiego) => {
-    const ok = await postEvento(r.mm, r.fecha, r.observaciones);
+    // IA: fecha ISO de la sugerencia. Manual: compone fecha + hora del formulario.
+    const iso = r.fuente === "ia"
+      ? (r.fechaISO || new Date().toISOString())
+      : (r.fecha ? new Date(`${r.fecha}T${r.hora || "00:00"}:00`).toISOString() : new Date().toISOString());
+    const ok = await postEvento(r.mm, iso, r.observaciones);
     if (!ok) { toast.show("No se pudo guardar el riego", "err"); return; }
     setRiegos((prev) => [{ t: Date.now(), mm: r.mm, estado: r.fuente === "ia" ? "ejecutado" : "Reporte manual", ia: r.fuente === "ia" }, ...prev]);
     toast.show(r.fuente === "ia" ? "Riego IA confirmado" : "Registro manual guardado");
