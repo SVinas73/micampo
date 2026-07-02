@@ -150,7 +150,8 @@ function PlanRiegoInner() {
       setS0(Math.max(35, Math.min(92, Math.round(50 + (lluvia7 / awc) * 100))));
     }).catch(() => {});
 
-    fetch("/api/eventos-riego").then((r) => (r.ok ? r.json() : [])).then((d) => {
+    // Riegos del alcance (mismo filtro que la lluvia): "Agua últ. 30 días" por lote/campo.
+    fetch(`/api/eventos-riego?${filtroLluvia}`).then((r) => (r.ok ? r.json() : [])).then((d) => {
       if (!Array.isArray(d)) return;
       setRiegos(d.map((e: { fechaProgramada: string; laminaAplicada?: number; estado?: string; observaciones?: string }) => ({ t: new Date(e.fechaProgramada).getTime(), mm: e.laminaAplicada || 0, estado: e.estado || "", ia: (e.observaciones || "").toLowerCase().includes("ia") })));
     }).catch(() => {});

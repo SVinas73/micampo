@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -11,8 +11,16 @@ export async function GET() {
     }
     const desde = new Date();
     desde.setDate(desde.getDate() - 30);
+    // Alcance Campo → Lote: filtra por el/los lote(s) vía el plan de riego.
+    const { searchParams } = new URL(request.url);
+    const loteId = searchParams.get("loteId");
+    const loteIds = searchParams.get("loteIds");
+    const ids = loteId ? [loteId] : loteIds ? loteIds.split(",").filter(Boolean) : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = { userId: session.user.id, fechaProgramada: { gte: desde } };
+    if (ids && ids.length) where.planRiego = { loteId: { in: ids } };
     const eventos = await prisma.eventoRiego.findMany({
-      where: { userId: session.user.id, fechaProgramada: { gte: desde } },
+      where,
       orderBy: { fechaProgramada: "desc" },
       take: 50,
     });

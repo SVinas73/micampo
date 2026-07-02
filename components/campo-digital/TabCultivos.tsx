@@ -194,11 +194,11 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       ) : sub === "Estados" ? (
         <div className="grid g-cols-5">
-          <KPI label="Superficie Sembrada" value={demo("235 Ha", "—")} delta={demo("84% del campo", "—")} trend="up" icon="sprout" accent />
-          <KPI label="Cosecha Total" value={demo("2.300 Tn", "—")} delta={demo("+14% vs anterior", "—")} trend="up" icon="wrench" />
-          <KPI label="Próxima Cosecha" value={demo("Lote 5", "—")} delta={demo("06 oct · Soja", "—")} trend="up" icon="calendar" />
-          <KPI label="Lotes Listos" value={demo("3", "0")} delta={demo("Para sembrar", "—")} trend="up" icon="check" />
-          <KPI label="Lotes Vacíos" value={demo("5", "0")} delta={demo("Sin asignar", "—")} trend="warn" icon="alert" />
+          <KPI label="Superficie Sembrada" value={`${Math.round(lotes.filter((l) => l.cultivo).reduce((s, l) => s + l.ha, 0))} Ha`} delta={(() => { const t = lotes.reduce((s, l) => s + l.ha, 0); const sm = lotes.filter((l) => l.cultivo).reduce((s, l) => s + l.ha, 0); return t > 0 ? `${Math.round((sm / t) * 100)}% del campo` : "Sin lotes"; })()} trend="up" icon="sprout" accent />
+          <KPI label="Lotes Sembrados" value={String(lotes.filter((l) => l.cultivo).length)} delta={`de ${lotes.length} lotes`} trend="up" icon="check" />
+          <KPI label="Cultivos Distintos" value={String(new Set(lotes.filter((l) => l.cultivo).map((l) => l.cultivo)).size)} delta="en el alcance" trend="up" icon="leaf" />
+          <KPI label="Lotes Vacíos" value={String(lotes.filter((l) => !l.cultivo).length)} delta={lotes.some((l) => !l.cultivo) ? "Disponibles para sembrar" : "Todo sembrado"} trend="warn" icon="alert" />
+          <KPI label="Superficie Total" value={`${Math.round(lotes.reduce((s, l) => s + l.ha, 0))} Ha`} delta={`${lotes.length} lote(s)`} trend="up" icon="map" />
         </div>
       ) : (
         <div className="grid g-cols-5">
