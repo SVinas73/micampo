@@ -1,25 +1,17 @@
 # Auditoría módulo Agronomía — progreso
 
-Tracker durable para reanudar la auditoría si se corta por tokens. Datos crudos en `agronomia-findings.json`.
+Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-- Estado por hallazgo: `PENDIENTE` | `HECHO` | `DESCARTADO`.
-- Al arreglar uno, cambiá su estado a HECHO acá y en el JSON.
-
-**Resumen:** 32 HECHO · 82 PENDIENTE (de 114 hallazgos).
+**Resumen:** 37 HECHO · 77 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
 | id | sev | cat | archivo:línea | hallazgo |
 |----|-----|-----|---------------|----------|
-| `219130ba` | critica | bug | app/(dashboard)/clima/page.tsx:123 | Lluvias 'Campo General' (sin lote) se guardan pero desaparecen para siempre al recargar |
-| `d1f9e340` | alta | kpi-datos | app/(dashboard)/calculadora-dosis/page.tsx:202 | KPI 'Insumos dosificados' suma litros y kilogramos como si todo fueran litros |
-| `ddf814f7` | alta | bug | app/(dashboard)/plan-riego/page.tsx:211 | El modal de registro descarta método, hora, duración y selección de lotes: sólo persiste mm y observaciones |
 | `4baf90a8` | alta | dato-falso | components/campo-digital/TabDeteccion.tsx:139 | KPIs de TabDeteccion hardcodeados con demo() → muestran '—' en producción pese a haber datos reales |
-| `ea6d914b` | alta | cross-module | components/campo-digital/TabDeteccion.tsx:614 | El módulo Detección no conecta con Calculadora de Dosis (flujo detección→calculadora-dosis inexistente) |
 | `09b0548f` | alta | cross-module | components/campo-digital/TabLabores.tsx:217 | El wizard no envía 'productos': los insumos nunca descuentan stock ni crean AplicacionProducto |
 | `900cea3f` | alta | cross-module | components/campo-digital/TabLabores.tsx:218 | El wizard no envía maquinaId: el costo de maquinaria nunca se prorratea al lote en Economía |
 | `45638865` | alta | cross-module | components/campo-digital/TabLabores.tsx:210 | El costo total calculado en el wizard no se persiste como CostoLote (queda solo en texto) |
-| `af2a5f96` | alta | cross-module | components/campo-digital/lotes-data.ts:157 | 'Agua Útil' siempre '—': existe humedad de suelo real (Open-Meteo) pero nunca se conecta al KPI/chip de agua útil |
 | `71e719d9` | media | bug | app/(dashboard)/calculadora-dosis/page.tsx:171 | Al usar un preestablecido del usuario se arrastra un loteId obsoleto que puede romper el guardado (FK inexistente → 500) |
 | `828d47af` | media | inconsistencia | app/(dashboard)/calculadora-dosis/page.tsx:191 | Botón 'Riego + agroquímico' de Inicio abre una calculadora genérica de herbicida, no de fertirriego |
 | `37140ed1` | media | bug | app/(dashboard)/campo-digital/page.tsx:36 | Mecanismo de header actions (ActionsProvider/useHeaderActions) es código muerto: ningún tab inyecta acciones |
@@ -94,10 +86,11 @@ Tracker durable para reanudar la auditoría si se corta por tokens. Datos crudos
 | `d29dc56f` | baja | estetica | components/campo-digital/TabResumen.tsx:135 | Color de avatar de actividades (#5E8F78) fuera de la paleta oliva |
 | `8d9bca8f` | baja | bug | components/campo-digital/cultivos-Modales.tsx:96 | Campo 'Responsable / equipo' del modal Nueva Siembra se captura pero nunca se persiste |
 
-## HECHO (PR #138/#139)
+## HECHO
 
 | id | sev | archivo | hallazgo |
 |----|-----|---------|----------|
+| `219130ba` | critica | app/(dashboard)/clima/page.tsx | Lluvias 'Campo General' (sin lote) se guardan pero desaparecen para siempre al recargar |
 | `8f68cdd7` | critica | app/(dashboard)/plan-riego/page.tsx | Los eventos de riego se guardan SIEMPRE con la fecha de hoy, ignorando la fecha sugerida/manual |
 | `a0eca093` | critica | app/api/eventos-riego/route.ts | 'Agua últ. 30 días' muestra riegos de TODOS los lotes: eventos-riego no respeta el scope Campo→Lote |
 | `f9d7e558` | critica | components/calculadora/calc.ts | porTanque calcula mal el producto por tanque: usa dosis×caldo (dimensionalmente incorrecto) e ignora la capacidad del tanque |
@@ -106,10 +99,12 @@ Tracker durable para reanudar la auditoría si se corta por tokens. Datos crudos
 | `6e71921a` | critica | components/campo-digital/TabDeteccion.tsx | La lista de Alertas Activas ignora el alcance Campo/Lote (no reacciona al sidebar) |
 | `8dcdcb33` | critica | components/campo-digital/TabResumen.tsx | El KPI 'atrasadas' y los focos de labores atrasadas casi nunca detectan nada (filtran estado guardado en vez de derivarlo por fecha) |
 | `a5a40297` | alta | app/(dashboard)/calculadora-dosis/page.tsx | El historial y los 5 KPIs de Inicio NO reaccionan al alcance Campo→Lote (useLoteScope) del sidebar |
+| `d1f9e340` | alta | app/(dashboard)/calculadora-dosis/page.tsx | KPI 'Insumos dosificados' suma litros y kilogramos como si todo fueran litros |
 | `01a34e65` | alta | app/(dashboard)/clima/page.tsx | El Registro de Lluvias ignora el lote seleccionado en el sidebar (no reacciona al scope de lote) |
 | `73060f04` | alta | app/(dashboard)/cuaderno-campo/page.tsx | Filtro de tipo queda stale al cambiar de scope: la lista muestra vacío teniendo registros |
 | `e6d2df5a` | alta | app/(dashboard)/cuaderno-campo/page.tsx | Fechas con off-by-one: se guardan como UTC medianoche y se renderizan en hora local (UTC-3) |
 | `85d58cd0` | alta | app/(dashboard)/plan-riego/page.tsx | El fetch de eventos-riego no se re-dispara al cambiar de lote (estado stale) |
+| `ddf814f7` | alta | app/(dashboard)/plan-riego/page.tsx | El modal de registro descarta método, hora, duración y selección de lotes: sólo persiste mm y observaciones |
 | `c36c9b2b` | alta | app/api/planes-siembra/generar/route.ts | Regenerar con IA persiste planes DEMO fabricados como datos reales en la DB cuando no hay ANTHROPIC_API_KEY |
 | `aefb71fe` | alta | app/api/pronostico-climatico/route.ts | Endpoint /api/pronostico-climatico genera datos climáticos ALEATORIOS y los persiste como si fueran reales |
 | `8ee7b4dd` | alta | app/api/riego-ia/analizar/route.ts | Endpoint /api/riego-ia/analizar es código muerto con datos demo hardcodeados (fechas 2025, balance fijo) |
@@ -117,6 +112,7 @@ Tracker durable para reanudar la auditoría si se corta por tokens. Datos crudos
 | `8b95b7fd` | alta | components/campo-digital/TabCultivos.tsx | KPIs de TabCultivos (Estados y Análisis de Suelo) hardcodeados con demo() ignorando los lotes/análisis reales ya cargados |
 | `620f34eb` | alta | components/campo-digital/TabCultivos.tsx | El Planificador de Siembras (IA) ignora el scope global (establecimiento/lote) |
 | `6be9be6e` | alta | components/campo-digital/TabCultivos.tsx | Estado stale: cambiar a un establecimiento sin lotes conserva los lotes del anterior |
+| `ea6d914b` | alta | components/campo-digital/TabDeteccion.tsx | El módulo Detección no conecta con Calculadora de Dosis (flujo detección→calculadora-dosis inexistente) |
 | `a1bc797f` | alta | components/campo-digital/TabDeteccion.tsx | 'Alertas Activas' muestra también alertas Resueltas/Falsas (no filtra por estado) |
 | `2fcb61bb` | alta | components/campo-digital/TabDeteccion.tsx | Detección guardada en Análisis IA no aparece en Información pese a que el toast lo afirma (estado stale) |
 | `ddea3e2f` | alta | components/campo-digital/TabLabores.tsx | TabLabores ignora el scope de establecimiento del sidebar (fetch único sin params ni re-fetch) |
@@ -129,4 +125,5 @@ Tracker durable para reanudar la auditoría si se corta por tokens. Datos crudos
 | `01accec7` | alta | components/campo-digital/TabResumen.tsx | TabResumen ignora el lote activo del sidebar: no reacciona al scope por lote |
 | `dde95ea0` | alta | components/campo-digital/TabResumen.tsx | KPI 'Alertas sanitarias' y 'Focos de atención' cuentan alertas resueltas/falsas (la API no filtra por estado) |
 | `db04f09c` | alta | components/campo-digital/lotes-Modales.tsx | EditarLoteModal: lista de cultivos incompleta → lote con cultivo no listado (Sorgo/Cebada/Avena) muestra el campo vacío y puede perder el cultivo |
+| `af2a5f96` | alta | components/campo-digital/lotes-data.ts | 'Agua Útil' siempre '—': existe humedad de suelo real (Open-Meteo) pero nunca se conecta al KPI/chip de agua útil |
 | `d8fa151b` | baja | components/campo-digital/TabCultivos.tsx | Modal Nueva Cosecha sin cultivos seleccionables en producción (lista demo → vacía) |

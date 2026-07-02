@@ -236,7 +236,9 @@ function PlanRiegoInner() {
     const iso = r.fuente === "ia"
       ? (r.fechaISO || new Date().toISOString())
       : (r.fecha ? new Date(`${r.fecha}T${r.hora || "00:00"}:00`).toISOString() : new Date().toISOString());
-    const ok = await postEvento(r.mm, iso, r.observaciones);
+    // Persistir método / hora / lotes en las observaciones (antes se descartaban).
+    const detalle = [r.observaciones, r.metodo && `Método: ${r.metodo}`, r.hora && `Hora: ${r.hora}`, r.lotes?.length ? `Lotes: ${r.lotes.join(", ")}` : ""].filter(Boolean).join(" · ");
+    const ok = await postEvento(r.mm, iso, detalle);
     if (!ok) { toast.show("No se pudo guardar el riego", "err"); return; }
     setRiegos((prev) => [{ t: Date.now(), mm: r.mm, estado: r.fuente === "ia" ? "ejecutado" : "Reporte manual", ia: r.fuente === "ia" }, ...prev]);
     toast.show(r.fuente === "ia" ? "Riego IA confirmado" : "Registro manual guardado");

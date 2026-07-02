@@ -645,6 +645,13 @@ function EnfermedadesAnalisisIA({
               <button className="mc-btn mc-btn--primary mc-btn--sm mt-12" style={{ width: "100%", justifyContent: "center" }} onClick={agregarLabor} disabled={creandoLabor || !loteId}>
                 <Icon name="plus" size={12} />{creandoLabor ? "Agendando…" : "Agregar tratamiento a Labores"}
               </button>
+              <a
+                className="mc-btn mc-btn--secondary mc-btn--sm mt-8"
+                style={{ width: "100%", justifyContent: "center" }}
+                href={`/calculadora-dosis?producto=${encodeURIComponent(datos.recomendacion.producto || "")}&dosis=${encodeURIComponent(datos.recomendacion.dosis || "")}${loteId ? `&loteId=${loteId}` : ""}`}
+              >
+                <Icon name="beaker" size={12} />Calcular dosis exacta
+              </a>
               {!loteId && <div className="text-xs text-muted mt-4" style={{ textAlign: "center" }}>Elegí el lote arriba para poder agendar.</div>}
             </>
           )}

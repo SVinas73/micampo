@@ -36,7 +36,7 @@
   "escenario": "Un cálculo guardado con 100 Kg/Ha de fertilizante en 50 Ha (5000 'Kg') y otro con 3 Lt/Ha en 85 Ha (255 'Lt') → el KPI muestra '5.255 L', sumando kilos y litros.",
   "fix": "Separar el acumulado por unidad (litros vs kilos) o mostrar dos métricas, y no rotular todo como 'L'. Para mezclas, sumar el total de todos los productos (recorriendo config.productos) en lugar del cantidadTotal del primer producto únicamente.",
   "_id": "d1f9e340",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Al usar un preestablecido del usuario se arrastra un loteId obsoleto que puede romper el guardado (FK inexistente → 500)",
@@ -101,7 +101,7 @@
   "escenario": "Usuario abre 'Registrar Lluvia', deja la ubicación sin lotes marcados (queda 'Campo General'), carga 30 mm y guarda. Ve el registro. Recarga la página → el registro desaparece del histórico y de todos los KPIs, aunque sigue en la base.",
   "fix": "En la carga de lluvias, incluir los registros sin lote del usuario (p. ej. no filtrar por loteId cuando esTodos, o que la API con loteIds devuelva también los de loteId null del usuario). Alternativamente, forzar la asignación a un lote en el modal o guardar un loteId 'campo' válido.",
   "_id": "219130ba",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "El Registro de Lluvias ignora el lote seleccionado en el sidebar (no reacciona al scope de lote)",
@@ -257,7 +257,7 @@
   "fix": "Derivar/mostrar agua útil (o renombrar el chip a 'Humedad de suelo') a partir de l.humedad (m³/m³) ya disponible, o poblar aguaUtil desde una fuente real; no dejar la métrica clavada en '—'.",
   "confianza": 0.85,
   "_id": "af2a5f96",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Notas georreferenciadas nuevas no aparecen en el mapa hasta remontar (efecto keyed en lotes.length que no cambia)",
@@ -1024,7 +1024,7 @@
   "fix": "Extender el POST y el schema EventoRiego para persistir método/hora/duración; crear un evento por cada lote seleccionado (o modelar lotes múltiples). Mientras tanto, no mostrar campos que no se guardan.",
   "confianza": 0.93,
   "_id": "ddf814f7",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Input 'Duración estimada' del modal manual es un control muerto (sin estado ni onChange)",
@@ -1220,7 +1220,7 @@
   "fix": "Agregar un botón 'Calcular dosis' en la tarjeta de Recomendación/Estrategia que navegue a /calculadora-dosis con producto, dosis, tipoProducto y loteId como query params, y hacer que calculadora-dosis/page.tsx lea esos params para prellenar la config inicial.",
   "confianza": 0.9,
   "_id": "ea6d914b",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "'Alertas Activas' muestra también alertas Resueltas/Falsas (no filtra por estado)",

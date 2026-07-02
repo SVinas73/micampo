@@ -129,10 +129,11 @@ export default function TabLotes() {
   }, []);
 
 
-  // Humedad de suelo real (Open-Meteo) — se carga al activar la capa "Humedad".
+  // Humedad de suelo real (Open-Meteo). Se carga una vez cuando hay lotes con geometría
+  // (no solo al activar la capa) para que "Agua útil" muestre un valor real en toda la UI.
   const humedadCargadaRef = useRef(false);
   useEffect(() => {
-    if (layer !== "Humedad" || humedadCargadaRef.current) return;
+    if (humedadCargadaRef.current) return;
     const conGeo = lotes.filter((l) => l.geojson?.coordinates?.[0]?.length && l.dbId);
     if (conGeo.length === 0) return;
     humedadCargadaRef.current = true;
@@ -145,13 +146,16 @@ export default function TabLotes() {
       .then((d) => {
         const resultados = d?.resultados as Record<string, { humedad: number }> | undefined;
         if (!resultados) return;
+        // Agua útil (%) = fracción de agua disponible entre punto de marchitez (~0.10) y
+        // capacidad de campo (~0.35) del contenido volumétrico de agua (m³/m³).
+        const aguaUtilDe = (h: number) => Math.max(0, Math.min(100, Math.round(((h - 0.1) / 0.25) * 100)));
         setLotes((prev) => prev.map((l) => {
           const m = l.dbId ? resultados[l.dbId] : undefined;
-          return m && typeof m.humedad === "number" ? { ...l, humedad: m.humedad } : l;
+          return m && typeof m.humedad === "number" ? { ...l, humedad: m.humedad, aguaUtil: aguaUtilDe(m.humedad) } : l;
         }));
       })
       .catch(() => {});
-  }, [layer, lotes]);
+  }, [lotes]);
 
   // Filtro LOCAL del submódulo Lotes (no toca el alcance global del sidebar).
   // Arranca siguiendo al alcance global y se sincroniza cuando el sidebar cambia.
