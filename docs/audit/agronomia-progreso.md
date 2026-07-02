@@ -2,7 +2,7 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 63 HECHO · 2 DIFERIDO · 49 PENDIENTE (de 114).
+**Resumen:** 67 HECHO · 2 DIFERIDO · 45 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
@@ -25,11 +25,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `a38d99c2` | media | kpi-datos | components/campo-digital/TabResumen.tsx:95 | Con un establecimiento filtrado, los otros campos de la card 'Campos y lotes' muestran 0 ha si no tienen hectareasTotales cargadas |
 | `4bc5d742` | media | dato-falso | components/campo-digital/labores-Wizard.tsx:49 | Wizard 'Nueva Orden' lleno de datos hardcodeados presentados como reales |
 | `bd614e26` | media | bug | components/clima/RadarReal.tsx:30 | El radar no se re-centra al cambiar de establecimiento/lote (queda en el campo anterior) |
-| `c8ed4a6e` | media | kpi-datos | components/plan-riego/AguaUlt30Dias.tsx:35 | '% vs histórico' compara lluvia+riego contra un promedio histórico que es sólo lluvia (comparación inflada) |
 | `2c401f1a` | media | inconsistencia | components/plan-riego/BalanceHidrico.tsx:130 | Inconsistencia de 'agua útil': el KPI de la página usa s0% y el card del gráfico usa conRiego[0]% (números distintos en la misma pantalla) |
-| `820ee3aa` | media | bug | components/plan-riego/BalanceHidrico.tsx:104 | Las barras IA del gráfico etiquetan mm por orden de barra, no por sugerencia (desalineación posible) |
-| `9e326dfc` | media | bug | components/plan-riego/RegistrarRiegoModal.tsx:260 | Input 'Duración estimada' del modal manual es un control muerto (sin estado ni onChange) |
-| `3b89d333` | media | bug | components/plan-riego/RegistrarRiegoModal.tsx:66 | Preselección de sugerencias IA hardcodeada a los índices 0 y 1 (asume exactamente 2 sugerencias) |
 | `6d6b21d9` | baja | inconsistencia | app/(dashboard)/clima/page.tsx:179 | Inconsistencia en el % de la barra de mm entre registro nuevo y recargado (base 50 vs máximo real) |
 | `30dd7e53` | baja | bug | app/(dashboard)/clima/page.tsx:753 | 'Días sin lluvia' puede quedar negativo y el gráfico usa fecha local sobre ISO UTC (riesgo de mes/día corrido) |
 | `919ddb05` | baja | kpi-datos | app/(dashboard)/cuaderno-campo/page.tsx:43 | 'Lotes con registro' cuenta por nombre de lote, no por id: nombres duplicados colapsan el conteo |
@@ -131,4 +127,8 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `ec901cc8` | media | components/campo-digital/TabLotes.tsx | Estadio fenológico inventado 'Vegetativo' al crear lote con cultivo (inconsistente con el estado tras recargar) |
 | `e65d5d31` | media | components/campo-digital/TabLotes.tsx | KPI 'Marcadores' en TabLotes hardcodeada (demo '14'/'0') pese a fetchear marcadores reales |
 | `20ffc892` | media | components/campo-digital/lotes-data.ts | Badge 'Saludable' por defecto sin dato: lotes sin NDVI se muestran siempre como saludables |
+| `c8ed4a6e` | media | components/plan-riego/AguaUlt30Dias.tsx | '% vs histórico' compara lluvia+riego contra un promedio histórico que es sólo lluvia (comparación inflada) |
+| `820ee3aa` | media | components/plan-riego/BalanceHidrico.tsx | Las barras IA del gráfico etiquetan mm por orden de barra, no por sugerencia (desalineación posible) |
+| `9e326dfc` | media | components/plan-riego/RegistrarRiegoModal.tsx | Input 'Duración estimada' del modal manual es un control muerto (sin estado ni onChange) |
+| `3b89d333` | media | components/plan-riego/RegistrarRiegoModal.tsx | Preselección de sugerencias IA hardcodeada a los índices 0 y 1 (asume exactamente 2 sugerencias) |
 | `d8fa151b` | baja | components/campo-digital/TabCultivos.tsx | Modal Nueva Cosecha sin cultivos seleccionables en producción (lista demo → vacía) |

@@ -1037,7 +1037,7 @@
   "fix": "Conectar a estado y persistir (mapear a duracionReal del EventoRiego), o quitar el campo.",
   "confianza": 0.9,
   "_id": "9e326dfc",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Preselección de sugerencias IA hardcodeada a los índices 0 y 1 (asume exactamente 2 sugerencias)",
@@ -1050,7 +1050,7 @@
   "fix": "Inicializar iaSel dinámicamente a partir de sugerencias.length (todas true, o según criterio) en un useEffect dependiente de las sugerencias.",
   "confianza": 0.85,
   "_id": "3b89d333",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "'% vs histórico' compara lluvia+riego contra un promedio histórico que es sólo lluvia (comparación inflada)",
@@ -1063,7 +1063,7 @@
   "fix": "Comparar sólo lluviaMm contra el histórico de lluvia, o etiquetar claramente que el histórico es de precipitación y separar el aporte de riego.",
   "confianza": 0.82,
   "_id": "c8ed4a6e",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Inconsistencia de 'agua útil': el KPI de la página usa s0% y el card del gráfico usa conRiego[0]% (números distintos en la misma pantalla)",
@@ -1089,7 +1089,7 @@
   "fix": "Vincular cada barra al día real de su sugerencia (usar el índice del día de la sugerencia dentro de balance) en lugar de un contador de barras, y evitar el fallback numérico inventado.",
   "confianza": 0.72,
   "_id": "820ee3aa",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Estados de evento inconsistentes: la UI mezcla 'Programado', 'ejecutado' y 'Reporte manual' pero el timeline sólo formatea 'ejecutado'",
