@@ -755,7 +755,7 @@ function ClimaLluvias({
   const mesesConDatos = new Set(conFecha.filter((x) => x.d.getFullYear() === anioActual).map((x) => x.d.getMonth())).size;
   const promedioMensual = mesesConDatos ? Math.round(acumuladoAnio / mesesConDatos) : 0;
   const ultimaLluvia = conFecha.length ? conFecha.map((x) => x.d.getTime()).sort((a, b) => b - a)[0] : null;
-  const diasSinLluvia = ultimaLluvia ? Math.floor((hoyD.getTime() - ultimaLluvia) / 86400000) : null;
+  const diasSinLluvia = ultimaLluvia ? Math.max(0, Math.floor((hoyD.getTime() - ultimaLluvia) / 86400000)) : null;
   // Comparación con el promedio histórico (acumulado del año a la fecha)
   const histAcumALaFecha = historico ? historico.promedioMensual.slice(0, hoyD.getMonth() + 1).reduce((s, v) => s + v, 0) : 0;
   const pctVsHist = historico && histAcumALaFecha > 0 ? Math.round(((acumuladoAnio - histAcumALaFecha) / histAcumALaFecha) * 100) : null;

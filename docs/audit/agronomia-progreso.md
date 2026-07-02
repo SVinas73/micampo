@@ -2,23 +2,17 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 96 HECHO · 7 DIFERIDO · 11 PENDIENTE (de 114).
+**Resumen:** 102 HECHO · 7 DIFERIDO · 5 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
 | id | sev | cat | archivo:línea | hallazgo |
 |----|-----|-----|---------------|----------|
 | `6d6b21d9` | baja | inconsistencia | app/(dashboard)/clima/page.tsx:179 | Inconsistencia en el % de la barra de mm entre registro nuevo y recargado (base 50 vs máximo real) |
-| `30dd7e53` | baja | bug | app/(dashboard)/clima/page.tsx:753 | 'Días sin lluvia' puede quedar negativo y el gráfico usa fecha local sobre ISO UTC (riesgo de mes/día corrido) |
-| `8112ac2a` | baja | scope | app/api/clima/pronostico/route.ts:20 | Endpoint /api/clima/pronostico (OpenWeather) es código muerto y depende de una API key ausente |
 | `5e315662` | baja | dato-falso | app/api/lotes/[id]/prescripcion/route.ts:65 | Mapa de prescripción variable con NDVI sintético cuando Sentinel no está configurado, y ahorro% calculado sobre datos fabricados |
 | `10539c84` | baja | scope | app/api/rotaciones-cultivo/route.ts:25 | Endpoint /api/rotaciones-cultivo sin ningún consumidor (feature no cableada) |
-| `b1251ec3` | baja | estetica | components/calculadora/calc.ts:3 | El costo se rotula 'USD' pero se formatea con separadores es-AR y se redondea a 0 decimales, perdiendo centavos |
 | `b8d826d7` | baja | scope | components/calculadora/presets.ts:79 | HISTORIAL_DEMO y PRESETS son datos demo hardcodeados que quedaron en el bundle (código muerto) |
-| `19add1d2` | baja | bug | components/campo-digital/LoteOverlay.tsx:137 | Predicción de rinde (IA): fallo silencioso sin feedback al usuario |
 | `9136db1a` | baja | dato-falso | components/campo-digital/TabCultivos.tsx:175 | Cosecha de ejemplo (cultivosListos demo) puede filtrar loteIds reales del scope al modal de cosecha |
-| `de35052d` | baja | estetica | components/campo-digital/TabLotes.tsx:1610 | Modales muestran el ID crudo de base (cuid) del lote en el título |
-| `d29dc56f` | baja | estetica | components/campo-digital/TabResumen.tsx:135 | Color de avatar de actividades (#5E8F78) fuera de la paleta oliva |
 
 ## DIFERIDO
 
@@ -117,18 +111,24 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `820ee3aa` | media | components/plan-riego/BalanceHidrico.tsx | Las barras IA del gráfico etiquetan mm por orden de barra, no por sugerencia (desalineación posible) |
 | `9e326dfc` | media | components/plan-riego/RegistrarRiegoModal.tsx | Input 'Duración estimada' del modal manual es un control muerto (sin estado ni onChange) |
 | `3b89d333` | media | components/plan-riego/RegistrarRiegoModal.tsx | Preselección de sugerencias IA hardcodeada a los índices 0 y 1 (asume exactamente 2 sugerencias) |
+| `30dd7e53` | baja | app/(dashboard)/clima/page.tsx | 'Días sin lluvia' puede quedar negativo y el gráfico usa fecha local sobre ISO UTC (riesgo de mes/día corrido) |
 | `919ddb05` | baja | app/(dashboard)/cuaderno-campo/page.tsx | 'Lotes con registro' cuenta por nombre de lote, no por id: nombres duplicados colapsan el conteo |
 | `c53e2955` | baja | app/(dashboard)/cuaderno-campo/page.tsx | Flecha de tendencia verde 'up' en KPIs sin comparación real (delta puramente descriptivo) |
 | `a75fb257` | baja | app/(dashboard)/cuaderno-campo/page.tsx | Uso de índice de array como key de React en la lista de registros |
 | `49ec018b` | baja | app/(dashboard)/plan-riego/page.tsx | plan-riego persiste etapaFenologica y tipoSuelo hardcodeados, ignorando la etapa elegida por el usuario |
 | `6043e6c5` | baja | app/(dashboard)/plan-riego/page.tsx | Estados de evento inconsistentes: la UI mezcla 'Programado', 'ejecutado' y 'Reporte manual' pero el timeline sólo formatea 'ejecutado' |
 | `d36dee90` | baja | app/(dashboard)/plan-riego/page.tsx | El plan de riego se crea con etapaFenologica y laminaRiego que ignoran la etapa/estrategia real seleccionada |
+| `8112ac2a` | baja | app/api/clima/pronostico/route.ts | Endpoint /api/clima/pronostico (OpenWeather) es código muerto y depende de una API key ausente |
+| `b1251ec3` | baja | components/calculadora/calc.ts | El costo se rotula 'USD' pero se formatea con separadores es-AR y se redondea a 0 decimales, perdiendo centavos |
+| `19add1d2` | baja | components/campo-digital/LoteOverlay.tsx | Predicción de rinde (IA): fallo silencioso sin feedback al usuario |
 | `d8fa151b` | baja | components/campo-digital/TabCultivos.tsx | Modal Nueva Cosecha sin cultivos seleccionables en producción (lista demo → vacía) |
 | `05a0822d` | baja | components/campo-digital/TabCultivos.tsx | Tarjetas de Análisis de Suelo con grid interno fijo de 4 columnas sin colapso en mobile |
 | `cf051573` | baja | components/campo-digital/TabCultivos.tsx | Mensaje de error del Planificador engañoso cuando no hay lote seleccionado |
 | `0934f9a2` | baja | components/campo-digital/TabDeteccion.tsx | prob por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %) |
 | `15a8348f` | baja | components/campo-digital/TabDeteccion.tsx | Probabilidad por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %) |
 | `b41d4305` | baja | components/campo-digital/TabLabores.tsx | La prioridad 'baja' nunca se muestra: el mapeo colapsa todo lo no-Urgente a 'media' |
+| `de35052d` | baja | components/campo-digital/TabLotes.tsx | Modales muestran el ID crudo de base (cuid) del lote en el título |
 | `36be3028` | baja | components/campo-digital/TabResumen.tsx | TabResumen no reacciona al lote activo del sidebar (solo al establecimiento) |
 | `c5cce7e2` | baja | components/campo-digital/TabResumen.tsx | El KPI 'Cultivos distintos' puede mostrar 'Principal: En descanso' (no es un cultivo) |
+| `d29dc56f` | baja | components/campo-digital/TabResumen.tsx | Color de avatar de actividades (#5E8F78) fuera de la paleta oliva |
 | `8d9bca8f` | baja | components/campo-digital/cultivos-Modales.tsx | Campo 'Responsable / equipo' del modal Nueva Siembra se captura pero nunca se persiste |

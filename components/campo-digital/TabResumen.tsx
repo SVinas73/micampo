@@ -139,7 +139,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
         const inicial = quien.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "EQ";
         return {
           inicial,
-          color: "#5E8F78", quien, verb, obj: l.tipo || "Labor",
+          color: "var(--mc-green-600)", quien, verb, obj: l.tipo || "Labor",
           lote: l.lote?.nombre || "campo", icon: ICONO_LABOR[l.tipo || ""] || "wrench",
           time: tiempoRelativo(l.createdAt || l.fecha),
         };

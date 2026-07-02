@@ -75,7 +75,7 @@
   "escenario": "Costo por Ha de 0.6 USD/Ha se muestra como '$1' o '$0' por el redondeo a 0 decimales; un total de 1402.75 USD aparece como '$1.402'.",
   "fix": "Usar un formato USD consistente, p.ej. Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits: 2 }) o al menos permitir decimales para montos por hectárea. Evitar el separador de miles es-AR sobre montos USD.",
   "_id": "b1251ec3",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "HISTORIAL_DEMO y PRESETS son datos demo hardcodeados que quedaron en el bundle (código muerto)",
@@ -206,7 +206,7 @@
   "escenario": "Un desarrollador conecta por error /api/clima/pronostico a una pantalla: sin OPENWEATHER_API_KEY responde 500; con key devuelve un formato distinto al que el resto del módulo (Open-Meteo) espera.",
   "fix": "Eliminar la ruta muerta /api/clima/pronostico para dejar Open-Meteo (/api/clima) como única fuente.",
   "_id": "8112ac2a",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "'Días sin lluvia' puede quedar negativo y el gráfico usa fecha local sobre ISO UTC (riesgo de mes/día corrido)",
@@ -219,7 +219,7 @@
   "escenario": "Se registra por error una lluvia con fecha del mes que viene → 'Días sin lluvia' muestra un número negativo. O una lluvia guardada 30/06 23:30 (hora local -3) se contabiliza como julio en el acumulado mensual.",
   "fix": "Clampear diasSinLluvia a >=0 y poner max=hoy en el input de fecha; agrupar por fecha normalizada (usar componentes UTC o truncar a fecha local consistente con cómo se guarda).",
   "_id": "30dd7e53",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "KPI 'Marcadores' hardcodeado (14/0) con delta falso 'Pozos, silos, casas' que no existen en el modelo de datos",
@@ -349,7 +349,7 @@
   "fix": "No mostrar el cuid: usar solo lote.name (y opcionalmente un código corto legible), o derivar un código de UI en vez del dbId.",
   "confianza": 0.83,
   "_id": "de35052d",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Predicción de rinde (IA): fallo silencioso sin feedback al usuario",
@@ -362,7 +362,7 @@
   "fix": "Manejar el caso de error/null mostrando un mensaje ('No se pudo estimar el rinde con los datos disponibles'), análogo al manejo de error del VRTPanel.",
   "confianza": 0.72,
   "_id": "19add1d2",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Mapa de prescripción variable con NDVI sintético cuando Sentinel no está configurado, y ahorro% calculado sobre datos fabricados",
@@ -963,7 +963,7 @@
   "escenario": "Usuario sin foto de perfil: cada avatar del feed 'Últimas actividades' aparece en un verde-teal que no coincide con el verde oliva del resto de la UI.",
   "confianza": 0.6,
   "_id": "d29dc56f",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Los eventos de riego se guardan SIEMPRE con la fecha de hoy, ignorando la fecha sugerida/manual",
