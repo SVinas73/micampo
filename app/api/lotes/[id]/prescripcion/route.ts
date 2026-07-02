@@ -104,6 +104,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     return NextResponse.json({
       producto, dosisBase, estrategia, fuente: sentinel ? "Sentinel-2" : "estimado",
+      // Sin NDVI satelital real (Sentinel), la zonificación es una estimación demostrativa.
+      simulado: !sentinel,
       areaHa: Math.round(areaTotalHa * 10) / 10,
       resumen: { celdas: celdas.length, prodTotal: Math.round(prodTotal), prodUniforme: Math.round(prodUniforme), ahorroPct, zonas },
       geojson: { type: "FeatureCollection", features },

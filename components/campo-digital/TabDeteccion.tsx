@@ -58,6 +58,8 @@ export default function TabDeteccion() {
   const { lotes: scopeLotes, establecimientoId, loteId } = useLoteScope();
   const lotes = useMemo(() => scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo ?? undefined })), [scopeLotes]);
   const [alertas, setAlertas] = useState<AlertaInfo[]>(demo(ALERTAS_DEMO, []));
+  // Métricas reales de las detecciones vigentes (para los KPIs, sin datos inventados).
+  const [stats, setStats] = useState({ confianza: 0, lotesAfectados: 0, areaTotal: 0, deteccionesIA: 0, conteo: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Carga las alertas VIGENTES del alcance activo (excluye Resueltas/Falsas).
@@ -71,6 +73,15 @@ export default function TabDeteccion() {
       .then((d) => {
         if (!Array.isArray(d)) return;
         const vigentes = d.filter((a: { estado?: string }) => !["Resuelta", "Falsa"].includes(a.estado || ""));
+        // Estadísticas reales
+        const conf = vigentes.map((a: { confianza?: number }) => a.confianza).filter((c: number | undefined): c is number => typeof c === "number");
+        setStats({
+          conteo: vigentes.length,
+          confianza: conf.length ? Math.round(conf.reduce((s: number, c: number) => s + c, 0) / conf.length) : 0,
+          lotesAfectados: new Set(vigentes.map((a: { loteId?: string }) => a.loteId).filter(Boolean)).size,
+          areaTotal: Math.round(vigentes.reduce((s: number, a: { areaAfectada?: number }) => s + (a.areaAfectada || 0), 0)),
+          deteccionesIA: vigentes.filter((a: { metodoDeteccion?: string }) => (a.metodoDeteccion || "").includes("IA")).length,
+        });
         setAlertas(
           vigentes.slice(0, 6).map((a: { lote?: { nombre: string; cultivo?: string }; loteId: string; plaga: string; severidad: string; areaAfectada?: number; recomendacion?: string; metodoDeteccion?: string }) => {
             const sevColor: "red" | "amber" | "green" = a.severidad === "Alta" || a.severidad === "Crítica" ? "red" : a.severidad === "Media" ? "amber" : "green";
@@ -100,12 +111,14 @@ export default function TabDeteccion() {
 
   const agregarALabores = async (a: AlertaInfo) => {
     if (a.loteId) {
+      // Superficie real del lote (para que el costo/economía de la labor no quede en 0).
+      const haLote = scopeLotes.find((l) => l.id === a.loteId)?.hectareas || 0;
       await fetch("/api/labores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipo: "Pulverización", fecha: new Date().toISOString().slice(0, 10), loteId: a.loteId,
-          superficieTrabajada: 0, descripcion: `Control: ${a.enfermedad}`, prioridad: "Urgente",
+          superficieTrabajada: haLote, descripcion: `Control: ${a.enfermedad}`, prioridad: "Urgente",
           observaciones: `Recomendación IA: ${a.recom}`,
         }),
       }).catch(() => {});
@@ -144,10 +157,10 @@ export default function TabDeteccion() {
 
       <div className="grid g-cols-5">
         <KPI label="Alertas Activas" value={String(alertas.length)} delta={alertas.length ? `${alertas.filter((a) => a.riesgoColor === "red").length} críticas` : "Sin alertas"} trend="warn" icon="alert" warn />
-        <KPI label="Confianza IA" value={demo("96%", "—")} delta={demo("Alta precisión", "—")} trend="up" icon="target" accent ia />
-        <KPI label="Vigor Promedio (NDVI)" value={demo("0.78", "—")} delta={demo("(Alto)", "—")} trend="up" icon="leaf" />
-        <KPI label="Riesgo Economico" value={demo("$1.250", "—")} delta={demo("USD/Ha potencial", "—")} trend="warn" icon="dollar" />
-        <KPI label="Monitoreo Semanal" value={demo("85%", "—")} delta={demo("17/20 lotes", "—")} trend="up" icon="check" />
+        <KPI label="Confianza IA" value={stats.confianza > 0 ? `${stats.confianza}%` : "—"} delta={stats.deteccionesIA ? `${stats.deteccionesIA} detección(es) IA` : "Sin detecciones IA"} trend="up" icon="target" accent ia />
+        <KPI label="Lotes afectados" value={String(stats.lotesAfectados)} delta={stats.conteo ? `${stats.conteo} alerta(s) vigente(s)` : "Sin alertas"} trend="warn" icon="leaf" />
+        <KPI label="Área afectada" value={stats.areaTotal > 0 ? `${stats.areaTotal.toLocaleString("es-AR")} Ha` : "0 Ha"} delta="bajo monitoreo" trend="warn" icon="alert" />
+        <KPI label="Detecciones IA" value={String(stats.deteccionesIA)} delta={stats.conteo ? `de ${stats.conteo} alerta(s)` : "—"} trend="up" icon="check" />
       </div>
 
       {/* Subtabs + acciones del submódulo a la misma altura (acciones a la derecha) */}
@@ -254,7 +267,13 @@ function EstrategiaControl({ alerta }: { alerta: AlertaInfo }) {
   // tratamientos (producto/dosis/costo reales) según la enfermedad y la probabilidad.
   const e = useMemo(() => {
     if (alerta.estrategia) return alerta.estrategia;
-    const prob = Number((alerta.riesgo.match(/(\d+)%/) || [])[1]) || 60;
+    // Si la alerta trae un %, se usa; si viene de la API con solo severidad, se deriva de ella.
+    const m = alerta.riesgo.match(/(\d+)%/);
+    const prob = m ? Number(m[1])
+      : /CR[IÍ]TICA|ALTA/i.test(alerta.riesgo) ? 75
+      : /MEDIA/i.test(alerta.riesgo) ? 45
+      : /BAJA/i.test(alerta.riesgo) ? 20
+      : 50;
     const p = prescripcionPara({ amenaza: alerta.enfermedad, probabilidad: prob });
     return { producto: p.producto, dosis: p.dosis, ventana: "Esta semana", costo: `US$${Math.round(p.costoHa)}/ha`, analisis: p.resumen };
   }, [alerta]);
@@ -321,20 +340,27 @@ type Prescripcion = { producto: string; principioActivo: string; dosis: string; 
 type RiesgoClima = { amenaza: string; cultivo: string; lote: string; nivel: "Alto" | "Medio" | "Bajo"; probabilidad: number; ventana: string; causa: string; prescripcion?: Prescripcion };
 
 function Probabilidades() {
-  const [riesgos, setRiesgos] = useState<RiesgoClima[]>([]);
+  const [riesgosRaw, setRiesgosRaw] = useState<RiesgoClima[]>([]);
   const [cargando, setCargando] = useState(true);
   const [simulado, setSimulado] = useState(false);
+  const { lotes: scopeLotes, loteActivo } = useLoteScope();
 
   useEffect(() => {
     fetch("/api/lotes/presion-plagas")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (Array.isArray(d?.riesgos)) setRiesgos(d.riesgos);
+        if (Array.isArray(d?.riesgos)) setRiesgosRaw(d.riesgos);
         setSimulado(Boolean(d?.simulado));
       })
       .catch(() => {})
       .finally(() => setCargando(false));
   }, []);
+
+  // Acota los riesgos al alcance Campo → Lote del sidebar (por nombre de lote).
+  const riesgos = useMemo(() => {
+    const nombres = new Set((loteActivo ? [loteActivo] : scopeLotes).map((l) => l.nombre));
+    return nombres.size === 0 ? riesgosRaw : riesgosRaw.filter((r) => nombres.has(r.lote));
+  }, [riesgosRaw, scopeLotes, loteActivo]);
 
   const colorDe = (n: string) => (n === "Alto" ? "#d13a3a" : n === "Medio" ? "#d9a538" : "#768f44");
   const lightDe = (n: string) => (n === "Alto" ? "#e85f5f" : n === "Medio" ? "#e8b859" : "#6db870");
@@ -645,6 +671,13 @@ function EnfermedadesAnalisisIA({
               <button className="mc-btn mc-btn--primary mc-btn--sm mt-12" style={{ width: "100%", justifyContent: "center" }} onClick={agregarLabor} disabled={creandoLabor || !loteId}>
                 <Icon name="plus" size={12} />{creandoLabor ? "Agendando…" : "Agregar tratamiento a Labores"}
               </button>
+              <a
+                className="mc-btn mc-btn--secondary mc-btn--sm mt-8"
+                style={{ width: "100%", justifyContent: "center" }}
+                href={`/calculadora-dosis?producto=${encodeURIComponent(datos.recomendacion.producto || "")}&dosis=${encodeURIComponent(datos.recomendacion.dosis || "")}${loteId ? `&loteId=${loteId}` : ""}`}
+              >
+                <Icon name="beaker" size={12} />Calcular dosis exacta
+              </a>
               {!loteId && <div className="text-xs text-muted mt-4" style={{ textAlign: "center" }}>Elegí el lote arriba para poder agendar.</div>}
             </>
           )}

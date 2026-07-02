@@ -134,16 +134,22 @@ export function LoteOverlay({
   // Predicción de rendimiento (IA) — bajo demanda
   const [rinde, setRinde] = useState<null | { rendimientoEstimado: number; rangoMin: number; rangoMax: number; confianza: number; factores?: string[]; recomendacion?: string; simulado?: boolean; backtesting?: { precision: number; casos: { anio: number; predicho: number; real: number; errorPct: number }[] } | null }>(null);
   const [cargandoRinde, setCargandoRinde] = useState(false);
+  const [rindeError, setRindeError] = useState<string | null>(null);
   const predecirRinde = () => {
     const id = lote.dbId || lote.id;
     if (!id) return;
     setCargandoRinde(true);
+    setRindeError(null);
     fetch("/api/lotes/prediccion-rendimiento", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ loteId: id }),
     })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d && !d.error) setRinde(d); })
+      .then((d) => {
+        if (d && !d.error) setRinde(d);
+        else setRindeError(d?.error || "No se pudo estimar el rinde con los datos disponibles.");
+      })
+      .catch(() => setRindeError("No se pudo estimar el rinde en este momento."))
       .finally(() => setCargandoRinde(false));
   };
 
@@ -160,7 +166,9 @@ export function LoteOverlay({
           <div style={{ minWidth: 0 }}>
             <div className="row gap-6" style={{ alignItems: "center" }}>
               <span className="font-semi" style={{ fontSize: 15.5, color: "var(--mc-ink)" }}>{lote.name}</span>
-              <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`} style={{ fontSize: 10 }}>{lote.sano ? "Saludable" : "Atención"}</span>
+              {lote.ndvi > 0
+                ? <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`} style={{ fontSize: 10 }}>{lote.sano ? "Saludable" : "Atención"}</span>
+                : <span className="mc-badge mc-badge--neutral" style={{ fontSize: 10 }}>Sin datos</span>}
             </div>
             <div className="text-xs text-muted" style={{ marginTop: 2 }}>
               {c ? `${c.lat.toFixed(4)}° , ${c.lng.toFixed(4)}°` : lote.campo}
@@ -223,13 +231,16 @@ export function LoteOverlay({
 
         <motion.div {...fade(3)} className="mc-glass mc-floatcard--b" style={{ borderRadius: 16, padding: 12, pointerEvents: "auto" }}>
           {!rinde ? (
-            <button
-              onClick={predecirRinde}
-              disabled={cargandoRinde}
-              style={{ width: "100%", borderRadius: 10, padding: "9px 10px", border: "none", background: "var(--mc-green-700)", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-            >
-              <Icon name="activity" size={13} /> {cargandoRinde ? "Estimando…" : "Predecir rinde (IA)"}
-            </button>
+            <>
+              <button
+                onClick={predecirRinde}
+                disabled={cargandoRinde}
+                style={{ width: "100%", borderRadius: 10, padding: "9px 10px", border: "none", background: "var(--mc-green-700)", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              >
+                <Icon name="activity" size={13} /> {cargandoRinde ? "Estimando…" : "Predecir rinde (IA)"}
+              </button>
+              {rindeError && <div className="text-xs" style={{ color: "var(--mc-red)", marginTop: 6, textAlign: "center" }}>{rindeError}</div>}
+            </>
           ) : (
             <div>
               <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>

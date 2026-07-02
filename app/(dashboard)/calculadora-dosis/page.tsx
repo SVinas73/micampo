@@ -1,12 +1,13 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon, KPI, Badge, Seg, Modal, Field, useToast, PageHeader, Tabs, IABadge } from "@/components/mc";
 import { AgregarProductoModal } from "@/components/calculadora/AgregarProductoModal";
 import {
   type ConfigCalculo,
   type ProductoMezcla,
+  type Categoria,
   type HistRow,
   ICONO_CATEGORIA,
   COLOR_CATEGORIA,
@@ -66,6 +67,32 @@ function CalculadoraInner() {
   useEffect(() => {
     setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, hectareas: l.hectareas || 0 })));
   }, [scopeLotes]);
+
+  // Prefill desde Detección de Enfermedades: ?producto=&dosis=&loteId=&tipo=
+  const prefillRef = useRef(false);
+  useEffect(() => {
+    if (prefillRef.current) return;
+    const producto = searchParams.get("producto");
+    if (!producto) return;
+    prefillRef.current = true;
+    const dosisParam = searchParams.get("dosis") || "";
+    const m = dosisParam.match(/([\d.,]+)\s*([a-zA-Z/]+)?/);
+    const dosisVal = m ? m[1].replace(",", ".") : "";
+    const rawUnidad = m && m[2] ? m[2] : "";
+    const unidad = rawUnidad ? (rawUnidad.includes("/") ? rawUnidad : `${rawUnidad}/Ha`) : "L/Ha";
+    const tipoParam = searchParams.get("tipo") || "";
+    const tipo = (["Herbicida", "Insecticida", "Fungicida", "Nutrición", "Fertilizante"].includes(tipoParam) ? tipoParam : "Fungicida") as Categoria;
+    const loteIdParam = searchParams.get("loteId");
+    const lote = loteIdParam ? scopeLotes.find((l) => l.id === loteIdParam) : null;
+    setConfig({
+      ...CONFIG_VACIA,
+      loteId: lote?.id ?? null,
+      loteNombre: lote?.nombre ?? "",
+      area: lote?.hectareas || CONFIG_VACIA.area,
+      productos: [{ tipo, nombre: producto, costoUnitario: "", dosis: dosisVal, unidad }],
+    });
+    setTab("Nuevo Cálculo");
+  }, [searchParams, scopeLotes]);
 
   // carga de historial real (respeta el alcance Campo → Lote del sidebar)
   useEffect(() => {
@@ -174,8 +201,9 @@ function CalculadoraInner() {
           onEliminarPreset={eliminarPreset}
           onCrear={() => abrirNuevo({ ...CONFIG_VACIA, productos: [] })}
           onUsar={(cfg) => {
-            abrirNuevo(structuredClone(cfg));
-            toast.show("Preset cargado en Nuevo Cálculo");
+            // El preset no arrastra el lote guardado (puede estar borrado o no ser el actual).
+            abrirNuevo({ ...structuredClone(cfg), loteId: null, loteNombre: "" });
+            toast.show("Preset cargado · elegí el lote");
           }}
         />
       )}
@@ -204,7 +232,15 @@ function TabInicio({ historial, onAbrir, onPreset, onNuevo }: { historial: HistR
     return m === ahora.getMonth() + 1 && y === ahora.getFullYear();
   };
   const esteMes = historial.filter((r) => esEsteMes(r.fecha)).length;
-  const litros = Math.round(historial.reduce((s, r) => s + (parseFloat(String(r.total).replace(/[^\d.]/g, "")) || 0), 0));
+  // No mezclar litros con kilos: se acumulan por separado según la unidad del total.
+  const insumos = historial.reduce((acc, r) => {
+    const str = String(r.total);
+    const val = parseFloat(str.replace(/[^\d.]/g, "")) || 0;
+    const u = (str.match(/[a-zA-Z]+\s*$/) || [""])[0].trim().toLowerCase();
+    if (u.startsWith("k") || u === "g") acc.kg += val; else acc.l += val;
+    return acc;
+  }, { l: 0, kg: 0 });
+  const insumosLabel = [insumos.l > 0 ? `${Math.round(insumos.l).toLocaleString("es-AR")} L` : "", insumos.kg > 0 ? `${Math.round(insumos.kg).toLocaleString("es-AR")} kg` : ""].filter(Boolean).join(" · ") || "—";
   const lotesTratados = new Set(historial.map((r) => r.lote).filter((l) => l && l !== "—")).size;
   const conteoProd = new Map<string, number>();
   historial.forEach((r) => conteoProd.set(r.producto, (conteoProd.get(r.producto) || 0) + 1));
@@ -215,7 +251,7 @@ function TabInicio({ historial, onAbrir, onPreset, onNuevo }: { historial: HistR
       <div className="grid g-cols-5">
         <KPI label="Cálculos guardados" value={String(historial.length)} delta={historial.length ? `${esteMes} este mes` : "—"} trend="up" icon="flask" accent />
         <KPI label="Cálculos este mes" value={String(esteMes)} delta={esteMes ? "registrados" : "—"} trend="up" icon="calendar" />
-        <KPI label="Insumos dosificados" value={litros > 0 ? `${litros.toLocaleString("es-AR")} L` : "—"} delta="acumulado" trend="up" icon="droplet" />
+        <KPI label="Insumos dosificados" value={insumosLabel} delta="acumulado (líquidos y sólidos)" trend="up" icon="droplet" />
         <KPI label="Lotes tratados" value={String(lotesTratados)} delta={lotesTratados ? "con cálculo" : "—"} trend="up" icon="map" />
         <KPI label="Producto más usado" value={masUsado ? masUsado[0] : "—"} delta={masUsado ? `${masUsado[1]} cálculo(s)` : "—"} trend="up" icon="leaf" />
       </div>

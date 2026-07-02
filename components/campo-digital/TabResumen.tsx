@@ -15,6 +15,7 @@ type LaborApi = {
   fecha?: string;
   estado?: string;
   descripcion?: string;
+  operarios?: string | null;
   createdAt?: string;
   lote?: { nombre?: string } | null;
 };
@@ -61,12 +62,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
   const [alertas, setAlertas] = useState<AlertaApi[]>([]);
   const [ests, setEsts] = useState<EstApi[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [perfil, setPerfil] = useState<{ name?: string | null; image?: string | null } | null>(null);
   const { establecimientoId, loteId } = useLoteScope();
-
-  useEffect(() => {
-    fetch("/api/perfil").then((r) => (r.ok ? r.json() : null)).then((p) => { if (p?.id) setPerfil(p); }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     // Respeta el alcance Campo → Lote del sidebar (los endpoints filtran por él).
@@ -139,9 +135,11 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       .slice(0, 5)
       .map((l) => {
         const verb = l.estado === "Completada" ? "completó" : l.estado === "En curso" ? "está en" : "programó";
+        const quien = l.operarios || "Equipo";
+        const inicial = quien.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "EQ";
         return {
-          inicial: (l.tipo || "L").charAt(0).toUpperCase(),
-          color: "#5E8F78", quien: "Equipo", verb, obj: l.tipo || "Labor",
+          inicial,
+          color: "var(--mc-green-600)", quien, verb, obj: l.tipo || "Labor",
           lote: l.lote?.nombre || "campo", icon: ICONO_LABOR[l.tipo || ""] || "wrench",
           time: tiempoRelativo(l.createdAt || l.fecha),
         };
@@ -175,7 +173,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       <div className="grid g-cols-5">
         <KPI label="Hectáreas totales" value={`${Math.round(totalHa)} Ha`} delta={cargando ? "Cargando…" : `${lotes.length} lotes`} trend="up" icon="map" accent />
         <KPI label="Hectáreas sembradas" value={`${Math.round(sembHa)} / ${Math.round(totalHa)}`} delta={`${ocupacion}% de ocupación`} trend="up" icon="sprout" />
-        <KPI label="Cultivos distintos" value={String(plantaciones.filter((p) => p.nombre !== "En descanso" && p.nombre !== "Vacío").length)} delta={plantaciones[0] ? `Principal: ${plantaciones[0].nombre}` : "—"} trend="up" icon="leaf" />
+        <KPI label="Cultivos distintos" value={String(plantaciones.filter((p) => p.nombre !== "En descanso" && p.nombre !== "Vacío").length)} delta={(() => { const pr = plantaciones.find((p) => p.nombre !== "En descanso" && p.nombre !== "Vacío"); return pr ? `Principal: ${pr.nombre}` : "Sin cultivos"; })()} trend="flat" icon="leaf" />
         <KPI label="Labores próximas" value={String(laboresPend)} delta={`${laboresAtras} atrasadas`} trend={laboresAtras > 0 ? "warn" : "up"} icon="wrench" />
         <KPI label="Alertas sanitarias" value={String(alertasActivas)} delta={alertasCriticas > 0 ? `${alertasCriticas} críticas` : "Sin críticas"} trend="warn" icon="alert" warn={alertasCriticas > 0} />
       </div>
@@ -185,7 +183,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       <PlantacionesCard plantaciones={plantaciones} totalHa={Math.round(totalHa)} cargando={cargando} />
 
       <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 14 }}>
-        <UltimasActividadesCard actividades={actividades} cargando={cargando} perfil={perfil} onVerTodo={() => onNavigateTab?.("Labores")} />
+        <UltimasActividadesCard actividades={actividades} cargando={cargando} onVerTodo={() => onNavigateTab?.("Labores")} />
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Focos de atención</div>
@@ -349,9 +347,7 @@ function BarChartPlantaciones({ data, mode, totalHa }: { data: Plantacion[]; mod
   );
 }
 
-function UltimasActividadesCard({ actividades, cargando, perfil, onVerTodo }: { actividades: Actividad[]; cargando: boolean; perfil?: { name?: string | null; image?: string | null } | null; onVerTodo: () => void }) {
-  const inicialUser = (perfil?.name || "").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-  const nombreCorto = (perfil?.name || "").split(" ")[0];
+function UltimasActividadesCard({ actividades, cargando, onVerTodo }: { actividades: Actividad[]; cargando: boolean; onVerTodo: () => void }) {
   return (
     <div className="mc-card">
       <div className="mc-card__head">
@@ -369,14 +365,11 @@ function UltimasActividadesCard({ actividades, cargando, perfil, onVerTodo }: { 
           actividades.map((a, i) => (
             <div key={i} className="mc-act-row">
               <div className="mc-act-row__avatar" style={{ background: a.color, overflow: "hidden" }}>
-                {perfil?.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={perfil.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (inicialUser || a.inicial)}
+                {a.quien === "Equipo" ? a.inicial : a.inicial}
               </div>
               <div className="mc-act-row__content">
                 <div className="mc-act-row__text">
-                  <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{nombreCorto || a.quien}</span> {a.verb}{" "}
+                  <span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{a.quien}</span> {a.verb}{" "}
                   <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.obj}</span> en{" "}
                   <span style={{ color: "var(--mc-ink)", fontWeight: 600 }}>{a.lote}</span>
                 </div>

@@ -68,5 +68,5 @@ export const TIPO_A_CATEGORIA: Record<string, Categoria> = {
   Insecticida: "Insecticida",
   Fertilizante: "Nutrición",
   "Mezcla personalizada": "Herbicida",
-  "Riego + agroquímico": "Herbicida",
+  "Riego + agroquímico": "Nutrición",
 };

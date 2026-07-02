@@ -64,7 +64,7 @@ export default function TabLotes() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { recargar, establecimientos, establecimientoId } = useLoteScope();
+  const { recargar, establecimientos, establecimientoId, loteId } = useLoteScope();
   // Modo "delimitar establecimiento": llega desde el card de Establecimientos.
   const delimitarId = searchParams.get("delimitar");
   const estDelimitar = delimitarId ? establecimientos.find((e) => e.id === delimitarId) || null : null;
@@ -85,6 +85,7 @@ export default function TabLotes() {
   const [drawArmed, setDrawArmed] = useState(false);
   const [modoNota, setModoNota] = useState(false);
   const [notaPunto, setNotaPunto] = useState<{ lat: number; lng: number; loteId?: string; establecimientoId?: string; nombre: string } | null>(null);
+  const [notasNonce, setNotasNonce] = useState(0); // se incrementa al guardar una nota para refrescar el mapa
   // Modo "crear establecimiento dibujando lotes"
   const [modoCampoLotes, setModoCampoLotes] = useState(false);
   const [lotesNuevos, setLotesNuevos] = useState<{ id: string; geojson: { type: "Polygon"; coordinates: number[][][] } }[]>([]);
@@ -129,10 +130,11 @@ export default function TabLotes() {
   }, []);
 
 
-  // Humedad de suelo real (Open-Meteo) — se carga al activar la capa "Humedad".
+  // Humedad de suelo real (Open-Meteo). Se carga una vez cuando hay lotes con geometría
+  // (no solo al activar la capa) para que "Agua útil" muestre un valor real en toda la UI.
   const humedadCargadaRef = useRef(false);
   useEffect(() => {
-    if (layer !== "Humedad" || humedadCargadaRef.current) return;
+    if (humedadCargadaRef.current) return;
     const conGeo = lotes.filter((l) => l.geojson?.coordinates?.[0]?.length && l.dbId);
     if (conGeo.length === 0) return;
     humedadCargadaRef.current = true;
@@ -145,13 +147,16 @@ export default function TabLotes() {
       .then((d) => {
         const resultados = d?.resultados as Record<string, { humedad: number }> | undefined;
         if (!resultados) return;
+        // Agua útil (%) = fracción de agua disponible entre punto de marchitez (~0.10) y
+        // capacidad de campo (~0.35) del contenido volumétrico de agua (m³/m³).
+        const aguaUtilDe = (h: number) => Math.max(0, Math.min(100, Math.round(((h - 0.1) / 0.25) * 100)));
         setLotes((prev) => prev.map((l) => {
           const m = l.dbId ? resultados[l.dbId] : undefined;
-          return m && typeof m.humedad === "number" ? { ...l, humedad: m.humedad } : l;
+          return m && typeof m.humedad === "number" ? { ...l, humedad: m.humedad, aguaUtil: aguaUtilDe(m.humedad) } : l;
         }));
       })
       .catch(() => {});
-  }, [layer, lotes]);
+  }, [lotes]);
 
   // Filtro LOCAL del submódulo Lotes (no toca el alcance global del sidebar).
   // Arranca siguiendo al alcance global y se sincroniza cuando el sidebar cambia.
@@ -163,11 +168,13 @@ export default function TabLotes() {
     [establecimientos, localEstId]
   );
 
-  // Lotes visibles en el submódulo según el filtro local de establecimiento.
-  const enScope = useMemo(
-    () => (localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId)),
-    [lotes, localEstId]
-  );
+  // Lotes visibles en el submódulo según el filtro local de establecimiento y,
+  // si el sidebar tiene un lote puntual activo, se acota a ese lote.
+  const enScope = useMemo(() => {
+    const porEst = localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId);
+    if (loteId && loteId !== "todos") return porEst.filter((l) => (l.dbId || l.id) === loteId);
+    return porEst;
+  }, [lotes, localEstId, loteId]);
 
   const visibles = useMemo(
     () => enScope.filter((l) => filtroCultivo === "Todos" || l.cultivo === filtroCultivo),
@@ -182,7 +189,7 @@ export default function TabLotes() {
   const [marcadores, setMarcadores] = useState<{ loteId?: string | null; establecimientoId?: string | null }[]>([]);
   useEffect(() => {
     fetch("/api/marcadores-geo").then((r) => (r.ok ? r.json() : [])).then((d) => { if (Array.isArray(d)) setMarcadores(d); }).catch(() => {});
-  }, [lotes.length]);
+  }, [lotes.length, notasNonce]);
   const marcadoresEnScope = useMemo(() => {
     if (localEstId === "todos") return marcadores.length;
     const ids = new Set(enScope.map((l) => l.dbId || l.id));
@@ -215,7 +222,7 @@ export default function TabLotes() {
         ...prev,
         {
           id: dbId || `L-${prev.length + 1}`, dbId, name: data.nombre, campo: data.nombre, ha: data.hectareas,
-          cultivo: data.cultivo, estadio: data.cultivo ? "Vegetativo" : "—", ndvi: 0, aguaUtil: 0, sano: true, vacio: !data.cultivo, comentarios: [],
+          cultivo: data.cultivo, estadio: "—", ndvi: 0, aguaUtil: 0, sano: true, vacio: !data.cultivo, comentarios: [],
           geojson: geom?.geojson ?? null, cultivoColor: data.cultivo ? (CULTIVO_COLORES[data.cultivo] || "#5e7733") : null,
           establecimientoId: data.establecimientoId ?? localEst?.id ?? null,
         },
@@ -448,6 +455,7 @@ export default function TabLotes() {
       }),
     }).catch(() => null);
     toast.show(res && res.ok ? `Nota guardada en ${notaPunto.nombre}` : "No se pudo guardar la nota", res && res.ok ? "ok" : "err");
+    if (res && res.ok) setNotasNonce((n) => n + 1); // refresca notas y marcadores en el mapa
     setNotaPunto(null);
   };
 
@@ -497,11 +505,11 @@ export default function TabLotes() {
       )}
 
       <div className="grid g-cols-5">
-        <KPI label="Establecimientos" value={String(establecimientos.length)} delta={localEst ? localEst.nombre : "Todos"} trend="up" icon="building" accent />
-        <KPI label="Lotes en vista" value={String(enScope.length)} delta={localEstId === "todos" ? `${lotes.length} en total` : "Filtrado por campo"} trend="up" icon="sprout" />
-        <KPI label="Total de hectáreas" value={`${Math.round(totalHa)} Ha`} delta={`${Math.round(sembradas)} sembradas`} trend="up" icon="activity" />
+        <KPI label="Establecimientos" value={String(establecimientos.length)} delta={localEst ? localEst.nombre : "Todos"} trend="flat" icon="building" accent />
+        <KPI label="Lotes en vista" value={String(enScope.length)} delta={localEstId === "todos" ? `${lotes.length} en total` : "Filtrado por campo"} trend="flat" icon="sprout" />
+        <KPI label="Total de hectáreas" value={`${Math.round(totalHa)} Ha`} delta={`${Math.round(sembradas)} sembradas`} trend="flat" icon="activity" />
         <KPI label="Lotes sin asignar" value={String(sinAsignar.length)} delta={sinAsignar.map((l) => l.name).slice(0, 2).join(" + ") || "Ninguno"} trend="warn" icon="alert" />
-        <KPI label="Marcadores" value={String(marcadoresEnScope)} delta={marcadoresEnScope ? "Notas y puntos del campo" : "Sin marcadores"} trend="up" icon="target" />
+        <KPI label="Marcadores" value={String(marcadoresEnScope)} delta={marcadoresEnScope ? "Notas y puntos del campo" : "Sin marcadores"} trend="flat" icon="target" />
       </div>
 
       <div className="row gap-8" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
@@ -582,6 +590,7 @@ export default function TabLotes() {
       {view === "mapa" && (
         <LotesMapa
           lotes={visibles}
+          notasNonce={notasNonce}
           selected={selected}
           onSelect={setSelected}
           layer={layer}
@@ -620,7 +629,7 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota, onCampoConLotes, hullPreview, campoConLotesCount, onTerminarCampo, onCancelarCampo,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota, onCampoConLotes, hullPreview, campoConLotesCount, onTerminarCampo, onCancelarCampo, notasNonce,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
@@ -646,6 +655,7 @@ function LotesMapa({
   campoConLotesCount?: number | null;
   onTerminarCampo?: () => void;
   onCancelarCampo?: () => void;
+  notasNonce?: number;
 }) {
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
     NDVI: [
@@ -699,7 +709,7 @@ function LotesMapa({
       setNotasPorLote(m);
     }).catch(() => {});
     return () => { cancelado = true; };
-  }, [lotes.length]);
+  }, [lotes.length, notasNonce]);
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId), nota: notasPorLote[l.dbId || l.id] ?? null }));
   // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
   const establecimientosGeo = [
@@ -982,9 +992,13 @@ function LoteFichaTecnica({
           <span>·</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="sprout" size={13} /> {lote.cultivo || "Sin cultivo"} {lote.variety || ""}</span>
           <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexShrink: 0 }}>
-            <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`}>
-              {lote.sano ? <Icon name="check" size={11} /> : <Icon name="alert" size={11} />} {lote.sano ? "Saludable" : "Atención"}
-            </span>
+            {lote.ndvi > 0 ? (
+              <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`}>
+                {lote.sano ? <Icon name="check" size={11} /> : <Icon name="alert" size={11} />} {lote.sano ? "Saludable" : "Atención"}
+              </span>
+            ) : (
+              <span className="mc-badge mc-badge--neutral">Sin datos</span>
+            )}
           </div>
         </div>
       </div>
@@ -1121,7 +1135,7 @@ function LoteFichaTecnica({
 }
 
 type Prescripcion = {
-  producto: string; dosisBase: number; estrategia: string; fuente: string; areaHa: number;
+  producto: string; dosisBase: number; estrategia: string; fuente: string; areaHa: number; simulado?: boolean;
   resumen: { celdas: number; prodTotal: number; prodUniforme: number; ahorroPct: number; zonas: { zona: string; dosis: number; ha: number; color: string }[] };
   geojson: { type: "FeatureCollection"; features: { geometry: { type: "Polygon"; coordinates: number[][][] }; properties: { ndvi: number; zona: string; dosis: number; color: string } }[] };
 };
@@ -1199,7 +1213,9 @@ function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
           <Mapa />
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <span className="text-xs text-muted">{res.resumen.celdas} zonas · fuente {res.fuente}</span>
-            {res.resumen.ahorroPct !== 0 && (
+            {res.simulado ? (
+              <span className="mc-badge mc-badge--neutral" style={{ fontSize: 10.5 }} title="Sin NDVI satelital real (Sentinel), la zonificación es una estimación demostrativa">Demostración · sin NDVI real</span>
+            ) : res.resumen.ahorroPct !== 0 && (
               <span className="mc-badge mc-badge--green" style={{ fontSize: 10.5 }}>{res.resumen.ahorroPct > 0 ? `−${res.resumen.ahorroPct}% insumo` : `+${-res.resumen.ahorroPct}% insumo`} vs dosis fija</span>
             )}
           </div>
@@ -1212,7 +1228,11 @@ function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
               </div>
             ))}
           </div>
-          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargar}><Icon name="download" size={13} />Descargar GeoJSON (para maquinaria)</button>
+          {res.simulado ? (
+            <div className="text-xs text-muted" title="La descarga para maquinaria requiere NDVI satelital real (Sentinel)">Descarga no disponible en modo demostración (requiere NDVI satelital real).</div>
+          ) : (
+            <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargar}><Icon name="download" size={13} />Descargar GeoJSON (para maquinaria)</button>
+          )}
         </div>
       )}
     </div>

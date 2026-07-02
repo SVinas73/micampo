@@ -74,6 +74,8 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number; cultivo?: string | null }[]>([]);
   const [distribucion, setDistribucion] = useState<DistCultivo[]>([]);
   const [planKpis, setPlanKpis] = useState({ generados: 0, aprobados: 0, superficie: 0, inversion: 0, proximaFecha: "", proximaCultivo: "" });
+  const [refreshAnalisis, setRefreshAnalisis] = useState(0);
+  const [refreshPlanes, setRefreshPlanes] = useState(0);
 
   // KPIs reales del Planificador (a partir de los planes de siembra guardados).
   useEffect(() => {
@@ -92,15 +94,16 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
           aprobados: d.filter((p) => p.estado === "Aprobado").length,
           superficie: d.reduce((s, p) => s + (p.hectareas || 0), 0),
           inversion: d.reduce((s, p) => s + (p.costoEstimado || 0), 0),
-          proximaFecha: prox ? new Date(prox.fechaSiembraRecomendada!).toLocaleDateString("es-AR") : "",
+          proximaFecha: prox ? new Date(prox.fechaSiembraRecomendada!).toLocaleDateString("es-AR", { timeZone: "UTC" }) : "",
           proximaCultivo: prox?.cultivo || "",
         });
       })
       .catch(() => {});
-  }, [planificadorMode, loteActivo?.id, establecimientoId]);
+  }, [planificadorMode, loteActivo?.id, establecimientoId, refreshPlanes]);
 
   useEffect(() => {
-    const d = scopeLotes;
+    // Respeta el lote puntual del sidebar: Estados y Distribución se acotan a ese lote.
+    const d = loteActivo?.id ? scopeLotes.filter((l) => l.id === loteActivo.id) : scopeLotes;
     // Sin guardia: si el scope queda vacío, la lista debe reflejarlo (no stale).
     setLotes(d.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0, cultivo: l.cultivo })));
     // Distribución real por cultivo (0 si no hay lotes con cultivo sembrado)
@@ -114,7 +117,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         .sort((a, b) => b[1] - a[1])
         .map(([nombre, ha]) => ({ nombre, ha: Math.round(ha), pct: Math.round((ha / tot) * 100), color: CULTIVO_COLOR[nombre] || "#5e7733", icon: CULTIVO_ICON[nombre] || "leaf" }))
     );
-  }, [scopeLotes]);
+  }, [scopeLotes, loteActivo?.id]);
 
   const guardarSiembra = async (data: SiembraData) => {
     if (!data.loteId) { toast.show("Elegí un lote real para registrar la siembra", "err"); return; }
@@ -130,6 +133,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
           hectareas: lotes.find((l) => l.id === data.loteId)?.ha || 0,
           densidad: data.densidad ? parseFloat(data.densidad) : null,
           costoSemilla: data.inversion ? parseFloat(data.inversion) : null,
+          responsable: data.responsable || null,
           observaciones: `Destino: ${data.destinos.join(", ") || "—"} · Recomendación IA insumos: ${data.usarIA ? "Sí" : "No"}`,
         }),
       });
@@ -174,15 +178,12 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
       {siembraOpen && <NuevaSiembraModal lotes={lotes} onClose={() => setSiembraOpen(false)} onConfirm={guardarSiembra} />}
       {cosechaOpen && (
         <NuevaCosechaModal
-          cultivosListos={demo([
-            { loteId: lotes[1]?.id, lote: "Lote 4", cultivo: "Maíz", estado: "Listo para cosecha", madurez: 100, humedad: 14 },
-            { loteId: lotes[2]?.id, lote: "Lote 2", cultivo: "Soja", estado: "En crecimiento", madurez: 85, humedad: 18 },
-          ], [] as { loteId?: string; lote: string; cultivo: string; estado: string; madurez: number; humedad: number }[])}
+          cultivosListos={lotes.filter((l) => l.cultivo && l.id).map((l) => ({ loteId: l.id, lote: l.nombre, cultivo: l.cultivo as string, estado: "En campo", madurez: 0, humedad: 0 }))}
           onClose={() => setCosechaOpen(false)}
           onConfirm={guardarCosecha}
         />
       )}
-      <NuevoAnalisisModal open={analisisOpen} onClose={() => setAnalisisOpen(false)} lotes={lotes} toast={toast} />
+      <NuevoAnalisisModal open={analisisOpen} onClose={() => setAnalisisOpen(false)} lotes={lotes} toast={toast} onSaved={() => setRefreshAnalisis((n) => n + 1)} />
 
       {planificadorMode ? (
         <div className="grid g-cols-5">
@@ -233,9 +234,9 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       )}
 
-      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} onEditar={() => setSiembraOpen(true)} />}
+      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} onEditar={() => setSiembraOpen(true)} onChanged={() => setRefreshPlanes((n) => n + 1)} />}
       {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={(loteId) => abrirNuevaLabor(loteId)} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
-      {!planificadorMode && sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} />}
+      {!planificadorMode && sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} refreshKey={refreshAnalisis} />}
     </>
   );
 }
@@ -477,12 +478,13 @@ function DonutResumen({ data }: { data: DistCultivo[] }) {
 
 /* ========== PLANIFICADOR IA (Figma CultivosPlanificador) ========== */
 function CultivosPlanificador({
-  toast, lotes, loteActivoId, onEditar,
+  toast, lotes, loteActivoId, onEditar, onChanged,
 }: {
   toast: ReturnType<typeof useToast>;
   lotes: { id?: string; nombre: string; ha: number }[];
   loteActivoId?: string;
   onEditar: () => void;
+  onChanged?: () => void;
 }) {
   const [activos, setActivos] = useState<PlanActivo[]>(demo(PLANES_ACTIVOS_DEMO, []));
   const [recomendados, setRecomendados] = useState<PlanIA[]>(demo(PLANES_IA_DEMO, []));
@@ -520,10 +522,10 @@ function CultivosPlanificador({
 
   const regenerar = async () => {
     if (generando) return;
+    const loteReal = loteObjetivo;
+    if (!loteReal) { toast.show("Elegí un lote guardado (en el panel lateral) para generar planes con IA", "err"); return; }
     setGenerando(true);
     try {
-      const loteReal = loteObjetivo;
-      if (!loteReal) throw new Error("sin lote");
       const res = await fetch("/api/planes-siembra/generar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -576,13 +578,14 @@ function CultivosPlanificador({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ estado: "Aprobado" }),
       }).catch(() => {});
+      onChanged?.();
     }
     toast.show(`"${p.sugerencia}" convertido en plan activo`);
   };
 
   const descartar = async (p: PlanIA) => {
     setRecomendados((prev) => prev.filter((x) => x !== p));
-    if (p.id) await fetch(`/api/planes-siembra/${p.id}`, { method: "DELETE" }).catch(() => {});
+    if (p.id) { await fetch(`/api/planes-siembra/${p.id}`, { method: "DELETE" }).catch(() => {}); onChanged?.(); }
     toast.show("Sugerencia descartada");
   };
 
@@ -619,7 +622,7 @@ function CultivosPlanificador({
             <div key={i} style={{ border: `1.5px solid ${p.color}50`, borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ background: `${p.color}15`, borderBottom: `1.5px solid ${p.color}30`, padding: "12px 16px" }}>
                 <div className="row gap-10" style={{ alignItems: "center" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: p.color, display: "grid", placeItems: "center", fontSize: 18, flexShrink: 0 }}>{p.emoji}</div>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: p.color, display: "grid", placeItems: "center", color: "#fff", flexShrink: 0 }}><Icon name={p.emoji} size={18} /></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13, lineHeight: 1.3 }}>{p.titulo}</div>
                     <div className="text-xs text-muted mt-2">{p.ha} · Lotes {p.lotes}</div>
@@ -657,7 +660,7 @@ function CultivosPlanificador({
               </div>
               <div className="row gap-8" style={{ padding: "10px 16px", borderTop: `1.5px solid ${p.color}20` }}>
                 <button className="mc-btn mc-btn--secondary mc-btn--sm flex-1" style={{ fontSize: 11 }} onClick={onEditar}>
-                  <Icon name="edit" size={10} />Editar
+                  <Icon name="sprout" size={10} />Sembrar
                 </button>
                 <button className="mc-btn mc-btn--sm flex-1" style={{ fontSize: 11, background: p.color, color: "white", border: "none" }} onClick={() => generarOrden(p)}>
                   <Icon name="settings" size={11} />Generar Orden de Trabajo
@@ -735,9 +738,9 @@ function CultivosPlanificador({
 }
 
 /* ========== ANÁLISIS DE SUELO (Figma CultivosAnalisisSuelo) ========== */
-type AnalisisRow = { lote: string; cultivo: string; n: number; p: number; k: number; ph: number; mo: string; phStatus: string; moStatus: string };
+type AnalisisRow = { lote: string; cultivo: string; n: number; p: number; k: number; ph: number | null; mo: string; phStatus: string; moStatus: string };
 
-function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof useToast>; onVerMapa: () => void }) {
+function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: ReturnType<typeof useToast>; onVerMapa: () => void; refreshKey?: number }) {
   const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>(demo([
     { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 40, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
     { lote: "Lote 12 - Norte", cultivo: "Trigo Ciclo Corto · Hace 3 días", n: 95, p: 75, k: 60, ph: 5.2, mo: "1.9%", phStatus: "warn", moStatus: "warn" },
@@ -772,7 +775,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
               const phWarn = ph != null && (ph < 5.5 || ph > 7.5);
               const estado = pWarn || (ph != null && ph < 5.5) ? "Crítico" : phWarn || (p != null && p < 20) ? "Alerta" : "Óptimo";
               return {
-                fecha: new Date(a.fechaAnalisis).toLocaleDateString("es-AR"),
+                fecha: new Date(a.fechaAnalisis).toLocaleDateString("es-AR", { timeZone: "UTC" }),
                 lote: a.lote?.nombre || "Lote",
                 prof: a.profundidad || "0-20",
                 p: p != null ? `${Math.round(p)} ppm` : "—",
@@ -788,19 +791,20 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
         setLotesAnalisis(
           d.slice(0, 4).map((a: { lote?: { nombre: string }; fechaAnalisis: string; nitrogeno?: number; fosforo?: number; potasio?: number; pH?: number; materiaOrganica?: number }) => ({
             lote: a.lote?.nombre || "Lote",
-            cultivo: `Análisis · ${new Date(a.fechaAnalisis).toLocaleDateString("es-AR")}`,
-            n: Math.min(100, Math.round(a.nitrogeno || 50)),
-            p: Math.min(100, Math.round((a.fosforo || 40) * 2.5)),
-            k: Math.min(100, Math.round((a.potasio || 60) / 3)),
-            ph: a.pH || 6.2,
-            mo: `${a.materiaOrganica ?? 2.6}%`,
-            phStatus: (a.pH || 6.2) >= 6 && (a.pH || 6.2) <= 7 ? "ok" : "warn",
-            moStatus: (a.materiaOrganica ?? 2.6) >= 2.5 ? "ok" : "warn",
+            cultivo: `Análisis · ${new Date(a.fechaAnalisis).toLocaleDateString("es-AR", { timeZone: "UTC" })}`,
+            // Valores reales (0 si el análisis no reporta el nutriente); sin defaults inventados.
+            n: Math.min(100, Math.round(a.nitrogeno ?? 0)),
+            p: Math.min(100, Math.round((a.fosforo ?? 0) * 2.5)),
+            k: Math.min(100, Math.round((a.potasio ?? 0) / 3)),
+            ph: a.pH ?? null,
+            mo: a.materiaOrganica != null ? `${a.materiaOrganica}%` : "—",
+            phStatus: a.pH != null && a.pH >= 6 && a.pH <= 7 ? "ok" : "warn",
+            moStatus: a.materiaOrganica != null && a.materiaOrganica >= 2.5 ? "ok" : "warn",
           }))
         );
       })
       .catch(() => {});
-  }, []);
+  }, [refreshKey]);
 
 
   const descargarPDF = async (titulo: string, lineas: string[]) => {
@@ -824,7 +828,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
     if (a.n < 50) recs.push(`Urea 46-0-0: ${Math.round((60 - a.n) * 2.6)} kg/Ha (déficit de Nitrógeno)`);
     if (a.p < 50) recs.push(`Fosfato diamónico: ${Math.round((55 - a.p) * 1.8)} kg/Ha (déficit de Fósforo)`);
     if (a.k < 50) recs.push(`Cloruro de potasio: ${Math.round((60 - a.k) * 1.4)} kg/Ha (déficit de Potasio)`);
-    if (a.ph < 6) recs.push(`Enmienda calcárea: 800-1200 kg/Ha (pH ${a.ph} por debajo del óptimo)`);
+    if (a.ph != null && a.ph < 6) recs.push(`Enmienda calcárea: 800-1200 kg/Ha (pH ${a.ph} por debajo del óptimo)`);
     if (recs.length === 0) recs.push("Sin correcciones necesarias: mantener plan de fertilización actual.");
     return recs;
   };
@@ -845,7 +849,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
                 receta &&
                 descargarPDF(`Receta ${receta.lote}`, [
                   `Lote: ${receta.lote}`,
-                  `N: ${receta.n}% · P: ${receta.p}% · K: ${receta.k}% · pH ${receta.ph} · MO ${receta.mo}`,
+                  `N: ${receta.n}% · P: ${receta.p}% · K: ${receta.k}% · pH ${receta.ph ?? "—"} · MO ${receta.mo}`,
                   "",
                   "Recomendaciones:",
                   ...recomendacion(receta).map((r) => `- ${r}`),
@@ -863,7 +867,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
               <span><b>N:</b> {receta.n}%</span>
               <span><b>P:</b> {receta.p}%</span>
               <span><b>K:</b> {receta.k}%</span>
-              <span><b>pH:</b> {receta.ph}</span>
+              <span><b>pH:</b> {receta.ph ?? "—"}</span>
               <span><b>MO:</b> {receta.mo}</span>
             </div>
             <div className="col gap-8">
@@ -902,7 +906,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
                 <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>Soil Health</div>
                 <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12 }}>
                   <span className="mc-badge mc-badge--neutral">
-                    pH {l.ph} <span style={{ color: l.phStatus === "ok" ? "var(--mc-green-600)" : "var(--mc-amber)" }}>●</span>
+                    pH {l.ph ?? "—"} <span style={{ color: l.phStatus === "ok" ? "var(--mc-green-600)" : "var(--mc-amber)" }}>●</span>
                   </span>
                 </div>
                 <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12 }}>
@@ -918,7 +922,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa }: { toast: ReturnType<typeof 
                     className="mc-icon-btn"
                     style={{ width: 28, height: 28 }}
                     title="Descargar PDF"
-                    onClick={() => descargarPDF(`Analisis ${l.lote}`, [`Lote: ${l.lote}`, l.cultivo, `N ${l.n}% · P ${l.p}% · K ${l.k}%`, `pH ${l.ph} · MO ${l.mo}`])}
+                    onClick={() => descargarPDF(`Analisis ${l.lote}`, [`Lote: ${l.lote}`, l.cultivo, `N ${l.n}% · P ${l.p}% · K ${l.k}%`, `pH ${l.ph ?? "—"} · MO ${l.mo}`])}
                   >
                     <Icon name="download" size={13} />
                   </button>
@@ -1038,30 +1042,32 @@ function NutBar({ letter, value }: { letter: string; value: number }) {
 
 /* ========== MODAL NUEVO ANÁLISIS DE SUELO ========== */
 function NuevoAnalisisModal({
-  open, onClose, lotes, toast,
+  open, onClose, lotes, toast, onSaved,
 }: {
   open: boolean;
   onClose: () => void;
   lotes: { id?: string; nombre: string }[];
   toast: ReturnType<typeof useToast>;
+  onSaved?: () => void;
 }) {
   const [form, setForm] = useState({ loteIdx: 0, fecha: new Date().toISOString().slice(0, 10), ph: "6.2", mo: "2.6", n: "45", p: "18", k: "180" });
 
   const guardar = async () => {
     const l = lotes[form.loteIdx];
+    if (!l?.id) { toast.show("Elegí un lote guardado para registrar el análisis", "err"); return; }
     try {
-      if (l?.id) {
-        await fetch("/api/analisis-suelo", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            loteId: l.id, fechaAnalisis: form.fecha,
-            pH: parseFloat(form.ph), materiaOrganica: parseFloat(form.mo),
-            nitrogeno: parseFloat(form.n), fosforo: parseFloat(form.p), potasio: parseFloat(form.k),
-          }),
-        }).catch(() => {});
-      }
-      toast.show(`Análisis de suelo de ${l?.nombre || "lote"} registrado`);
+      const res = await fetch("/api/analisis-suelo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          loteId: l.id, fechaAnalisis: form.fecha,
+          pH: parseFloat(form.ph), materiaOrganica: parseFloat(form.mo),
+          nitrogeno: parseFloat(form.n), fosforo: parseFloat(form.p), potasio: parseFloat(form.k),
+        }),
+      }).catch(() => null);
+      if (!res || !res.ok) { toast.show("No se pudo registrar el análisis", "err"); return; }
+      toast.show(`Análisis de suelo de ${l.nombre} registrado`);
+      onSaved?.();
       onClose();
     } catch {
       toast.show("No se pudo registrar el análisis", "err");

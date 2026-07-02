@@ -1,7 +1,8 @@
 import type { ConfigCalculo, ProductoMezcla } from "./types";
 
 export function fmtUSD(n: number): string {
-  return "$" + n.toLocaleString("es-AR", { maximumFractionDigits: 0 });
+  // USD con separador de miles en-US (1,250) y sin decimales para montos agronómicos.
+  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 export function num(v: string | number | undefined): number {

@@ -133,7 +133,6 @@ const SEARCH_INDEX: { label: string; href: string; group: string }[] = [
   { label: "Establecimientos", href: "/establecimientos", group: "General" },
   { label: "Analítica IA", href: "/analitica", group: "Inteligencia" },
   { label: "Visión IA", href: "/vision", group: "Inteligencia" },
-  { label: "Campo 3D", href: "/campo-digital?tab=Campo 3D", group: "Agronomía" },
   { label: "Campo Digital", href: "/campo-digital", group: "Agronomía" },
   { label: "Lotes", href: "/campo-digital?tab=Lotes", group: "Agronomía" },
   { label: "Labores", href: "/campo-digital?tab=Labores", group: "Agronomía" },

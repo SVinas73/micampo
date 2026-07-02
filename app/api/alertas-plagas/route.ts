@@ -68,6 +68,7 @@ export async function POST(request: Request) {
       sintomas,
       areaAfectada,
       observaciones,
+      confianza: confianzaBody,
     } = await request.json();
 
     if (!loteId || !plaga || !tipo || !severidad) {
@@ -77,9 +78,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Simular análisis IA para recomendaciones
-    const confianza = 75 + Math.random() * 20; // 75-95%
-    
+    // Confianza real: la que aporte el detector (IA/foto); una observación manual es 100% (la vio una persona).
+    const confianza = typeof confianzaBody === "number" ? confianzaBody : 100;
+
     const recomendacionesIA: { [key: string]: any } = {
       "Insecto": {
         recomendacion: "Aplicar insecticida específico. Monitorear población cada 3 días.",

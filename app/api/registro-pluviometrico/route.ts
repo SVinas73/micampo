@@ -33,7 +33,9 @@ export async function GET(request: Request) {
     if (loteId) {
       where.loteId = loteId;
     } else if (loteIds !== null) {
-      where.loteId = { in: loteIds };
+      // Incluye también las lluvias "Campo General" (sin lote) del usuario, que si no
+      // quedarían invisibles al filtrar por los lotes del establecimiento.
+      where.OR = [{ loteId: { in: loteIds } }, { loteId: null }];
     }
 
     const registros = await prisma.registroPluviometrico.findMany({

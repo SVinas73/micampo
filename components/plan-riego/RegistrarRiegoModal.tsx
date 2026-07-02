@@ -62,10 +62,20 @@ export default function RegistrarRiegoModal({
   const [hora, setHora] = useState("05:00");
   const [mm, setMm] = useState(15);
   const [metodo, setMetodo] = useState("pivot1");
+  const [duracion, setDuracion] = useState(4);
+  const [durUnit, setDurUnit] = useState("horas");
   const [lotes, setLotes] = useState<Record<string, boolean>>({});
   const [obs, setObs] = useState("");
-  const [iaSel, setIaSel] = useState<Record<number, boolean>>({ 0: true, 1: true });
+  const [iaSel, setIaSel] = useState<Record<number, boolean>>({});
   const [guardando, setGuardando] = useState(false);
+
+  // Preselecciona todas las sugerencias IA disponibles (no asume que sean 2).
+  React.useEffect(() => {
+    if (!open) return;
+    const init: Record<number, boolean> = {};
+    sugerencias.forEach((_, i) => { init[i] = true; });
+    setIaSel(init);
+  }, [open, sugerencias]);
 
   // Lotes reales del usuario; preselecciona el activo (o el primero)
   const lotesOptions = React.useMemo(
@@ -116,7 +126,8 @@ export default function RegistrarRiegoModal({
 
   const submitManual = async () => {
     setGuardando(true);
-    await onRegistrar({ mm, fecha, hora, metodo: metodoLabel, lotes: lotesSel, observaciones: obs, fuente: "manual" });
+    const obsConDur = [obs, duracion ? `Duración: ${duracion} ${durUnit}` : ""].filter(Boolean).join(" · ");
+    await onRegistrar({ mm, fecha, hora, metodo: metodoLabel, lotes: lotesSel, observaciones: obsConDur, fuente: "manual" });
     setGuardando(false);
     onClose();
   };
@@ -259,10 +270,10 @@ export default function RegistrarRiegoModal({
                   <div>
                     <label style={lbl}>Duración estimada</label>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <input type="number" defaultValue={4} min={0} style={{ ...inp, width: 70 }} />
-                      <select style={{ ...inp, flex: 1 }}>
-                        <option>horas</option>
-                        <option>minutos</option>
+                      <input type="number" value={duracion} min={0} onChange={(e) => setDuracion(Number(e.target.value))} style={{ ...inp, width: 70 }} />
+                      <select value={durUnit} onChange={(e) => setDurUnit(e.target.value)} style={{ ...inp, flex: 1 }}>
+                        <option value="horas">horas</option>
+                        <option value="minutos">minutos</option>
                       </select>
                     </div>
                   </div>

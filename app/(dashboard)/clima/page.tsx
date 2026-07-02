@@ -69,6 +69,7 @@ function ClimaInner() {
 
   const [lotes, setLotes] = useState<LoteOpt[]>(demo(DEMO_LOTES, []));
   const [lluvias, setLluvias] = useState<LluviaRow[]>(demo(DEMO_LLUVIAS, []));
+  const [recargaLluvia, setRecargaLluvia] = useState(0);
   const [alertas, setAlertas] = useState<AlertaRow[]>(demo(DEMO_ALERTAS, []));
   const [editLluvia, setEditLluvia] = useState<LluviaRow | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
@@ -146,7 +147,7 @@ function ClimaInner() {
       .then((d) => { if (Array.isArray(d)) setAlertas(d.map(mapAlertaApi)); })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeIds, loteActivo?.id]);
+  }, [scopeIds, loteActivo?.id, recargaLluvia]);
 
   /* ---- Acciones ---- */
   const guardarLluvia = async (r: LluviaResult) => {
@@ -181,27 +182,33 @@ function ClimaInner() {
       tags: r.condiciones.map((c) => condToTag(c)),
     };
     setLluvias((prev) => [nueva, ...prev]);
+    setRecargaLluvia((n) => n + 1); // recarga la lista para normalizar los % de todas las barras
     toast.show(`Lluvia de ${r.mm} mm registrada en ${r.loteNombre}`);
     setShowLluvia(false);
   };
 
   const editarLluvia = async (r: LluviaResult) => {
     const obs = `Duración: ${r.duracion}h${r.condiciones.length ? " · Condiciones: " + r.condiciones.join(", ") : ""}`;
+    const fechaISO = r.fecha ? new Date(`${r.fecha}T${r.hora || "00:00"}`).toISOString() : null;
     if (editLluvia?.id) {
       const res = await fetch(`/api/registro-pluviometrico/${editLluvia.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ milimetros: r.mm, observaciones: obs }),
+        body: JSON.stringify({ milimetros: r.mm, observaciones: obs, ...(fechaISO ? { fecha: fechaISO } : {}) }),
       }).catch(() => null);
       if (!res || !res.ok) { toast.show("No se pudo actualizar el registro", "err"); return; }
     }
     setLluvias((prev) =>
       prev.map((x) =>
         x === editLluvia
-          ? { ...x, mm: r.mm, pct: Math.min(100, Math.round((r.mm / 50) * 100)), tags: r.condiciones.map((c) => condToTag(c)) }
+          ? {
+              ...x, mm: r.mm, pct: Math.min(100, Math.round((r.mm / 50) * 100)), tags: r.condiciones.map((c) => condToTag(c)),
+              ...(fechaISO ? { fechaRaw: fechaISO, fecha: new Date(fechaISO).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) + " - " + new Date(fechaISO).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) } : {}),
+            }
           : x
       )
     );
+    setRecargaLluvia((n) => n + 1);
     toast.show(`Registro actualizado: ${r.mm} mm`);
     setEditLluvia(null);
   };
@@ -751,7 +758,7 @@ function ClimaLluvias({
   const mesesConDatos = new Set(conFecha.filter((x) => x.d.getFullYear() === anioActual).map((x) => x.d.getMonth())).size;
   const promedioMensual = mesesConDatos ? Math.round(acumuladoAnio / mesesConDatos) : 0;
   const ultimaLluvia = conFecha.length ? conFecha.map((x) => x.d.getTime()).sort((a, b) => b - a)[0] : null;
-  const diasSinLluvia = ultimaLluvia ? Math.floor((hoyD.getTime() - ultimaLluvia) / 86400000) : null;
+  const diasSinLluvia = ultimaLluvia ? Math.max(0, Math.floor((hoyD.getTime() - ultimaLluvia) / 86400000)) : null;
   // Comparación con el promedio histórico (acumulado del año a la fecha)
   const histAcumALaFecha = historico ? historico.promedioMensual.slice(0, hoyD.getMonth() + 1).reduce((s, v) => s + v, 0) : 0;
   const pctVsHist = historico && histAcumALaFecha > 0 ? Math.round(((acumuladoAnio - histAcumALaFecha) / histAcumALaFecha) * 100) : null;

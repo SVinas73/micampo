@@ -32,7 +32,8 @@ export default function AguaUlt30Dias({ lluvias, riegos, histMm }: { lluvias: Ll
     ].sort((a, b) => b.t - a.t).slice(0, 8);
     const histPeriodo = histMm != null ? Math.round((histMm * periodo) / 30) : null;
     const total = lluviaMm + riegoMm;
-    const pctVsHist = histPeriodo && histPeriodo > 0 ? Math.round(((total - histPeriodo) / histPeriodo) * 100) : null;
+    // El histórico es de LLUVIA, así que se compara contra la lluvia real (no lluvia+riego).
+    const pctVsHist = histPeriodo && histPeriodo > 0 ? Math.round(((lluviaMm - histPeriodo) / histPeriodo) * 100) : null;
     return { total, lluviaMm, riegoMm, eventos, histPeriodo, pctVsHist };
   }, [lluvias, riegos, histMm, periodo]);
 
@@ -59,9 +60,9 @@ export default function AguaUlt30Dias({ lluvias, riegos, histMm }: { lluvias: Ll
         </div>
         {histPeriodo != null && (
           <div style={{ padding: "8px 12px", background: "var(--mc-blue-bg)", borderRadius: 10, textAlign: "right" }}>
-            <div className="text-xs text-muted">prom. histórico</div>
+            <div className="text-xs text-muted">prom. histórico lluvia</div>
             <div className="font-semi" style={{ color: "var(--mc-blue)", fontSize: 14 }}>{histPeriodo} mm</div>
-            {pctVsHist != null && <div className="text-xs" style={{ color: pctVsHist >= 0 ? "var(--mc-green-700)" : "var(--mc-red)", fontWeight: 600 }}>{pctVsHist >= 0 ? "+" : ""}{pctVsHist}%</div>}
+            {pctVsHist != null && <div className="text-xs" style={{ color: pctVsHist >= 0 ? "var(--mc-green-700)" : "var(--mc-red)", fontWeight: 600 }} title="Lluvia real del período vs promedio histórico de lluvia">{pctVsHist >= 0 ? "+" : ""}{pctVsHist}% lluvia</div>}
           </div>
         )}
       </div>

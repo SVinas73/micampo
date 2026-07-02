@@ -925,6 +925,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 :root[data-theme="dark"] .mc-kpi__delta--up { color: var(--mc-green-200); }
 .mc-kpi__delta--down { color: var(--mc-red); }
 .mc-kpi__delta--warn { color: var(--mc-gold-700); }
+/* Delta neutral: rótulo descriptivo sin tendencia (sin flecha ni color de variación). */
+.mc-kpi__delta--flat { color: var(--mc-text-3); }
 
 .mc-kpi--accent {
   background: var(--mc-green-50);
@@ -1161,6 +1163,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   }
   /* Grillas de muchas columnas por hora (ventana de pulverización) → scroll horizontal */
   [style*="repeat(6, 1fr)"], [style*="repeat(6,1fr)"] { overflow-x: auto; }
+  /* Grillas internas de 4 columnas (nutrientes de suelo, análisis) → 2 columnas */
+  [style*="1fr 1fr 1fr 1fr"] { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 520px) {
+  /* Filas anchas de datos (histórico de lluvias/alertas de clima) → apiladas */
+  [style*="170px 1fr 1.5fr"], [style*="auto 1fr 1.2fr auto"] { grid-template-columns: 1fr !important; row-gap: 4px !important; }
 }
 
 /* ============================================================

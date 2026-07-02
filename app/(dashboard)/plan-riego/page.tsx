@@ -198,7 +198,7 @@ function PlanRiegoInner() {
       const res = await fetch("/api/planes-riego", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          loteId, nombre: `Plan de riego · ${loteNombre}`, cultivo, etapaFenologica: "Media",
+          loteId, nombre: `Plan de riego · ${loteNombre}`, cultivo, etapaFenologica: etapa,
           tipoSuelo: "Franco", etcDiaria: etcDia || 4, frecuenciaRiego: 3,
           laminaRiego: Math.round(10 + (estrategia / 100) * 12), fechaInicio: new Date().toISOString(),
           costoMM: COSTO_MM, eficienciaRiego: 85, modoIA: true,
@@ -209,15 +209,15 @@ function PlanRiegoInner() {
       setPlanRiegoId(p.id);
       return p.id;
     } catch { return null; }
-  }, [planRiegoId, loteId, loteNombre, cultivo, etcDia, estrategia]);
+  }, [planRiegoId, loteId, loteNombre, cultivo, etcDia, estrategia, etapa]);
 
-  const postEvento = useCallback(async (mm: number, fechaISO: string, observaciones: string) => {
+  const postEvento = useCallback(async (mm: number, fechaISO: string, observaciones: string, estado: string = "Programado") => {
     const plan = await ensurePlan();
     if (!plan) return false;
     // Usa la fecha indicada (sugerencia IA o manual); si viene inválida, hoy.
     const cuando = fechaISO && !Number.isNaN(new Date(fechaISO).getTime()) ? new Date(fechaISO).toISOString() : new Date().toISOString();
     try {
-      const res = await fetch("/api/eventos-riego", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planRiegoId: plan, fechaProgramada: cuando, laminaAplicada: mm, estado: "Programado", observaciones }) });
+      const res = await fetch("/api/eventos-riego", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planRiegoId: plan, fechaProgramada: cuando, laminaAplicada: mm, estado, observaciones }) });
       return res.ok;
     } catch { return false; }
   }, [ensurePlan]);
@@ -236,9 +236,11 @@ function PlanRiegoInner() {
     const iso = r.fuente === "ia"
       ? (r.fechaISO || new Date().toISOString())
       : (r.fecha ? new Date(`${r.fecha}T${r.hora || "00:00"}:00`).toISOString() : new Date().toISOString());
-    const ok = await postEvento(r.mm, iso, r.observaciones);
+    // Persistir método / hora / lotes en las observaciones (antes se descartaban).
+    const detalle = [r.observaciones, r.metodo && `Método: ${r.metodo}`, r.hora && `Hora: ${r.hora}`, r.lotes?.length ? `Lotes: ${r.lotes.join(", ")}` : ""].filter(Boolean).join(" · ");
+    const ok = await postEvento(r.mm, iso, detalle, "Ejecutado");
     if (!ok) { toast.show("No se pudo guardar el riego", "err"); return; }
-    setRiegos((prev) => [{ t: Date.now(), mm: r.mm, estado: r.fuente === "ia" ? "ejecutado" : "Reporte manual", ia: r.fuente === "ia" }, ...prev]);
+    setRiegos((prev) => [{ t: Date.now(), mm: r.mm, estado: "Ejecutado", ia: r.fuente === "ia" }, ...prev]);
     toast.show(r.fuente === "ia" ? "Riego IA confirmado" : "Registro manual guardado");
   }, [postEvento, toast]);
 
@@ -334,6 +336,7 @@ function PlanRiegoInner() {
           cargando={cargandoBalance}
           subtitle={`Próximos ${balance.length || 7} días · ${loteNombre} · ${cultivo}`}
           aguaUtilMm={aguaUtilMm}
+          humedadActual={s0}
         />
         <AguaUlt30Dias lluvias={lluvias} riegos={riegos} histMm={histMm} />
       </div>

@@ -146,15 +146,17 @@ export default function TabLabores() {
       .then((d) => {
         if (!Array.isArray(d)) return;
         setLabores(
-          d.map((l: { id: string; tipo: string; descripcion?: string; fecha: string; estado?: string; prioridad?: string; operarios?: string; loteId?: string; lote?: { nombre: string }; motivoBloqueo?: string }) => {
-            const f = new Date(l.fecha);
+          d.map((l: { id: string; tipo: string; descripcion?: string; fecha: string; estado?: string; prioridad?: string; operarios?: string; loteId?: string; lote?: { nombre: string; cultivo?: string | null }; motivoBloqueo?: string }) => {
+            // Fecha en UTC (la fecha se guarda a medianoche UTC): evita el corrimiento de un día.
+            const iso = l.fecha.slice(0, 10);
+            const [, mm, dd] = iso.split("-");
             return {
               id: l.id, dbId: l.id, tarea: l.descripcion || l.tipo, tipo: l.tipo,
-              lote: l.lote?.nombre || "—", loteId: l.loteId, cultivo: "—",
+              lote: l.lote?.nombre || "—", loteId: l.loteId, cultivo: l.lote?.cultivo || "—",
               responsable: l.operarios || "Equipo",
-              fecha: `${String(f.getDate()).padStart(2, "0")}/${String(f.getMonth() + 1).padStart(2, "0")}`,
-              fechaISO: l.fecha.slice(0, 10),
-              prioridad: (l.prioridad === "Urgente" ? "alta" : "media") as "alta" | "media",
+              fecha: `${dd}/${mm}`,
+              fechaISO: iso,
+              prioridad: (l.prioridad === "Urgente" || l.prioridad === "Alta" ? "alta" : l.prioridad === "Baja" ? "baja" : "media") as "alta" | "media" | "baja",
               estado: derivarEstado(l.estado, l.fecha),
               motivoBloqueo: l.motivoBloqueo || undefined,
             };
@@ -213,9 +215,13 @@ export default function TabLabores() {
     if (conId.length === 0) { toast.show("Elegí al menos un lote guardado para emitir la orden", "err"); return; }
     const params = Object.entries(orden.parametros).map(([k, v]) => `${k.split(" (")[0]}: ${v}`).join(", ");
     const obs = `Operario: ${orden.operario} · ${orden.tractor} + ${orden.implemento} · Insumos: ${orden.insumos.map((i) => `${i.nombre} ${i.dosis} ${i.unidad}`).join(", ") || "—"}${params ? ` · Parámetros: ${params}` : ""} · Costo est: $${orden.costoTotal} USD`;
+    // El costo total de la orden se reparte entre los lotes por hectáreas, para que
+    // cada labor persista su parte como CostoLote (se propaga a Costos/Economía).
+    const totalHa = conId.reduce((s, l) => s + (l.ha || 0), 0);
     try {
       const creadas: LaborUI[] = [];
       for (const lote of conId) {
+        const costoLote = totalHa > 0 ? Math.round((orden.costoTotal * (lote.ha || 0)) / totalHa) : Math.round(orden.costoTotal / conId.length);
         const res = await fetch("/api/labores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -223,6 +229,7 @@ export default function TabLabores() {
             tipo: orden.actividad, fecha: hoyISO(), loteId: lote.id,
             superficieTrabajada: lote.ha || 0, descripcion: orden.actividad,
             observaciones: obs, prioridad: orden.prioridad, operarios: orden.operario,
+            costoTotal: costoLote,
           }),
         });
         if (!res.ok) continue;
@@ -248,9 +255,12 @@ export default function TabLabores() {
     [labores, filtroTipo]
   );
   const tareasHoy = labores.filter((l) => ["Hoy", "En curso", "Pausada"].includes(l.estado)).slice(0, 4);
-  const completadasMes = labores.filter((l) => l.estado === "Completada").length;
+  const completadasTotal = labores.filter((l) => l.estado === "Completada").length;
+  // "Completados este mes" cuenta solo las del mes calendario actual.
+  const mesActualISO = new Date().toISOString().slice(0, 7);
+  const completadasMes = labores.filter((l) => l.estado === "Completada" && (l.fechaISO || "").slice(0, 7) === mesActualISO).length;
   const atrasadas = labores.filter((l) => l.estado === "Atrasada");
-  const pctCompletadas = labores.length ? Math.round((completadasMes / labores.length) * 100) : 0;
+  const pctCompletadas = labores.length ? Math.round((completadasTotal / labores.length) * 100) : 0;
   // Deltas reales (sin números inventados)
   const enCursoN = labores.filter((l) => l.estado === "En curso").length;
   const paraHoyN = labores.filter((l) => l.estado === "Hoy").length;
@@ -294,7 +304,7 @@ export default function TabLabores() {
         <KPI label="Programadas" value={String(labores.filter((l) => l.estado === "Programada").length)} delta={`${paraHoyN} para hoy`} trend="up" icon="calendar" accent />
         <KPI label="Pendientes" value={String(labores.filter((l) => !["Completada"].includes(l.estado)).length)} delta={`${enCursoN} en curso`} trend="up" icon="wrench" />
         <KPI label="Atrasadas" value={String(atrasadas.length)} delta={atrasadas.slice(0, 2).map((l) => (l.lote || "").split(" - ")[0]).filter(Boolean).join(" + ") || "Ninguna"} trend="warn" icon="alert" warn />
-        <KPI label="% Completadas" value={`${pctCompletadas}%`} delta={`${completadasMes}/${labores.length} labores`} trend="up" icon="check" />
+        <KPI label="% Completadas" value={`${pctCompletadas}%`} delta={`${completadasTotal}/${labores.length} labores`} trend="up" icon="check" />
         <KPI label="Completados este mes" value={String(completadasMes)} delta={mesActual} trend="up" icon="activity" />
       </div>
 
@@ -352,7 +362,7 @@ export default function TabLabores() {
                     </div>
                     <div>
                       <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 12 }}>{l.responsable}</div>
-                      <div className="text-xs text-muted">{l.tipo === "Pulverización" ? "Mosquito Metalfor" : l.tipo === "Siembra" ? "John Deere 6J" : "Pivote Valley"}</div>
+                      <div className="text-xs text-muted">{l.cultivo && l.cultivo !== "—" ? l.cultivo : l.tipo}</div>
                     </div>
                   </div>
                   <div className="col gap-4" style={{ alignItems: "stretch" }}>

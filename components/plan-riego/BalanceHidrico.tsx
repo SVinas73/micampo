@@ -54,6 +54,7 @@ export default function BalanceHidrico({
   cargando,
   subtitle,
   aguaUtilMm,
+  humedadActual: humedadActualProp,
 }: {
   balance: PuntoBalance[];
   sugerencias: SugerenciaIA[];
@@ -65,6 +66,7 @@ export default function BalanceHidrico({
   cargando?: boolean;
   subtitle?: string;
   aguaUtilMm?: number;
+  humedadActual?: number;
 }) {
   const W = 900, H = 360;
   const padL = 56, padR = 30, padT = 40, padB = 56;
@@ -98,13 +100,18 @@ export default function BalanceHidrico({
   const sinRiegoPath = smoothPath(sinRiego);
   const conRiegoPath = smoothPath(conRiego);
 
-  // Bloques de riego en los días reales donde se aplicó riego (salto en con-riego)
-  const gap = conRiego.map((c, i) => c - (sinRiego[i] ?? c));
-  const iaDays: number[] = [];
-  for (let i = 1; i < gap.length; i++) if (gap[i] - gap[i - 1] > 4) iaDays.push(i);
-  const iaBars = iaDays.map((d, idx) => ({ day: d, level: conRiego[d], label: `+${sugerencias[idx]?.mm ?? 15}mm` }));
+  // Cada barra IA se ubica en el día REAL de su sugerencia (matcheando el número de día
+  // de la etiqueta con el del eje) y muestra su mm propio — no por orden de barra.
+  const iaBars = sugerencias
+    .map((s) => {
+      const num = (s.fecha || "").trim().split(/\s+/).pop();
+      const day = days.findIndex((d) => d.trim().split(/\s+/).pop() === num);
+      return day >= 0 ? { day, level: conRiego[day] ?? 0, label: `+${s.mm}mm` } : null;
+    })
+    .filter((b): b is { day: number; level: number; label: string } => b !== null);
 
-  const humedadActual = conRiego[0] ?? 0;
+  // Humedad actual: fuente única de verdad (la de la página, s0); si no viene, cae al inicio del balance.
+  const humedadActual = humedadActualProp ?? conRiego[0] ?? 0;
   const minSin = sinRiego.length ? Math.min(...sinRiego) : 0;
 
   return (

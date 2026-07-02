@@ -483,7 +483,7 @@ export function EditarLoteModal({
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 11, color: "var(--mc-muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Campo Digital · Lotes</div>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--mc-ink)" }}>Editar Lote {lote.id}</h3>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--mc-ink)" }}>Editar Lote {lote.name}</h3>
           </div>
           <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#64748b", display: "grid", placeItems: "center" }}>
             <Icon name="x" size={14} />
@@ -555,7 +555,7 @@ export function NuevaTareaModal({
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 11, color: "var(--mc-muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>Campo Digital · Labores</div>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--mc-ink)" }}>Nueva Tarea · {lote.id} {lote.name}</h3>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--mc-ink)" }}>Nueva Tarea · {lote.name}</h3>
           </div>
           <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#64748b", display: "grid", placeItems: "center" }}>
             <Icon name="x" size={14} />
@@ -621,7 +621,7 @@ export function TimelineLoteModal({
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div>
             <div className="mc-card__eyebrow">Timeline del Lote</div>
-            <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 16, marginTop: 2 }}>{lote.id} · {lote.name}</div>
+            <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 16, marginTop: 2 }}>{lote.name}</div>
           </div>
           <button className="mc-icon-btn" onClick={onClose}><Icon name="x" size={14} /></button>
         </div>
