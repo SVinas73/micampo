@@ -2,7 +2,7 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 58 HECHO · 2 DIFERIDO · 54 PENDIENTE (de 114).
+**Resumen:** 63 HECHO · 2 DIFERIDO · 49 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
@@ -20,15 +20,10 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `f180f8eb` | media | cross-module | components/campo-digital/TabDeteccion.tsx:320 | 'Presión pronosticada' no reacciona al alcance Campo/Lote |
 | `ae0f4b78` | media | kpi-datos | components/campo-digital/TabDeteccion.tsx:139 | KPIs 'Confianza IA', 'NDVI', 'Riesgo Economico' y 'Monitoreo Semanal' son placeholders sin cálculo real (siempre '—') |
 | `fb4edadb` | media | bug | components/campo-digital/TabLotes.tsx:691 | Notas georreferenciadas nuevas no aparecen en el mapa hasta remontar (efecto keyed en lotes.length que no cambia) |
-| `05854bf7` | media | scope | components/campo-digital/TabLotes.tsx:67 | El alcance global de LOTE (loteId del sidebar) es ignorado: la pestaña solo reacciona al establecimiento |
-| `877739f9` | media | bug | components/campo-digital/TabLotes.tsx:532 | Filtro de cultivo incompleto: no incluye Cebada/Sorgo/Avena/Trébol, imposible aislar esos lotes |
 | `57ee955e` | media | kpi-datos | components/campo-digital/TabLotes.tsx:489 | Deltas de KPI con flecha verde 'up' placeholder: no representan tendencia real |
-| `ec901cc8` | media | inconsistencia | components/campo-digital/TabLotes.tsx:207 | Estadio fenológico inventado 'Vegetativo' al crear lote con cultivo (inconsistente con el estado tras recargar) |
-| `e65d5d31` | media | dato-falso | components/campo-digital/TabLotes.tsx:493 | KPI 'Marcadores' en TabLotes hardcodeada (demo '14'/'0') pese a fetchear marcadores reales |
 | `9428ef27` | media | dato-falso | components/campo-digital/TabResumen.tsx:135 | Todas las 'Últimas actividades' se atribuyen al usuario logueado (nombre + foto), ignorando operarios/aplicadoPor reales |
 | `a38d99c2` | media | kpi-datos | components/campo-digital/TabResumen.tsx:95 | Con un establecimiento filtrado, los otros campos de la card 'Campos y lotes' muestran 0 ha si no tienen hectareasTotales cargadas |
 | `4bc5d742` | media | dato-falso | components/campo-digital/labores-Wizard.tsx:49 | Wizard 'Nueva Orden' lleno de datos hardcodeados presentados como reales |
-| `20ffc892` | media | dato-falso | components/campo-digital/lotes-data.ts:158 | Badge 'Saludable' por defecto sin dato: lotes sin NDVI se muestran siempre como saludables |
 | `bd614e26` | media | bug | components/clima/RadarReal.tsx:30 | El radar no se re-centra al cambiar de establecimiento/lote (queda en el campo anterior) |
 | `c8ed4a6e` | media | kpi-datos | components/plan-riego/AguaUlt30Dias.tsx:35 | '% vs histórico' compara lluvia+riego contra un promedio histórico que es sólo lluvia (comparación inflada) |
 | `2c401f1a` | media | inconsistencia | components/plan-riego/BalanceHidrico.tsx:130 | Inconsistencia de 'agua útil': el KPI de la página usa s0% y el card del gráfico usa conRiego[0]% (números distintos en la misma pantalla) |
@@ -131,4 +126,9 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `8a7143ce` | media | components/campo-digital/TabLabores.tsx | KPI 'Completados este mes' cuenta TODAS las labores completadas (sin filtro de mes) |
 | `6d047be4` | media | components/campo-digital/TabLabores.tsx | La columna Cultivo siempre muestra '—': la API no selecciona lote.cultivo |
 | `bc39e3ac` | media | components/campo-digital/TabLabores.tsx | Off-by-one en la fecha dd/MM mostrada (Kanban/Tabla) por parsear DateTime UTC en zona negativa |
+| `05854bf7` | media | components/campo-digital/TabLotes.tsx | El alcance global de LOTE (loteId del sidebar) es ignorado: la pestaña solo reacciona al establecimiento |
+| `877739f9` | media | components/campo-digital/TabLotes.tsx | Filtro de cultivo incompleto: no incluye Cebada/Sorgo/Avena/Trébol, imposible aislar esos lotes |
+| `ec901cc8` | media | components/campo-digital/TabLotes.tsx | Estadio fenológico inventado 'Vegetativo' al crear lote con cultivo (inconsistente con el estado tras recargar) |
+| `e65d5d31` | media | components/campo-digital/TabLotes.tsx | KPI 'Marcadores' en TabLotes hardcodeada (demo '14'/'0') pese a fetchear marcadores reales |
+| `20ffc892` | media | components/campo-digital/lotes-data.ts | Badge 'Saludable' por defecto sin dato: lotes sin NDVI se muestran siempre como saludables |
 | `d8fa151b` | baja | components/campo-digital/TabCultivos.tsx | Modal Nueva Cosecha sin cultivos seleccionables en producción (lista demo → vacía) |

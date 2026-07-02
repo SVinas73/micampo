@@ -160,7 +160,9 @@ export function LoteOverlay({
           <div style={{ minWidth: 0 }}>
             <div className="row gap-6" style={{ alignItems: "center" }}>
               <span className="font-semi" style={{ fontSize: 15.5, color: "var(--mc-ink)" }}>{lote.name}</span>
-              <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`} style={{ fontSize: 10 }}>{lote.sano ? "Saludable" : "Atención"}</span>
+              {lote.ndvi > 0
+                ? <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`} style={{ fontSize: 10 }}>{lote.sano ? "Saludable" : "Atención"}</span>
+                : <span className="mc-badge mc-badge--neutral" style={{ fontSize: 10 }}>Sin datos</span>}
             </div>
             <div className="text-xs text-muted" style={{ marginTop: 2 }}>
               {c ? `${c.lat.toFixed(4)}° , ${c.lng.toFixed(4)}°` : lote.campo}

@@ -283,7 +283,7 @@
   "fix": "Consumir loteId/loteActivo del scope: cuando haya un lote activo, preseleccionarlo (setSelected) y/o filtrar la vista a ese lote, además de reaccionar al establecimiento.",
   "confianza": 0.8,
   "_id": "05854bf7",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Filtro de cultivo incompleto: no incluye Cebada/Sorgo/Avena/Trébol, imposible aislar esos lotes",
@@ -296,7 +296,7 @@
   "fix": "Generar las opciones de filtro dinámicamente desde los cultivos presentes en los lotes (o desde la lista canónica de cultivos compartida).",
   "confianza": 0.9,
   "_id": "877739f9",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Deltas de KPI con flecha verde 'up' placeholder: no representan tendencia real",
@@ -322,7 +322,7 @@
   "fix": "Cuando no haya NDVI ni datos sanitarios reales, mostrar un estado neutro ('Sin datos') en vez de 'Saludable'; reservar el badge verde para lotes con NDVI/monitoreo real.",
   "confianza": 0.75,
   "_id": "20ffc892",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Estadio fenológico inventado 'Vegetativo' al crear lote con cultivo (inconsistente con el estado tras recargar)",
@@ -335,7 +335,7 @@
   "fix": "Poner estadio: '—' en el objeto optimista de crearCampo, igual que mapLotesApi, para no inventar un estadio sin siembra.",
   "confianza": 0.85,
   "_id": "ec901cc8",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Modales muestran el ID crudo de base (cuid) del lote en el título",
@@ -595,7 +595,7 @@
   "escenario": "Usuario con notas/marcadores georreferenciados guardados: la KPI 'Marcadores' dice 0, contradiciendo los pines rojos visibles en el mapa.",
   "fix": "Contar los marcadores reales de /api/marcadores-geo (los del scope) y mostrar ese número; 0 honesto si no hay ninguno.",
   "_id": "e65d5d31",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "TabDeteccion ignora el scope del sidebar: fetch único sin establecimientoId ni re-fetch",

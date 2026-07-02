@@ -64,7 +64,7 @@ export default function TabLotes() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { recargar, establecimientos, establecimientoId } = useLoteScope();
+  const { recargar, establecimientos, establecimientoId, loteId } = useLoteScope();
   // Modo "delimitar establecimiento": llega desde el card de Establecimientos.
   const delimitarId = searchParams.get("delimitar");
   const estDelimitar = delimitarId ? establecimientos.find((e) => e.id === delimitarId) || null : null;
@@ -167,11 +167,13 @@ export default function TabLotes() {
     [establecimientos, localEstId]
   );
 
-  // Lotes visibles en el submódulo según el filtro local de establecimiento.
-  const enScope = useMemo(
-    () => (localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId)),
-    [lotes, localEstId]
-  );
+  // Lotes visibles en el submódulo según el filtro local de establecimiento y,
+  // si el sidebar tiene un lote puntual activo, se acota a ese lote.
+  const enScope = useMemo(() => {
+    const porEst = localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId);
+    if (loteId && loteId !== "todos") return porEst.filter((l) => (l.dbId || l.id) === loteId);
+    return porEst;
+  }, [lotes, localEstId, loteId]);
 
   const visibles = useMemo(
     () => enScope.filter((l) => filtroCultivo === "Todos" || l.cultivo === filtroCultivo),
@@ -219,7 +221,7 @@ export default function TabLotes() {
         ...prev,
         {
           id: dbId || `L-${prev.length + 1}`, dbId, name: data.nombre, campo: data.nombre, ha: data.hectareas,
-          cultivo: data.cultivo, estadio: data.cultivo ? "Vegetativo" : "—", ndvi: 0, aguaUtil: 0, sano: true, vacio: !data.cultivo, comentarios: [],
+          cultivo: data.cultivo, estadio: "—", ndvi: 0, aguaUtil: 0, sano: true, vacio: !data.cultivo, comentarios: [],
           geojson: geom?.geojson ?? null, cultivoColor: data.cultivo ? (CULTIVO_COLORES[data.cultivo] || "#5e7733") : null,
           establecimientoId: data.establecimientoId ?? localEst?.id ?? null,
         },
@@ -986,9 +988,13 @@ function LoteFichaTecnica({
           <span>·</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="sprout" size={13} /> {lote.cultivo || "Sin cultivo"} {lote.variety || ""}</span>
           <div style={{ marginLeft: "auto", display: "flex", gap: 6, flexShrink: 0 }}>
-            <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`}>
-              {lote.sano ? <Icon name="check" size={11} /> : <Icon name="alert" size={11} />} {lote.sano ? "Saludable" : "Atención"}
-            </span>
+            {lote.ndvi > 0 ? (
+              <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`}>
+                {lote.sano ? <Icon name="check" size={11} /> : <Icon name="alert" size={11} />} {lote.sano ? "Saludable" : "Atención"}
+              </span>
+            ) : (
+              <span className="mc-badge mc-badge--neutral">Sin datos</span>
+            )}
           </div>
         </div>
       </div>
