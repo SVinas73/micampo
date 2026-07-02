@@ -452,7 +452,7 @@
   "fix": "Usar `?? default` solo cuando el valor sea null/undefined y distinguir 0 real ('—' o el 0 honesto). Reemplazar las barras 'porcentuales' por los valores reales con sus unidades (ppm, kg/ha) o una escala agronómica documentada, no multiplicadores inventados.",
   "confianza": 0.8,
   "_id": "cbcc60d5",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Doble fetch simultáneo idéntico a /api/planes-siembra al montar el Planificador",
@@ -764,7 +764,7 @@
   "escenario": "Plan con fechaSiembraRecomendada 2026-10-15 se muestra como '14/10/2026' en el KPI 'Próxima Siembra' y en la tarjeta del plan.",
   "confianza": 0.8,
   "_id": "9c6279fa",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Tarjetas 'Planes Activos' muestran el texto 'wheat'/'sprout'/'leaf'/'sun' en vez de un ícono",
@@ -790,7 +790,7 @@
   "escenario": "Establecimiento sin lotes: el usuario abre Nuevo Análisis, completa valores y presiona 'Registrar análisis' → ve 'registrado' pero no se guardó nada.",
   "confianza": 0.85,
   "_id": "d470d01e",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Nuevos análisis de suelo no aparecen hasta recargar (estado stale, sin refetch)",
@@ -803,7 +803,7 @@
   "escenario": "Usuario carga un análisis nuevo, ve el toast de éxito, pero la tabla y el gráfico siguen igual; debe recargar la página para verlo.",
   "confianza": 0.85,
   "_id": "e849ee9c",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Barras de macronutrientes con escalados arbitrarios y defaults inventados presentados como % reales",
@@ -816,7 +816,7 @@
   "escenario": "Un análisis cargado sin fósforo muestra la barra 'P 100%' en verde (óptimo), sugiriendo un nivel de fósforo excelente que nunca se midió.",
   "confianza": 0.75,
   "_id": "571955d3",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Grillas internas de 4 columnas fijas sin colapso en mobile (overflow)",

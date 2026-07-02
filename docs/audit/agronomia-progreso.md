@@ -2,7 +2,7 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 47 HECHO · 2 DIFERIDO · 65 PENDIENTE (de 114).
+**Resumen:** 52 HECHO · 2 DIFERIDO · 60 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
@@ -15,12 +15,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `62b61ec0` | media | scope | app/api/alertas-climaticas/route.ts:14 | Las alertas climáticas no reaccionan al establecimiento/lote del sidebar |
 | `a7546ecc` | media | kpi-datos | components/campo-digital/TabCultivos.tsx:79 | KPI 'Planes Aprobados' y la lista quedan stale tras Convertir/Descartar (no re-fetch) |
 | `84ed58ba` | media | bug | components/campo-digital/TabCultivos.tsx:651 | Botón 'Editar' de un Plan Activo abre 'Nueva Siembra' en blanco (no edita el plan) |
-| `cbcc60d5` | media | dato-falso | components/campo-digital/TabCultivos.tsx:784 | Análisis de Suelo: valores reales en 0 se reemplazan por defaults inventados (N/P/K/pH/MO) |
 | `3ef3ad2f` | media | cross-module | components/campo-digital/TabCultivos.tsx:62 | Selección de un lote individual en el sidebar no filtra Estados ni Distribución |
-| `9c6279fa` | media | bug | components/campo-digital/TabCultivos.tsx:94 | Fechas con off-by-one por parseo UTC de fechas date-only (es-AR) |
-| `d470d01e` | media | bug | components/campo-digital/TabCultivos.tsx:1045 | Nuevo Análisis de Suelo: toast de éxito sin persistir cuando el lote no tiene id |
-| `e849ee9c` | media | bug | components/campo-digital/TabCultivos.tsx:743 | Nuevos análisis de suelo no aparecen hasta recargar (estado stale, sin refetch) |
-| `571955d3` | media | dato-falso | components/campo-digital/TabCultivos.tsx:781 | Barras de macronutrientes con escalados arbitrarios y defaults inventados presentados como % reales |
 | `3bf2e284` | media | responsive | components/campo-digital/TabCultivos.tsx:307 | Grillas internas de 4 columnas fijas sin colapso en mobile (overflow) |
 | `f180f8eb` | media | cross-module | components/campo-digital/TabDeteccion.tsx:320 | 'Presión pronosticada' no reacciona al alcance Campo/Lote |
 | `ae0f4b78` | media | kpi-datos | components/campo-digital/TabDeteccion.tsx:139 | KPIs 'Confianza IA', 'NDVI', 'Riesgo Economico' y 'Monitoreo Semanal' son placeholders sin cálculo real (siempre '—') |
@@ -127,7 +122,12 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `d273d479` | media | app/(dashboard)/cuaderno-campo/page.tsx | KPIs y encabezado del PDF ignoran el filtro de tipo: números inconsistentes con lo mostrado |
 | `8333621f` | media | app/(dashboard)/layout.tsx | Entrada 'Campo 3D' del command palette apunta a un tab inexistente y cae en Resumen |
 | `a18fc42a` | media | app/api/alertas-plagas/route.ts | Dato IA fabricado: confianza aleatoria persistida como real en alertas-plagas POST (tabla compartida con Detección) |
+| `cbcc60d5` | media | components/campo-digital/TabCultivos.tsx | Análisis de Suelo: valores reales en 0 se reemplazan por defaults inventados (N/P/K/pH/MO) |
+| `9c6279fa` | media | components/campo-digital/TabCultivos.tsx | Fechas con off-by-one por parseo UTC de fechas date-only (es-AR) |
 | `b71af02e` | media | components/campo-digital/TabCultivos.tsx | Tarjetas 'Planes Activos' muestran el texto 'wheat'/'sprout'/'leaf'/'sun' en vez de un ícono |
+| `d470d01e` | media | components/campo-digital/TabCultivos.tsx | Nuevo Análisis de Suelo: toast de éxito sin persistir cuando el lote no tiene id |
+| `e849ee9c` | media | components/campo-digital/TabCultivos.tsx | Nuevos análisis de suelo no aparecen hasta recargar (estado stale, sin refetch) |
+| `571955d3` | media | components/campo-digital/TabCultivos.tsx | Barras de macronutrientes con escalados arbitrarios y defaults inventados presentados como % reales |
 | `c7cabc8b` | media | components/campo-digital/TabDeteccion.tsx | TabDeteccion ignora el scope del sidebar: fetch único sin establecimientoId ni re-fetch |
 | `425c0815` | media | components/campo-digital/TabDeteccion.tsx | KPI 'Confianza IA' con IABadge doble y valor placeholder '96%' oculto solo por modo demo |
 | `58fd33b6` | media | components/campo-digital/TabDeteccion.tsx | 'Agregar a Labores' desde Información crea la labor con superficieTrabajada 0 |
