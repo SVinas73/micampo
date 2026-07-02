@@ -336,6 +336,7 @@ function PlanRiegoInner() {
           cargando={cargandoBalance}
           subtitle={`Próximos ${balance.length || 7} días · ${loteNombre} · ${cultivo}`}
           aguaUtilMm={aguaUtilMm}
+          humedadActual={s0}
         />
         <AguaUlt30Dias lluvias={lluvias} riegos={riegos} histMm={histMm} />
       </div>

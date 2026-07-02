@@ -2,7 +2,7 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 73 HECHO · 3 DIFERIDO · 38 PENDIENTE (de 114).
+**Resumen:** 78 HECHO · 3 DIFERIDO · 33 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
@@ -12,13 +12,8 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `9d281b08` | media | responsive | app/(dashboard)/clima/page.tsx:868 | Filas del histórico de lluvias y de alertas usan grid de columnas fijas sin colapso ni scroll en mobile |
 | `84ed58ba` | media | bug | components/campo-digital/TabCultivos.tsx:651 | Botón 'Editar' de un Plan Activo abre 'Nueva Siembra' en blanco (no edita el plan) |
 | `3bf2e284` | media | responsive | components/campo-digital/TabCultivos.tsx:307 | Grillas internas de 4 columnas fijas sin colapso en mobile (overflow) |
-| `f180f8eb` | media | cross-module | components/campo-digital/TabDeteccion.tsx:320 | 'Presión pronosticada' no reacciona al alcance Campo/Lote |
-| `ae0f4b78` | media | kpi-datos | components/campo-digital/TabDeteccion.tsx:139 | KPIs 'Confianza IA', 'NDVI', 'Riesgo Economico' y 'Monitoreo Semanal' son placeholders sin cálculo real (siempre '—') |
-| `fb4edadb` | media | bug | components/campo-digital/TabLotes.tsx:691 | Notas georreferenciadas nuevas no aparecen en el mapa hasta remontar (efecto keyed en lotes.length que no cambia) |
 | `57ee955e` | media | kpi-datos | components/campo-digital/TabLotes.tsx:489 | Deltas de KPI con flecha verde 'up' placeholder: no representan tendencia real |
 | `4bc5d742` | media | dato-falso | components/campo-digital/labores-Wizard.tsx:49 | Wizard 'Nueva Orden' lleno de datos hardcodeados presentados como reales |
-| `bd614e26` | media | bug | components/clima/RadarReal.tsx:30 | El radar no se re-centra al cambiar de establecimiento/lote (queda en el campo anterior) |
-| `2c401f1a` | media | inconsistencia | components/plan-riego/BalanceHidrico.tsx:130 | Inconsistencia de 'agua útil': el KPI de la página usa s0% y el card del gráfico usa conRiego[0]% (números distintos en la misma pantalla) |
 | `6d6b21d9` | baja | inconsistencia | app/(dashboard)/clima/page.tsx:179 | Inconsistencia en el % de la barra de mm entre registro nuevo y recargado (base 50 vs máximo real) |
 | `30dd7e53` | baja | bug | app/(dashboard)/clima/page.tsx:753 | 'Días sin lluvia' puede quedar negativo y el gráfico usa fecha local sobre ISO UTC (riesgo de mes/día corrido) |
 | `919ddb05` | baja | kpi-datos | app/(dashboard)/cuaderno-campo/page.tsx:43 | 'Lotes con registro' cuenta por nombre de lote, no por id: nombres duplicados colapsan el conteo |
@@ -114,12 +109,15 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `c7cabc8b` | media | components/campo-digital/TabDeteccion.tsx | TabDeteccion ignora el scope del sidebar: fetch único sin establecimientoId ni re-fetch |
 | `425c0815` | media | components/campo-digital/TabDeteccion.tsx | KPI 'Confianza IA' con IABadge doble y valor placeholder '96%' oculto solo por modo demo |
 | `58fd33b6` | media | components/campo-digital/TabDeteccion.tsx | 'Agregar a Labores' desde Información crea la labor con superficieTrabajada 0 |
+| `f180f8eb` | media | components/campo-digital/TabDeteccion.tsx | 'Presión pronosticada' no reacciona al alcance Campo/Lote |
+| `ae0f4b78` | media | components/campo-digital/TabDeteccion.tsx | KPIs 'Confianza IA', 'NDVI', 'Riesgo Economico' y 'Monitoreo Semanal' son placeholders sin cálculo real (siempre '—') |
 | `4e74914a` | media | components/campo-digital/TabLabores.tsx | KPI 'Completados este mes' / '% Completadas' cuenta TODAS las completadas, sin filtro de mes |
 | `0c248557` | media | components/campo-digital/TabLabores.tsx | Calendario mensual de Labores no compensa el día de la semana del día 1 (desalineación de fechas) |
 | `683e5b16` | media | components/campo-digital/TabLabores.tsx | Datos de operario/maquinaria inventados en 'Tareas para Hoy' de Labores |
 | `8a7143ce` | media | components/campo-digital/TabLabores.tsx | KPI 'Completados este mes' cuenta TODAS las labores completadas (sin filtro de mes) |
 | `6d047be4` | media | components/campo-digital/TabLabores.tsx | La columna Cultivo siempre muestra '—': la API no selecciona lote.cultivo |
 | `bc39e3ac` | media | components/campo-digital/TabLabores.tsx | Off-by-one en la fecha dd/MM mostrada (Kanban/Tabla) por parsear DateTime UTC en zona negativa |
+| `fb4edadb` | media | components/campo-digital/TabLotes.tsx | Notas georreferenciadas nuevas no aparecen en el mapa hasta remontar (efecto keyed en lotes.length que no cambia) |
 | `05854bf7` | media | components/campo-digital/TabLotes.tsx | El alcance global de LOTE (loteId del sidebar) es ignorado: la pestaña solo reacciona al establecimiento |
 | `877739f9` | media | components/campo-digital/TabLotes.tsx | Filtro de cultivo incompleto: no incluye Cebada/Sorgo/Avena/Trébol, imposible aislar esos lotes |
 | `ec901cc8` | media | components/campo-digital/TabLotes.tsx | Estadio fenológico inventado 'Vegetativo' al crear lote con cultivo (inconsistente con el estado tras recargar) |
@@ -127,7 +125,9 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `9428ef27` | media | components/campo-digital/TabResumen.tsx | Todas las 'Últimas actividades' se atribuyen al usuario logueado (nombre + foto), ignorando operarios/aplicadoPor reales |
 | `a38d99c2` | media | components/campo-digital/TabResumen.tsx | Con un establecimiento filtrado, los otros campos de la card 'Campos y lotes' muestran 0 ha si no tienen hectareasTotales cargadas |
 | `20ffc892` | media | components/campo-digital/lotes-data.ts | Badge 'Saludable' por defecto sin dato: lotes sin NDVI se muestran siempre como saludables |
+| `bd614e26` | media | components/clima/RadarReal.tsx | El radar no se re-centra al cambiar de establecimiento/lote (queda en el campo anterior) |
 | `c8ed4a6e` | media | components/plan-riego/AguaUlt30Dias.tsx | '% vs histórico' compara lluvia+riego contra un promedio histórico que es sólo lluvia (comparación inflada) |
+| `2c401f1a` | media | components/plan-riego/BalanceHidrico.tsx | Inconsistencia de 'agua útil': el KPI de la página usa s0% y el card del gráfico usa conRiego[0]% (números distintos en la misma pantalla) |
 | `820ee3aa` | media | components/plan-riego/BalanceHidrico.tsx | Las barras IA del gráfico etiquetan mm por orden de barra, no por sugerencia (desalineación posible) |
 | `9e326dfc` | media | components/plan-riego/RegistrarRiegoModal.tsx | Input 'Duración estimada' del modal manual es un control muerto (sin estado ni onChange) |
 | `3b89d333` | media | components/plan-riego/RegistrarRiegoModal.tsx | Preselección de sugerencias IA hardcodeada a los índices 0 y 1 (asume exactamente 2 sugerencias) |

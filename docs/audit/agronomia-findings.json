@@ -167,7 +167,7 @@
   "escenario": "Usuario ve el radar centrado en Campo A. Cambia a Campo B (a 200 km) en el sidebar. El pronóstico y KPIs se actualizan, pero el mapa de radar sigue centrado en Campo A con el pin en el lugar viejo.",
   "fix": "Agregar un efecto que haga `mapRef.current?.setView([lat, lon])` y reubique el marcador cuando cambian lat/lon, o pasar `key={\\`${lat},${lon}\\`}` al montar RadarReal para forzar remount.",
   "_id": "bd614e26",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Filas del histórico de lluvias y de alertas usan grid de columnas fijas sin colapso ni scroll en mobile",
@@ -271,7 +271,7 @@
   "fix": "Refetchear /api/marcadores-geo tras guardar (exponer un recargarNotas o cambiar la dependencia a un nonce que se incremente al crear una nota), o insertar la nota nueva en notasPorLote de forma optimista.",
   "confianza": 0.88,
   "_id": "fb4edadb",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "El alcance global de LOTE (loteId del sidebar) es ignorado: la pestaña solo reacciona al establecimiento",
@@ -1077,7 +1077,7 @@
   "fix": "Usar una única fuente de verdad para 'humedad actual' (s0 o conRiego[0]) y derivar mm y % de la misma base en KPI y card.",
   "confianza": 0.8,
   "_id": "2c401f1a",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Las barras IA del gráfico etiquetan mm por orden de barra, no por sugerencia (desalineación posible)",
@@ -1299,7 +1299,7 @@
   "fix": "Pasar establecimientoId/loteId al endpoint y filtrar los lotes usados para el pronóstico/reglas por el scope activo; agregar la dependencia al useEffect para re-fetch.",
   "confianza": 0.72,
   "_id": "f180f8eb",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "prob por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %)",
@@ -1325,7 +1325,7 @@
   "fix": "Calcular 'Confianza IA' como promedio de a.confianza de las alertas reales, 'Riesgo Economico' desde las prescripciones/pérdida potencial, y 'Monitoreo Semanal' desde el scope de lotes; o eliminar las cards que no se pueden alimentar en vez de dejarlas siempre en '—'.",
   "confianza": 0.72,
   "_id": "ae0f4b78",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Probabilidad por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %)",

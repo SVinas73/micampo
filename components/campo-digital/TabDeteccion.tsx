@@ -334,20 +334,27 @@ type Prescripcion = { producto: string; principioActivo: string; dosis: string; 
 type RiesgoClima = { amenaza: string; cultivo: string; lote: string; nivel: "Alto" | "Medio" | "Bajo"; probabilidad: number; ventana: string; causa: string; prescripcion?: Prescripcion };
 
 function Probabilidades() {
-  const [riesgos, setRiesgos] = useState<RiesgoClima[]>([]);
+  const [riesgosRaw, setRiesgosRaw] = useState<RiesgoClima[]>([]);
   const [cargando, setCargando] = useState(true);
   const [simulado, setSimulado] = useState(false);
+  const { lotes: scopeLotes, loteActivo } = useLoteScope();
 
   useEffect(() => {
     fetch("/api/lotes/presion-plagas")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (Array.isArray(d?.riesgos)) setRiesgos(d.riesgos);
+        if (Array.isArray(d?.riesgos)) setRiesgosRaw(d.riesgos);
         setSimulado(Boolean(d?.simulado));
       })
       .catch(() => {})
       .finally(() => setCargando(false));
   }, []);
+
+  // Acota los riesgos al alcance Campo → Lote del sidebar (por nombre de lote).
+  const riesgos = useMemo(() => {
+    const nombres = new Set((loteActivo ? [loteActivo] : scopeLotes).map((l) => l.nombre));
+    return nombres.size === 0 ? riesgosRaw : riesgosRaw.filter((r) => nombres.has(r.lote));
+  }, [riesgosRaw, scopeLotes, loteActivo]);
 
   const colorDe = (n: string) => (n === "Alto" ? "#d13a3a" : n === "Medio" ? "#d9a538" : "#768f44");
   const lightDe = (n: string) => (n === "Alto" ? "#e85f5f" : n === "Medio" ? "#e8b859" : "#6db870");

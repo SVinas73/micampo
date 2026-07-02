@@ -16,6 +16,7 @@ type Frame = { time: number; path: string };
 export default function RadarReal({ lat, lon, marcador = false }: { lat: number; lon: number; marcador?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.CircleMarker | null>(null);
   const hostRef = useRef<string>("https://tilecache.rainviewer.com");
   const framesRef = useRef<Frame[]>([]);
   const pastLenRef = useRef(0);
@@ -37,7 +38,7 @@ export default function RadarReal({ lat, lon, marcador = false }: { lat: number;
     }).addTo(map);
 
     if (marcador) {
-      L.circleMarker([lat, lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#c93434", fillOpacity: 1 })
+      markerRef.current = L.circleMarker([lat, lon], { radius: 7, color: "#fff", weight: 2, fillColor: "#c93434", fillOpacity: 1 })
         .addTo(map)
         .bindTooltip("Tu campo", { permanent: false });
     }
@@ -61,6 +62,12 @@ export default function RadarReal({ lat, lon, marcador = false }: { lat: number;
     return () => { map.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-centra el radar y mueve el marcador al cambiar de establecimiento/lote.
+  useEffect(() => {
+    if (mapRef.current) mapRef.current.setView([lat, lon]);
+    markerRef.current?.setLatLng([lat, lon]);
+  }, [lat, lon]);
 
   const showFrame = (i: number) => {
     const map = mapRef.current;

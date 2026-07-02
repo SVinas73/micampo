@@ -54,6 +54,7 @@ export default function BalanceHidrico({
   cargando,
   subtitle,
   aguaUtilMm,
+  humedadActual: humedadActualProp,
 }: {
   balance: PuntoBalance[];
   sugerencias: SugerenciaIA[];
@@ -65,6 +66,7 @@ export default function BalanceHidrico({
   cargando?: boolean;
   subtitle?: string;
   aguaUtilMm?: number;
+  humedadActual?: number;
 }) {
   const W = 900, H = 360;
   const padL = 56, padR = 30, padT = 40, padB = 56;
@@ -108,7 +110,8 @@ export default function BalanceHidrico({
     })
     .filter((b): b is { day: number; level: number; label: string } => b !== null);
 
-  const humedadActual = conRiego[0] ?? 0;
+  // Humedad actual: fuente única de verdad (la de la página, s0); si no viene, cae al inicio del balance.
+  const humedadActual = humedadActualProp ?? conRiego[0] ?? 0;
   const minSin = sinRiego.length ? Math.min(...sinRiego) : 0;
 
   return (

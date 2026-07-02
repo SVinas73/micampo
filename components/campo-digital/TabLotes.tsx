@@ -85,6 +85,7 @@ export default function TabLotes() {
   const [drawArmed, setDrawArmed] = useState(false);
   const [modoNota, setModoNota] = useState(false);
   const [notaPunto, setNotaPunto] = useState<{ lat: number; lng: number; loteId?: string; establecimientoId?: string; nombre: string } | null>(null);
+  const [notasNonce, setNotasNonce] = useState(0); // se incrementa al guardar una nota para refrescar el mapa
   // Modo "crear establecimiento dibujando lotes"
   const [modoCampoLotes, setModoCampoLotes] = useState(false);
   const [lotesNuevos, setLotesNuevos] = useState<{ id: string; geojson: { type: "Polygon"; coordinates: number[][][] } }[]>([]);
@@ -188,7 +189,7 @@ export default function TabLotes() {
   const [marcadores, setMarcadores] = useState<{ loteId?: string | null; establecimientoId?: string | null }[]>([]);
   useEffect(() => {
     fetch("/api/marcadores-geo").then((r) => (r.ok ? r.json() : [])).then((d) => { if (Array.isArray(d)) setMarcadores(d); }).catch(() => {});
-  }, [lotes.length]);
+  }, [lotes.length, notasNonce]);
   const marcadoresEnScope = useMemo(() => {
     if (localEstId === "todos") return marcadores.length;
     const ids = new Set(enScope.map((l) => l.dbId || l.id));
@@ -454,6 +455,7 @@ export default function TabLotes() {
       }),
     }).catch(() => null);
     toast.show(res && res.ok ? `Nota guardada en ${notaPunto.nombre}` : "No se pudo guardar la nota", res && res.ok ? "ok" : "err");
+    if (res && res.ok) setNotasNonce((n) => n + 1); // refresca notas y marcadores en el mapa
     setNotaPunto(null);
   };
 
@@ -588,6 +590,7 @@ export default function TabLotes() {
       {view === "mapa" && (
         <LotesMapa
           lotes={visibles}
+          notasNonce={notasNonce}
           selected={selected}
           onSelect={setSelected}
           layer={layer}
@@ -626,7 +629,7 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota, onCampoConLotes, hullPreview, campoConLotesCount, onTerminarCampo, onCancelarCampo,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota, onCampoConLotes, hullPreview, campoConLotesCount, onTerminarCampo, onCancelarCampo, notasNonce,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
@@ -652,6 +655,7 @@ function LotesMapa({
   campoConLotesCount?: number | null;
   onTerminarCampo?: () => void;
   onCancelarCampo?: () => void;
+  notasNonce?: number;
 }) {
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
     NDVI: [
@@ -705,7 +709,7 @@ function LotesMapa({
       setNotasPorLote(m);
     }).catch(() => {});
     return () => { cancelado = true; };
-  }, [lotes.length]);
+  }, [lotes.length, notasNonce]);
   const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId), nota: notasPorLote[l.dbId || l.id] ?? null }));
   // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
   const establecimientosGeo = [
