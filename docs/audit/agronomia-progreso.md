@@ -2,16 +2,13 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 37 HECHO · 77 PENDIENTE (de 114).
+**Resumen:** 38 HECHO · 2 DIFERIDO · 74 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
 | id | sev | cat | archivo:línea | hallazgo |
 |----|-----|-----|---------------|----------|
 | `4baf90a8` | alta | dato-falso | components/campo-digital/TabDeteccion.tsx:139 | KPIs de TabDeteccion hardcodeados con demo() → muestran '—' en producción pese a haber datos reales |
-| `09b0548f` | alta | cross-module | components/campo-digital/TabLabores.tsx:217 | El wizard no envía 'productos': los insumos nunca descuentan stock ni crean AplicacionProducto |
-| `900cea3f` | alta | cross-module | components/campo-digital/TabLabores.tsx:218 | El wizard no envía maquinaId: el costo de maquinaria nunca se prorratea al lote en Economía |
-| `45638865` | alta | cross-module | components/campo-digital/TabLabores.tsx:210 | El costo total calculado en el wizard no se persiste como CostoLote (queda solo en texto) |
 | `71e719d9` | media | bug | app/(dashboard)/calculadora-dosis/page.tsx:171 | Al usar un preestablecido del usuario se arrastra un loteId obsoleto que puede romper el guardado (FK inexistente → 500) |
 | `828d47af` | media | inconsistencia | app/(dashboard)/calculadora-dosis/page.tsx:191 | Botón 'Riego + agroquímico' de Inicio abre una calculadora genérica de herbicida, no de fertirriego |
 | `37140ed1` | media | bug | app/(dashboard)/campo-digital/page.tsx:36 | Mecanismo de header actions (ActionsProvider/useHeaderActions) es código muerto: ningún tab inyecta acciones |
@@ -86,6 +83,13 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `d29dc56f` | baja | estetica | components/campo-digital/TabResumen.tsx:135 | Color de avatar de actividades (#5E8F78) fuera de la paleta oliva |
 | `8d9bca8f` | baja | bug | components/campo-digital/cultivos-Modales.tsx:96 | Campo 'Responsable / equipo' del modal Nueva Siembra se captura pero nunca se persiste |
 
+## DIFERIDO (cambio mayor / con API key)
+
+| id | sev | archivo | hallazgo | nota |
+|----|-----|---------|----------|------|
+| `09b0548f` | alta | components/campo-digital/TabLabores.tsx | El wizard no envía 'productos': los insumos nunca descuentan stock ni crean AplicacionProducto | Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. |
+| `900cea3f` | alta | components/campo-digital/TabLabores.tsx | El wizard no envía maquinaId: el costo de maquinaria nunca se prorratea al lote en Economía | Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. |
+
 ## HECHO
 
 | id | sev | archivo | hallazgo |
@@ -119,6 +123,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `86819c30` | alta | components/campo-digital/TabLabores.tsx | Deltas de KPI inventados en TabLabores: 'Sin asignar: 2', 'vs 76% mes ant.', '98% a tiempo' |
 | `44688718` | alta | components/campo-digital/TabLabores.tsx | Alertas y labores bloqueadas de ejemplo (BLOQUEADAS_DEMO) siempre visibles en 'Labores Bloqueados / Alertas' |
 | `b479d20f` | alta | components/campo-digital/TabLabores.tsx | TabLabores ignora el scope de establecimiento del sidebar (solo filtra por lote) |
+| `45638865` | alta | components/campo-digital/TabLabores.tsx | El costo total calculado en el wizard no se persiste como CostoLote (queda solo en texto) |
 | `e2b29057` | alta | components/campo-digital/TabLabores.tsx | KPIs con deltas y subtextos hardcodeados presentados como datos reales |
 | `f7b4060f` | alta | components/campo-digital/TabLabores.tsx | El calendario mensual no aplica offset de día de semana: todas las fechas quedan mal alineadas |
 | `649961a7` | alta | components/campo-digital/TabLotes.tsx | KPI 'Marcadores' hardcodeado (14/0) con delta falso 'Pozos, silos, casas' que no existen en el modelo de datos |

@@ -1365,7 +1365,8 @@
   "fix": "Mapear orden.insumos (con productoId/ubicacionId reales) al campo `productos` del POST para disparar el descuento de stock; el wizard debería usar el catálogo real de inventario en vez de INSUMOS_CATALOGO hardcodeado.",
   "line_hint": "214-222 vs route.ts 114-177",
   "_id": "09b0548f",
-  "_status": "PENDIENTE"
+  "_status": "DIFERIDO",
+  "_nota": "Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta."
  },
  {
   "titulo": "El wizard no envía maquinaId: el costo de maquinaria nunca se prorratea al lote en Economía",
@@ -1379,7 +1380,8 @@
   "fix": "Que el paso 3 seleccione una Maquinaria real (id) desde /api/maquinaria y se envíe maquinaId en el POST de emitirOrden.",
   "line_hint": "217-221; economia.ts 41-90",
   "_id": "900cea3f",
-  "_status": "PENDIENTE"
+  "_status": "DIFERIDO",
+  "_nota": "Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta."
  },
  {
   "titulo": "El costo total calculado en el wizard no se persiste como CostoLote (queda solo en texto)",
@@ -1393,7 +1395,7 @@
   "fix": "Al emitir, crear un CostoLote (concepto 'Labor'/'Maquinaria', monto=costoTotal, laborId) vía /api/costos-lote para que el costo se propague a Costos/Economía.",
   "line_hint": "210; Wizard 104-108,516",
   "_id": "45638865",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "KPIs con deltas y subtextos hardcodeados presentados como datos reales",

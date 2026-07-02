@@ -213,9 +213,13 @@ export default function TabLabores() {
     if (conId.length === 0) { toast.show("Elegí al menos un lote guardado para emitir la orden", "err"); return; }
     const params = Object.entries(orden.parametros).map(([k, v]) => `${k.split(" (")[0]}: ${v}`).join(", ");
     const obs = `Operario: ${orden.operario} · ${orden.tractor} + ${orden.implemento} · Insumos: ${orden.insumos.map((i) => `${i.nombre} ${i.dosis} ${i.unidad}`).join(", ") || "—"}${params ? ` · Parámetros: ${params}` : ""} · Costo est: $${orden.costoTotal} USD`;
+    // El costo total de la orden se reparte entre los lotes por hectáreas, para que
+    // cada labor persista su parte como CostoLote (se propaga a Costos/Economía).
+    const totalHa = conId.reduce((s, l) => s + (l.ha || 0), 0);
     try {
       const creadas: LaborUI[] = [];
       for (const lote of conId) {
+        const costoLote = totalHa > 0 ? Math.round((orden.costoTotal * (lote.ha || 0)) / totalHa) : Math.round(orden.costoTotal / conId.length);
         const res = await fetch("/api/labores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -223,6 +227,7 @@ export default function TabLabores() {
             tipo: orden.actividad, fecha: hoyISO(), loteId: lote.id,
             superficieTrabajada: lote.ha || 0, descripcion: orden.actividad,
             observaciones: obs, prioridad: orden.prioridad, operarios: orden.operario,
+            costoTotal: costoLote,
           }),
         });
         if (!res.ok) continue;

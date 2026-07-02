@@ -80,6 +80,7 @@ export async function POST(request: Request) {
       horasTrabajadas,
       maquinaId,
       productos, // Array de productos aplicados
+      costoTotal, // Costo estimado del evento (para propagar a Costos/Economía)
       estado,
       prioridad,
       motivoBloqueo,
@@ -174,6 +175,23 @@ export async function POST(request: Request) {
           }
         }
       }
+    }
+
+    // Persistir el costo del evento como CostoLote para que llegue a Costos/Economía.
+    const costoNum = typeof costoTotal === "number" ? costoTotal : parseFloat(costoTotal);
+    if (costoNum && !Number.isNaN(costoNum) && costoNum > 0) {
+      await prisma.costoLote.create({
+        data: {
+          loteId,
+          concepto: "Labor",
+          descripcion: descripcion || tipo,
+          monto: costoNum,
+          costoTotal: costoNum,
+          fecha: new Date(fecha),
+          laborId: labor.id,
+          userId: session.user.id,
+        },
+      });
     }
 
     // Retornar labor completa
