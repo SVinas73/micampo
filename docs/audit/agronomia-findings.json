@@ -88,7 +88,7 @@
   "escenario": "grep 'HISTORIAL_DEMO|PRESETS' solo devuelve las definiciones en presets.ts; ningún consumidor. Datos falsos con nombres propios ('J. Rodríguez', 'C. Martínez') permanecen en el código de producción.",
   "fix": "Eliminar HISTORIAL_DEMO y PRESETS de components/calculadora/presets.ts (dejar solo CONFIG_VACIA, que sí se usa).",
   "_id": "b8d826d7",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Lluvias 'Campo General' (sin lote) se guardan pero desaparecen para siempre al recargar",
@@ -193,7 +193,7 @@
   "escenario": "Existe una lluvia de 100 mm. El usuario carga una nueva de 40 mm: la barra aparece llena al 80%. Recarga → la barra de la misma lluvia pasa a ~40% porque ahora se normaliza contra los 100 mm. Da sensación de dato cambiante.",
   "fix": "Unificar el cálculo de pct (usar siempre la misma normalización) o, mejor, refetchear la lista tras guardar/editar para que todos los pct se recalculen contra el mismo máximo.",
   "_id": "6d6b21d9",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Endpoint /api/clima/pronostico (OpenWeather) es código muerto y depende de una API key ausente",
@@ -375,7 +375,7 @@
   "fix": "Cuando no haya Sentinel, no ofrecer/generar el mapa de prescripción (o marcarlo claramente como demostración no descargable), y no mostrar badge de ahorro% sobre NDVI sintético.",
   "confianza": 0.7,
   "_id": "5e315662",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "El Planificador ignora por completo el scope Campo→Lote: KPIs y planes no reaccionan al sidebar",
@@ -689,7 +689,7 @@
   "escenario": "Con MODO_DEMO activo, el modal 'Nueva Cosecha' ofrece 'Lote 4 - Maíz - Listo para cosecha (madurez 100%)' apuntando al id real del segundo lote del usuario, aunque ese lote no tenga maíz ni esté listo.",
   "fix": "No inyectar estado de cultivo de ejemplo sobre loteIds reales; derivar cultivosListos de siembras/cosechas reales por lote, o dejar el listado vacío hasta tener datos.",
   "_id": "9136db1a",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Botón 'Nueva Cosecha' es un flujo muerto en producción (lista de cultivos siempre vacía)",
@@ -845,7 +845,8 @@
   "escenario": "No existe ninguna pantalla que permita registrar ni visualizar rotaciones de cultivo pese a existir la API y el modelo RotacionCultivo.",
   "confianza": 0.85,
   "_id": "10539c84",
-  "_status": "PENDIENTE"
+  "_status": "DIFERIDO",
+  "_nota": "Endpoint real de rotaciones sin pantalla que lo consuma; cablear a una vista o consolidar con planes-siembra, o eliminar. Sin impacto de usuario hoy."
  },
  {
   "titulo": "Mensaje de error del Planificador engañoso cuando no hay lote seleccionado",

@@ -69,6 +69,7 @@ function ClimaInner() {
 
   const [lotes, setLotes] = useState<LoteOpt[]>(demo(DEMO_LOTES, []));
   const [lluvias, setLluvias] = useState<LluviaRow[]>(demo(DEMO_LLUVIAS, []));
+  const [recargaLluvia, setRecargaLluvia] = useState(0);
   const [alertas, setAlertas] = useState<AlertaRow[]>(demo(DEMO_ALERTAS, []));
   const [editLluvia, setEditLluvia] = useState<LluviaRow | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
@@ -146,7 +147,7 @@ function ClimaInner() {
       .then((d) => { if (Array.isArray(d)) setAlertas(d.map(mapAlertaApi)); })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeIds, loteActivo?.id]);
+  }, [scopeIds, loteActivo?.id, recargaLluvia]);
 
   /* ---- Acciones ---- */
   const guardarLluvia = async (r: LluviaResult) => {
@@ -181,6 +182,7 @@ function ClimaInner() {
       tags: r.condiciones.map((c) => condToTag(c)),
     };
     setLluvias((prev) => [nueva, ...prev]);
+    setRecargaLluvia((n) => n + 1); // recarga la lista para normalizar los % de todas las barras
     toast.show(`Lluvia de ${r.mm} mm registrada en ${r.loteNombre}`);
     setShowLluvia(false);
   };
@@ -206,6 +208,7 @@ function ClimaInner() {
           : x
       )
     );
+    setRecargaLluvia((n) => n + 1);
     toast.show(`Registro actualizado: ${r.mm} mm`);
     setEditLluvia(null);
   };

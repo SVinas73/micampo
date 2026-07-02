@@ -2,17 +2,12 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 102 HECHO · 7 DIFERIDO · 5 PENDIENTE (de 114).
+**Resumen:** 106 HECHO · 8 DIFERIDO · 0 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
 | id | sev | cat | archivo:línea | hallazgo |
 |----|-----|-----|---------------|----------|
-| `6d6b21d9` | baja | inconsistencia | app/(dashboard)/clima/page.tsx:179 | Inconsistencia en el % de la barra de mm entre registro nuevo y recargado (base 50 vs máximo real) |
-| `5e315662` | baja | dato-falso | app/api/lotes/[id]/prescripcion/route.ts:65 | Mapa de prescripción variable con NDVI sintético cuando Sentinel no está configurado, y ahorro% calculado sobre datos fabricados |
-| `10539c84` | baja | scope | app/api/rotaciones-cultivo/route.ts:25 | Endpoint /api/rotaciones-cultivo sin ningún consumidor (feature no cableada) |
-| `b8d826d7` | baja | scope | components/calculadora/presets.ts:79 | HISTORIAL_DEMO y PRESETS son datos demo hardcodeados que quedaron en el bundle (código muerto) |
-| `9136db1a` | baja | dato-falso | components/campo-digital/TabCultivos.tsx:175 | Cosecha de ejemplo (cultivosListos demo) puede filtrar loteIds reales del scope al modal de cosecha |
 
 ## DIFERIDO
 
@@ -21,6 +16,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `62b61ec0` | media | app/api/alertas-climaticas/route.ts | Las alertas climáticas no reaccionan al establecimiento/lote del sidebar | AlertaClimatica no tiene ubicación/establecimiento en el modelo: el clima es por área. Scoparlo requiere cambio de esquema. |
 | `37140ed1` | media | app/(dashboard)/campo-digital/page.tsx | Mecanismo de header actions (ActionsProvider/useHeaderActions) es código muerto: ningún tab inyecta acciones | Plumbing muerto (ActionsProvider) sin impacto de usuario; limpiar o implementar acciones de header más adelante. |
 | `36b8b998` | baja | components/campo-digital/TabCultivos.tsx | Doble fetch simultáneo idéntico a /api/planes-siembra al montar el Planificador | Mismo doble fetch de planes-siembra; requiere compartir estado entre componentes. |
+| `10539c84` | baja | app/api/rotaciones-cultivo/route.ts | Endpoint /api/rotaciones-cultivo sin ningún consumidor (feature no cableada) | Endpoint real de rotaciones sin pantalla que lo consuma; cablear a una vista o consolidar con planes-siembra, o eliminar. Sin impacto de usuario hoy. |
 | `1b447fd8` | baja | components/campo-digital/TabCultivos.tsx | Fetch duplicado de /api/planes-siembra en el modo Planificador | Dedupe del doble fetch a /api/planes-siembra requiere levantar estado (KPIs y lista en componentes distintos). Menor, sin impacto funcional. |
 | `09b0548f` | alta | components/campo-digital/TabLabores.tsx | El wizard no envía 'productos': los insumos nunca descuentan stock ni crean AplicacionProducto | Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. |
 | `900cea3f` | alta | components/campo-digital/TabLabores.tsx | El wizard no envía maquinaId: el costo de maquinaria nunca se prorratea al lote en Economía | Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. |
@@ -111,6 +107,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `820ee3aa` | media | components/plan-riego/BalanceHidrico.tsx | Las barras IA del gráfico etiquetan mm por orden de barra, no por sugerencia (desalineación posible) |
 | `9e326dfc` | media | components/plan-riego/RegistrarRiegoModal.tsx | Input 'Duración estimada' del modal manual es un control muerto (sin estado ni onChange) |
 | `3b89d333` | media | components/plan-riego/RegistrarRiegoModal.tsx | Preselección de sugerencias IA hardcodeada a los índices 0 y 1 (asume exactamente 2 sugerencias) |
+| `6d6b21d9` | baja | app/(dashboard)/clima/page.tsx | Inconsistencia en el % de la barra de mm entre registro nuevo y recargado (base 50 vs máximo real) |
 | `30dd7e53` | baja | app/(dashboard)/clima/page.tsx | 'Días sin lluvia' puede quedar negativo y el gráfico usa fecha local sobre ISO UTC (riesgo de mes/día corrido) |
 | `919ddb05` | baja | app/(dashboard)/cuaderno-campo/page.tsx | 'Lotes con registro' cuenta por nombre de lote, no por id: nombres duplicados colapsan el conteo |
 | `c53e2955` | baja | app/(dashboard)/cuaderno-campo/page.tsx | Flecha de tendencia verde 'up' en KPIs sin comparación real (delta puramente descriptivo) |
@@ -119,10 +116,13 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `6043e6c5` | baja | app/(dashboard)/plan-riego/page.tsx | Estados de evento inconsistentes: la UI mezcla 'Programado', 'ejecutado' y 'Reporte manual' pero el timeline sólo formatea 'ejecutado' |
 | `d36dee90` | baja | app/(dashboard)/plan-riego/page.tsx | El plan de riego se crea con etapaFenologica y laminaRiego que ignoran la etapa/estrategia real seleccionada |
 | `8112ac2a` | baja | app/api/clima/pronostico/route.ts | Endpoint /api/clima/pronostico (OpenWeather) es código muerto y depende de una API key ausente |
+| `5e315662` | baja | app/api/lotes/[id]/prescripcion/route.ts | Mapa de prescripción variable con NDVI sintético cuando Sentinel no está configurado, y ahorro% calculado sobre datos fabricados |
 | `b1251ec3` | baja | components/calculadora/calc.ts | El costo se rotula 'USD' pero se formatea con separadores es-AR y se redondea a 0 decimales, perdiendo centavos |
+| `b8d826d7` | baja | components/calculadora/presets.ts | HISTORIAL_DEMO y PRESETS son datos demo hardcodeados que quedaron en el bundle (código muerto) |
 | `19add1d2` | baja | components/campo-digital/LoteOverlay.tsx | Predicción de rinde (IA): fallo silencioso sin feedback al usuario |
 | `d8fa151b` | baja | components/campo-digital/TabCultivos.tsx | Modal Nueva Cosecha sin cultivos seleccionables en producción (lista demo → vacía) |
 | `05a0822d` | baja | components/campo-digital/TabCultivos.tsx | Tarjetas de Análisis de Suelo con grid interno fijo de 4 columnas sin colapso en mobile |
+| `9136db1a` | baja | components/campo-digital/TabCultivos.tsx | Cosecha de ejemplo (cultivosListos demo) puede filtrar loteIds reales del scope al modal de cosecha |
 | `cf051573` | baja | components/campo-digital/TabCultivos.tsx | Mensaje de error del Planificador engañoso cuando no hay lote seleccionado |
 | `0934f9a2` | baja | components/campo-digital/TabDeteccion.tsx | prob por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %) |
 | `15a8348f` | baja | components/campo-digital/TabDeteccion.tsx | Probabilidad por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %) |

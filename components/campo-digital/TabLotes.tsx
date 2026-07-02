@@ -1135,7 +1135,7 @@ function LoteFichaTecnica({
 }
 
 type Prescripcion = {
-  producto: string; dosisBase: number; estrategia: string; fuente: string; areaHa: number;
+  producto: string; dosisBase: number; estrategia: string; fuente: string; areaHa: number; simulado?: boolean;
   resumen: { celdas: number; prodTotal: number; prodUniforme: number; ahorroPct: number; zonas: { zona: string; dosis: number; ha: number; color: string }[] };
   geojson: { type: "FeatureCollection"; features: { geometry: { type: "Polygon"; coordinates: number[][][] }; properties: { ndvi: number; zona: string; dosis: number; color: string } }[] };
 };
@@ -1213,7 +1213,9 @@ function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
           <Mapa />
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <span className="text-xs text-muted">{res.resumen.celdas} zonas · fuente {res.fuente}</span>
-            {res.resumen.ahorroPct !== 0 && (
+            {res.simulado ? (
+              <span className="mc-badge mc-badge--neutral" style={{ fontSize: 10.5 }} title="Sin NDVI satelital real (Sentinel), la zonificación es una estimación demostrativa">Demostración · sin NDVI real</span>
+            ) : res.resumen.ahorroPct !== 0 && (
               <span className="mc-badge mc-badge--green" style={{ fontSize: 10.5 }}>{res.resumen.ahorroPct > 0 ? `−${res.resumen.ahorroPct}% insumo` : `+${-res.resumen.ahorroPct}% insumo`} vs dosis fija</span>
             )}
           </div>
@@ -1226,7 +1228,11 @@ function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
               </div>
             ))}
           </div>
-          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargar}><Icon name="download" size={13} />Descargar GeoJSON (para maquinaria)</button>
+          {res.simulado ? (
+            <div className="text-xs text-muted" title="La descarga para maquinaria requiere NDVI satelital real (Sentinel)">Descarga no disponible en modo demostración (requiere NDVI satelital real).</div>
+          ) : (
+            <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargar}><Icon name="download" size={13} />Descargar GeoJSON (para maquinaria)</button>
+          )}
         </div>
       )}
     </div>

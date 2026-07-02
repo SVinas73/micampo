@@ -178,10 +178,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
       {siembraOpen && <NuevaSiembraModal lotes={lotes} onClose={() => setSiembraOpen(false)} onConfirm={guardarSiembra} />}
       {cosechaOpen && (
         <NuevaCosechaModal
-          cultivosListos={demo([
-            { loteId: lotes[1]?.id, lote: "Lote 4", cultivo: "Maíz", estado: "Listo para cosecha", madurez: 100, humedad: 14 },
-            { loteId: lotes[2]?.id, lote: "Lote 2", cultivo: "Soja", estado: "En crecimiento", madurez: 85, humedad: 18 },
-          ], [] as { loteId?: string; lote: string; cultivo: string; estado: string; madurez: number; humedad: number }[])}
+          cultivosListos={lotes.filter((l) => l.cultivo && l.id).map((l) => ({ loteId: l.id, lote: l.nombre, cultivo: l.cultivo as string, estado: "En campo", madurez: 0, humedad: 0 }))}
           onClose={() => setCosechaOpen(false)}
           onConfirm={guardarCosecha}
         />
