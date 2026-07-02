@@ -619,7 +619,7 @@ function CultivosPlanificador({
             <div key={i} style={{ border: `1.5px solid ${p.color}50`, borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ background: `${p.color}15`, borderBottom: `1.5px solid ${p.color}30`, padding: "12px 16px" }}>
                 <div className="row gap-10" style={{ alignItems: "center" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: p.color, display: "grid", placeItems: "center", fontSize: 18, flexShrink: 0 }}>{p.emoji}</div>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: p.color, display: "grid", placeItems: "center", color: "#fff", flexShrink: 0 }}><Icon name={p.emoji} size={18} /></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13, lineHeight: 1.3 }}>{p.titulo}</div>
                     <div className="text-xs text-muted mt-2">{p.ha} · Lotes {p.lotes}</div>

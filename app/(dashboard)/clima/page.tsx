@@ -187,18 +187,22 @@ function ClimaInner() {
 
   const editarLluvia = async (r: LluviaResult) => {
     const obs = `Duración: ${r.duracion}h${r.condiciones.length ? " · Condiciones: " + r.condiciones.join(", ") : ""}`;
+    const fechaISO = r.fecha ? new Date(`${r.fecha}T${r.hora || "00:00"}`).toISOString() : null;
     if (editLluvia?.id) {
       const res = await fetch(`/api/registro-pluviometrico/${editLluvia.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ milimetros: r.mm, observaciones: obs }),
+        body: JSON.stringify({ milimetros: r.mm, observaciones: obs, ...(fechaISO ? { fecha: fechaISO } : {}) }),
       }).catch(() => null);
       if (!res || !res.ok) { toast.show("No se pudo actualizar el registro", "err"); return; }
     }
     setLluvias((prev) =>
       prev.map((x) =>
         x === editLluvia
-          ? { ...x, mm: r.mm, pct: Math.min(100, Math.round((r.mm / 50) * 100)), tags: r.condiciones.map((c) => condToTag(c)) }
+          ? {
+              ...x, mm: r.mm, pct: Math.min(100, Math.round((r.mm / 50) * 100)), tags: r.condiciones.map((c) => condToTag(c)),
+              ...(fechaISO ? { fechaRaw: fechaISO, fecha: new Date(fechaISO).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) + " - " + new Date(fechaISO).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) } : {}),
+            }
           : x
       )
     );

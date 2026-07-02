@@ -43,8 +43,9 @@ export default function CuadernoCampoPage() {
     if (tipoFiltro !== "Todos" && !registros.some((r) => r.tipo === tipoFiltro)) setTipoFiltro("Todos");
   }, [registros, tipoFiltro]);
   const visibles = useMemo(() => registros.filter((r) => tipoFiltro === "Todos" || r.tipo === tipoFiltro), [registros, tipoFiltro]);
-  const aplicaciones = registros.reduce((s, r) => s + r.productos.length, 0);
-  const lotesUnicos = new Set(registros.map((r) => r.lote)).size;
+  // Los KPIs reflejan lo que se está mostrando (respetan el filtro de tipo).
+  const aplicaciones = visibles.reduce((s, r) => s + r.productos.length, 0);
+  const lotesUnicos = new Set(visibles.map((r) => r.lote)).size;
 
   // Las fechas representan un día calendario (guardado a medianoche UTC): render en UTC evita el off-by-one.
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { timeZone: "UTC" });
@@ -92,7 +93,7 @@ export default function CuadernoCampoPage() {
       />
 
       <div className="grid g-cols-3">
-        <KPI label="Registros" value={String(registros.length)} delta="Labores, siembras, cosechas" trend="up" icon="list" accent />
+        <KPI label="Registros" value={String(visibles.length)} delta="Labores, siembras, cosechas" trend="up" icon="list" accent />
         <KPI label="Aplicaciones de producto" value={String(aplicaciones)} delta="Con principio activo y dosis" trend="up" icon="droplet" />
         <KPI label="Lotes con registro" value={String(lotesUnicos)} delta="Trazabilidad" trend="up" icon="map" />
       </div>

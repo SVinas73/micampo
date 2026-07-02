@@ -111,12 +111,14 @@ export default function TabDeteccion() {
 
   const agregarALabores = async (a: AlertaInfo) => {
     if (a.loteId) {
+      // Superficie real del lote (para que el costo/economía de la labor no quede en 0).
+      const haLote = scopeLotes.find((l) => l.id === a.loteId)?.hectareas || 0;
       await fetch("/api/labores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipo: "Pulverización", fecha: new Date().toISOString().slice(0, 10), loteId: a.loteId,
-          superficieTrabajada: 0, descripcion: `Control: ${a.enfermedad}`, prioridad: "Urgente",
+          superficieTrabajada: haLote, descripcion: `Control: ${a.enfermedad}`, prioridad: "Urgente",
           observaciones: `Recomendación IA: ${a.recom}`,
         }),
       }).catch(() => {});

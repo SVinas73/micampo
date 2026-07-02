@@ -153,7 +153,7 @@
   "escenario": "Usuario edita una lluvia con condición 'Torrencial', cambia la fecha del 22/12 al 15/12 y guarda. La fecha sigue mostrando 22/12 y no se guarda en DB; la condición 'Torrencial' aparecía desmarcada en el modal y termina guardada como badge neutro genérico.",
   "fix": "Enviar fecha en el PATCH y actualizar fecha/fechaRaw locales; usar las keys canónicas de COND_LLUVIA para el round-trip (guardar/leer por key, no por label acortado).",
   "_id": "5e8e2f95",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "El radar no se re-centra al cambiar de establecimiento/lote (queda en el campo anterior)",
@@ -608,7 +608,7 @@
   "escenario": "Con dos campos, al filtrar por Campo A en el sidebar la pestaña Detección sigue mostrando alertas de plagas de ambos campos, y la KPI 'Alertas Activas' cuenta de más.",
   "fix": "Depender de establecimientoId del useLoteScope y pasar ?establecimientoId=${establecimientoId} en el fetch, re-ejecutando al cambiar el scope.",
   "_id": "c7cabc8b",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Calendario mensual de Labores no compensa el día de la semana del día 1 (desalineación de fechas)",
@@ -634,7 +634,7 @@
   "escenario": "Usuario abre ⌘K, escribe 'Campo 3D', presiona Enter → llega a Campo Digital pero en la pestaña Resumen, no al 3D. Botón/atajo muerto.",
   "fix": "Cambiar el href a '/campo-digital?tab=Lotes' (donde vive Campo 3D) o eliminar la entrada; idealmente añadir un param que active la vista 3D dentro de Lotes.",
   "_id": "8333621f",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Datos de operario/maquinaria inventados en 'Tareas para Hoy' de Labores",
@@ -777,7 +777,7 @@
   "escenario": "En Planificador de Siembras (IA), cada tarjeta de Plan Activo muestra el string 'wheat' o 'sprout' en el badge de color en lugar del glifo del cultivo.",
   "confianza": 0.9,
   "_id": "b71af02e",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Nuevo Análisis de Suelo: toast de éxito sin persistir cuando el lote no tiene id",
@@ -1154,7 +1154,7 @@
   "fix": "Decidir un criterio coherente: o los KPIs reflejan `visibles` (recalcular aplicaciones/lotes sobre `visibles`), o el encabezado del PDF usa el total consistente con los KPIs. Para el PDF, calcular `aplicaciones` sobre `visibles`: `visibles.reduce((s,r)=>s+r.productos.length,0)`.",
   "confianza": 0.85,
   "_id": "d273d479",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "'Lotes con registro' cuenta por nombre de lote, no por id: nombres duplicados colapsan el conteo",
@@ -1259,7 +1259,7 @@
   "fix": "Calcular 'Confianza IA' como promedio de a.confianza de las alertas reales, 'Riesgo Economico' desde las prescripciones/pérdida potencial, y 'Monitoreo Semanal' desde el scope de lotes; o eliminar las cards que no se pueden alimentar en vez de dejarlas siempre en '—'.",
   "confianza": 0.72,
   "_id": "425c0815",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "'Agregar a Labores' desde Información crea la labor con superficieTrabajada 0",
@@ -1272,7 +1272,7 @@
   "fix": "Enviar la superficie real: usar el área afectada de la alerta o las hectáreas del lote (desde useLoteScope) como superficieTrabajada en vez de 0.",
   "confianza": 0.75,
   "_id": "58fd33b6",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Dato IA fabricado: confianza aleatoria persistida como real en alertas-plagas POST (tabla compartida con Detección)",
@@ -1285,7 +1285,7 @@
   "fix": "No generar confianza con Math.random(); dejar confianza null/omitida cuando no hay un modelo que la produzca, o derivarla del reporte manual (p.ej. incidencia). Igualar el criterio con deteccion-enfermedades POST que usa confianza fija/real.",
   "confianza": 0.7,
   "_id": "a18fc42a",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "'Presión pronosticada' no reacciona al alcance Campo/Lote",
