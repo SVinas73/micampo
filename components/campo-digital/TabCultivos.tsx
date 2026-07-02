@@ -75,6 +75,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [distribucion, setDistribucion] = useState<DistCultivo[]>([]);
   const [planKpis, setPlanKpis] = useState({ generados: 0, aprobados: 0, superficie: 0, inversion: 0, proximaFecha: "", proximaCultivo: "" });
   const [refreshAnalisis, setRefreshAnalisis] = useState(0);
+  const [refreshPlanes, setRefreshPlanes] = useState(0);
 
   // KPIs reales del Planificador (a partir de los planes de siembra guardados).
   useEffect(() => {
@@ -98,10 +99,11 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         });
       })
       .catch(() => {});
-  }, [planificadorMode, loteActivo?.id, establecimientoId]);
+  }, [planificadorMode, loteActivo?.id, establecimientoId, refreshPlanes]);
 
   useEffect(() => {
-    const d = scopeLotes;
+    // Respeta el lote puntual del sidebar: Estados y Distribución se acotan a ese lote.
+    const d = loteActivo?.id ? scopeLotes.filter((l) => l.id === loteActivo.id) : scopeLotes;
     // Sin guardia: si el scope queda vacío, la lista debe reflejarlo (no stale).
     setLotes(d.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0, cultivo: l.cultivo })));
     // Distribución real por cultivo (0 si no hay lotes con cultivo sembrado)
@@ -115,7 +117,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         .sort((a, b) => b[1] - a[1])
         .map(([nombre, ha]) => ({ nombre, ha: Math.round(ha), pct: Math.round((ha / tot) * 100), color: CULTIVO_COLOR[nombre] || "#5e7733", icon: CULTIVO_ICON[nombre] || "leaf" }))
     );
-  }, [scopeLotes]);
+  }, [scopeLotes, loteActivo?.id]);
 
   const guardarSiembra = async (data: SiembraData) => {
     if (!data.loteId) { toast.show("Elegí un lote real para registrar la siembra", "err"); return; }
@@ -234,7 +236,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       )}
 
-      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} onEditar={() => setSiembraOpen(true)} />}
+      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} onEditar={() => setSiembraOpen(true)} onChanged={() => setRefreshPlanes((n) => n + 1)} />}
       {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={(loteId) => abrirNuevaLabor(loteId)} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
       {!planificadorMode && sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} refreshKey={refreshAnalisis} />}
     </>
@@ -478,12 +480,13 @@ function DonutResumen({ data }: { data: DistCultivo[] }) {
 
 /* ========== PLANIFICADOR IA (Figma CultivosPlanificador) ========== */
 function CultivosPlanificador({
-  toast, lotes, loteActivoId, onEditar,
+  toast, lotes, loteActivoId, onEditar, onChanged,
 }: {
   toast: ReturnType<typeof useToast>;
   lotes: { id?: string; nombre: string; ha: number }[];
   loteActivoId?: string;
   onEditar: () => void;
+  onChanged?: () => void;
 }) {
   const [activos, setActivos] = useState<PlanActivo[]>(demo(PLANES_ACTIVOS_DEMO, []));
   const [recomendados, setRecomendados] = useState<PlanIA[]>(demo(PLANES_IA_DEMO, []));
@@ -577,13 +580,14 @@ function CultivosPlanificador({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ estado: "Aprobado" }),
       }).catch(() => {});
+      onChanged?.();
     }
     toast.show(`"${p.sugerencia}" convertido en plan activo`);
   };
 
   const descartar = async (p: PlanIA) => {
     setRecomendados((prev) => prev.filter((x) => x !== p));
-    if (p.id) await fetch(`/api/planes-siembra/${p.id}`, { method: "DELETE" }).catch(() => {});
+    if (p.id) { await fetch(`/api/planes-siembra/${p.id}`, { method: "DELETE" }).catch(() => {}); onChanged?.(); }
     toast.show("Sugerencia descartada");
   };
 

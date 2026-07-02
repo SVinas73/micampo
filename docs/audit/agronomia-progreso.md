@@ -2,7 +2,7 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 69 HECHO · 2 DIFERIDO · 43 PENDIENTE (de 114).
+**Resumen:** 71 HECHO · 2 DIFERIDO · 41 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
@@ -13,9 +13,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `37140ed1` | media | bug | app/(dashboard)/campo-digital/page.tsx:36 | Mecanismo de header actions (ActionsProvider/useHeaderActions) es código muerto: ningún tab inyecta acciones |
 | `9d281b08` | media | responsive | app/(dashboard)/clima/page.tsx:868 | Filas del histórico de lluvias y de alertas usan grid de columnas fijas sin colapso ni scroll en mobile |
 | `62b61ec0` | media | scope | app/api/alertas-climaticas/route.ts:14 | Las alertas climáticas no reaccionan al establecimiento/lote del sidebar |
-| `a7546ecc` | media | kpi-datos | components/campo-digital/TabCultivos.tsx:79 | KPI 'Planes Aprobados' y la lista quedan stale tras Convertir/Descartar (no re-fetch) |
 | `84ed58ba` | media | bug | components/campo-digital/TabCultivos.tsx:651 | Botón 'Editar' de un Plan Activo abre 'Nueva Siembra' en blanco (no edita el plan) |
-| `3ef3ad2f` | media | cross-module | components/campo-digital/TabCultivos.tsx:62 | Selección de un lote individual en el sidebar no filtra Estados ni Distribución |
 | `3bf2e284` | media | responsive | components/campo-digital/TabCultivos.tsx:307 | Grillas internas de 4 columnas fijas sin colapso en mobile (overflow) |
 | `f180f8eb` | media | cross-module | components/campo-digital/TabDeteccion.tsx:320 | 'Presión pronosticada' no reacciona al alcance Campo/Lote |
 | `ae0f4b78` | media | kpi-datos | components/campo-digital/TabDeteccion.tsx:139 | KPIs 'Confianza IA', 'NDVI', 'Riesgo Economico' y 'Monitoreo Semanal' son placeholders sin cálculo real (siempre '—') |
@@ -105,7 +103,9 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `d273d479` | media | app/(dashboard)/cuaderno-campo/page.tsx | KPIs y encabezado del PDF ignoran el filtro de tipo: números inconsistentes con lo mostrado |
 | `8333621f` | media | app/(dashboard)/layout.tsx | Entrada 'Campo 3D' del command palette apunta a un tab inexistente y cae en Resumen |
 | `a18fc42a` | media | app/api/alertas-plagas/route.ts | Dato IA fabricado: confianza aleatoria persistida como real en alertas-plagas POST (tabla compartida con Detección) |
+| `a7546ecc` | media | components/campo-digital/TabCultivos.tsx | KPI 'Planes Aprobados' y la lista quedan stale tras Convertir/Descartar (no re-fetch) |
 | `cbcc60d5` | media | components/campo-digital/TabCultivos.tsx | Análisis de Suelo: valores reales en 0 se reemplazan por defaults inventados (N/P/K/pH/MO) |
+| `3ef3ad2f` | media | components/campo-digital/TabCultivos.tsx | Selección de un lote individual en el sidebar no filtra Estados ni Distribución |
 | `9c6279fa` | media | components/campo-digital/TabCultivos.tsx | Fechas con off-by-one por parseo UTC de fechas date-only (es-AR) |
 | `b71af02e` | media | components/campo-digital/TabCultivos.tsx | Tarjetas 'Planes Activos' muestran el texto 'wheat'/'sprout'/'leaf'/'sun' en vez de un ícono |
 | `d470d01e` | media | components/campo-digital/TabCultivos.tsx | Nuevo Análisis de Suelo: toast de éxito sin persistir cuando el lote no tiene id |

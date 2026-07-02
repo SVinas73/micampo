@@ -426,7 +426,7 @@
   "fix": "Extraer la carga de KPIs a una función y volver a llamarla tras convertir/descartar/regenerar (o compartir un estado/refetch entre TabCultivos y CultivosPlanificador, p.ej. subiendo un callback onPlanesChanged que reejecute el fetch de KPIs).",
   "confianza": 0.85,
   "_id": "a7546ecc",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Botón 'Editar' de un Plan Activo abre 'Nueva Siembra' en blanco (no edita el plan)",
@@ -751,7 +751,7 @@
   "escenario": "Usuario elige 'Lote 3' en el sidebar esperando ver solo ese lote; Estados sigue listando los 8 lotes del campo y el donut suma la superficie total.",
   "confianza": 0.85,
   "_id": "3ef3ad2f",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Fechas con off-by-one por parseo UTC de fechas date-only (es-AR)",
