@@ -24,9 +24,11 @@ export function totalProducto(p: ProductoMezcla, area: number): number {
   return num(p.dosis) * num(area);
 }
 
-// Producto por tanque (dosis x volumen de caldo por Ha).
-export function porTanque(p: ProductoMezcla, caldo: number): number {
-  return num(p.dosis) * num(caldo);
+// Producto por tanque = dosis (unidad/Ha) x hectáreas que cubre un tanque (tanque L ÷ caldo L/Ha).
+export function porTanque(p: ProductoMezcla, caldo: number, tanque: number): number {
+  const c = num(caldo);
+  if (c <= 0) return 0;
+  return num(p.dosis) * (num(tanque) / c);
 }
 
 // Costo por hectárea de un producto = dosis (Lt/Ha) x costo unitario (USD/Lt).

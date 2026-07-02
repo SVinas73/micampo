@@ -59,7 +59,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const navegar = (tab: string) => router.push(`/campo-digital?tab=${encodeURIComponent(tab)}`);
   // Abre el wizard "Nueva Labor" en la pestaña Labores, preseleccionando el lote.
   const abrirNuevaLabor = (loteId?: string) => router.push(`/campo-digital?tab=Labores&nuevaLabor=${encodeURIComponent(loteId || "1")}`);
-  const { lotes: scopeLotes, loteActivo } = useLoteScope();
+  const { lotes: scopeLotes, loteActivo, establecimientoId } = useLoteScope();
   // Cuando se monta como pestaña "Planificador de Siembras (IA)" sólo muestra el planificador.
   // El resto de sub-tabs (Estados, Análisis de Suelo) viven en la pestaña "Cultivos".
   const planificadorMode = initialSub === "Planificador de Siembra (IA)";
@@ -78,7 +78,8 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   // KPIs reales del Planificador (a partir de los planes de siembra guardados).
   useEffect(() => {
     if (!planificadorMode) return;
-    fetch("/api/planes-siembra")
+    const q = loteActivo?.id ? `?loteId=${loteActivo.id}` : "";
+    fetch(`/api/planes-siembra${q}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d: Array<{ estado?: string; hectareas?: number; costoEstimado?: number; cultivo?: string; fechaSiembraRecomendada?: string }>) => {
         if (!Array.isArray(d)) return;
@@ -96,11 +97,12 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         });
       })
       .catch(() => {});
-  }, [planificadorMode]);
+  }, [planificadorMode, loteActivo?.id, establecimientoId]);
 
   useEffect(() => {
     const d = scopeLotes;
-    if (d.length > 0) setLotes(d.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0, cultivo: l.cultivo })));
+    // Sin guardia: si el scope queda vacío, la lista debe reflejarlo (no stale).
+    setLotes(d.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0, cultivo: l.cultivo })));
     // Distribución real por cultivo (0 si no hay lotes con cultivo sembrado)
     const porCultivo = new Map<string, number>();
     d.forEach((l) => {
@@ -489,10 +491,12 @@ function CultivosPlanificador({
   const loteObjetivo = (loteActivoId ? lotes.find((l) => l.id === loteActivoId) : null) || lotes.find((l) => l.id) || null;
 
   useEffect(() => {
-    fetch("/api/planes-siembra")
+    const q = loteActivoId ? `?loteId=${loteActivoId}` : "";
+    fetch(`/api/planes-siembra${q}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
-        if (!Array.isArray(d) || d.length === 0) return;
+        if (!Array.isArray(d)) return;
+        if (d.length === 0) { setActivos([]); return; }
         const colores = ["#d9a538", "#768f44", "#c08a22"];
         const emojis: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Girasol: "sun", Trigo: "wheat", Sorgo: "leaf" };
         setActivos(
@@ -512,7 +516,7 @@ function CultivosPlanificador({
         );
       })
       .catch(() => {});
-  }, []);
+  }, [loteActivoId]);
 
   const regenerar = async () => {
     if (generando) return;

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Icon, KPI } from "@/components/mc";
 import { useLoteScope } from "@/components/LoteScope";
 import { CULTIVO_COLORES } from "./lotes-data";
+import { derivarEstadoLabor } from "@/lib/labores";
 
 /* ========== TAB RESUMEN — 100% datos reales ========== */
 
@@ -23,6 +24,7 @@ type AlertaApi = {
   areaAfectada?: number;
   recomendacion?: string;
   metodoDeteccion?: string;
+  estado?: string;
   lote?: { nombre?: string; cultivo?: string } | null;
 };
 
@@ -60,18 +62,23 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
   const [ests, setEsts] = useState<EstApi[]>([]);
   const [cargando, setCargando] = useState(true);
   const [perfil, setPerfil] = useState<{ name?: string | null; image?: string | null } | null>(null);
-  const { establecimientoId } = useLoteScope();
+  const { establecimientoId, loteId } = useLoteScope();
 
   useEffect(() => {
     fetch("/api/perfil").then((r) => (r.ok ? r.json() : null)).then((p) => { if (p?.id) setPerfil(p); }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    // Respeta el establecimiento activo del sidebar (los endpoints filtran por él).
-    const q = establecimientoId && establecimientoId !== "todos" ? `?establecimientoId=${establecimientoId}` : "";
+    // Respeta el alcance Campo → Lote del sidebar (los endpoints filtran por él).
+    const params = new URLSearchParams();
+    if (establecimientoId && establecimientoId !== "todos") params.set("establecimientoId", establecimientoId);
+    if (loteId && loteId !== "todos") params.set("loteId", loteId);
+    const q = params.toString() ? `?${params.toString()}` : "";
+    // Los lotes se filtran solo por establecimiento (el KPI de superficie es del campo).
+    const qLotes = establecimientoId && establecimientoId !== "todos" ? `?establecimientoId=${establecimientoId}` : "";
     setCargando(true);
     Promise.all([
-      fetch(`/api/lotes${q}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`/api/lotes${qLotes}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch(`/api/labores${q}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch(`/api/deteccion-enfermedades${q}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/establecimientos").then((r) => (r.ok ? r.json() : [])).catch(() => []),
@@ -82,7 +89,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       if (Array.isArray(es)) setEsts(es);
       setCargando(false);
     });
-  }, [establecimientoId]);
+  }, [establecimientoId, loteId]);
 
   // ---- Campos (establecimientos) con su superficie real ----
   // Lista de campos: usa los conteos PROPIOS del establecimiento (globales, no el
@@ -103,9 +110,11 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
   const sembHa = lotes.filter((l) => l.cultivo).reduce((s, l) => s + (l.hectareas || 0), 0);
   const ocupacion = totalHa > 0 ? Math.round((sembHa / totalHa) * 100) : 0;
   const laboresPend = labores.filter((l) => l.estado !== "Completada").length;
-  const laboresAtras = labores.filter((l) => l.estado === "Atrasada").length;
-  const alertasActivas = alertas.length;
-  const alertasCriticas = alertas.filter((a) => a.severidad === "Alta" || a.severidad === "Crítica").length;
+  const laboresAtras = labores.filter((l) => derivarEstadoLabor(l.estado, l.fecha) === "Atrasada").length;
+  // Solo alertas vigentes (excluye Resuelta / Falsa) para no inflar el KPI ni los focos.
+  const alertasVigentes = useMemo(() => alertas.filter((a) => !["Resuelta", "Falsa"].includes(a.estado || "")), [alertas]);
+  const alertasActivas = alertasVigentes.length;
+  const alertasCriticas = alertasVigentes.filter((a) => a.severidad === "Alta" || a.severidad === "Crítica").length;
 
   // ---- Distribución de plantaciones (real) ----
   const plantaciones = useMemo<Plantacion[]>(() => {
@@ -142,7 +151,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
   // ---- Focos de atención (de alertas + labores atrasadas) ----
   const focos = useMemo<Foco[]>(() => {
     const out: Foco[] = [];
-    alertas.slice(0, 4).forEach((a) => {
+    alertasVigentes.slice(0, 4).forEach((a) => {
       const nivel: Foco["nivel"] = a.severidad === "Alta" || a.severidad === "Crítica" ? "red" : a.severidad === "Media" ? "amber" : "blue";
       out.push({
         nivel, titulo: a.plaga || "Alerta sanitaria",
@@ -151,7 +160,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
         icon: "leaf", tab: "Detección de Enfermedades (IA)",
       });
     });
-    labores.filter((l) => l.estado === "Atrasada").slice(0, 3).forEach((l) => {
+    labores.filter((l) => derivarEstadoLabor(l.estado, l.fecha) === "Atrasada").slice(0, 3).forEach((l) => {
       out.push({
         nivel: "amber", titulo: `Labor atrasada: ${l.tipo || "—"}`,
         lote: l.lote?.nombre || "campo", detail: l.descripcion || "Reprogramar o ejecutar",
@@ -159,7 +168,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       });
     });
     return out.slice(0, 6);
-  }, [alertas, labores]);
+  }, [alertasVigentes, labores]);
 
   return (
     <>
