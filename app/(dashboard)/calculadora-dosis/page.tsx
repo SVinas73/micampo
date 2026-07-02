@@ -201,8 +201,9 @@ function CalculadoraInner() {
           onEliminarPreset={eliminarPreset}
           onCrear={() => abrirNuevo({ ...CONFIG_VACIA, productos: [] })}
           onUsar={(cfg) => {
-            abrirNuevo(structuredClone(cfg));
-            toast.show("Preset cargado en Nuevo Cálculo");
+            // El preset no arrastra el lote guardado (puede estar borrado o no ser el actual).
+            abrirNuevo({ ...structuredClone(cfg), loteId: null, loteNombre: "" });
+            toast.show("Preset cargado · elegí el lote");
           }}
         />
       )}

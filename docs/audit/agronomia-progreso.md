@@ -2,17 +2,14 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 71 HECHO · 2 DIFERIDO · 41 PENDIENTE (de 114).
+**Resumen:** 73 HECHO · 3 DIFERIDO · 38 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
 | id | sev | cat | archivo:línea | hallazgo |
 |----|-----|-----|---------------|----------|
-| `71e719d9` | media | bug | app/(dashboard)/calculadora-dosis/page.tsx:171 | Al usar un preestablecido del usuario se arrastra un loteId obsoleto que puede romper el guardado (FK inexistente → 500) |
-| `828d47af` | media | inconsistencia | app/(dashboard)/calculadora-dosis/page.tsx:191 | Botón 'Riego + agroquímico' de Inicio abre una calculadora genérica de herbicida, no de fertirriego |
 | `37140ed1` | media | bug | app/(dashboard)/campo-digital/page.tsx:36 | Mecanismo de header actions (ActionsProvider/useHeaderActions) es código muerto: ningún tab inyecta acciones |
 | `9d281b08` | media | responsive | app/(dashboard)/clima/page.tsx:868 | Filas del histórico de lluvias y de alertas usan grid de columnas fijas sin colapso ni scroll en mobile |
-| `62b61ec0` | media | scope | app/api/alertas-climaticas/route.ts:14 | Las alertas climáticas no reaccionan al establecimiento/lote del sidebar |
 | `84ed58ba` | media | bug | components/campo-digital/TabCultivos.tsx:651 | Botón 'Editar' de un Plan Activo abre 'Nueva Siembra' en blanco (no edita el plan) |
 | `3bf2e284` | media | responsive | components/campo-digital/TabCultivos.tsx:307 | Grillas internas de 4 columnas fijas sin colapso en mobile (overflow) |
 | `f180f8eb` | media | cross-module | components/campo-digital/TabDeteccion.tsx:320 | 'Presión pronosticada' no reacciona al alcance Campo/Lote |
@@ -54,6 +51,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 
 | id | sev | archivo | hallazgo | nota |
 |----|-----|---------|----------|------|
+| `62b61ec0` | media | app/api/alertas-climaticas/route.ts | Las alertas climáticas no reaccionan al establecimiento/lote del sidebar | AlertaClimatica no tiene ubicación/establecimiento en el modelo: el clima es por área. Scoparlo requiere cambio de esquema. |
 | `09b0548f` | alta | components/campo-digital/TabLabores.tsx | El wizard no envía 'productos': los insumos nunca descuentan stock ni crean AplicacionProducto | Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. |
 | `900cea3f` | alta | components/campo-digital/TabLabores.tsx | El wizard no envía maquinaId: el costo de maquinaria nunca se prorratea al lote en Economía | Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. |
 
@@ -99,6 +97,8 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `dde95ea0` | alta | components/campo-digital/TabResumen.tsx | KPI 'Alertas sanitarias' y 'Focos de atención' cuentan alertas resueltas/falsas (la API no filtra por estado) |
 | `db04f09c` | alta | components/campo-digital/lotes-Modales.tsx | EditarLoteModal: lista de cultivos incompleta → lote con cultivo no listado (Sorgo/Cebada/Avena) muestra el campo vacío y puede perder el cultivo |
 | `af2a5f96` | alta | components/campo-digital/lotes-data.ts | 'Agua Útil' siempre '—': existe humedad de suelo real (Open-Meteo) pero nunca se conecta al KPI/chip de agua útil |
+| `71e719d9` | media | app/(dashboard)/calculadora-dosis/page.tsx | Al usar un preestablecido del usuario se arrastra un loteId obsoleto que puede romper el guardado (FK inexistente → 500) |
+| `828d47af` | media | app/(dashboard)/calculadora-dosis/page.tsx | Botón 'Riego + agroquímico' de Inicio abre una calculadora genérica de herbicida, no de fertirriego |
 | `5e8e2f95` | media | app/(dashboard)/clima/page.tsx | Editar lluvia no persiste el cambio de fecha y rompe el round-trip de condiciones |
 | `d273d479` | media | app/(dashboard)/cuaderno-campo/page.tsx | KPIs y encabezado del PDF ignoran el filtro de tipo: números inconsistentes con lo mostrado |
 | `8333621f` | media | app/(dashboard)/layout.tsx | Entrada 'Campo 3D' del command palette apunta a un tab inexistente y cae en Resumen |

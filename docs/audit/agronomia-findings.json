@@ -49,7 +49,7 @@
   "escenario": "Guardo un preset estando en 'Norte 1', luego borro ese lote, cambio de campo y uso el preset. El select aparece vacío pero se conserva el loteId viejo; al guardar, la creación en Prisma falla por FK y el cálculo no se guarda.",
   "fix": "Al cargar un preset (abrirNuevo/onUsar), reconciliar el loteId con el scope actual: si config.loteId no está en lotes del scope, poner loteId=null y loteNombre=''. Alternativamente, sincronizar loteId cuando el select queda sin coincidencia.",
   "_id": "71e719d9",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Botón 'Riego + agroquímico' de Inicio abre una calculadora genérica de herbicida, no de fertirriego",
@@ -62,7 +62,7 @@
   "escenario": "Toco 'Riego + agroquímico' esperando dosificación en fertirriego y obtengo un formulario idéntico al de herbicida con un producto Herbicida a 1.0 Lt/Ha.",
   "fix": "O implementar realmente el modo fertirriego (relacionado con el módulo riego↔clima) o quitar/renombrar la card para no prometer una funcionalidad inexistente. Mínimo, no rotularla 'Dosificación en fertirriego'.",
   "_id": "828d47af",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "El costo se rotula 'USD' pero se formatea con separadores es-AR y se redondea a 0 decimales, perdiendo centavos",
@@ -140,7 +140,8 @@
   "escenario": "Usuario con 2 campos cambia entre ellos en el sidebar; la pestaña Alertas y el KPI de alertas muestran exactamente lo mismo (todas las alertas de ambos campos).",
   "fix": "Agregar filtro por establecimiento/lote a la API de alertas (o al menos por ubicacion en scope) y pasar el scope desde la UI; incluir loteId/establecimientoId al crear alertas.",
   "_id": "62b61ec0",
-  "_status": "PENDIENTE"
+  "_status": "DIFERIDO",
+  "_nota": "AlertaClimatica no tiene ubicación/establecimiento en el modelo: el clima es por área. Scoparlo requiere cambio de esquema."
  },
  {
   "titulo": "Editar lluvia no persiste el cambio de fecha y rompe el round-trip de condiciones",
