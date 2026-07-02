@@ -6,6 +6,7 @@ import { useLoteScope } from "@/components/LoteScope";
 
 type Producto = { nombre: string; principioActivo?: string | null; dosis: string; metodo?: string | null };
 type Registro = {
+  id?: string; loteId?: string | null;
   fecha: string; lote: string; tipo: string; detalle: string; productos: Producto[];
   responsable?: string | null; maquinaria?: string | null; superficie?: number | null;
 };
@@ -45,7 +46,7 @@ export default function CuadernoCampoPage() {
   const visibles = useMemo(() => registros.filter((r) => tipoFiltro === "Todos" || r.tipo === tipoFiltro), [registros, tipoFiltro]);
   // Los KPIs reflejan lo que se está mostrando (respetan el filtro de tipo).
   const aplicaciones = visibles.reduce((s, r) => s + r.productos.length, 0);
-  const lotesUnicos = new Set(visibles.map((r) => r.lote)).size;
+  const lotesUnicos = new Set(visibles.map((r) => r.loteId || r.lote)).size;
 
   // Las fechas representan un día calendario (guardado a medianoche UTC): render en UTC evita el off-by-one.
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { timeZone: "UTC" });
@@ -93,9 +94,9 @@ export default function CuadernoCampoPage() {
       />
 
       <div className="grid g-cols-3">
-        <KPI label="Registros" value={String(visibles.length)} delta="Labores, siembras, cosechas" trend="up" icon="list" accent />
-        <KPI label="Aplicaciones de producto" value={String(aplicaciones)} delta="Con principio activo y dosis" trend="up" icon="droplet" />
-        <KPI label="Lotes con registro" value={String(lotesUnicos)} delta="Trazabilidad" trend="up" icon="map" />
+        <KPI label="Registros" value={String(visibles.length)} delta="Labores, siembras, cosechas" trend="flat" icon="list" accent />
+        <KPI label="Aplicaciones de producto" value={String(aplicaciones)} delta="Con principio activo y dosis" trend="flat" icon="droplet" />
+        <KPI label="Lotes con registro" value={String(lotesUnicos)} delta="Trazabilidad" trend="flat" icon="map" />
       </div>
 
       {/* Acción del submódulo, debajo de los KPIs (alineada a la derecha) */}
@@ -124,7 +125,7 @@ export default function CuadernoCampoPage() {
         ) : (
           <div className="col" style={{ padding: 4 }}>
             {visibles.map((r, i) => (
-              <div key={i} style={{ padding: "12px 16px", borderBottom: i < visibles.length - 1 ? "1px solid var(--mc-line)" : "none" }}>
+              <div key={r.id || `${r.tipo}-${r.fecha}-${i}`} style={{ padding: "12px 16px", borderBottom: i < visibles.length - 1 ? "1px solid var(--mc-line)" : "none" }}>
                 <div className="row gap-8" style={{ alignItems: "center", flexWrap: "wrap" }}>
                   <span className="mc-cell--mono text-xs" style={{ color: "var(--mc-text-3)", width: 84 }}>{fmt(r.fecha)}</span>
                   <span className="mc-badge mc-badge--neutral" style={{ fontSize: 10 }}>{r.tipo}</span>

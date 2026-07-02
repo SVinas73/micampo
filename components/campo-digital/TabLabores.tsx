@@ -156,7 +156,7 @@ export default function TabLabores() {
               responsable: l.operarios || "Equipo",
               fecha: `${dd}/${mm}`,
               fechaISO: iso,
-              prioridad: (l.prioridad === "Urgente" ? "alta" : "media") as "alta" | "media",
+              prioridad: (l.prioridad === "Urgente" || l.prioridad === "Alta" ? "alta" : l.prioridad === "Baja" ? "baja" : "media") as "alta" | "media" | "baja",
               estado: derivarEstado(l.estado, l.fecha),
               motivoBloqueo: l.motivoBloqueo || undefined,
             };

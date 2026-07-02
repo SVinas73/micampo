@@ -267,7 +267,13 @@ function EstrategiaControl({ alerta }: { alerta: AlertaInfo }) {
   // tratamientos (producto/dosis/costo reales) según la enfermedad y la probabilidad.
   const e = useMemo(() => {
     if (alerta.estrategia) return alerta.estrategia;
-    const prob = Number((alerta.riesgo.match(/(\d+)%/) || [])[1]) || 60;
+    // Si la alerta trae un %, se usa; si viene de la API con solo severidad, se deriva de ella.
+    const m = alerta.riesgo.match(/(\d+)%/);
+    const prob = m ? Number(m[1])
+      : /CR[IÍ]TICA|ALTA/i.test(alerta.riesgo) ? 75
+      : /MEDIA/i.test(alerta.riesgo) ? 45
+      : /BAJA/i.test(alerta.riesgo) ? 20
+      : 50;
     const p = prescripcionPara({ amenaza: alerta.enfermedad, probabilidad: prob });
     return { producto: p.producto, dosis: p.dosis, ventana: "Esta semana", costo: `US$${Math.round(p.costoHa)}/ha`, analisis: p.resumen };
   }, [alerta]);

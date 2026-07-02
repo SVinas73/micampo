@@ -662,7 +662,7 @@ function CultivosPlanificador({
               </div>
               <div className="row gap-8" style={{ padding: "10px 16px", borderTop: `1.5px solid ${p.color}20` }}>
                 <button className="mc-btn mc-btn--secondary mc-btn--sm flex-1" style={{ fontSize: 11 }} onClick={onEditar}>
-                  <Icon name="edit" size={10} />Editar
+                  <Icon name="sprout" size={10} />Sembrar
                 </button>
                 <button className="mc-btn mc-btn--sm flex-1" style={{ fontSize: 11, background: p.color, color: "white", border: "none" }} onClick={() => generarOrden(p)}>
                   <Icon name="settings" size={11} />Generar Orden de Trabajo

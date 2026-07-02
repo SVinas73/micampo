@@ -414,7 +414,8 @@
   "fix": "O bien implementar useSetHeaderActions en cada tab para publicar sus botones (p.ej. 'Nueva Siembra'/'Regenerar IA' en el Planificador), o eliminar ActionsProvider/useHeaderActions y el prop actions si no se va a usar, para no dejar código muerto.",
   "confianza": 0.92,
   "_id": "37140ed1",
-  "_status": "PENDIENTE"
+  "_status": "DIFERIDO",
+  "_nota": "Plumbing muerto (ActionsProvider) sin impacto de usuario; limpiar o implementar acciones de header más adelante."
  },
  {
   "titulo": "KPI 'Planes Aprobados' y la lista quedan stale tras Convertir/Descartar (no re-fetch)",
@@ -440,7 +441,7 @@
   "fix": "Pasar el plan seleccionado a onEditar(p) y precargar el modal con sus valores, y persistir vía PATCH /api/planes-siembra/[id] (que hoy solo acepta 'estado'), extendiendo el endpoint para editar los campos del plan.",
   "confianza": 0.83,
   "_id": "84ed58ba",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Análisis de Suelo: valores reales en 0 se reemplazan por defaults inventados (N/P/K/pH/MO)",
@@ -661,7 +662,7 @@
   "escenario": "Usuario elige 'Lote 4' en el sidebar; el Resumen sigue mostrando hectáreas totales, plantaciones y actividades de todo el campo, mientras Labores y Plan de Riego sí se enfocan en el Lote 4.",
   "fix": "Documentar explícitamente que Resumen es nivel-establecimiento, o filtrar por loteId cuando loteActivo esté definido (pasar &loteId= a los endpoints y acotar los cálculos).",
   "_id": "36be3028",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "plan-riego persiste etapaFenologica y tipoSuelo hardcodeados, ignorando la etapa elegida por el usuario",
@@ -947,7 +948,7 @@
   "escenario": "Campo con 400 ha en descanso y 50 ha de soja. KPI 'Cultivos distintos: 1' con delta 'Principal: En descanso'.",
   "confianza": 0.75,
   "_id": "c5cce7e2",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Color de avatar de actividades (#5E8F78) fuera de la paleta oliva",
@@ -1168,7 +1169,7 @@
   "fix": "Incluir `loteId` en el objeto Registro de la API y contar únicos por id en el KPI (`new Set(registros.map(r => r.loteId)).size`).",
   "confianza": 0.75,
   "_id": "919ddb05",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Flecha de tendencia verde 'up' en KPIs sin comparación real (delta puramente descriptivo)",
@@ -1181,7 +1182,7 @@
   "fix": "Omitir `trend` cuando el delta es solo una etiqueta descriptiva (dejar el texto sin flecha), o reservar la flecha para deltas con comparación real vs. período anterior.",
   "confianza": 0.6,
   "_id": "c53e2955",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "Uso de índice de array como key de React en la lista de registros",
@@ -1194,7 +1195,7 @@
   "fix": "Incluir un id estable en el Registro desde la API (p.ej. `id`/`laborId` o `${tipo}-${loteId}-${fechaMs}`) y usarlo como key en lugar del índice.",
   "confianza": 0.55,
   "_id": "a75fb257",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "La lista de Alertas Activas ignora el alcance Campo/Lote (no reacciona al sidebar)",
@@ -1312,7 +1313,7 @@
   "fix": "Mapear severidad→probabilidad estimada (Baja/Media/Alta) cuando no hay % en el string, o propagar areaAfectada/incidencia real desde la alerta para calcular la probabilidad.",
   "confianza": 0.65,
   "_id": "0934f9a2",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "KPIs 'Confianza IA', 'NDVI', 'Riesgo Economico' y 'Monitoreo Semanal' son placeholders sin cálculo real (siempre '—')",
@@ -1338,7 +1339,7 @@
   "fix": "Mapear severidad→probabilidad estimada (Baja/Media/Alta) cuando no hay % en el string, o propagar areaAfectada/incidencia real desde la alerta para calcular la probabilidad.",
   "confianza": 0.65,
   "_id": "15a8348f",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  },
  {
   "titulo": "TabLabores ignora el scope de establecimiento del sidebar (solo filtra por lote)",
@@ -1480,7 +1481,8 @@
   "fix": "Alimentar insumos/operarios/maquinaria/clima desde las APIs reales correspondientes; si no hay datos, mostrar estados vacíos honestos en lugar de valores fijos.",
   "line_hint": "49-57,105,324,328,332,339,344,348,356,523-524",
   "_id": "4bc5d742",
-  "_status": "PENDIENTE"
+  "_status": "DIFERIDO",
+  "_nota": "Parte del trabajo del wizard con inventario/maquinaria reales (mismo grupo diferido)."
  },
  {
   "titulo": "La prioridad 'baja' nunca se muestra: el mapeo colapsa todo lo no-Urgente a 'media'",
@@ -1494,6 +1496,6 @@
   "fix": "Mapear los tres niveles reales de prioridad ('Urgente'/'Normal'/'Baja') desde la DB en lugar de un ternario binario, o permitir 'Baja' en el wizard.",
   "line_hint": "152,229,478,515",
   "_id": "b41d4305",
-  "_status": "PENDIENTE"
+  "_status": "HECHO"
  }
 ]

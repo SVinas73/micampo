@@ -173,7 +173,7 @@ export default function TabResumen({ onNavigateTab }: { onNavigateTab?: (t: stri
       <div className="grid g-cols-5">
         <KPI label="Hectáreas totales" value={`${Math.round(totalHa)} Ha`} delta={cargando ? "Cargando…" : `${lotes.length} lotes`} trend="up" icon="map" accent />
         <KPI label="Hectáreas sembradas" value={`${Math.round(sembHa)} / ${Math.round(totalHa)}`} delta={`${ocupacion}% de ocupación`} trend="up" icon="sprout" />
-        <KPI label="Cultivos distintos" value={String(plantaciones.filter((p) => p.nombre !== "En descanso" && p.nombre !== "Vacío").length)} delta={plantaciones[0] ? `Principal: ${plantaciones[0].nombre}` : "—"} trend="up" icon="leaf" />
+        <KPI label="Cultivos distintos" value={String(plantaciones.filter((p) => p.nombre !== "En descanso" && p.nombre !== "Vacío").length)} delta={(() => { const pr = plantaciones.find((p) => p.nombre !== "En descanso" && p.nombre !== "Vacío"); return pr ? `Principal: ${pr.nombre}` : "Sin cultivos"; })()} trend="flat" icon="leaf" />
         <KPI label="Labores próximas" value={String(laboresPend)} delta={`${laboresAtras} atrasadas`} trend={laboresAtras > 0 ? "warn" : "up"} icon="wrench" />
         <KPI label="Alertas sanitarias" value={String(alertasActivas)} delta={alertasCriticas > 0 ? `${alertasCriticas} críticas` : "Sin críticas"} trend="warn" icon="alert" warn={alertasCriticas > 0} />
       </div>

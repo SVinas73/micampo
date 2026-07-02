@@ -2,20 +2,14 @@
 
 Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia-findings.json`.
 
-**Resumen:** 82 HECHO · 3 DIFERIDO · 29 PENDIENTE (de 114).
+**Resumen:** 91 HECHO · 5 DIFERIDO · 18 PENDIENTE (de 114).
 
 ## PENDIENTES (por severidad)
 
 | id | sev | cat | archivo:línea | hallazgo |
 |----|-----|-----|---------------|----------|
-| `37140ed1` | media | bug | app/(dashboard)/campo-digital/page.tsx:36 | Mecanismo de header actions (ActionsProvider/useHeaderActions) es código muerto: ningún tab inyecta acciones |
-| `84ed58ba` | media | bug | components/campo-digital/TabCultivos.tsx:651 | Botón 'Editar' de un Plan Activo abre 'Nueva Siembra' en blanco (no edita el plan) |
-| `4bc5d742` | media | dato-falso | components/campo-digital/labores-Wizard.tsx:49 | Wizard 'Nueva Orden' lleno de datos hardcodeados presentados como reales |
 | `6d6b21d9` | baja | inconsistencia | app/(dashboard)/clima/page.tsx:179 | Inconsistencia en el % de la barra de mm entre registro nuevo y recargado (base 50 vs máximo real) |
 | `30dd7e53` | baja | bug | app/(dashboard)/clima/page.tsx:753 | 'Días sin lluvia' puede quedar negativo y el gráfico usa fecha local sobre ISO UTC (riesgo de mes/día corrido) |
-| `919ddb05` | baja | kpi-datos | app/(dashboard)/cuaderno-campo/page.tsx:43 | 'Lotes con registro' cuenta por nombre de lote, no por id: nombres duplicados colapsan el conteo |
-| `c53e2955` | baja | estetica | app/(dashboard)/cuaderno-campo/page.tsx:90 | Flecha de tendencia verde 'up' en KPIs sin comparación real (delta puramente descriptivo) |
-| `a75fb257` | baja | bug | app/(dashboard)/cuaderno-campo/page.tsx:121 | Uso de índice de array como key de React en la lista de registros |
 | `49ec018b` | baja | inconsistencia | app/(dashboard)/plan-riego/page.tsx:199 | plan-riego persiste etapaFenologica y tipoSuelo hardcodeados, ignorando la etapa elegida por el usuario |
 | `6043e6c5` | baja | inconsistencia | app/(dashboard)/plan-riego/page.tsx:232 | Estados de evento inconsistentes: la UI mezcla 'Programado', 'ejecutado' y 'Reporte manual' pero el timeline sólo formatea 'ejecutado' |
 | `d36dee90` | baja | inconsistencia | app/(dashboard)/plan-riego/page.tsx:199 | El plan de riego se crea con etapaFenologica y laminaRiego que ignoran la etapa/estrategia real seleccionada |
@@ -29,12 +23,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `9136db1a` | baja | dato-falso | components/campo-digital/TabCultivos.tsx:175 | Cosecha de ejemplo (cultivosListos demo) puede filtrar loteIds reales del scope al modal de cosecha |
 | `cf051573` | baja | inconsistencia | components/campo-digital/TabCultivos.tsx:554 | Mensaje de error del Planificador engañoso cuando no hay lote seleccionado |
 | `1b447fd8` | baja | bug | components/campo-digital/TabCultivos.tsx:81 | Fetch duplicado de /api/planes-siembra en el modo Planificador |
-| `0934f9a2` | baja | inconsistencia | components/campo-digital/TabDeteccion.tsx:249 | prob por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %) |
-| `15a8348f` | baja | inconsistencia | components/campo-digital/TabDeteccion.tsx:249 | Probabilidad por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %) |
-| `b41d4305` | baja | inconsistencia | components/campo-digital/TabLabores.tsx:152 | La prioridad 'baja' nunca se muestra: el mapeo colapsa todo lo no-Urgente a 'media' |
 | `de35052d` | baja | estetica | components/campo-digital/TabLotes.tsx:1610 | Modales muestran el ID crudo de base (cuid) del lote en el título |
-| `36be3028` | baja | inconsistencia | components/campo-digital/TabResumen.tsx:63 | TabResumen no reacciona al lote activo del sidebar (solo al establecimiento) |
-| `c5cce7e2` | baja | inconsistencia | components/campo-digital/TabResumen.tsx:169 | El KPI 'Cultivos distintos' puede mostrar 'Principal: En descanso' (no es un cultivo) |
 | `d29dc56f` | baja | estetica | components/campo-digital/TabResumen.tsx:135 | Color de avatar de actividades (#5E8F78) fuera de la paleta oliva |
 | `8d9bca8f` | baja | bug | components/campo-digital/cultivos-Modales.tsx:96 | Campo 'Responsable / equipo' del modal Nueva Siembra se captura pero nunca se persiste |
 
@@ -43,8 +32,10 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | id | sev | archivo | hallazgo | nota |
 |----|-----|---------|----------|------|
 | `62b61ec0` | media | app/api/alertas-climaticas/route.ts | Las alertas climáticas no reaccionan al establecimiento/lote del sidebar | AlertaClimatica no tiene ubicación/establecimiento en el modelo: el clima es por área. Scoparlo requiere cambio de esquema. |
+| `37140ed1` | media | app/(dashboard)/campo-digital/page.tsx | Mecanismo de header actions (ActionsProvider/useHeaderActions) es código muerto: ningún tab inyecta acciones | Plumbing muerto (ActionsProvider) sin impacto de usuario; limpiar o implementar acciones de header más adelante. |
 | `09b0548f` | alta | components/campo-digital/TabLabores.tsx | El wizard no envía 'productos': los insumos nunca descuentan stock ni crean AplicacionProducto | Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. |
 | `900cea3f` | alta | components/campo-digital/TabLabores.tsx | El wizard no envía maquinaId: el costo de maquinaria nunca se prorratea al lote en Economía | Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. |
+| `4bc5d742` | media | components/campo-digital/labores-Wizard.tsx | Wizard 'Nueva Orden' lleno de datos hardcodeados presentados como reales | Parte del trabajo del wizard con inventario/maquinaria reales (mismo grupo diferido). |
 
 ## HECHO
 
@@ -96,6 +87,7 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `8333621f` | media | app/(dashboard)/layout.tsx | Entrada 'Campo 3D' del command palette apunta a un tab inexistente y cae en Resumen |
 | `a18fc42a` | media | app/api/alertas-plagas/route.ts | Dato IA fabricado: confianza aleatoria persistida como real en alertas-plagas POST (tabla compartida con Detección) |
 | `a7546ecc` | media | components/campo-digital/TabCultivos.tsx | KPI 'Planes Aprobados' y la lista quedan stale tras Convertir/Descartar (no re-fetch) |
+| `84ed58ba` | media | components/campo-digital/TabCultivos.tsx | Botón 'Editar' de un Plan Activo abre 'Nueva Siembra' en blanco (no edita el plan) |
 | `cbcc60d5` | media | components/campo-digital/TabCultivos.tsx | Análisis de Suelo: valores reales en 0 se reemplazan por defaults inventados (N/P/K/pH/MO) |
 | `3ef3ad2f` | media | components/campo-digital/TabCultivos.tsx | Selección de un lote individual en el sidebar no filtra Estados ni Distribución |
 | `9c6279fa` | media | components/campo-digital/TabCultivos.tsx | Fechas con off-by-one por parseo UTC de fechas date-only (es-AR) |
@@ -130,5 +122,13 @@ Tracker durable para reanudar si se corta por tokens. Datos crudos en `agronomia
 | `820ee3aa` | media | components/plan-riego/BalanceHidrico.tsx | Las barras IA del gráfico etiquetan mm por orden de barra, no por sugerencia (desalineación posible) |
 | `9e326dfc` | media | components/plan-riego/RegistrarRiegoModal.tsx | Input 'Duración estimada' del modal manual es un control muerto (sin estado ni onChange) |
 | `3b89d333` | media | components/plan-riego/RegistrarRiegoModal.tsx | Preselección de sugerencias IA hardcodeada a los índices 0 y 1 (asume exactamente 2 sugerencias) |
+| `919ddb05` | baja | app/(dashboard)/cuaderno-campo/page.tsx | 'Lotes con registro' cuenta por nombre de lote, no por id: nombres duplicados colapsan el conteo |
+| `c53e2955` | baja | app/(dashboard)/cuaderno-campo/page.tsx | Flecha de tendencia verde 'up' en KPIs sin comparación real (delta puramente descriptivo) |
+| `a75fb257` | baja | app/(dashboard)/cuaderno-campo/page.tsx | Uso de índice de array como key de React en la lista de registros |
 | `d8fa151b` | baja | components/campo-digital/TabCultivos.tsx | Modal Nueva Cosecha sin cultivos seleccionables en producción (lista demo → vacía) |
 | `05a0822d` | baja | components/campo-digital/TabCultivos.tsx | Tarjetas de Análisis de Suelo con grid interno fijo de 4 columnas sin colapso en mobile |
+| `0934f9a2` | baja | components/campo-digital/TabDeteccion.tsx | prob por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %) |
+| `15a8348f` | baja | components/campo-digital/TabDeteccion.tsx | Probabilidad por defecto 60% en Estrategia de Control cuando la alerta viene de la API (riesgo sin %) |
+| `b41d4305` | baja | components/campo-digital/TabLabores.tsx | La prioridad 'baja' nunca se muestra: el mapeo colapsa todo lo no-Urgente a 'media' |
+| `36be3028` | baja | components/campo-digital/TabResumen.tsx | TabResumen no reacciona al lote activo del sidebar (solo al establecimiento) |
+| `c5cce7e2` | baja | components/campo-digital/TabResumen.tsx | El KPI 'Cultivos distintos' puede mostrar 'Principal: En descanso' (no es un cultivo) |
