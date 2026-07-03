@@ -1,4 +1,4 @@
-// Datos compartidos del tab Lotes — formas de UI + datos de ejemplo del Figma.
+// Formas de UI y helpers del tab Lotes (mapeo de la API a la vista). Sin datos de ejemplo.
 
 export interface ComentarioLote {
   texto: string;
