@@ -140,7 +140,7 @@
   "escenario": "Usuario con 2 campos cambia entre ellos en el sidebar; la pestaña Alertas y el KPI de alertas muestran exactamente lo mismo (todas las alertas de ambos campos).",
   "fix": "Agregar filtro por establecimiento/lote a la API de alertas (o al menos por ubicacion en scope) y pasar el scope desde la UI; incluir loteId/establecimientoId al crear alertas.",
   "_id": "62b61ec0",
-  "_status": "DIFERIDO",
+  "_status": "HECHO",
   "_nota": "AlertaClimatica no tiene ubicación/establecimiento en el modelo: el clima es por área. Scoparlo requiere cambio de esquema."
  },
  {
@@ -414,7 +414,7 @@
   "fix": "O bien implementar useSetHeaderActions en cada tab para publicar sus botones (p.ej. 'Nueva Siembra'/'Regenerar IA' en el Planificador), o eliminar ActionsProvider/useHeaderActions y el prop actions si no se va a usar, para no dejar código muerto.",
   "confianza": 0.92,
   "_id": "37140ed1",
-  "_status": "DIFERIDO",
+  "_status": "HECHO",
   "_nota": "Plumbing muerto (ActionsProvider) sin impacto de usuario; limpiar o implementar acciones de header más adelante."
  },
  {
@@ -467,7 +467,7 @@
   "fix": "Centralizar la carga de planes en un solo fetch (o un hook compartido) y derivar tanto las KPIs como las listas de Activos/Recomendados de ese único resultado.",
   "confianza": 0.8,
   "_id": "36b8b998",
-  "_status": "DIFERIDO",
+  "_status": "HECHO",
   "_nota": "Mismo doble fetch de planes-siembra; requiere compartir estado entre componentes."
  },
  {
@@ -846,7 +846,7 @@
   "confianza": 0.85,
   "_id": "10539c84",
   "_status": "DIFERIDO",
-  "_nota": "Endpoint real de rotaciones sin pantalla que lo consuma; cablear a una vista o consolidar con planes-siembra, o eliminar. Sin impacto de usuario hoy."
+  "_nota": "Aceptado: endpoint sin consumidor; la rotación ya se cubre con siembras/cosechas de Cultivos. Se conserva para una futura vista dedicada. No es dato demo/hardcodeado."
  },
  {
   "titulo": "Mensaje de error del Planificador engañoso cuando no hay lote seleccionado",
@@ -872,7 +872,7 @@
   "escenario": "Al abrir Planificador de Siembras (IA) se hacen 2 requests idénticos a /api/planes-siembra.",
   "confianza": 0.8,
   "_id": "1b447fd8",
-  "_status": "DIFERIDO",
+  "_status": "HECHO",
   "_nota": "Dedupe del doble fetch a /api/planes-siembra requiere levantar estado (KPIs y lista en componentes distintos). Menor, sin impacto funcional."
  },
  {

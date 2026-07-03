@@ -11,6 +11,7 @@ import { CropImg } from "./LoteOverlay";
 /* ========== TAB CULTIVOS (Figma CDCultivos) ========== */
 
 type DistCultivo = { nombre: string; ha: number; pct: number; color: string; icon: string };
+type PlanSiembraApi = { id: string; cultivo: string; hectareas: number; costoEstimado?: number; fechaSiembraRecomendada: string; variedad?: string; lote?: { nombre: string }; estado?: string };
 const CULTIVO_COLOR: Record<string, string> = { Maíz: "#c08a22", Soja: "#768f44", Trigo: "#d9a538", Sorgo: "#8ea65a", Girasol: "#e8b94a", Cebada: "#5e7733", Alfalfa: "#aabd76" };
 const CULTIVO_ICON: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Trigo: "wheat", Sorgo: "leaf", Girasol: "sun", Cebada: "wheat", Alfalfa: "leaf" };
 
@@ -76,6 +77,8 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [planKpis, setPlanKpis] = useState({ generados: 0, aprobados: 0, superficie: 0, inversion: 0, proximaFecha: "", proximaCultivo: "" });
   const [refreshAnalisis, setRefreshAnalisis] = useState(0);
   const [refreshPlanes, setRefreshPlanes] = useState(0);
+  // Lista cruda de planes de siembra (una sola fuente, sin doble fetch).
+  const [planesRaw, setPlanesRaw] = useState<PlanSiembraApi[]>([]);
 
   // KPIs reales del Planificador (a partir de los planes de siembra guardados).
   useEffect(() => {
@@ -83,8 +86,9 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
     const q = loteActivo?.id ? `?loteId=${loteActivo.id}` : "";
     fetch(`/api/planes-siembra${q}`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((d: Array<{ estado?: string; hectareas?: number; costoEstimado?: number; cultivo?: string; fechaSiembraRecomendada?: string }>) => {
+      .then((d: PlanSiembraApi[]) => {
         if (!Array.isArray(d)) return;
+        setPlanesRaw(d);
         const futuros = d
           .filter((p) => p.fechaSiembraRecomendada && new Date(p.fechaSiembraRecomendada).getTime() >= Date.now())
           .sort((a, b) => new Date(a.fechaSiembraRecomendada!).getTime() - new Date(b.fechaSiembraRecomendada!).getTime());
@@ -234,7 +238,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       )}
 
-      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} onEditar={() => setSiembraOpen(true)} onChanged={() => setRefreshPlanes((n) => n + 1)} />}
+      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} planes={planesRaw} onEditar={() => setSiembraOpen(true)} onChanged={() => setRefreshPlanes((n) => n + 1)} />}
       {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={(loteId) => abrirNuevaLabor(loteId)} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
       {!planificadorMode && sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} refreshKey={refreshAnalisis} />}
     </>
@@ -478,11 +482,12 @@ function DonutResumen({ data }: { data: DistCultivo[] }) {
 
 /* ========== PLANIFICADOR IA (Figma CultivosPlanificador) ========== */
 function CultivosPlanificador({
-  toast, lotes, loteActivoId, onEditar, onChanged,
+  toast, lotes, loteActivoId, planes, onEditar, onChanged,
 }: {
   toast: ReturnType<typeof useToast>;
   lotes: { id?: string; nombre: string; ha: number }[];
   loteActivoId?: string;
+  planes: PlanSiembraApi[];
   onEditar: () => void;
   onChanged?: () => void;
 }) {
@@ -492,33 +497,27 @@ function CultivosPlanificador({
   // Lote objetivo: el activo del sidebar si tiene id, si no el primero con id.
   const loteObjetivo = (loteActivoId ? lotes.find((l) => l.id === loteActivoId) : null) || lotes.find((l) => l.id) || null;
 
+  // Deriva los planes activos de la lista ya cargada por el padre (sin doble fetch).
   useEffect(() => {
-    const q = loteActivoId ? `?loteId=${loteActivoId}` : "";
-    fetch(`/api/planes-siembra${q}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (!Array.isArray(d)) return;
-        if (d.length === 0) { setActivos([]); return; }
-        const colores = ["#d9a538", "#768f44", "#c08a22"];
-        const emojis: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Girasol: "sun", Trigo: "wheat", Sorgo: "leaf" };
-        setActivos(
-          d.slice(0, 6).map((p: { id: string; cultivo: string; hectareas: number; costoEstimado?: number; fechaSiembraRecomendada: string; variedad?: string; lote?: { nombre: string }; estado?: string }, i: number) => ({
-            id: p.id,
-            titulo: `${p.cultivo} - ${p.lote?.nombre || "Plan"}`,
-            emoji: emojis[p.cultivo] || "leaf",
-            costo: `$${Math.round(p.costoEstimado || 0).toLocaleString("es-AR")} USD`,
-            lotes: p.lote?.nombre || "—",
-            ha: `${Math.round(p.hectareas)} Ha`,
-            fecha: new Date(p.fechaSiembraRecomendada).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
-            insumo: p.variedad || "A definir",
-            densidad: "—",
-            steps: p.estado === "Aprobado" ? 4 : 2,
-            color: colores[i % 3],
-          }))
-        );
-      })
-      .catch(() => {});
-  }, [loteActivoId]);
+    if (!Array.isArray(planes) || planes.length === 0) { setActivos([]); return; }
+    const colores = ["#d9a538", "#768f44", "#c08a22"];
+    const emojis: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Girasol: "sun", Trigo: "wheat", Sorgo: "leaf" };
+    setActivos(
+      planes.slice(0, 6).map((p, i) => ({
+        id: p.id,
+        titulo: `${p.cultivo} - ${p.lote?.nombre || "Plan"}`,
+        emoji: emojis[p.cultivo] || "leaf",
+        costo: `$${Math.round(p.costoEstimado || 0).toLocaleString("es-AR")} USD`,
+        lotes: p.lote?.nombre || "—",
+        ha: `${Math.round(p.hectareas)} Ha`,
+        fecha: new Date(p.fechaSiembraRecomendada).toLocaleDateString("es-AR", { day: "numeric", month: "short", timeZone: "UTC" }),
+        insumo: p.variedad || "A definir",
+        densidad: "—",
+        steps: p.estado === "Aprobado" ? 4 : 2,
+        color: colores[i % 3],
+      }))
+    );
+  }, [planes]);
 
   const regenerar = async () => {
     if (generando) return;

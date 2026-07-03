@@ -108,10 +108,11 @@ function ClimaInner() {
       setClima(c);
       // Persiste las alertas auto-generadas y recarga el listado (quedan en el historial)
       if (Array.isArray(c.alertas) && c.alertas.length) {
+        const estQ = establecimientoId && establecimientoId !== "todos" ? `?establecimientoId=${establecimientoId}` : "";
         fetch("/api/alertas-climaticas/sincronizar", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ alertas: c.alertas, ubicacion: establecimientoActivo?.nombre || c.ubicacion?.nombre || "Campo", lat: c.ubicacion?.lat, lon: c.ubicacion?.lon }),
-        }).then(() => fetch("/api/alertas-climaticas")).then((r) => (r && r.ok ? r.json() : null))
+          body: JSON.stringify({ alertas: c.alertas, ubicacion: establecimientoActivo?.nombre || c.ubicacion?.nombre || "Campo", lat: c.ubicacion?.lat, lon: c.ubicacion?.lon, establecimientoId }),
+        }).then(() => fetch(`/api/alertas-climaticas${estQ}`)).then((r) => (r && r.ok ? r.json() : null))
           .then((d) => { if (Array.isArray(d) && d.length) setAlertas(d.map(mapAlertaApi)); }).catch(() => {});
       }
     }).catch(() => {});
@@ -142,7 +143,7 @@ function ClimaInner() {
       })
       .catch(() => {});
 
-    fetch("/api/alertas-climaticas")
+    fetch(`/api/alertas-climaticas${establecimientoId && establecimientoId !== "todos" ? `?establecimientoId=${establecimientoId}` : ""}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => { if (Array.isArray(d)) setAlertas(d.map(mapAlertaApi)); })
       .catch(() => {});

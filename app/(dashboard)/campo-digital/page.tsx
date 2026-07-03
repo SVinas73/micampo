@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader, Tabs } from "@/components/mc";
-import { ActionsProvider, useHeaderActions } from "@/components/campo-digital/ActionsContext";
 import TabResumen from "@/components/campo-digital/TabResumen";
 import TabLotes from "@/components/campo-digital/TabLotes";
 import TabLabores from "@/components/campo-digital/TabLabores";
@@ -22,9 +21,7 @@ const TABS = [
 export default function CampoDigitalPage() {
   return (
     <Suspense>
-      <ActionsProvider>
-        <CampoDigitalInner />
-      </ActionsProvider>
+      <CampoDigitalInner />
     </Suspense>
   );
 }
@@ -33,7 +30,6 @@ function CampoDigitalInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") && TABS.includes(searchParams.get("tab")!) ? searchParams.get("tab")! : "Resumen";
-  const { actions } = useHeaderActions();
 
   const setTab = (t: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -47,7 +43,6 @@ function CampoDigitalInner() {
         crumbs={["Agronomía", "Campo Digital"]}
         title="Campo Digital"
         subtitle="Mapa operativo, siembras, cultivos y sanidad de tus hectáreas productivas."
-        actions={actions}
       />
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
       {tab === "Resumen" && <TabResumen onNavigateTab={setTab} />}
