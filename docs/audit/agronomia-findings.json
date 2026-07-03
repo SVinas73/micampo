@@ -1370,8 +1370,8 @@
   "fix": "Mapear orden.insumos (con productoId/ubicacionId reales) al campo `productos` del POST para disparar el descuento de stock; el wizard debería usar el catálogo real de inventario en vez de INSUMOS_CATALOGO hardcodeado.",
   "line_hint": "214-222 vs route.ts 114-177",
   "_id": "09b0548f",
-  "_status": "DIFERIDO",
-  "_nota": "Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta."
+  "_status": "HECHO",
+  "_nota": "Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. | RESUELTO: wizard usa inventario y maquinaria reales."
  },
  {
   "titulo": "El wizard no envía maquinaId: el costo de maquinaria nunca se prorratea al lote en Economía",
@@ -1385,8 +1385,8 @@
   "fix": "Que el paso 3 seleccione una Maquinaria real (id) desde /api/maquinaria y se envíe maquinaId en el POST de emitirOrden.",
   "line_hint": "217-221; economia.ts 41-90",
   "_id": "900cea3f",
-  "_status": "DIFERIDO",
-  "_nota": "Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta."
+  "_status": "HECHO",
+  "_nota": "Requiere selector de inventario/maquinaria reales en el wizard (cambio de UX mayor). Se hará con la API key puesta. | RESUELTO: wizard usa inventario y maquinaria reales."
  },
  {
   "titulo": "El costo total calculado en el wizard no se persiste como CostoLote (queda solo en texto)",
@@ -1484,8 +1484,8 @@
   "fix": "Alimentar insumos/operarios/maquinaria/clima desde las APIs reales correspondientes; si no hay datos, mostrar estados vacíos honestos en lugar de valores fijos.",
   "line_hint": "49-57,105,324,328,332,339,344,348,356,523-524",
   "_id": "4bc5d742",
-  "_status": "DIFERIDO",
-  "_nota": "Parte del trabajo del wizard con inventario/maquinaria reales (mismo grupo diferido)."
+  "_status": "HECHO",
+  "_nota": "Parte del trabajo del wizard con inventario/maquinaria reales (mismo grupo diferido). | RESUELTO: wizard usa inventario y maquinaria reales."
  },
  {
   "titulo": "La prioridad 'baja' nunca se muestra: el mapeo colapsa todo lo no-Urgente a 'media'",

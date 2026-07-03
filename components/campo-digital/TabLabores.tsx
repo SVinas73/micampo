@@ -230,6 +230,13 @@ export default function TabLabores() {
             superficieTrabajada: lote.ha || 0, descripcion: orden.actividad,
             observaciones: obs, prioridad: orden.prioridad, operarios: orden.operario,
             costoTotal: costoLote,
+            // Maquinaria real (prorratea su costo al lote) y productos reales (descuentan stock).
+            maquinaId: orden.maquinaId,
+            productos: (orden.productos || []).map((p) => ({
+              productoId: p.productoId, ubicacionId: p.ubicacionId,
+              tipoProducto: p.tipoProducto, nombreProducto: p.nombreProducto,
+              dosis: p.dosis, unidadDosis: p.unidadDosis,
+            })),
           }),
         });
         if (!res.ok) continue;
