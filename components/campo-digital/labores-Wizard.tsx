@@ -18,10 +18,18 @@ export interface OrdenLabor {
   operario: string;
   tractor: string;
   implemento: string;
+  maquinaId?: string;
   parametros: Record<string, string>;
   insumos: { nombre: string; dosis: string; unidad: string }[];
+  // Insumos reales del inventario, para descontar stock y crear AplicacionProducto.
+  productos: { productoId: string; ubicacionId: string; nombreProducto: string; tipoProducto: string; dosis: string; unidadDosis: string }[];
   costoTotal: number;
 }
+
+type ProdUbic = { id: string; ubicacion: string; cantidad: number; lote?: { nombre: string } | null };
+type ProdApi = { id: string; nombre: string; categoria: string; unidad: string; ubicaciones: ProdUbic[] };
+type MaqApi = { id: string; marca: string; modelo: string; tipo: string; estado?: string; horasMotor?: number };
+type InsumoSel = { productoId: string; ubicacionId: string; nombre: string; dosis: string; unidad: string; tipoProducto: string; stock: number };
 
 const ACTIVIDADES: { categoria: string; icon: string; items: string[] }[] = [
   { categoria: "Siembra & Plantación", icon: "sprout", items: ["Directa Fina", "Directa Gruesa", "Voleo/Cobertura", "Re-siembra"] },
@@ -46,16 +54,6 @@ function defaultsPara(actividad: string, categoria: string): Record<string, stri
   return {};
 }
 
-const INSUMOS_CATALOGO = [
-  { nombre: "Urea Granulada", stock: 25000, unidad: "kg" },
-  { nombre: "Urea Líquida (UAN)", stock: 0, unidad: "kg" },
-  { nombre: "Maíz Híbrido DK-7272", stock: 120, unidad: "bolsas" },
-  { nombre: "Starter Fosforado", stock: 180, unidad: "L" },
-  { nombre: "Glifosato 48%", stock: 850, unidad: "L" },
-  { nombre: "Semilla Soja SY 5x1", stock: 320, unidad: "bolsas" },
-  { nombre: "Inoculante", stock: 12, unidad: "L" },
-];
-
 export function NuevaOrdenLaborModal({
   lotesDisponibles,
   onClose,
@@ -75,13 +73,25 @@ export function NuevaOrdenLaborModal({
   const [actividad, setActividad] = useState("");
   const [categoria, setCategoria] = useState("");
   const [lotesSel, setLotesSel] = useState<Set<number>>(new Set());
-  const [operario, setOperario] = useState("Marcos Gonzalez");
-  const [tractor, setTractor] = useState("John Deere 7230R");
-  const [implemento, setImplemento] = useState("Sembradora Pla STC");
+  const [operario, setOperario] = useState("");
+  const [tractorId, setTractorId] = useState("");
+  const [implementoId, setImplementoId] = useState("");
   const [parametros, setParametros] = useState<Record<string, string>>({});
-  const [insumos, setInsumos] = useState<{ nombre: string; dosis: string; unidad: string; stock: number }[]>([]);
+  const [insumos, setInsumos] = useState<InsumoSel[]>([]);
   const [busquedaInsumo, setBusquedaInsumo] = useState("");
   const [emitiendo, setEmitiendo] = useState(false);
+  // Inventario y maquinaria reales.
+  const [productos, setProductos] = useState<ProdApi[]>([]);
+  const [maquinas, setMaquinas] = useState<MaqApi[]>([]);
+
+  useEffect(() => {
+    fetch("/api/productos").then((r) => (r.ok ? r.json() : [])).then((d) => { if (Array.isArray(d)) setProductos(d); }).catch(() => {});
+    fetch("/api/maquinaria").then((r) => (r.ok ? r.json() : [])).then((d) => { if (Array.isArray(d)) setMaquinas(d); }).catch(() => {});
+  }, []);
+
+  const maqLabel = (m: MaqApi) => `${m.marca} ${m.modelo}${m.tipo ? ` · ${m.tipo}` : ""}`;
+  const tractorSel = maquinas.find((m) => m.id === tractorId) || null;
+  const implementoSel = maquinas.find((m) => m.id === implementoId) || null;
 
   // Cargar configuración por defecto según actividad
   useEffect(() => {
@@ -113,8 +123,16 @@ export function NuevaOrdenLaborModal({
   const armarOrden = (): OrdenLabor => ({
     actividad, categoria, prioridad,
     lotes: Array.from(lotesSel).map((i) => lotesDisponibles[i]),
-    haNetas, operario, tractor, implemento, parametros,
+    haNetas,
+    operario: operario.trim() || "Equipo",
+    tractor: tractorSel ? maqLabel(tractorSel) : "",
+    implemento: implementoSel ? maqLabel(implementoSel) : "",
+    maquinaId: tractorId || undefined,
+    parametros,
     insumos: insumos.map(({ nombre, dosis, unidad }) => ({ nombre, dosis, unidad })),
+    productos: insumos
+      .filter((i) => i.productoId && i.ubicacionId)
+      .map((i) => ({ productoId: i.productoId, ubicacionId: i.ubicacionId, nombreProducto: i.nombre, tipoProducto: i.tipoProducto, dosis: i.dosis, unidadDosis: i.unidad })),
     costoTotal,
   });
 
@@ -125,9 +143,25 @@ export function NuevaOrdenLaborModal({
     setEmitiendo(false);
   };
 
+  // Unidad de dosis por defecto según la unidad del producto (kg → Kg/Ha, L → Lt/Ha…).
+  const unidadDosisDe = (u: string) => {
+    const uu = (u || "").toLowerCase();
+    if (uu.startsWith("l")) return "Lt/Ha";
+    if (uu.startsWith("kg") || uu === "g") return "Kg/Ha";
+    if (uu.includes("bolsa") || uu.includes("sem")) return "Sem/Ha";
+    return `${u}/Ha`;
+  };
+  const stockTotal = (p: ProdApi) => p.ubicaciones.reduce((s, u) => s + (u.cantidad || 0), 0);
+  const mejorUbic = (p: ProdApi) => [...p.ubicaciones].sort((a, b) => (b.cantidad || 0) - (a.cantidad || 0))[0];
   const insumosFiltrados = busquedaInsumo.trim()
-    ? INSUMOS_CATALOGO.filter((i) => i.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase()))
+    ? productos.filter((p) => p.nombre.toLowerCase().includes(busquedaInsumo.toLowerCase()))
     : [];
+  const agregarInsumo = (p: ProdApi) => {
+    const ub = mejorUbic(p);
+    if (!ub) return;
+    setInsumos((prev) => [...prev, { productoId: p.id, ubicacionId: ub.id, nombre: p.nombre, dosis: "100", unidad: unidadDosisDe(p.unidad), tipoProducto: p.categoria, stock: stockTotal(p) }]);
+    setBusquedaInsumo("");
+  };
 
   const inputS: React.CSSProperties = { width: "100%", padding: "9px 11px", borderRadius: 8, border: "1px solid var(--mc-line-2)", fontSize: 13.5, background: "var(--mc-surface)", color: "var(--mc-ink)" };
 
@@ -316,49 +350,49 @@ export function NuevaOrdenLaborModal({
                   <div className="mc-card" style={{ padding: 16 }}>
                     <div className="font-semi" style={{ marginBottom: 10 }}>1. Operario</div>
                     <div className="row gap-10" style={{ marginBottom: 10 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#5E8F78", color: "white", display: "grid", placeItems: "center", fontWeight: 700 }}>
-                        {(operario || "").split(" ").filter(Boolean).map((n) => n[0]).join("") || "—"}
+                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--mc-green-600)", color: "white", display: "grid", placeItems: "center", fontWeight: 700 }}>
+                        {(operario || "").split(" ").filter(Boolean).map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "—"}
                       </div>
-                      <div>
-                        <div className="font-semi text-sm">{operario}</div>
-                        <span className="mc-badge mc-badge--green" style={{ fontSize: 10, display: "inline-flex", alignItems: "center", gap: 3 }}>Licencia: Vigente <Icon name="check" size={10} /></span>
-                      </div>
+                      <div className="text-sm text-muted">Nombre del responsable de la labor (opcional).</div>
                     </div>
-                    <select style={inputS} value={operario} onChange={(e) => setOperario(e.target.value)}>
-                      {["Marcos Gonzalez", "Juan Pérez", "M. Gómez", "C. López"].map((o) => <option key={o}>{o}</option>)}
-                    </select>
-                    {operario === "Marcos Gonzalez" && (
-                      <div style={{ marginTop: 10, padding: "8px 10px", background: "var(--mc-amber-bg)", borderRadius: 8, fontSize: 11.5, color: "var(--mc-amber)" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={12} /> Turno doble acumulado · lleva 6.5h en turno actual</span>
-                      </div>
-                    )}
+                    <input style={inputS} placeholder="Ej. Juan Pérez" value={operario} onChange={(e) => setOperario(e.target.value)} />
                   </div>
                   <div className="mc-card" style={{ padding: 16 }}>
                     <div className="font-semi" style={{ marginBottom: 10 }}>2. Equipo de Tracción</div>
-                    <select style={inputS} value={tractor} onChange={(e) => setTractor(e.target.value)}>
-                      {["John Deere 7230R", "John Deere 7R 330", "Case Puma 200", "New Holland T7"].map((o) => <option key={o}>{o}</option>)}
-                    </select>
-                    <div className="grid g-cols-2 gap-8 mt-12">
-                      <div style={{ padding: 10, border: "1px solid var(--mc-line)", borderRadius: 8, textAlign: "center" }}>
-                        <div style={{ fontSize: 11, color: "var(--mc-text-3)" }}>Combustible</div>
-                        <div className="font-semi" style={{ fontSize: 16, color: "var(--mc-green-700)" }}>80%</div>
-                      </div>
-                      <div style={{ padding: 10, border: "1px solid var(--mc-line)", borderRadius: 8, textAlign: "center" }}>
-                        <div style={{ fontSize: 11, color: "var(--mc-text-3)" }}>Horas Motor</div>
-                        <div className="font-semi" style={{ fontSize: 16, color: "var(--mc-amber)" }}>4200h</div>
-                      </div>
-                    </div>
-                    <span className="mc-badge mc-badge--green mt-12"><span className="mc-badge__dot"></span>Disponible</span>
+                    {maquinas.length === 0 ? (
+                      <div className="text-sm text-muted">No hay maquinaria cargada. Agregala en Maquinaria para prorratear su costo al lote.</div>
+                    ) : (
+                      <>
+                        <select style={inputS} value={tractorId} onChange={(e) => setTractorId(e.target.value)}>
+                          <option value="">— Sin equipo —</option>
+                          {maquinas.map((m) => <option key={m.id} value={m.id}>{maqLabel(m)}</option>)}
+                        </select>
+                        {tractorSel && (
+                          <div className="grid g-cols-2 gap-8 mt-12">
+                            <div style={{ padding: 10, border: "1px solid var(--mc-line)", borderRadius: 8, textAlign: "center" }}>
+                              <div style={{ fontSize: 11, color: "var(--mc-text-3)" }}>Tipo</div>
+                              <div className="font-semi" style={{ fontSize: 14, color: "var(--mc-green-700)" }}>{tractorSel.tipo || "—"}</div>
+                            </div>
+                            <div style={{ padding: 10, border: "1px solid var(--mc-line)", borderRadius: 8, textAlign: "center" }}>
+                              <div style={{ fontSize: 11, color: "var(--mc-text-3)" }}>Horas Motor</div>
+                              <div className="font-semi" style={{ fontSize: 14, color: "var(--mc-ink)" }}>{tractorSel.horasMotor != null ? `${Math.round(tractorSel.horasMotor)}h` : "—"}</div>
+                            </div>
+                          </div>
+                        )}
+                        {tractorSel?.estado && <span className={`mc-badge mt-12 ${tractorSel.estado === "Activa" ? "mc-badge--green" : "mc-badge--neutral"}`}><span className="mc-badge__dot"></span>{tractorSel.estado}</span>}
+                      </>
+                    )}
                   </div>
                   <div className="mc-card" style={{ padding: 16 }}>
                     <div className="font-semi" style={{ marginBottom: 10 }}>3. Implemento</div>
-                    <select style={inputS} value={implemento} onChange={(e) => setImplemento(e.target.value)}>
-                      {["Sembradora Pla STC", "Rotoenfardadora Mainero", "Pulverizador Metalfor", "Fertilizadora Altina"].map((o) => <option key={o}>{o}</option>)}
-                    </select>
-                    <div style={{ marginTop: 12, padding: "8px 10px", background: "var(--mc-surface-2)", borderRadius: 8, fontSize: 12 }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="settings" size={12} /> Config: 16 líneas a 52cm</span>
-                    </div>
-                    <span className="mc-badge mc-badge--green mt-12"><Icon name="check" size={10} />Compatible con Tractor</span>
+                    {maquinas.length === 0 ? (
+                      <div className="text-sm text-muted">Sin implementos cargados.</div>
+                    ) : (
+                      <select style={inputS} value={implementoId} onChange={(e) => setImplementoId(e.target.value)}>
+                        <option value="">— Sin implemento —</option>
+                        {maquinas.filter((m) => m.id !== tractorId).map((m) => <option key={m.id} value={m.id}>{maqLabel(m)}</option>)}
+                      </select>
+                    )}
                   </div>
                 </div>
               </div>
@@ -369,7 +403,7 @@ export function NuevaOrdenLaborModal({
               <div className="col gap-14">
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div className="mc-card__title" style={{ fontSize: 18 }}>Configuración Técnica: {actividad || "Labor"}</div>
-                  <div className="text-sm text-muted">{tractor} + {implemento}</div>
+                  <div className="text-sm text-muted">{tractorSel ? maqLabel(tractorSel) : "Sin equipo"}{implementoSel ? ` + ${maqLabel(implementoSel)}` : ""}</div>
                 </div>
                 <button
                   className="mc-btn mc-btn--secondary mc-btn--sm"
@@ -428,43 +462,48 @@ export function NuevaOrdenLaborModal({
                     value={busquedaInsumo}
                     onChange={(e) => setBusquedaInsumo(e.target.value)}
                   />
-                  {insumosFiltrados.length > 0 && (
-                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 10, boxShadow: "var(--sh-lg)", zIndex: 20, overflow: "hidden" }}>
-                      {insumosFiltrados.map((ins) => (
-                        <button
-                          key={ins.nombre}
-                          disabled={ins.stock === 0}
-                          onClick={() => {
-                            setInsumos((prev) => [...prev, { nombre: ins.nombre, dosis: "100", unidad: ins.unidad === "bolsas" ? "Sem/Ha" : `${ins.unidad === "L" ? "Lt" : "Kg"}/Ha`, stock: ins.stock }]);
-                            setBusquedaInsumo("");
-                          }}
-                          style={{ width: "100%", padding: "10px 14px", display: "flex", justifyContent: "space-between", cursor: ins.stock === 0 ? "not-allowed" : "pointer", background: ins.stock > 0 ? "var(--mc-green-50)" : "transparent", borderBottom: "1px solid var(--mc-line)", opacity: ins.stock === 0 ? 0.6 : 1 }}
-                        >
-                          <span className="font-semi text-sm">{ins.nombre}</span>
-                          <span className="text-xs" style={{ color: ins.stock > 0 ? "var(--mc-green-700)" : "var(--mc-red)" }}>
-                            Stock: {ins.stock.toLocaleString("es-AR")} {ins.unidad} · {ins.stock > 0 ? "● Disp." : "● Sin Stock"}
-                          </span>
-                        </button>
-                      ))}
+                  {busquedaInsumo.trim() && insumosFiltrados.length > 0 && (
+                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 10, boxShadow: "var(--sh-lg)", zIndex: 20, overflow: "hidden", maxHeight: 240, overflowY: "auto" }}>
+                      {insumosFiltrados.map((p) => {
+                        const st = stockTotal(p);
+                        return (
+                          <button
+                            key={p.id}
+                            disabled={st === 0}
+                            onClick={() => agregarInsumo(p)}
+                            style={{ width: "100%", padding: "10px 14px", display: "flex", justifyContent: "space-between", cursor: st === 0 ? "not-allowed" : "pointer", background: st > 0 ? "var(--mc-green-50)" : "transparent", borderBottom: "1px solid var(--mc-line)", opacity: st === 0 ? 0.6 : 1 }}
+                          >
+                            <span className="font-semi text-sm">{p.nombre} <span className="text-xs text-muted">· {p.categoria}</span></span>
+                            <span className="text-xs" style={{ color: st > 0 ? "var(--mc-green-700)" : "var(--mc-red)" }}>
+                              Stock: {st.toLocaleString("es-AR")} {p.unidad} · {st > 0 ? "● Disp." : "● Sin Stock"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {busquedaInsumo.trim() && insumosFiltrados.length === 0 && (
+                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, background: "var(--mc-surface)", border: "1px solid var(--mc-line)", borderRadius: 10, boxShadow: "var(--sh-lg)", zIndex: 20, padding: "10px 14px", fontSize: 12.5, color: "var(--mc-text-3)" }}>
+                      {productos.length === 0 ? "No hay productos en inventario. Cargalos en Logística e Inventario." : "Sin coincidencias."}
                     </div>
                   )}
                 </div>
                 <div className="font-semi text-sm">Insumos Agregados ({insumos.length})</div>
+                {insumos.length === 0 && <div className="text-sm text-muted">Buscá un producto del inventario para agregarlo. Al emitir la orden se descuenta del stock según la dosis × hectáreas.</div>}
                 <div className="col gap-10">
                   {insumos.map((ins, i) => {
-                    const pct = Math.min(100, (ins.stock / 200) * 100);
+                    // Total a aplicar = dosis × hectáreas netas; se marca si supera el stock disponible.
+                    const requerido = (parseFloat(ins.dosis) || 0) * haNetas;
+                    const faltante = requerido > ins.stock;
                     return (
                       <div key={i} style={{ padding: 14, border: "1px solid var(--mc-line)", borderRadius: 12, display: "flex", alignItems: "center", gap: 14 }}>
                         <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--mc-green-50)", color: "var(--mc-green-700)", display: "grid", placeItems: "center" }}>
-                          <Icon name={ins.nombre.includes("Maíz") || ins.nombre.includes("Semilla") ? "sprout" : "flask"} size={18} />
+                          <Icon name={ins.tipoProducto === "Semilla" ? "sprout" : "flask"} size={18} />
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div className="font-semi text-sm">{ins.nombre}</div>
-                          <div className="mc-prog mt-4" style={{ maxWidth: 180 }}>
-                            <div className={`mc-prog__bar ${pct < 40 ? "mc-prog__bar--orange" : ""}`} style={{ width: `${pct}%` }}></div>
-                          </div>
-                          <div className="text-xs mt-2" style={{ color: pct < 40 ? "var(--mc-orange-700)" : "var(--mc-green-700)" }}>
-                            {pct < 40 ? "Stock Crítico" : `En Galpón: ${ins.stock.toLocaleString("es-AR")}`}
+                          <div className="font-semi text-sm">{ins.nombre} <span className="text-xs text-muted">· {ins.tipoProducto}</span></div>
+                          <div className="text-xs mt-2" style={{ color: faltante ? "var(--mc-red)" : "var(--mc-green-700)" }}>
+                            Stock: {ins.stock.toLocaleString("es-AR")} · requiere {Math.round(requerido).toLocaleString("es-AR")}{faltante ? " · stock insuficiente" : ""}
                           </div>
                         </div>
                         <div className="mc-field" style={{ width: 160 }}>
@@ -496,7 +535,7 @@ export function NuevaOrdenLaborModal({
                   </ResumenCard>
                   <ResumenCard icon="users" title="Equipo Asignado">
                     <div className="font-semi text-sm">{operario} (Maquinista)</div>
-                    <div className="text-xs text-muted mt-2">{tractor} + {implemento}</div>
+                    <div className="text-xs text-muted mt-2">{tractorSel ? maqLabel(tractorSel) : "Sin equipo"}{implementoSel ? ` + ${maqLabel(implementoSel)}` : ""}</div>
                   </ResumenCard>
                   <ResumenCard icon="settings" title="Parámetros Técnicos">
                     <div className="font-semi text-sm">{actividad}</div>

@@ -21,16 +21,17 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const { alertas, ubicacion, lat, lon } = (await request.json()) as {
+    const { alertas, ubicacion, lat, lon, establecimientoId } = (await request.json()) as {
       alertas?: { tipo: string; severidad: string; mensaje: string; recomendacion: string }[];
-      ubicacion?: string; lat?: number; lon?: number;
+      ubicacion?: string; lat?: number; lon?: number; establecimientoId?: string | null;
     };
     if (!Array.isArray(alertas) || alertas.length === 0) return NextResponse.json({ creadas: 0 });
+    const estId = establecimientoId && establecimientoId !== "todos" ? establecimientoId : null;
 
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    // Alertas auto de hoy ya existentes (para no duplicar)
+    // Alertas auto de hoy ya existentes para ese establecimiento (para no duplicar)
     const existentes = await prisma.alertaClimatica.findMany({
-      where: { userId: session.user.id, fuenteDatos: "OpenMeteo-auto", createdAt: { gte: hoy } },
+      where: { userId: session.user.id, fuenteDatos: "OpenMeteo-auto", establecimientoId: estId, createdAt: { gte: hoy } },
       select: { titulo: true },
     });
     const yaHay = new Set(existentes.map((e) => e.titulo));
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
           longitud: lon ?? null,
           recomendacion: a.recomendacion,
           fuenteDatos: "OpenMeteo-auto",
+          establecimientoId: estId,
           userId: session.user.id,
         },
       });

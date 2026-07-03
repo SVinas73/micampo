@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, Modal, Field, useToast } from "@/components/mc";
-import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import { NuevaSiembraModal, NuevaCosechaModal, type SiembraData, type CosechaData } from "./cultivos-Modales";
 import { CropImg } from "./LoteOverlay";
@@ -11,6 +10,8 @@ import { CropImg } from "./LoteOverlay";
 /* ========== TAB CULTIVOS (Figma CDCultivos) ========== */
 
 type DistCultivo = { nombre: string; ha: number; pct: number; color: string; icon: string };
+type PlanSiembraApi = { id: string; cultivo: string; hectareas: number; costoEstimado?: number; fechaSiembraRecomendada: string; variedad?: string; lote?: { nombre: string }; estado?: string };
+type AnalisisSueloApi = { pH?: number | null; materiaOrganica?: number | null; nitrogeno?: number | null; fosforo?: number | null; potasio?: number | null; fechaAnalisis: string; lote?: { nombre: string } | null };
 const CULTIVO_COLOR: Record<string, string> = { Maíz: "#c08a22", Soja: "#768f44", Trigo: "#d9a538", Sorgo: "#8ea65a", Girasol: "#e8b94a", Cebada: "#5e7733", Alfalfa: "#aabd76" };
 const CULTIVO_ICON: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Trigo: "wheat", Sorgo: "leaf", Girasol: "sun", Cebada: "wheat", Alfalfa: "leaf" };
 
@@ -40,18 +41,6 @@ type PlanIA = {
   beneficio: string;
 };
 
-const PLANES_ACTIVOS_DEMO: PlanActivo[] = [
-  { titulo: "Maíz Tardío - Lotes Norte", emoji: "wheat", costo: "$45.500 USD", lotes: "4, 5, 8", ha: "320 Ha", fecha: "20-25 Oct", insumo: "Híbrido DK-7210", densidad: "70 pl/Ha", steps: 3, color: "#d9a538" },
-  { titulo: "Soja Primera - Lotes Sur", emoji: "sprout", costo: "$62.000 USD", lotes: "9, 12, 15", ha: "450 Ha", fecha: "05-10 Nov", insumo: "Semilla SY 5x1", densidad: "280k pl/Ha", steps: 2, color: "#768f44" },
-  { titulo: "Girasol - Lotes Oeste", emoji: "leaf", costo: "$55.000 USD", lotes: "1, 3, 7", ha: "280 Ha", fecha: "15-20 Nov", insumo: "Semilla P245", densidad: "60k pl/Ha", steps: 4, color: "#c08a22" },
-];
-
-const PLANES_IA_DEMO: PlanIA[] = [
-  { sugerencia: "Rotación a Maíz Tardío", confianza: 92, nivel: "Alta", color: "#768f44", lotes: "Lotes 3 y 7 (Vienen de Soja de 1ra)", razon: "Compactación severa y déficit de N en suelo.", proy: "Margen proyectado: +15% vs. repetir Soja", beneficio: "Beneficio Maíz: aporte clave de rastrojo y mejora estructural." },
-  { sugerencia: "Siembra de Cultivo de Cobertura", confianza: 92, nivel: "Alta", color: "#3aa6d9", lotes: "Lotes 2 y 8 (Previo a Soja de 2da)", razon: "Alto riesgo de erosión y presión de malezas invernales.", proy: "Ahorro estimado: $30 USD/Ha en herbicidas", beneficio: "Beneficio Cobertura: protección del suelo, retención de humedad y supresión de malezas." },
-  { sugerencia: "Aplicación de Nitrógeno Variable", confianza: 85, nivel: "Media", color: "#c08a22", lotes: "Lotes 5 y 9 (Maíz en V6)", razon: "Variabilidad significativa de N en suelo y zonas de bajo potencial.", proy: "Aumento de rinde estimado: +8% por eficiencia de uso", beneficio: "Beneficio Dosis Variable: optimización de insumos, reducción de costos y menor impacto ambiental." },
-];
-
 export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -76,6 +65,10 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [planKpis, setPlanKpis] = useState({ generados: 0, aprobados: 0, superficie: 0, inversion: 0, proximaFecha: "", proximaCultivo: "" });
   const [refreshAnalisis, setRefreshAnalisis] = useState(0);
   const [refreshPlanes, setRefreshPlanes] = useState(0);
+  // Lista cruda de planes de siembra (una sola fuente, sin doble fetch).
+  const [planesRaw, setPlanesRaw] = useState<PlanSiembraApi[]>([]);
+  // Análisis de suelo reales del alcance, para los KPIs de la subpestaña.
+  const [analisisSuelo, setAnalisisSuelo] = useState<AnalisisSueloApi[]>([]);
 
   // KPIs reales del Planificador (a partir de los planes de siembra guardados).
   useEffect(() => {
@@ -83,8 +76,9 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
     const q = loteActivo?.id ? `?loteId=${loteActivo.id}` : "";
     fetch(`/api/planes-siembra${q}`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((d: Array<{ estado?: string; hectareas?: number; costoEstimado?: number; cultivo?: string; fechaSiembraRecomendada?: string }>) => {
+      .then((d: PlanSiembraApi[]) => {
         if (!Array.isArray(d)) return;
+        setPlanesRaw(d);
         const futuros = d
           .filter((p) => p.fechaSiembraRecomendada && new Date(p.fechaSiembraRecomendada).getTime() >= Date.now())
           .sort((a, b) => new Date(a.fechaSiembraRecomendada!).getTime() - new Date(b.fechaSiembraRecomendada!).getTime());
@@ -100,6 +94,32 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
       })
       .catch(() => {});
   }, [planificadorMode, loteActivo?.id, establecimientoId, refreshPlanes]);
+
+  // KPIs reales de Análisis de Suelo (de /api/analisis-suelo del alcance).
+  useEffect(() => {
+    if (planificadorMode || sub !== "Análisis de Suelo") return;
+    const q = loteActivo?.id ? `?loteId=${loteActivo.id}` : "";
+    fetch(`/api/analisis-suelo${q}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (Array.isArray(d)) setAnalisisSuelo(d); })
+      .catch(() => {});
+  }, [planificadorMode, sub, loteActivo?.id, establecimientoId, refreshAnalisis]);
+
+  const kpiSuelo = useMemo(() => {
+    const rows = analisisSuelo;
+    const anio = new Date().getFullYear();
+    const delAnio = rows.filter((a) => a.fechaAnalisis && new Date(a.fechaAnalisis).getFullYear() === anio).length;
+    const phs = rows.map((a) => a.pH).filter((v): v is number => typeof v === "number");
+    const mos = rows.map((a) => a.materiaOrganica).filter((v): v is number => typeof v === "number");
+    const phProm = phs.length ? phs.reduce((s, v) => s + v, 0) / phs.length : null;
+    const moProm = mos.length ? mos.reduce((s, v) => s + v, 0) / mos.length : null;
+    const esCritico = (a: AnalisisSueloApi) => (a.pH != null && a.pH < 5.5) || (a.materiaOrganica != null && a.materiaOrganica < 2);
+    const esOptimo = (a: AnalisisSueloApi) => a.pH != null && a.pH >= 6 && a.pH <= 7 && (a.materiaOrganica == null || a.materiaOrganica >= 2.5);
+    const criticos = new Set(rows.filter(esCritico).map((a) => a.lote?.nombre).filter(Boolean)).size;
+    const optimos = new Set(rows.filter(esOptimo).map((a) => a.lote?.nombre).filter(Boolean)).size;
+    const totalLotes = new Set(rows.map((a) => a.lote?.nombre).filter(Boolean)).size;
+    return { total: rows.length, delAnio, phProm, moProm, criticos, optimos, totalLotes };
+  }, [analisisSuelo]);
 
   useEffect(() => {
     // Respeta el lote puntual del sidebar: Estados y Distribución se acotan a ese lote.
@@ -203,11 +223,11 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       ) : (
         <div className="grid g-cols-5">
-          <KPI label="Análisis del Año" value={demo("14", "0")} delta={demo("+3 este mes", "—")} trend="up" icon="leaf" accent />
-          <KPI label="Lotes Críticos" value={demo("2", "0")} delta={demo("P bajo · Norte/Oeste", "—")} trend="warn" icon="alert" warn />
-          <KPI label="Lotes Óptimos" value={demo("9", "0")} delta={demo("64% del total", "—")} trend="up" icon="check" />
-          <KPI label="pH Promedio" value={demo("6.4", "—")} delta={demo("Rango óptimo", "—")} trend="up" icon="activity" />
-          <KPI label="MO Promedio" value={demo("2.6%", "—")} delta={demo("-0.1 vs 23/24", "—")} trend="down" icon="sprout" />
+          <KPI label="Análisis del Año" value={String(kpiSuelo.delAnio)} delta={`${kpiSuelo.total} en total`} trend="flat" icon="leaf" accent />
+          <KPI label="Lotes Críticos" value={String(kpiSuelo.criticos)} delta={kpiSuelo.criticos ? "pH bajo o poca MO" : "Ninguno"} trend="warn" icon="alert" warn={kpiSuelo.criticos > 0} />
+          <KPI label="Lotes Óptimos" value={String(kpiSuelo.optimos)} delta={kpiSuelo.totalLotes ? `de ${kpiSuelo.totalLotes} con análisis` : "Sin análisis"} trend="flat" icon="check" />
+          <KPI label="pH Promedio" value={kpiSuelo.phProm != null ? kpiSuelo.phProm.toFixed(1) : "—"} delta={kpiSuelo.phProm != null ? (kpiSuelo.phProm >= 6 && kpiSuelo.phProm <= 7 ? "Rango óptimo" : "Fuera de rango") : "Sin datos"} trend="flat" icon="activity" />
+          <KPI label="MO Promedio" value={kpiSuelo.moProm != null ? `${kpiSuelo.moProm.toFixed(1)}%` : "—"} delta={kpiSuelo.moProm != null ? (kpiSuelo.moProm >= 2.5 ? "Buena" : "Baja") : "Sin datos"} trend="flat" icon="sprout" />
         </div>
       )}
 
@@ -234,7 +254,7 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       )}
 
-      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} onEditar={() => setSiembraOpen(true)} onChanged={() => setRefreshPlanes((n) => n + 1)} />}
+      {planificadorMode && <CultivosPlanificador toast={toast} lotes={lotes} loteActivoId={loteActivo?.id} planes={planesRaw} onEditar={() => setSiembraOpen(true)} onChanged={() => setRefreshPlanes((n) => n + 1)} />}
       {!planificadorMode && sub === "Estados" && <CultivosEstados lotesReales={lotes} onNuevaTarea={(loteId) => abrirNuevaLabor(loteId)} onVerMapa={() => navegar("Lotes")} distribucion={distribucion} />}
       {!planificadorMode && sub === "Análisis de Suelo" && <CultivosAnalisisSuelo toast={toast} onVerMapa={() => navegar("Lotes")} refreshKey={refreshAnalisis} />}
     </>
@@ -478,47 +498,42 @@ function DonutResumen({ data }: { data: DistCultivo[] }) {
 
 /* ========== PLANIFICADOR IA (Figma CultivosPlanificador) ========== */
 function CultivosPlanificador({
-  toast, lotes, loteActivoId, onEditar, onChanged,
+  toast, lotes, loteActivoId, planes, onEditar, onChanged,
 }: {
   toast: ReturnType<typeof useToast>;
   lotes: { id?: string; nombre: string; ha: number }[];
   loteActivoId?: string;
+  planes: PlanSiembraApi[];
   onEditar: () => void;
   onChanged?: () => void;
 }) {
-  const [activos, setActivos] = useState<PlanActivo[]>(demo(PLANES_ACTIVOS_DEMO, []));
-  const [recomendados, setRecomendados] = useState<PlanIA[]>(demo(PLANES_IA_DEMO, []));
+  const [activos, setActivos] = useState<PlanActivo[]>([]);
+  const [recomendados, setRecomendados] = useState<PlanIA[]>([]);
   const [generando, setGenerando] = useState(false);
   // Lote objetivo: el activo del sidebar si tiene id, si no el primero con id.
   const loteObjetivo = (loteActivoId ? lotes.find((l) => l.id === loteActivoId) : null) || lotes.find((l) => l.id) || null;
 
+  // Deriva los planes activos de la lista ya cargada por el padre (sin doble fetch).
   useEffect(() => {
-    const q = loteActivoId ? `?loteId=${loteActivoId}` : "";
-    fetch(`/api/planes-siembra${q}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => {
-        if (!Array.isArray(d)) return;
-        if (d.length === 0) { setActivos([]); return; }
-        const colores = ["#d9a538", "#768f44", "#c08a22"];
-        const emojis: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Girasol: "sun", Trigo: "wheat", Sorgo: "leaf" };
-        setActivos(
-          d.slice(0, 6).map((p: { id: string; cultivo: string; hectareas: number; costoEstimado?: number; fechaSiembraRecomendada: string; variedad?: string; lote?: { nombre: string }; estado?: string }, i: number) => ({
-            id: p.id,
-            titulo: `${p.cultivo} - ${p.lote?.nombre || "Plan"}`,
-            emoji: emojis[p.cultivo] || "leaf",
-            costo: `$${Math.round(p.costoEstimado || 0).toLocaleString("es-AR")} USD`,
-            lotes: p.lote?.nombre || "—",
-            ha: `${Math.round(p.hectareas)} Ha`,
-            fecha: new Date(p.fechaSiembraRecomendada).toLocaleDateString("es-AR", { day: "numeric", month: "short" }),
-            insumo: p.variedad || "A definir",
-            densidad: "—",
-            steps: p.estado === "Aprobado" ? 4 : 2,
-            color: colores[i % 3],
-          }))
-        );
-      })
-      .catch(() => {});
-  }, [loteActivoId]);
+    if (!Array.isArray(planes) || planes.length === 0) { setActivos([]); return; }
+    const colores = ["#d9a538", "#768f44", "#c08a22"];
+    const emojis: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Girasol: "sun", Trigo: "wheat", Sorgo: "leaf" };
+    setActivos(
+      planes.slice(0, 6).map((p, i) => ({
+        id: p.id,
+        titulo: `${p.cultivo} - ${p.lote?.nombre || "Plan"}`,
+        emoji: emojis[p.cultivo] || "leaf",
+        costo: `$${Math.round(p.costoEstimado || 0).toLocaleString("es-AR")} USD`,
+        lotes: p.lote?.nombre || "—",
+        ha: `${Math.round(p.hectareas)} Ha`,
+        fecha: new Date(p.fechaSiembraRecomendada).toLocaleDateString("es-AR", { day: "numeric", month: "short", timeZone: "UTC" }),
+        insumo: p.variedad || "A definir",
+        densidad: "—",
+        steps: p.estado === "Aprobado" ? 4 : 2,
+        color: colores[i % 3],
+      }))
+    );
+  }, [planes]);
 
   const regenerar = async () => {
     if (generando) return;
@@ -741,12 +756,7 @@ function CultivosPlanificador({
 type AnalisisRow = { lote: string; cultivo: string; n: number; p: number; k: number; ph: number | null; mo: string; phStatus: string; moStatus: string };
 
 function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: ReturnType<typeof useToast>; onVerMapa: () => void; refreshKey?: number }) {
-  const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>(demo([
-    { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 40, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
-    { lote: "Lote 12 - Norte", cultivo: "Trigo Ciclo Corto · Hace 3 días", n: 95, p: 75, k: 60, ph: 5.2, mo: "1.9%", phStatus: "warn", moStatus: "warn" },
-    { lote: "Lote 7 - La Loma", cultivo: "Soja de Primera · Hace 1 mes", n: 30, p: 85, k: 55, ph: 5.8, mo: "3.2%", phStatus: "warn", moStatus: "ok" },
-    { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 20, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
-  ], [] as AnalisisRow[]));
+  const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>([] as AnalisisRow[]);
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
   const [evolucion, setEvolucion] = useState<{ label: string; ppm: number }[]>([]);
   const [labResults, setLabResults] = useState<{ fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]>([]);

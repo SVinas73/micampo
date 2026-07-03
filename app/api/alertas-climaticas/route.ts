@@ -11,10 +11,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    // Alcance del sidebar: si viene un establecimiento, se muestran sus alertas
+    // (más las sin establecimiento asignado, por compatibilidad con datos previos).
+    const { searchParams } = new URL(request.url);
+    const establecimientoId = searchParams.get("establecimientoId");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = { userId: session.user.id };
+    if (establecimientoId && establecimientoId !== "todos") {
+      where.OR = [{ establecimientoId }, { establecimientoId: null }];
+    }
+
     const alertas = await prisma.alertaClimatica.findMany({
-      where: {
-        userId: session.user.id,
-      },
+      where,
       orderBy: {
         fechaInicio: "desc",
       },
