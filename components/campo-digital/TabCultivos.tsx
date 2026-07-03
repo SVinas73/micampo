@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, Modal, Field, useToast } from "@/components/mc";
 import { demo } from "@/lib/demo";
@@ -12,6 +12,7 @@ import { CropImg } from "./LoteOverlay";
 
 type DistCultivo = { nombre: string; ha: number; pct: number; color: string; icon: string };
 type PlanSiembraApi = { id: string; cultivo: string; hectareas: number; costoEstimado?: number; fechaSiembraRecomendada: string; variedad?: string; lote?: { nombre: string }; estado?: string };
+type AnalisisSueloApi = { pH?: number | null; materiaOrganica?: number | null; nitrogeno?: number | null; fosforo?: number | null; potasio?: number | null; fechaAnalisis: string; lote?: { nombre: string } | null };
 const CULTIVO_COLOR: Record<string, string> = { Maíz: "#c08a22", Soja: "#768f44", Trigo: "#d9a538", Sorgo: "#8ea65a", Girasol: "#e8b94a", Cebada: "#5e7733", Alfalfa: "#aabd76" };
 const CULTIVO_ICON: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Trigo: "wheat", Sorgo: "leaf", Girasol: "sun", Cebada: "wheat", Alfalfa: "leaf" };
 
@@ -79,6 +80,8 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const [refreshPlanes, setRefreshPlanes] = useState(0);
   // Lista cruda de planes de siembra (una sola fuente, sin doble fetch).
   const [planesRaw, setPlanesRaw] = useState<PlanSiembraApi[]>([]);
+  // Análisis de suelo reales del alcance, para los KPIs de la subpestaña.
+  const [analisisSuelo, setAnalisisSuelo] = useState<AnalisisSueloApi[]>([]);
 
   // KPIs reales del Planificador (a partir de los planes de siembra guardados).
   useEffect(() => {
@@ -104,6 +107,32 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
       })
       .catch(() => {});
   }, [planificadorMode, loteActivo?.id, establecimientoId, refreshPlanes]);
+
+  // KPIs reales de Análisis de Suelo (de /api/analisis-suelo del alcance).
+  useEffect(() => {
+    if (planificadorMode || sub !== "Análisis de Suelo") return;
+    const q = loteActivo?.id ? `?loteId=${loteActivo.id}` : "";
+    fetch(`/api/analisis-suelo${q}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (Array.isArray(d)) setAnalisisSuelo(d); })
+      .catch(() => {});
+  }, [planificadorMode, sub, loteActivo?.id, establecimientoId, refreshAnalisis]);
+
+  const kpiSuelo = useMemo(() => {
+    const rows = analisisSuelo;
+    const anio = new Date().getFullYear();
+    const delAnio = rows.filter((a) => a.fechaAnalisis && new Date(a.fechaAnalisis).getFullYear() === anio).length;
+    const phs = rows.map((a) => a.pH).filter((v): v is number => typeof v === "number");
+    const mos = rows.map((a) => a.materiaOrganica).filter((v): v is number => typeof v === "number");
+    const phProm = phs.length ? phs.reduce((s, v) => s + v, 0) / phs.length : null;
+    const moProm = mos.length ? mos.reduce((s, v) => s + v, 0) / mos.length : null;
+    const esCritico = (a: AnalisisSueloApi) => (a.pH != null && a.pH < 5.5) || (a.materiaOrganica != null && a.materiaOrganica < 2);
+    const esOptimo = (a: AnalisisSueloApi) => a.pH != null && a.pH >= 6 && a.pH <= 7 && (a.materiaOrganica == null || a.materiaOrganica >= 2.5);
+    const criticos = new Set(rows.filter(esCritico).map((a) => a.lote?.nombre).filter(Boolean)).size;
+    const optimos = new Set(rows.filter(esOptimo).map((a) => a.lote?.nombre).filter(Boolean)).size;
+    const totalLotes = new Set(rows.map((a) => a.lote?.nombre).filter(Boolean)).size;
+    return { total: rows.length, delAnio, phProm, moProm, criticos, optimos, totalLotes };
+  }, [analisisSuelo]);
 
   useEffect(() => {
     // Respeta el lote puntual del sidebar: Estados y Distribución se acotan a ese lote.
@@ -207,11 +236,11 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
         </div>
       ) : (
         <div className="grid g-cols-5">
-          <KPI label="Análisis del Año" value={demo("14", "0")} delta={demo("+3 este mes", "—")} trend="up" icon="leaf" accent />
-          <KPI label="Lotes Críticos" value={demo("2", "0")} delta={demo("P bajo · Norte/Oeste", "—")} trend="warn" icon="alert" warn />
-          <KPI label="Lotes Óptimos" value={demo("9", "0")} delta={demo("64% del total", "—")} trend="up" icon="check" />
-          <KPI label="pH Promedio" value={demo("6.4", "—")} delta={demo("Rango óptimo", "—")} trend="up" icon="activity" />
-          <KPI label="MO Promedio" value={demo("2.6%", "—")} delta={demo("-0.1 vs 23/24", "—")} trend="down" icon="sprout" />
+          <KPI label="Análisis del Año" value={String(kpiSuelo.delAnio)} delta={`${kpiSuelo.total} en total`} trend="flat" icon="leaf" accent />
+          <KPI label="Lotes Críticos" value={String(kpiSuelo.criticos)} delta={kpiSuelo.criticos ? "pH bajo o poca MO" : "Ninguno"} trend="warn" icon="alert" warn={kpiSuelo.criticos > 0} />
+          <KPI label="Lotes Óptimos" value={String(kpiSuelo.optimos)} delta={kpiSuelo.totalLotes ? `de ${kpiSuelo.totalLotes} con análisis` : "Sin análisis"} trend="flat" icon="check" />
+          <KPI label="pH Promedio" value={kpiSuelo.phProm != null ? kpiSuelo.phProm.toFixed(1) : "—"} delta={kpiSuelo.phProm != null ? (kpiSuelo.phProm >= 6 && kpiSuelo.phProm <= 7 ? "Rango óptimo" : "Fuera de rango") : "Sin datos"} trend="flat" icon="activity" />
+          <KPI label="MO Promedio" value={kpiSuelo.moProm != null ? `${kpiSuelo.moProm.toFixed(1)}%` : "—"} delta={kpiSuelo.moProm != null ? (kpiSuelo.moProm >= 2.5 ? "Buena" : "Baja") : "Sin datos"} trend="flat" icon="sprout" />
         </div>
       )}
 
