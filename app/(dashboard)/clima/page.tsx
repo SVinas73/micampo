@@ -20,7 +20,6 @@ import {
   type LluviaResult,
   type AlertaResult,
 } from "@/components/clima/ClimaModales";
-import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import { ubicacionClima } from "@/lib/clima-ubicacion";
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
@@ -37,13 +36,6 @@ function climaADias(clima: ClimaData | null): DayForecast[] {
   if (!clima) return [];
   return clima.dias.map((d) => ({ d: d.esHoy ? "Hoy" : d.nombre, num: d.num, ic: d.icono, cond: (d as any).cond, desc: (d as any).desc, viento: d.viento, max: d.max, min: d.min, mm: d.mm, vent: ventDeViento(d.viento) }));
 }
-
-const DEMO_LOTES: LoteOpt[] = [
-  { nombre: "Lote 1 - El Bajo", ha: 70 },
-  { nombre: "Lote 2 - Norte", ha: 120 },
-  { nombre: "Lote 4 - Sur", ha: 85 },
-  { nombre: "Lote 7 - La Loma", ha: 95 },
-];
 
 export default function ClimaPage() {
   return (
@@ -67,10 +59,10 @@ function ClimaInner() {
   const [showAlerta, setShowAlerta] = useState(searchParams.get("modal") === "alerta");
   const [detalle, setDetalle] = useState<DayForecast | null>(null);
 
-  const [lotes, setLotes] = useState<LoteOpt[]>(demo(DEMO_LOTES, []));
-  const [lluvias, setLluvias] = useState<LluviaRow[]>(demo(DEMO_LLUVIAS, []));
+  const [lotes, setLotes] = useState<LoteOpt[]>([]);
+  const [lluvias, setLluvias] = useState<LluviaRow[]>([]);
   const [recargaLluvia, setRecargaLluvia] = useState(0);
-  const [alertas, setAlertas] = useState<AlertaRow[]>(demo(DEMO_ALERTAS, []));
+  const [alertas, setAlertas] = useState<AlertaRow[]>([]);
   const [editLluvia, setEditLluvia] = useState<LluviaRow | null>(null);
   const [clima, setClima] = useState<ClimaData | null>(null);
   const [tieneCampo, setTieneCampo] = useState(false);
@@ -537,16 +529,6 @@ type AlertaRow = {
   pct?: number;
 };
 
-const DEMO_ALERTAS: AlertaRow[] = [
-  { seccion: "critical", titulo: "Riesgo de Helada Inminente", lugar: "Lote Bajo · 04:00 AM", icon: "thermometer", color: "#3aa6d9", val: "-2.5°C", chart: "temp" },
-  { seccion: "critical", titulo: "Reporte de Granizo Confirmado", lugar: "Campo Oeste · Hace 15 min", icon: "alert", color: "#3aa6d9", val: "Intensidad: ALTA (Daño visible)", chart: "icon" },
-  { seccion: "critical", titulo: "Alerta de Tormenta Eléctrica", lugar: "Área General · En curso", icon: "bolt", color: "#c08a22", val: "Proximidad: < 5km (Riesgo personal)", chart: "icon" },
-  { seccion: "warning", titulo: "Umbral de Isoca Superado", lugar: "Lote 4 (Soja)", icon: "leaf", color: "#d9a538", val: "8/10 por metro", chart: "bar", pct: 80 },
-  { seccion: "warning", titulo: "Viento Excesivo para Pulverizar", lugar: "Actualmente", icon: "wind", color: "#c08a22", val: "Ráfagas: 45 km/h", chart: "icon" },
-  { seccion: "warning", titulo: "Estrés Hídrico Detectado", lugar: "Lote de Maíz", icon: "droplet", color: "#a88032", val: "Agua Útil: 20% (Crítico)", chart: "icon" },
-  { seccion: "info", titulo: "Lluvia Registrada (Automático)", lugar: "Hace 30 min", icon: "droplet", color: "#3aa6d9", val: "45 mm", chart: "drop" },
-];
-
 type RiesgoPlaga = { amenaza: string; cultivo: string; lote: string; nivel: "Alto" | "Medio" | "Bajo"; probabilidad: number; ventana: string; causa: string };
 
 function PresionPlagasCard() {
@@ -710,12 +692,6 @@ function ClimaAlertas({ alertas, onGestionar }: { alertas: AlertaRow[]; onGestio
 /* ================= TAB REGISTRO DE LLUVIAS ================= */
 type Tag = { label: string; color: "amber" | "blue" | "red" | "green" | "neutral"; icon: string };
 type LluviaRow = { id?: string; fechaRaw?: string; fecha: string; lugar: string; mm: number; pct: number; tags: Tag[] };
-
-const DEMO_LLUVIAS: LluviaRow[] = [
-  { fecha: "22 Dic - 04:30 AM", lugar: "Campo El Amanecer (Lotes 1, 2)", mm: 45, pct: 85, tags: [{ label: "Granizo", color: "amber", icon: "alert" }, { label: "Torrencial", color: "blue", icon: "droplet" }] },
-  { fecha: "15 Dic - 10:00 AM", lugar: "Campo La Cañada (Todo)", mm: 20, pct: 38, tags: [{ label: "Lluvia Mansa", color: "blue", icon: "droplet" }] },
-  { fecha: "02 Dic", lugar: "Campo General", mm: 5, pct: 9, tags: [] },
-];
 
 function ClimaLluvias({
   lluvias,

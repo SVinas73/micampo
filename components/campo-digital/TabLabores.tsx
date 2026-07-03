@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon, KPI, Modal, Field, useToast } from "@/components/mc";
-import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import { NuevaOrdenLaborModal, type OrdenLabor } from "./labores-Wizard";
 
@@ -63,24 +62,6 @@ function derivarEstado(estadoGuardado: string | undefined, fechaISO: string): st
   return estadoPorFecha(fechaISO);
 }
 
-const DEMO_LABORES: LaborUI[] = [
-  { id: "d1", tarea: "Pulverización", tipo: "Pulverización", lote: "Lote 2 - Norte", cultivo: "Soja", responsable: "Juan Pérez", fecha: hoyCorta(), fechaISO: hoyISO(), prioridad: "alta", estado: "En curso" },
-  { id: "d2", tarea: "Siembra Maíz", tipo: "Siembra", lote: "Lote 4 - El Bajo", cultivo: "Maíz", responsable: "M. Gómez", fecha: hoyCorta(), fechaISO: hoyISO(), prioridad: "media", estado: "Hoy" },
-  { id: "d3", tarea: "Riego Sector A", tipo: "Riego", lote: "Pivote 1", cultivo: "Maíz", responsable: "C. López", fecha: hoyCorta(), fechaISO: hoyISO(), prioridad: "media", estado: "Hoy" },
-  { id: "d4", tarea: "Fertilización", tipo: "Fertilización", lote: "Lote Sur 1", cultivo: "Trigo", responsable: "Equipo", fecha: corta(-2), fechaISO: iso(-2), prioridad: "alta", estado: "Atrasada" },
-  { id: "d5", tarea: "Monitoreo plagas", tipo: "Monitoreo", lote: "Lote Sur 2", cultivo: "Alfalfa", responsable: "C. Martínez", fecha: corta(-1), fechaISO: iso(-1), prioridad: "media", estado: "Atrasada" },
-  { id: "d6", tarea: "Siembra trigo", tipo: "Siembra", lote: "Lote Este 1", cultivo: "Trigo", responsable: "M. Gómez", fecha: corta(4), fechaISO: iso(4), prioridad: "media", estado: "Programada" },
-  { id: "d7", tarea: "Cosecha maíz", tipo: "Cosecha", lote: "Lote Este 1", cultivo: "Maíz", responsable: "Equipo", fecha: corta(7), fechaISO: iso(7), prioridad: "baja", estado: "Programada" },
-  { id: "d8", tarea: "Pulverización Norte 2", tipo: "Pulverización", lote: "Norte 2", cultivo: "Soja", responsable: "C. Martínez", fecha: corta(-3), fechaISO: iso(-3), prioridad: "media", estado: "Completada" },
-  { id: "d9", tarea: "Siembra alfalfa", tipo: "Siembra", lote: "Sur 2", cultivo: "Alfalfa", responsable: "Equipo", fecha: corta(-6), fechaISO: iso(-6), prioridad: "media", estado: "Completada" },
-];
-
-const BLOQUEADAS_DEMO = [
-  { icon: "flask", iconColor: "#2c7ad9", titulo: "Pulverización", lote: "Lote 2 - Norte", alertaIcon: "wind", alertaTitulo: "Viento: 32 km/h", alertaSub: "Riesgo de Deriva", accion: "Reprogramar" },
-  { icon: "sprout", iconColor: "#768f44", titulo: "Siembra Maíz", lote: "Lote 4 - El Bajo", alertaIcon: "building", alertaTitulo: "Sin Stock: Semilla", alertaSub: "Faltan 20 bolsas", accion: "Solicitar" },
-  { icon: "wrench", iconColor: "#d9a538", titulo: "Cosecha Soja", lote: "Lote 7 - Sur", alertaIcon: "alert", alertaTitulo: "Cosechadora Averiada", alertaSub: "En taller mecánico", accion: "Ver Detalle" },
-];
-
 const TIPO_ICON: Record<string, { icon: string; color: string }> = {
   Pulverización: { icon: "flask", color: "#2c7ad9" },
   Siembra: { icon: "sprout", color: "#768f44" },
@@ -96,17 +77,13 @@ export default function TabLabores() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { lotes: scopeLotes, loteActivo, establecimientoId, loteId } = useLoteScope();
-  const [laboresRaw, setLabores] = useState<LaborUI[]>(demo(DEMO_LABORES, []));
+  const [laboresRaw, setLabores] = useState<LaborUI[]>([]);
   // Filtra las labores por el lote activo del alcance global
   const labores = useMemo(
     () => (loteActivo ? laboresRaw.filter((l) => l.loteId === loteActivo.id) : laboresRaw),
     [laboresRaw, loteActivo]
   );
-  const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number; tag?: string }[]>(demo([
-    { nombre: "Lote 4 - La Loma", ha: 75, tag: "Rastrojo de Maiz" },
-    { nombre: "Lote 5 - El Bajo", ha: 50, tag: "Barbecho Químico" },
-    { nombre: "Lote 8 - Norte", ha: 110, tag: "Cultivo en Pie" },
-  ], []));
+  const [lotes, setLotes] = useState<{ id?: string; nombre: string; ha: number; tag?: string }[]>([]);
   const [view, setView] = useState<"kanban" | "tabla" | "calendario">("kanban");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [preselectLoteId, setPreselectLoteId] = useState<string | undefined>(undefined);
@@ -119,7 +96,7 @@ export default function TabLabores() {
   const [verDetalle, setVerDetalle] = useState<LaborUI | { titulo: string; lote: string; detalle: string } | null>(null);
   const [filtroOpen, setFiltroOpen] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState("Todos");
-  const [cronos, setCronos] = useState<Record<string, number>>(demo<Record<string, number>>({ d1: 6330 }, {}));
+  const [cronos, setCronos] = useState<Record<string, number>>({});
 
   /* Cronómetro de tareas en curso */
   useEffect(() => {
@@ -411,7 +388,7 @@ export default function TabLabores() {
         <div className="mc-card">
           <div className="mc-card__head">
             <div className="mc-card__title">Labores Bloqueados / Alertas</div>
-            <span className="mc-badge mc-badge--red">{demo(BLOQUEADAS_DEMO, []).length + labores.filter((l) => l.motivoBloqueo).length}</span>
+            <span className="mc-badge mc-badge--red">{labores.filter((l) => l.motivoBloqueo).length}</span>
           </div>
           <div className="col gap-10">
             {[
@@ -419,7 +396,6 @@ export default function TabLabores() {
                 icon: TIPO_ICON[l.tipo]?.icon || "wrench", iconColor: TIPO_ICON[l.tipo]?.color || "#475569",
                 titulo: l.tarea, lote: l.lote, alertaIcon: "alert", alertaTitulo: l.motivoBloqueo as string, alertaSub: "Reportado por el equipo", accion: "Reprogramar", labor: l as LaborUI | undefined,
               })),
-              ...demo(BLOQUEADAS_DEMO, []).map((b) => ({ ...b, labor: undefined as LaborUI | undefined })),
             ].map((b, i) => (
               <div key={i} style={{ padding: 10, border: "1px solid var(--mc-line)", borderRadius: 10, display: "flex", gap: 10, alignItems: "center" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 8, background: b.iconColor, color: "white", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
@@ -441,10 +417,8 @@ export default function TabLabores() {
                   style={{ padding: "4px 10px", fontSize: 11, flex: "0 0 auto" }}
                   onClick={() => {
                     if (b.accion === "Reprogramar") {
-                      const target = b.labor || labores.find((l) => l.tarea === b.titulo) || null;
-                      setReprogramar(target);
+                      setReprogramar(b.labor || labores.find((l) => l.tarea === b.titulo) || null);
                       setNuevaFecha(iso(2));
-                      if (!target) toast.show("Labor de ejemplo: usá la tabla para reprogramar labores reales");
                     } else if (b.accion === "Solicitar") {
                       router.push("/logistica-inventario");
                     } else {

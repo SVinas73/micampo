@@ -4,10 +4,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
-import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import {
-  LOTES_INICIALES, mapLotesApi, fechaCorta, CULTIVO_COLORES,
+  mapLotesApi, fechaCorta, CULTIVO_COLORES,
   type LoteUI,
 } from "./lotes-data";
 
@@ -69,7 +68,7 @@ export default function TabLotes() {
   const delimitarId = searchParams.get("delimitar");
   const estDelimitar = delimitarId ? establecimientos.find((e) => e.id === delimitarId) || null : null;
   const [volarA, setVolarA] = useState<{ lat: number; lng: number; nonce: number } | null>(null);
-  const [lotes, setLotes] = useState<LoteUI[]>(demo(LOTES_INICIALES, []));
+  const [lotes, setLotes] = useState<LoteUI[]>([]);
   const [selected, setSelected] = useState<LoteUI | null>(null);
   const [view, setView] = useState<"mapa" | "lista">("mapa");
   const [layer, setLayer] = useState("NDVI");

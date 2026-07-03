@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, useToast } from "@/components/mc";
-import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import { ReportarPlagaModal } from "./deteccion-ReportarModal";
 import { prescripcionPara } from "@/lib/tratamientos";
@@ -41,14 +40,6 @@ type AlertaInfo = {
   estrategia?: { producto: string; dosis: string; ventana: string; costo: string; analisis: string };
 };
 
-const ALERTAS_DEMO: AlertaInfo[] = [
-  { lote: "Lote 4 (Maíz)", enfermedad: "Roya Común", estadio: "R1 (Floración)", img: "wheat", imgBg: "linear-gradient(135deg,#c0392b,#922b21)", deteccion: "Detección Satelital IVN", afect: "15 Ha afectadas · Hace 2h", riesgo: "ALTA (35%)", riesgoColor: "red", perdida: "$4.500 USD", proy: "Proyección a cosecha", recom: "Aplicar Fungicida (Triazol)", iaIcon: true },
-  { lote: "Lote 2 (Maíz)", enfermedad: "Oruga Cogollera", estadio: "V8 (Vegetativo)", img: "bug", imgBg: "linear-gradient(135deg,#6db870,#768f44)", deteccion: "Foto de Monitoreo (Dron)", afect: "8 Ha afectadas · Ayer", riesgo: "MEDIA (15%)", riesgoColor: "amber", perdida: "$1.200 USD", proy: "Daño foliar progresivo", recom: "Monitoreo + Insecticida" },
-  { lote: "Lote 7 (Soja)", enfermedad: "Mancha Marrón", estadio: "R3 (Form. Vainas)", img: "sprout", imgBg: "linear-gradient(135deg,#d9a538,#c48410)", deteccion: "Detección Satelital IVN", afect: "20 Ha afectadas · Hace 4h", riesgo: "BAJA (5%)", riesgoColor: "green", perdida: "$500 USD", proy: "Impacto leve", recom: "Monitoreo Intensivo", iaIcon: true },
-  { lote: "Lote 1 (Trigo)", enfermedad: "Pulgón Verde", estadio: "Z31 (Primer Nudo)", img: "wheat", imgBg: "linear-gradient(135deg,#a88032,#d9a538)", deteccion: "Foto de Campo", afect: "30 Ha afectadas · Hace 1h", riesgo: "ALTA (40%)", riesgoColor: "red", perdida: "$3.200 USD", proy: "Rápida propagación", recom: "Aplicar Insecticida Sistémico" },
-  { lote: "Lote 5 (Girasol)", enfermedad: "Esclerotinia", estadio: "R5 (Llenado Grano)", img: "leaf", imgBg: "linear-gradient(135deg,#e8b94a,#d9a538)", deteccion: "Detección Satelital IVN", afect: "12 Ha afectadas · Ayer", riesgo: "MEDIA (20%)", riesgoColor: "amber", perdida: "$2.100 USD", proy: "Riesgo de vuelco", recom: "Evaluar Daño y Cosecha Anticipada", iaIcon: true },
-];
-
 export default function TabDeteccion() {
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -57,7 +48,7 @@ export default function TabDeteccion() {
   // Lotes del alcance global (respeta el establecimiento/lote activo)
   const { lotes: scopeLotes, establecimientoId, loteId } = useLoteScope();
   const lotes = useMemo(() => scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo ?? undefined })), [scopeLotes]);
-  const [alertas, setAlertas] = useState<AlertaInfo[]>(demo(ALERTAS_DEMO, []));
+  const [alertas, setAlertas] = useState<AlertaInfo[]>([]);
   // Métricas reales de las detecciones vigentes (para los KPIs, sin datos inventados).
   const [stats, setStats] = useState({ confianza: 0, lotesAfectados: 0, areaTotal: 0, deteccionesIA: 0, conteo: 0 });
   const fileRef = useRef<HTMLInputElement>(null);

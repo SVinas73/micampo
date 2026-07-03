@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, SubTabs, IABadge, Modal, Field, useToast } from "@/components/mc";
-import { demo } from "@/lib/demo";
 import { useLoteScope } from "@/components/LoteScope";
 import { NuevaSiembraModal, NuevaCosechaModal, type SiembraData, type CosechaData } from "./cultivos-Modales";
 import { CropImg } from "./LoteOverlay";
@@ -41,18 +40,6 @@ type PlanIA = {
   proy: string;
   beneficio: string;
 };
-
-const PLANES_ACTIVOS_DEMO: PlanActivo[] = [
-  { titulo: "Maíz Tardío - Lotes Norte", emoji: "wheat", costo: "$45.500 USD", lotes: "4, 5, 8", ha: "320 Ha", fecha: "20-25 Oct", insumo: "Híbrido DK-7210", densidad: "70 pl/Ha", steps: 3, color: "#d9a538" },
-  { titulo: "Soja Primera - Lotes Sur", emoji: "sprout", costo: "$62.000 USD", lotes: "9, 12, 15", ha: "450 Ha", fecha: "05-10 Nov", insumo: "Semilla SY 5x1", densidad: "280k pl/Ha", steps: 2, color: "#768f44" },
-  { titulo: "Girasol - Lotes Oeste", emoji: "leaf", costo: "$55.000 USD", lotes: "1, 3, 7", ha: "280 Ha", fecha: "15-20 Nov", insumo: "Semilla P245", densidad: "60k pl/Ha", steps: 4, color: "#c08a22" },
-];
-
-const PLANES_IA_DEMO: PlanIA[] = [
-  { sugerencia: "Rotación a Maíz Tardío", confianza: 92, nivel: "Alta", color: "#768f44", lotes: "Lotes 3 y 7 (Vienen de Soja de 1ra)", razon: "Compactación severa y déficit de N en suelo.", proy: "Margen proyectado: +15% vs. repetir Soja", beneficio: "Beneficio Maíz: aporte clave de rastrojo y mejora estructural." },
-  { sugerencia: "Siembra de Cultivo de Cobertura", confianza: 92, nivel: "Alta", color: "#3aa6d9", lotes: "Lotes 2 y 8 (Previo a Soja de 2da)", razon: "Alto riesgo de erosión y presión de malezas invernales.", proy: "Ahorro estimado: $30 USD/Ha en herbicidas", beneficio: "Beneficio Cobertura: protección del suelo, retención de humedad y supresión de malezas." },
-  { sugerencia: "Aplicación de Nitrógeno Variable", confianza: 85, nivel: "Media", color: "#c08a22", lotes: "Lotes 5 y 9 (Maíz en V6)", razon: "Variabilidad significativa de N en suelo y zonas de bajo potencial.", proy: "Aumento de rinde estimado: +8% por eficiencia de uso", beneficio: "Beneficio Dosis Variable: optimización de insumos, reducción de costos y menor impacto ambiental." },
-];
 
 export default function TabCultivos({ initialSub }: { initialSub?: string }) {
   const searchParams = useSearchParams();
@@ -520,8 +507,8 @@ function CultivosPlanificador({
   onEditar: () => void;
   onChanged?: () => void;
 }) {
-  const [activos, setActivos] = useState<PlanActivo[]>(demo(PLANES_ACTIVOS_DEMO, []));
-  const [recomendados, setRecomendados] = useState<PlanIA[]>(demo(PLANES_IA_DEMO, []));
+  const [activos, setActivos] = useState<PlanActivo[]>([]);
+  const [recomendados, setRecomendados] = useState<PlanIA[]>([]);
   const [generando, setGenerando] = useState(false);
   // Lote objetivo: el activo del sidebar si tiene id, si no el primero con id.
   const loteObjetivo = (loteActivoId ? lotes.find((l) => l.id === loteActivoId) : null) || lotes.find((l) => l.id) || null;
@@ -769,12 +756,7 @@ function CultivosPlanificador({
 type AnalisisRow = { lote: string; cultivo: string; n: number; p: number; k: number; ph: number | null; mo: string; phStatus: string; moStatus: string };
 
 function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: ReturnType<typeof useToast>; onVerMapa: () => void; refreshKey?: number }) {
-  const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>(demo([
-    { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 40, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
-    { lote: "Lote 12 - Norte", cultivo: "Trigo Ciclo Corto · Hace 3 días", n: 95, p: 75, k: 60, ph: 5.2, mo: "1.9%", phStatus: "warn", moStatus: "warn" },
-    { lote: "Lote 7 - La Loma", cultivo: "Soja de Primera · Hace 1 mes", n: 30, p: 85, k: 55, ph: 5.8, mo: "3.2%", phStatus: "warn", moStatus: "ok" },
-    { lote: "Lote 4 - El Bajo", cultivo: "Maíz Tardío · Hace 2 semanas", n: 60, p: 20, k: 90, ph: 6.2, mo: "2.8%", phStatus: "ok", moStatus: "ok" },
-  ], [] as AnalisisRow[]));
+  const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>([] as AnalisisRow[]);
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
   const [evolucion, setEvolucion] = useState<{ label: string; ppm: number }[]>([]);
   const [labResults, setLabResults] = useState<{ fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]>([]);
