@@ -156,12 +156,14 @@ function LoteSelector({
   onToggle,
   onToggleAll,
   accent,
+  campoNombre,
 }: {
   lotes: LoteOpt[];
   selected: Set<number>;
   onToggle: (i: number) => void;
   onToggleAll: () => void;
   accent: string;
+  campoNombre?: string;
 }) {
   const all = lotes.length > 0 && selected.size === lotes.length;
   const some = selected.size > 0 && !all;
@@ -198,7 +200,7 @@ function LoteSelector({
           )}
           {some && <div style={{ width: 8, height: 2, background: "#fff" }} />}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>Campo El Amanecer</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{campoNombre || "Lotes del campo"}</div>
         <span style={{ marginLeft: "auto", fontSize: 11, color: "#64748b" }}>{selected.size}/{lotes.length}</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: 10 }}>
@@ -273,11 +275,13 @@ const COND_LLUVIA = [
 export function RegistrarLluviaModal({
   lotes,
   initial,
+  campoNombre,
   onClose,
   onSave,
 }: {
   lotes: LoteOpt[];
   initial?: Partial<LluviaResult>;
+  campoNombre?: string;
   onClose: () => void;
   onSave: (r: LluviaResult) => void;
 }) {
@@ -318,8 +322,8 @@ export function RegistrarLluviaModal({
         sel.size === 0
           ? "Campo General"
           : sel.size === lotes.length
-            ? "Campo El Amanecer (Todos)"
-            : `Campo El Amanecer (${[...sel].map((i) => lotes[i].nombre).join(", ")})`,
+            ? "Todos los lotes"
+            : [...sel].map((i) => lotes[i].nombre).join(", "),
       condiciones: [...conds],
     });
   };
@@ -409,7 +413,7 @@ export function RegistrarLluviaModal({
       </Section>
 
       <Section title="Ubicación" icon="map" right={<span style={{ fontSize: 11, color: "#2c82c9", fontWeight: 600 }}>{sel.size} seleccionados</span>}>
-        <LoteSelector lotes={lotes} selected={sel} onToggle={toggleLote} onToggleAll={toggleAll} accent="#2c82c9" />
+        <LoteSelector lotes={lotes} selected={sel} onToggle={toggleLote} onToggleAll={toggleAll} accent="#2c82c9" campoNombre={campoNombre} />
       </Section>
 
       <Section title="Condiciones del Evento" icon="bolt">
@@ -468,10 +472,12 @@ const TIPOS_ALERTA = [
 
 export function ReportarAlertaModal({
   lotes,
+  campoNombre,
   onClose,
   onSave,
 }: {
   lotes: LoteOpt[];
+  campoNombre?: string;
   onClose: () => void;
   onSave: (r: AlertaResult) => void;
 }) {
@@ -594,7 +600,7 @@ export function ReportarAlertaModal({
       </Section>
 
       <Section title="Lotes Afectados" icon="wheat" right={<span style={{ fontSize: 11, color: "#c08a22", fontWeight: 600 }}>{sel.size} seleccionados</span>}>
-        <LoteSelector lotes={lotes} selected={sel} onToggle={toggleLote} onToggleAll={toggleAll} accent="#c08a22" />
+        <LoteSelector lotes={lotes} selected={sel} onToggle={toggleLote} onToggleAll={toggleAll} accent="#c08a22" campoNombre={campoNombre} />
       </Section>
 
       <Section title="Fecha y Hora del Inicio" icon="clock">

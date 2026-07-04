@@ -126,7 +126,9 @@ function ClimaInner() {
             id: r.id,
             fechaRaw: r.fecha,
             fecha: new Date(r.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) + " - " + new Date(r.fecha).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
-            lugar: r.lote?.nombre || r.ubicacion || "Campo General",
+            // Solo el nombre del lote real; si el lote fue borrado (loteId nulo) → "Campo General",
+            // nunca un nombre de campo obsoleto guardado en `ubicacion`.
+            lugar: r.lote?.nombre || "Campo General",
             mm: r.milimetros,
             pct: Math.round((r.milimetros / max) * 100),
             tags: parseTags(r.observaciones),
@@ -292,16 +294,17 @@ function ClimaInner() {
     <div className="col gap-20">
       {toast.node}
 
-      {showLluvia && <RegistrarLluviaModal lotes={lotes} onClose={() => setShowLluvia(false)} onSave={guardarLluvia} />}
+      {showLluvia && <RegistrarLluviaModal lotes={lotes} campoNombre={establecimientoActivo?.nombre} onClose={() => setShowLluvia(false)} onSave={guardarLluvia} />}
       {editLluvia && (
         <RegistrarLluviaModal
           lotes={lotes}
+          campoNombre={establecimientoActivo?.nombre}
           initial={{ mm: editLluvia.mm, fecha: editLluvia.fechaRaw?.slice(0, 10), condiciones: editLluvia.tags.map((t) => t.label) }}
           onClose={() => setEditLluvia(null)}
           onSave={editarLluvia}
         />
       )}
-      {showAlerta && <ReportarAlertaModal lotes={lotes} onClose={() => setShowAlerta(false)} onSave={guardarAlerta} />}
+      {showAlerta && <ReportarAlertaModal lotes={lotes} campoNombre={establecimientoActivo?.nombre} onClose={() => setShowAlerta(false)} onSave={guardarAlerta} />}
 
       <PageHeader
         crumbs={["Agronomía", "Clima"]}
