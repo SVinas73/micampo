@@ -13,6 +13,8 @@ export interface OrdenLabor {
   actividad: string;
   categoria: string;
   prioridad: "Normal" | "Urgente";
+  fecha: string; // YYYY-MM-DD elegida por el usuario
+  hora: string; // HH:mm
   lotes: { id?: string; nombre: string; ha: number }[];
   haNetas: number;
   operario: string;
@@ -38,7 +40,7 @@ const ACTIVIDADES: { categoria: string; icon: string; items: string[] }[] = [
   { categoria: "Protección & Nutrición", icon: "shieldCheck", items: ["Pulverización", "Fertilización", "Riego", "Bioestimulante"] },
 ];
 
-const STEPS = ["Selección de Actividad", "Lote y Superficie", "Maquinaria y RRHH", "Configuración Técnica", "Insumos", "Resumen y Costos"];
+const STEPS = ["Lote y Superficie", "Selección de Actividad", "Maquinaria y RRHH", "Configuración Técnica", "Insumos", "Resumen y Costos"];
 
 /** Parámetros técnicos recomendados por defecto según la actividad/categoría. */
 function defaultsPara(actividad: string, categoria: string): Record<string, string> {
@@ -69,6 +71,9 @@ export function NuevaOrdenLaborModal({
 }) {
   const [step, setStep] = useState(0);
   const [prioridad, setPrioridad] = useState<"Normal" | "Urgente">("Normal");
+  // Fecha y hora de la labor (elegibles: hoy, mañana, en 10 días…)
+  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
+  const [hora, setHora] = useState("08:00");
   const [busqueda, setBusqueda] = useState("");
   const [actividad, setActividad] = useState("");
   const [categoria, setCategoria] = useState("");
@@ -118,10 +123,10 @@ export function NuevaOrdenLaborModal({
   }, [actividad, categoria, insumos, haNetas]);
 
   const puedeAvanzar =
-    step === 0 ? !!actividad : step === 1 ? lotesSel.size > 0 : true;
+    step === 0 ? lotesSel.size > 0 && !!fecha : step === 1 ? !!actividad : true;
 
   const armarOrden = (): OrdenLabor => ({
-    actividad, categoria, prioridad,
+    actividad, categoria, prioridad, fecha, hora,
     lotes: Array.from(lotesSel).map((i) => lotesDisponibles[i]),
     haNetas,
     operario: operario.trim() || "Equipo",
@@ -170,17 +175,17 @@ export function NuevaOrdenLaborModal({
       <div style={{ background: "var(--mc-surface)", borderRadius: 16, width: 1060, maxWidth: "98vw", maxHeight: "94vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--mc-line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, color: "var(--mc-ink)" }}>Nueva Orden de Labor #4030</div>
+          <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, color: "var(--mc-ink)" }}>Nueva Orden de Labor</div>
           <div className="row gap-10">
             <span className="text-sm text-muted">Prioridad:</span>
             <div className="mc-seg">
-              <button className={prioridad === "Normal" ? "is-on" : ""} onClick={() => setPrioridad("Normal")}>[ Normal ]</button>
+              <button className={prioridad === "Normal" ? "is-on" : ""} onClick={() => setPrioridad("Normal")}>Normal</button>
               <button
                 className={prioridad === "Urgente" ? "is-on" : ""}
                 style={prioridad === "Urgente" ? { background: "#c08a22", color: "white" } : undefined}
                 onClick={() => setPrioridad("Urgente")}
               >
-                [ <Icon name="bolt" size={13} /> Urgente ]
+                <Icon name="bolt" size={13} /> Urgente
               </button>
             </div>
             <button className="mc-icon-btn" onClick={onClose}><Icon name="x" size={15} /></button>
@@ -217,8 +222,8 @@ export function NuevaOrdenLaborModal({
 
           {/* Contenido del paso */}
           <div style={{ padding: "20px 24px", overflowY: "auto" }}>
-            {/* PASO 1: Selección de Actividad */}
-            {step === 0 && (
+            {/* PASO 2: Selección de Actividad */}
+            {step === 1 && (
               <div className="col gap-16">
                 <div className="row" style={{ justifyContent: "space-between" }}>
                   <div className="mc-card__title" style={{ fontSize: 18 }}>Seleccione la Actividad a Realizar</div>
@@ -257,7 +262,7 @@ export function NuevaOrdenLaborModal({
                               <div style={{ display: "grid", placeItems: "center", marginBottom: 8 }}>
                                 <Icon name={cat.icon} size={22} style={{ color: sel ? "var(--mc-green-700)" : "var(--mc-text-2)" }} />
                               </div>
-                              <div className="text-sm font-semi" style={{ color: "var(--mc-ink)" }}>[{it}]</div>
+                              <div className="text-sm font-semi" style={{ color: "var(--mc-ink)" }}>{it}</div>
                             </button>
                           );
                         })}
@@ -277,12 +282,24 @@ export function NuevaOrdenLaborModal({
               </div>
             )}
 
-            {/* PASO 2: Lote y Superficie */}
-            {step === 1 && (
+            {/* PASO 1: Lote y Superficie (+ fecha y hora de la labor) */}
+            {step === 0 && (
               <div className="col gap-14">
-                <div>
-                  <div className="mc-card__title" style={{ fontSize: 18 }}>Selección de Lotes Objetivo</div>
-                  <div className="text-sm text-muted mt-4">Superficie Total Seleccionada: <b style={{ color: "var(--mc-ink)" }}>{haNetas} Has</b></div>
+                <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
+                  <div>
+                    <div className="mc-card__title" style={{ fontSize: 18 }}>Selección de Lotes Objetivo</div>
+                    <div className="text-sm text-muted mt-4">Superficie Total Seleccionada: <b style={{ color: "var(--mc-ink)" }}>{haNetas} Has</b></div>
+                  </div>
+                  <div className="row gap-10" style={{ alignItems: "flex-end" }}>
+                    <div className="mc-field">
+                      <label className="mc-label">Fecha de la labor</label>
+                      <input type="date" style={inputS} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+                    </div>
+                    <div className="mc-field">
+                      <label className="mc-label">Hora</label>
+                      <input type="time" style={inputS} value={hora} onChange={(e) => setHora(e.target.value)} />
+                    </div>
+                  </div>
                 </div>
                 <div className="grid" style={{ gridTemplateColumns: "320px 1fr", gap: 14 }}>
                   <div className="col gap-8">
@@ -418,12 +435,12 @@ export function NuevaOrdenLaborModal({
                       <label className="mc-label">{k}</label>
                       {k === "Núcleo" ? (
                         <select style={inputS} value={v} onChange={(e) => setParametros({ ...parametros, [k]: e.target.value })}>
-                          {["Blando", "Duro", "Mixto"].map((o) => <option key={o}>[{o}]</option>)}
+                          {["Blando", "Duro", "Mixto"].map((o) => <option key={o}>{o}</option>)}
                         </select>
                       ) : k === "Sistema de Atado" ? (
                         <div className="mc-seg">
                           {["Red (Malla)", "Hilo"].map((o) => (
-                            <button key={o} className={v === o ? "is-on" : ""} onClick={() => setParametros({ ...parametros, [k]: o })}>[{o}]</button>
+                            <button key={o} className={v === o ? "is-on" : ""} onClick={() => setParametros({ ...parametros, [k]: o })}>{o}</button>
                           ))}
                         </div>
                       ) : k === "Picado (Cutter)" ? (

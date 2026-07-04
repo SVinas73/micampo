@@ -3,17 +3,17 @@
 Si se corta por tokens: retomar por el primer `[ ]` pendiente. Cada ítem se commitea al completarse.
 
 ## Campo Digital / Lotes
-- [ ] 1. Vista plana por defecto al entrar a Lotes (la 3D carga lenta)
-- [ ] 2. Eliminar selector de LOTE del sidebar; el lote se elige con "Elegí un lote…" en Lotes (conectado al scope global)
-- [ ] 3. Eliminar selector de ESTABLECIMIENTO del submódulo Lotes (se rige por el sidebar)
+- [x] 1. Vista plana por defecto al entrar a Lotes (la 3D carga lenta)
+- [x] 2. Eliminar selector de LOTE del sidebar; el lote se elige con "Elegí un lote…" en Lotes (conectado al scope global)
+- [x] 3. Eliminar selector de ESTABLECIMIENTO del submódulo Lotes (se rige por el sidebar)
 - [ ] 4. Notas: el punto aparece en la COORDENADA marcada (no en el centroide); color por prioridad (Crítica=rojo, Moderada=amarillo, No urgente=verde); prioridad elegible al crear la nota
-- [ ] 5. Ficha completa: quitar scrollbar decorativa (scroll con rueda) + ensanchar drawer (la palabra "Prescripción" queda cortada)
+- [x] 5. Ficha completa: quitar scrollbar decorativa (scroll con rueda) + ensanchar drawer (la palabra "Prescripción" queda cortada)
 - [ ] 6. Dibujo de lote: quitar campo "ubicación" del modal; la cruz NO debe perderse al pasar sobre otro lote; lupita de aumento junto a la cruz; poder mover/ajustar puntos ya delimitados
-- [ ] 7. Card flotante del lote seleccionado: la X afuera del card (al lado)
+- [x] 7. Card flotante del lote seleccionado: la X afuera del card (al lado)
 
 ## Labores
-- [ ] 8. Wizard: quitar paréntesis rectos de actividades y de Normal/Urgente
-- [ ] 9. Wizard: "Lote y Superficie" primero, "Selección de Actividad" segundo; agregar fecha y hora de la labor (se persiste y el módulo la lee)
+- [x] 8. Wizard: quitar paréntesis rectos de actividades y de Normal/Urgente
+- [x] 9. Wizard: "Lote y Superficie" primero, "Selección de Actividad" segundo; agregar fecha y hora de la labor (se persiste y el módulo la lee)
 
 ## Cultivos
 - [ ] 10. Nueva Siembra: "Block A/B/C…" → "Paso 1/2/3…"; quitar buscador de cultivo; círculo "…" junto a girasol con catálogo grande de cultivos; quitar paréntesis de Silo/Puerto/Acopio

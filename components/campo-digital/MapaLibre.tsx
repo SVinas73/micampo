@@ -197,7 +197,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
   const [ready, setReady] = useState(false);
-  const [terrainOn, setTerrainOn] = useState(true);
+  const [terrainOn, setTerrainOn] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const drawPtsRef = useRef<[number, number][]>([]);
   const [drawCount, setDrawCount] = useState(0);
@@ -297,12 +297,13 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
           { id: "hillshade", type: "hillshade", source: "dem", paint: { "hillshade-exaggeration": 0.4 } as any },
           { id: "etiquetas", type: "raster", source: "etiquetas", paint: { "raster-opacity": 0.9 } as any },
         ],
-        terrain: { source: "dem", exaggeration: 1.3 },
+        // Arranca en vista PLANA (sin terreno 3D): carga más rápido y fluido.
+        // El usuario puede activar "Relieve 3D" con el toggle.
       } as any,
       center,
       zoom: 13.5,
-      pitch: 55,
-      bearing: -17,
+      pitch: 0,
+      bearing: 0,
       maxPitch: 80,
       attributionControl: false,
     });
@@ -355,7 +356,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       if (conGeo.length) {
         const b = new maplibregl.LngLatBounds();
         conGeo.forEach((l) => l.geojson!.coordinates[0].forEach((p) => b.extend(p as [number, number])));
-        map.fitBounds(b, { padding: 80, pitch: 50, maxZoom: 15, duration: 0 });
+        map.fitBounds(b, { padding: 80, maxZoom: 15, duration: 0 });
       }
 
       map.on("click", "lotes-fill", (e) => {
@@ -501,7 +502,8 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       if (ring && ring.length) {
         const b = new maplibregl.LngLatBounds();
         ring.forEach((p) => b.extend(p as [number, number]));
-        map.fitBounds(b, { padding: 120, maxZoom: 15.5, pitch: 52, bearing: -17, duration: 900 });
+        // Mantiene la inclinación actual (plana o 3D según el toggle del usuario).
+        map.fitBounds(b, { padding: 120, maxZoom: 15.5, duration: 900 });
       }
     }
   }, [selectedId, ready]);

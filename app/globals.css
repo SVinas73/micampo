@@ -2497,6 +2497,9 @@ a:focus-visible {
 /* Drawer lateral (ficha técnica del lote) */
 @keyframes mc-drawer-in { from { transform: translateX(28px); opacity: 0.4; } to { transform: translateX(0); opacity: 1; } }
 .mc-drawer-in { animation: mc-drawer-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+/* Scroll con la rueda pero SIN barra visible (drawers limpios). */
+.mc-noscrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.mc-noscrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
 @media (prefers-reduced-motion: reduce) { .mc-drawer-in { animation: none; } }
 
 /* Etiqueta de campo (establecimiento) sobre el mapa */

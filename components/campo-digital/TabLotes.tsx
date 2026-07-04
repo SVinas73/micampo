@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
@@ -63,13 +63,19 @@ export default function TabLotes() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { recargar, establecimientos, establecimientoId, loteId } = useLoteScope();
+  const { recargar, establecimientos, establecimientoId, setLoteId } = useLoteScope();
   // Modo "delimitar establecimiento": llega desde el card de Establecimientos.
   const delimitarId = searchParams.get("delimitar");
   const estDelimitar = delimitarId ? establecimientos.find((e) => e.id === delimitarId) || null : null;
   const [volarA, setVolarA] = useState<{ lat: number; lng: number; nonce: number } | null>(null);
   const [lotes, setLotes] = useState<LoteUI[]>([]);
   const [selected, setSelected] = useState<LoteUI | null>(null);
+  // Selección de lote (desplegable "Elegí un lote…" o click en el mapa): además de
+  // resaltarlo, publica el lote al scope GLOBAL para que lo lean los demás módulos.
+  const seleccionarLote = useCallback((l: LoteUI | null) => {
+    setSelected(l);
+    setLoteId(l?.dbId || l?.id || "todos");
+  }, [setLoteId]);
   const [view, setView] = useState<"mapa" | "lista">("mapa");
   const [layer, setLayer] = useState("NDVI");
   const [showAgregar, setShowAgregar] = useState(searchParams.get("modal") === "nuevo");
@@ -157,23 +163,20 @@ export default function TabLotes() {
       .catch(() => {});
   }, [lotes]);
 
-  // Filtro LOCAL del submódulo Lotes (no toca el alcance global del sidebar).
-  // Arranca siguiendo al alcance global y se sincroniza cuando el sidebar cambia.
-  const [localEstId, setLocalEstId] = useState(establecimientoId);
-  useEffect(() => { setLocalEstId(establecimientoId); }, [establecimientoId]);
-
+  // El submódulo se rige por el ESTABLECIMIENTO del sidebar (sin filtro local propio).
+  const localEstId = establecimientoId;
   const localEst = useMemo(
     () => (localEstId === "todos" ? null : establecimientos.find((e) => e.id === localEstId) || null),
     [establecimientos, localEstId]
   );
 
-  // Lotes visibles en el submódulo según el filtro local de establecimiento y,
-  // si el sidebar tiene un lote puntual activo, se acota a ese lote.
-  const enScope = useMemo(() => {
-    const porEst = localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId);
-    if (loteId && loteId !== "todos") return porEst.filter((l) => (l.dbId || l.id) === loteId);
-    return porEst;
-  }, [lotes, localEstId, loteId]);
+  // Lotes visibles: todos los del establecimiento activo. El lote elegido se
+  // resalta en el mapa y se publica al scope global (para el resto de los módulos),
+  // sin ocultar los demás lotes de la vista.
+  const enScope = useMemo(
+    () => (localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId)),
+    [lotes, localEstId]
+  );
 
   const visibles = useMemo(
     () => enScope.filter((l) => filtroCultivo === "Todos" || l.cultivo === filtroCultivo),
@@ -521,21 +524,6 @@ export default function TabLotes() {
               <Icon name="list" size={13} /> Vista Lista
             </button>
           </div>
-          {establecimientos.length > 0 && (
-            <div className="mc-seg" style={{ alignSelf: "center", display: "flex", alignItems: "center", paddingLeft: 8 }} title="Filtrar la vista por establecimiento (solo este módulo)">
-              <Icon name="building" size={13} style={{ color: "var(--mc-green-700)" }} />
-              <select
-                value={localEstId}
-                onChange={(e) => { setLocalEstId(e.target.value); setSelected(null); }}
-                style={{ border: "none", background: "transparent", fontWeight: 600, fontSize: 13, color: "var(--mc-ink)", cursor: "pointer", outline: "none", padding: "6px 8px", maxWidth: 220 }}
-              >
-                <option value="todos">Todos los establecimientos</option>
-                {establecimientos.map((e) => (
-                  <option key={e.id} value={e.id}>{e.nombre}{e.lotesCount != null ? ` (${e.lotesCount})` : ""}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
         <div className="row gap-8" style={{ position: "relative" }}>
           <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setShowFiltros(!showFiltros)}>
@@ -591,7 +579,7 @@ export default function TabLotes() {
           lotes={visibles}
           notasNonce={notasNonce}
           selected={selected}
-          onSelect={setSelected}
+          onSelect={seleccionarLote}
           layer={layer}
           onLayerChange={setLayer}
           onNota={(l) => setNotaLote(l)}
@@ -618,7 +606,7 @@ export default function TabLotes() {
       {view === "lista" && (
         <LotesListaDetallada
           lotes={visibles}
-          onVer={(l) => { setSelected(l); setView("mapa"); }}
+          onVer={(l) => { seleccionarLote(l); setView("mapa"); }}
           onTarea={(l) => abrirNuevaLabor(l)}
         />
       )}
@@ -866,7 +854,7 @@ function LotesMapa({
         {selected && fichaOpen && (
           <div style={{ position: "absolute", inset: 0, zIndex: 800, display: "flex", justifyContent: "flex-end", pointerEvents: "auto" }}>
             <div onClick={() => setFichaOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(15,22,18,0.32)", backdropFilter: "blur(1.5px)" }} />
-            <div className="mc-drawer-in" style={{ position: "relative", width: 420, maxWidth: "92%", height: "100%", overflowY: "auto", background: "var(--mc-surface)", boxShadow: "-12px 0 40px rgba(0,0,0,0.25)" }}>
+            <div className="mc-drawer-in mc-noscrollbar" style={{ position: "relative", width: 480, maxWidth: "94%", height: "100%", overflowY: "auto", background: "var(--mc-surface)", boxShadow: "-12px 0 40px rgba(0,0,0,0.25)" }}>
               <LoteFichaTecnica
                 lote={selected}
                 onClose={() => setFichaOpen(false)}
