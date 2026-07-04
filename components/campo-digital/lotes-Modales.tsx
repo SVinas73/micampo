@@ -605,16 +605,8 @@ export function TimelineLoteModal({
   eventos?: { fecha: string; tipo: string; detail: string; color: string; icon: string }[];
   onClose: () => void;
 }) {
-  const evs =
-    eventos && eventos.length > 0
-      ? eventos
-      : [
-          { fecha: "18/Abr", tipo: "Pulverización", detail: "Glifosato 3 L/Ha · J. Pérez", color: "var(--mc-orange-500)", icon: "flask" },
-          { fecha: "10/Abr", tipo: "Fertilización", detail: "Urea 120 kg/Ha", color: "var(--mc-amber)", icon: "leaf" },
-          { fecha: "22/Mar", tipo: "Siembra", detail: `${lote.variety || "Var. estándar"} · 80 kpa`, color: "var(--mc-green-500)", icon: "sprout" },
-          { fecha: "15/Mar", tipo: "Análisis suelo", detail: "pH 6.2 · MO 2.8%", color: "var(--mc-blue)", icon: "activity" },
-          { fecha: "02/Mar", tipo: "Labranza", detail: "Cincel vibratorio · 25 cm", color: "var(--mc-text-2)", icon: "wrench" },
-        ];
+  // Solo eventos reales del lote; sin timeline de ejemplo hardcodeada.
+  const evs = eventos || [];
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 9000, display: "grid", placeItems: "center" }} onClick={onClose}>
       <div style={{ background: "var(--mc-surface)", borderRadius: 14, padding: 24, width: 420, maxWidth: "90vw", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
@@ -627,6 +619,7 @@ export function TimelineLoteModal({
         </div>
         <div style={{ position: "relative", paddingLeft: 22 }}>
           <div style={{ position: "absolute", left: 9, top: 4, bottom: 4, width: 2, background: "var(--mc-line)" }}></div>
+          {evs.length === 0 && <div className="text-sm text-muted" style={{ paddingLeft: 8 }}>Sin eventos registrados para este lote todavía.</div>}
           {evs.map((ev, i) => (
             <div key={i} style={{ position: "relative", paddingBottom: i < evs.length - 1 ? 14 : 0, paddingLeft: 8 }}>
               <div style={{ position: "absolute", left: -13, top: 2, width: 20, height: 20, borderRadius: "50%", background: ev.color, color: "white", display: "grid", placeItems: "center", border: "2px solid var(--mc-surface)" }}>

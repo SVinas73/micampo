@@ -557,12 +557,16 @@ export function NuevaOrdenLaborModal({
                     </div>
                   </div>
                   <div>
-                    <div className="font-semi" style={{ marginBottom: 8 }}>B. Validaciones (Alerts)</div>
+                    <div className="font-semi" style={{ marginBottom: 8 }}>B. Validaciones</div>
                     <div style={{ padding: 14, borderRadius: 12, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)" }} className="col gap-10">
-                      <ValidRow ok label="Clima" sub="Viento < 15 km/h, sin lluvia próxima" />
-                      <ValidRow ok label="Maquinaria" sub="Disponible" />
-                      <ValidRow ok={insumos.every((i) => i.stock > 50)} label="Stock" sub={insumos.every((i) => i.stock > 50) ? "Insumos disponibles" : "Insumo crítico (confirmar stock)"} />
-                      {operario === "Marcos Gonzalez" && <ValidRow ok={false} label="Operario" sub="Turno > 6h — supervisar" />}
+                      {(() => { const stockOk = insumos.every((i) => (parseFloat(i.dosis) || 0) * haNetas <= i.stock); return (
+                        <>
+                          <ValidRow ok={!!tractorSel} label="Maquinaria" sub={tractorSel ? maqLabel(tractorSel) : "Sin equipo asignado"} />
+                          {insumos.length > 0 && <ValidRow ok={stockOk} label="Stock de insumos" sub={stockOk ? "Suficiente para la superficie" : "Stock insuficiente en algún insumo"} />}
+                          {operario.trim() && <ValidRow ok label="Operario" sub={operario.trim()} />}
+                          {insumos.length === 0 && !tractorSel && <div className="text-xs text-muted">Sin insumos ni maquinaria asignados.</div>}
+                        </>
+                      ); })()}
                     </div>
                   </div>
                 </div>
