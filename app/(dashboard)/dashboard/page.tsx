@@ -717,16 +717,13 @@ export default function InicioPage() {
     <div className="col gap-20">
       {toast.node}
 
-      {/* Topbar — búsqueda + acciones */}
+      {/* Topbar — búsqueda + acción principal */}
       <div className="row" style={{ gap: 12 }}>
         <div className="mc-topsearch" style={{ maxWidth: 460, cursor: "pointer" }} onClick={() => router.push("/campo-digital")}>
           <Icon name="search" size={16} />
           <input placeholder="Buscar lotes, animales, labores, reportes…" />
         </div>
         <div className="row" style={{ marginLeft: "auto", gap: 8 }}>
-          <button className="mc-icon-btn" title="Decisiones del día" onClick={() => router.push("/decisiones")}><Icon name="bell" size={16} /></button>
-          <button className="mc-btn mc-btn--secondary" onClick={descargarReporte}><Icon name="download" size={15} />Reporte semanal</button>
-          <button className="mc-btn mc-btn--secondary" onClick={() => setCapturaOpen(true)}><Icon name="mic" size={15} />Cargar por voz</button>
           <button className="mc-btn mc-btn--primary" onClick={() => setLaborModal(true)}><Icon name="plus" size={15} />Nueva labor</button>
         </div>
       </div>
@@ -766,6 +763,13 @@ export default function InicioPage() {
             </motion.div>
           );
         })}
+      </div>
+
+      {/* Acciones rápidas — debajo de los KPIs, alineadas a la derecha */}
+      <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
+        <button className="mc-icon-btn" title="Decisiones del día" onClick={() => router.push("/decisiones")}><Icon name="bell" size={16} /></button>
+        <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargarReporte}><Icon name="download" size={13} />Reporte semanal</button>
+        <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setCapturaOpen(true)}><Icon name="mic" size={13} />Cargar por voz</button>
       </div>
 
       {/* Tarjetas resumen */}

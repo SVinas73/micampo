@@ -21,7 +21,6 @@ type ClimaDia = { nombre: string; num: number; esHoy: boolean; et0: number; mm: 
 
 // Coeficiente de cultivo (Kc) por ETAPA fenológica (FAO-56, aprox.)
 type Etapa = "Inicial" | "Desarrollo" | "Media" | "Final";
-const ETAPAS: Etapa[] = ["Inicial", "Desarrollo", "Media", "Final"];
 const KC_ETAPA: Record<string, Record<Etapa, number>> = {
   Maíz: { Inicial: 0.3, Desarrollo: 0.7, Media: 1.15, Final: 0.6 },
   Soja: { Inicial: 0.4, Desarrollo: 0.75, Media: 1.1, Final: 0.5 },
@@ -303,26 +302,8 @@ function PlanRiegoInner() {
         <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setRiegoOpen(true)}><Icon name="plus" size={13} />Registrar Riego</button>
       </div>
 
-      {/* Estadio fenológico — ajusta el Kc (consumo de agua) del cálculo */}
-      {!sinCampo && (
-        <div className="mc-card" style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div className="row gap-8" style={{ alignItems: "center" }}>
-            <Icon name="sprout" size={16} style={{ color: "var(--mc-green-700)" }} />
-            <span className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13.5 }}>Estadio fenológico</span>
-            {etapaAuto && (
-              <span className="mc-badge mc-badge--green" style={{ fontSize: 10.5 }}>
-                <Icon name="bolt" size={10} />Auto · {etapaAuto.dias} d desde siembra
-              </span>
-            )}
-          </div>
-          <div className="mc-seg">
-            {ETAPAS.map((e) => (
-              <button key={e} className={etapa === e ? "is-on" : ""} onClick={() => setEtapa(e)}>{e}</button>
-            ))}
-          </div>
-          <span className="text-xs text-muted">Kc {kcDe(cultivo, etapa)} · ajusta el consumo (ETc) y el riego sugerido</span>
-        </div>
-      )}
+      {/* La etapa fenológica se detecta sola por la fecha de siembra del lote
+          (etapaAuto) y ajusta el Kc internamente — sin card manual. */}
 
       <div className="grid" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
         <BalanceHidrico

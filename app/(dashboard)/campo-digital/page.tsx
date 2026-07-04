@@ -14,8 +14,8 @@ const TABS = [
   "Lotes",
   "Labores",
   "Cultivos",
-  "Detección de Enfermedades (IA)",
   "Planificador de Siembras (IA)",
+  "Detección de Enfermedades (IA)",
 ];
 
 export default function CampoDigitalPage() {

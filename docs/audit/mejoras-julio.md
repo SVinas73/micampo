@@ -18,20 +18,20 @@ Si se corta por tokens: retomar por el primer `[ ]` pendiente. Cada ítem se com
 ## Cultivos
 - [ ] 10. Nueva Siembra: "Block A/B/C…" → "Paso 1/2/3…"; quitar buscador de cultivo; círculo "…" junto a girasol con catálogo grande de cultivos; quitar paréntesis de Silo/Puerto/Acopio
 - [ ] 11. Análisis de suelo: subir PDF en "Nuevo análisis" (columna PDF lo descarga) — requiere migración
-- [ ] 12. Intercambiar pestañas: Planificador de Siembras (IA) a la izquierda de Detección de Enfermedades (IA)
+- [x] 12. Intercambiar pestañas: Planificador de Siembras (IA) a la izquierda de Detección de Enfermedades (IA)
 
 ## Calculadora de Dosis
 - [ ] 13. "Recomendación IA de dosis" por lote — seteado para ANTHROPIC_API_KEY (mensaje honesto sin key)
 
 ## Plan de Riego
-- [ ] 14. Eliminar card "Estadio fenológico" (la etapa se sigue calculando sola por fecha de siembra)
+- [x] 14. Eliminar card "Estadio fenológico" (la etapa se sigue calculando sola por fecha de siembra)
 - [ ] 15. Balance Hídrico: mostrar las barras IA de riego sugerido (como el diseño); dejar seteado para IA
 
 ## Cuaderno de Campo
-- [ ] 16. Eliminar submódulo (página + navegación)
+- [x] 16. Eliminar submódulo (página + navegación)
 
 ## Inicio
-- [ ] 17. Campanita, Reporte semanal y Cargar por voz debajo de los KPIs, alineados a la derecha
+- [x] 17. Campanita, Reporte semanal y Cargar por voz debajo de los KPIs, alineados a la derecha
 
 ## Vistas del mapa (complejo)
 - [ ] 18. Renombrar capa "NDVI"→"Satélite"; nueva capa NDVI REAL (Sentinel Hub si hay key; fallback NASA GIBS MODIS NDVI, gratuito y real) con leyenda tipo rampa
