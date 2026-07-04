@@ -16,3 +16,10 @@ todo el andamiaje demo del bundle de Agronomía.
 - Sin Math.random en APIs de Agronomía.
 - Sin defaults numéricos fabricados mostrados como reales (solo referencias agronómicas y estilos).
 - tsc limpio · build ✓ · 28/28 tests.
+
+## Stragglers encontrados en modales/wizard (2ª pasada)
+- [x] components/clima/ClimaModales.tsx — "Campo El Amanecer" hardcodeado (ubicación de lluvia + header del selector) → nombres reales de lote / establecimiento activo.
+- [x] app/(dashboard)/clima/page.tsx — histórico de lluvias: lote borrado (loteId nulo) muestra "Campo General", no un nombre de campo obsoleto.
+- [x] components/campo-digital/lotes-Modales.tsx — TimelineLoteModal: timeline de ejemplo hardcodeada → solo eventos reales + estado vacío.
+- [x] components/campo-digital/labores-Wizard.tsx — validaciones "Clima/Maquinaria/Operario" fabricadas → validaciones reales (maquinaria/stock/operario).
+- [x] Verificado: sin Math.random en APIs de Agronomía; tsc/build/28 tests OK.
