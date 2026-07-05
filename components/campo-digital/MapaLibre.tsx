@@ -25,7 +25,6 @@ export type LoteGeo = {
   geojson?: GeoJSON.Polygon | null;
   establecimientoId?: string | null;
   establecimientoNombre?: string | null;
-  nota?: string | null;
 };
 
 /** Polígono envolvente (convex hull) de cada establecimiento a partir de sus lotes. */
@@ -62,6 +61,7 @@ function centroideAnillo(coords: number[][]): [number, number] {
 
 type Props = {
   lotes: LoteGeo[];
+  notas?: NotaGeo[];
   selectedId?: string | null;
   layer: string; // "NDVI" | "Satélite" | "Cultivos"
   onSelect: (id: string) => void;
@@ -124,25 +124,30 @@ function fc(lotes: LoteGeo[], layer: string): GeoJSON.FeatureCollection {
       .map((l) => ({
         type: "Feature",
         geometry: l.geojson as GeoJSON.Polygon,
-        properties: { id: l.id, name: l.name, color: colorDe(l, layer), nota: l.nota ?? "" },
+        properties: { id: l.id, name: l.name, color: colorDe(l, layer) },
       })),
   };
 }
 
-/** Puntos (centroides) de los lotes que tienen una nota, para el indicador rojo. */
-function notasFc(lotes: LoteGeo[]): GeoJSON.FeatureCollection {
+export type NotaGeo = { id: string; lat: number; lng: number; texto: string; prioridad: string; loteNombre: string };
+
+// Color del punto de nota según su prioridad.
+function colorNota(prioridad?: string | null): string {
+  if (prioridad === "Crítica") return "#d13a3a";
+  if (prioridad === "Moderada") return "#d9a538";
+  if (prioridad === "No urgente") return "#5e7733";
+  return "#64748b"; // notas viejas sin prioridad
+}
+
+/** Cada nota en SU coordenada real, con color por prioridad. */
+function notasFc(notas: NotaGeo[]): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
-    features: lotes
-      .filter((l) => l.nota && l.geojson?.coordinates?.[0]?.length)
-      .map((l) => {
-        const [lng, lat] = centroideAnillo(l.geojson!.coordinates[0]);
-        return {
-          type: "Feature" as const,
-          geometry: { type: "Point" as const, coordinates: [lng, lat] },
-          properties: { id: l.id, name: l.name, nota: l.nota },
-        };
-      }),
+    features: notas.map((n) => ({
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [n.lng, n.lat] },
+      properties: { id: n.id, name: n.loteNombre, nota: n.texto, prioridad: n.prioridad, color: colorNota(n.prioridad) },
+    })),
   };
 }
 
@@ -150,13 +155,15 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }
 
-/** Tarjeta HTML estilizada para el tooltip de nota de un lote. */
-function notaPopupHtml(nombre: string, nota: string): string {
+/** Tarjeta HTML estilizada para el tooltip de nota (color según prioridad). */
+function notaPopupHtml(nombre: string, nota: string, prioridad?: string | null): string {
+  const c = colorNota(prioridad);
   return (
     `<div style="font-family:inherit;min-width:150px">` +
       `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">` +
-        `<span style="width:8px;height:8px;border-radius:50%;background:#e5484d;display:inline-block;flex:none"></span>` +
+        `<span style="width:8px;height:8px;border-radius:50%;background:${c};display:inline-block;flex:none"></span>` +
         `<span style="font-weight:700;font-size:12px;color:#324428;letter-spacing:.01em">${escapeHtml(nombre)}</span>` +
+        (prioridad ? `<span style="font-size:9.5px;font-weight:700;color:${c};border:1px solid ${c}55;border-radius:999px;padding:1px 7px">${escapeHtml(prioridad)}</span>` : "") +
       `</div>` +
       `<div style="font-size:12px;line-height:1.4;color:#3a4433;white-space:pre-wrap">${escapeHtml(nota)}</div>` +
     `</div>`
@@ -192,7 +199,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
-export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onCampoConLotes }: Props) {
+export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onCampoConLotes }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -206,6 +213,10 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
   const drawingRef = useRef(false);
   const layerRef = useRef(layer);
   const lotesRef = useRef(lotes);
+  const notasRef = useRef(notas);
+  // Lupita de aumento para el dibujo de lotes (mini-mapa circular junto al cursor).
+  const lensRef = useRef<HTMLDivElement>(null);
+  const lensMapRef = useRef<maplibregl.Map | null>(null);
   const establecimientosRef = useRef(establecimientos);
   const modoNotaRef = useRef(false);
   const onPuntoNotaRef = useRef(onPuntoNota);
@@ -219,6 +230,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
   drawingRef.current = drawing;
   layerRef.current = layer;
   lotesRef.current = lotes;
+  notasRef.current = notas;
   establecimientosRef.current = establecimientos;
 
   // Markers HTML con el nombre de cada lote (no dependen de glyphs)
@@ -342,9 +354,9 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       map.addLayer({ id: "lotes-line", type: "line", source: "lotes", paint: { "line-color": layerRef.current === "Topografía" || layerRef.current === "Relieve" ? "#111111" : "#ffffff", "line-width": ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 3.5, 1.6], "line-opacity": 0.95 } as any });
 
       // Indicador de nota: punto rojo pulsante en el centroide de los lotes con nota
-      map.addSource("notas", { type: "geojson", data: notasFc(lotes) });
-      map.addLayer({ id: "notas-halo", type: "circle", source: "notas", paint: { "circle-radius": 11, "circle-color": "#e5484d", "circle-opacity": 0.18 } as any });
-      map.addLayer({ id: "notas-dot", type: "circle", source: "notas", paint: { "circle-radius": 6, "circle-color": "#e5484d", "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } as any });
+      map.addSource("notas", { type: "geojson", data: notasFc(notasRef.current) });
+      map.addLayer({ id: "notas-halo", type: "circle", source: "notas", paint: { "circle-radius": 11, "circle-color": ["get", "color"], "circle-opacity": 0.18 } as any });
+      map.addLayer({ id: "notas-dot", type: "circle", source: "notas", paint: { "circle-radius": 6, "circle-color": ["get", "color"], "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } as any });
       renderMarkers();
       renderCampoMarkers();
       map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -364,29 +376,62 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
         const id = e.features?.[0]?.properties?.id;
         if (id) onSelectRef.current(String(id));
       });
+      // Mientras se DIBUJA, la cruz nunca se pierde (aunque el mouse pase por otro lote).
       map.on("mouseenter", "lotes-fill", () => { if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = "pointer"; });
-      map.on("mouseleave", "lotes-fill", () => { if (!modoNotaRef.current) map.getCanvas().style.cursor = ""; });
+      map.on("mouseleave", "lotes-fill", () => { if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = ""; });
 
-      // Tooltip de nota: al pasar el mouse por un lote con nota, se ve su contenido.
+      // Tooltip de nota: anclado a la COORDENADA real de la nota (no al cursor).
       const mostrarNota = (e: maplibregl.MapLayerMouseEvent) => {
         const f = e.features?.[0];
         const nombre = f?.properties?.name ? String(f.properties.name) : "";
         const nota = f?.properties?.nota ? String(f.properties.nota) : "";
+        const prioridad = f?.properties?.prioridad ? String(f.properties.prioridad) : "";
         if (!nota) { ocultarNota(); return; }
         if (!notaPopupRef.current) {
           notaPopupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14, className: "mc-nota-popup", maxWidth: "260px" });
         }
-        notaPopupRef.current.setLngLat(e.lngLat).setHTML(notaPopupHtml(nombre, nota)).addTo(map);
+        const coords = f?.geometry?.type === "Point" ? (f.geometry.coordinates as [number, number]) : [e.lngLat.lng, e.lngLat.lat] as [number, number];
+        notaPopupRef.current.setLngLat(coords).setHTML(notaPopupHtml(nombre, nota, prioridad)).addTo(map);
       };
       const ocultarNota = () => { notaPopupRef.current?.remove(); };
-      map.on("mouseenter", "notas-dot", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseenter", "notas-dot", () => { if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = "pointer"; });
       map.on("mousemove", "notas-dot", mostrarNota);
       map.on("mouseleave", "notas-dot", () => { ocultarNota(); if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = ""; });
+
+      // Ajuste fino: arrastrar cualquier vértice ya marcado para reubicarlo.
+      let dragIdx: number | null = null;
+      let dragMovio = false;
+      map.on("mousedown", "draw-pts", (e) => {
+        if (!drawingRef.current || !e.features?.length) return;
+        e.preventDefault();
+        const [vx, vy] = (e.features[0].geometry as GeoJSON.Point).coordinates;
+        let best = 0, bestD = Infinity;
+        drawPtsRef.current.forEach((p, i) => {
+          const d = (p[0] - vx) ** 2 + (p[1] - vy) ** 2;
+          if (d < bestD) { bestD = d; best = i; }
+        });
+        dragIdx = best;
+        dragMovio = false;
+        map.dragPan.disable();
+      });
+      map.on("mousemove", (e) => {
+        if (dragIdx == null) return;
+        dragMovio = true;
+        drawPtsRef.current[dragIdx] = [e.lngLat.lng, e.lngLat.lat];
+        repaintDraw();
+      });
+      map.on("mouseup", () => {
+        if (dragIdx == null) return;
+        dragIdx = null;
+        map.dragPan.enable();
+      });
 
       // dibujo por click / marcar nota
       map.on("click", (e) => {
         if (modoNotaRef.current && onPuntoNotaRef.current) { onPuntoNotaRef.current(e.lngLat.lat, e.lngLat.lng); return; }
         if (!drawingRef.current) return;
+        // Si el click cierra un arrastre de vértice, no agrega un punto nuevo.
+        if (dragMovio) { dragMovio = false; return; }
         drawPtsRef.current.push([e.lngLat.lng, e.lngLat.lat]);
         setDrawCount(drawPtsRef.current.length);
         repaintDraw();
@@ -397,11 +442,24 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
         finalizarDibujo();
       });
 
+      // Lupita de aumento mientras se dibuja: mini-mapa circular pegado al cursor.
+      map.on("mousemove", (e) => {
+        if (!drawingRef.current) { if (lensRef.current) lensRef.current.style.display = "none"; return; }
+        const lens = lensRef.current;
+        if (!lens) return;
+        lens.style.display = "block";
+        lens.style.left = `${e.point.x + 24}px`;
+        lens.style.top = `${e.point.y - 164}px`;
+        const lm = lensMapRef.current;
+        if (lm) lm.jumpTo({ center: e.lngLat, zoom: Math.min(19, map.getZoom() + 2.5) });
+      });
+      map.on("mouseout", () => { if (lensRef.current) lensRef.current.style.display = "none"; });
+
       readyRef.current = true;
       setReady(true);
     });
 
-    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; campoMarkersRef.current.forEach((m) => m.remove()); campoMarkersRef.current = []; notaPopupRef.current?.remove(); notaPopupRef.current = null; map.remove(); mapRef.current = null; readyRef.current = false; };
+    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; campoMarkersRef.current.forEach((m) => m.remove()); campoMarkersRef.current = []; notaPopupRef.current?.remove(); notaPopupRef.current = null; lensMapRef.current?.remove(); lensMapRef.current = null; map.remove(); mapRef.current = null; readyRef.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -435,7 +493,13 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
       (map.getSource("draw") as maplibregl.GeoJSONSource)?.setData({ type: "FeatureCollection", features: [] });
       map.doubleClickZoom.enable();
       map.getCanvas().style.cursor = "";
+      // Los marcadores vuelven a ser interactivos y se apaga la cruz forzada.
+      map.getContainer().classList.remove("mc-dibujando");
     }
+    // Apaga y destruye la lupita.
+    if (lensRef.current) lensRef.current.style.display = "none";
+    lensMapRef.current?.remove();
+    lensMapRef.current = null;
   };
 
   const iniciarDibujo = () => {
@@ -445,6 +509,30 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     setDrawing(true);
     map.doubleClickZoom.disable();
     map.getCanvas().style.cursor = "crosshair";
+    // Modo dibujo TOTAL: nada interrumpe la cruz (los marcadores de lote no
+    // interceptan el mouse y el cursor queda forzado por CSS).
+    map.getContainer().classList.add("mc-dibujando");
+    // Lupita: mini-mapa satelital con aumento, que sigue al cursor.
+    if (lensRef.current && !lensMapRef.current) {
+      lensMapRef.current = new maplibregl.Map({
+        container: lensRef.current.querySelector(".mc-lupa__mapa") as HTMLElement,
+        style: {
+          version: 8,
+          sources: {
+            satelite: {
+              type: "raster",
+              tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+              tileSize: 256,
+            },
+          },
+          layers: [{ id: "satelite", type: "raster", source: "satelite" }],
+        } as any,
+        center: map.getCenter(),
+        zoom: Math.min(19, map.getZoom() + 2.5),
+        interactive: false,
+        attributionControl: false,
+      });
+    }
   };
 
   // Disparador externo: el botón "Nuevo lote" del header arma el dibujo
@@ -475,7 +563,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     const map = mapRef.current;
     if (!map || !ready) return;
     (map.getSource("lotes") as maplibregl.GeoJSONSource)?.setData(fc(lotes, layer));
-    (map.getSource("notas") as maplibregl.GeoJSONSource)?.setData(notasFc(lotes));
+    (map.getSource("notas") as maplibregl.GeoJSONSource)?.setData(notasFc(notas));
     (map.getSource("campos") as maplibregl.GeoJSONSource)?.setData(boundariesFc(lotes, establecimientosRef.current));
     if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
     if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
@@ -488,7 +576,7 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
     renderMarkers();
     renderCampoMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lotes, layer, ready]);
+  }, [lotes, notas, layer, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -518,6 +606,12 @@ export default function MapaLibre({ lotes, selectedId, layer, onSelect, onDrawn,
   return (
     <div style={{ position: "absolute", inset: 0 }}>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
+
+      {/* Lupita de aumento (solo visible mientras se dibuja) */}
+      <div ref={lensRef} className="mc-lupa" style={{ display: "none" }} aria-hidden>
+        <div className="mc-lupa__mapa" />
+        <div className="mc-lupa__cruz" />
+      </div>
 
       {/* Controles dibujo / terreno */}
       {!drawing ? (

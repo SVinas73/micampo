@@ -147,10 +147,7 @@ export function AgregarCampoModal({
                   <label style={lbl}>Nombre</label>
                   <input style={inp} placeholder="Ej: Lote 7 - La Loma" value={nombre} onChange={(e) => setNombre(e.target.value)} />
                 </div>
-                <div>
-                  <label style={lbl}>Ubicación</label>
-                  <input style={inp} placeholder="Ej: Ruta 5, Km 40" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} />
-                </div>
+                {/* La ubicación se lee de las coordenadas del dibujo (geocodificación automática). */}
                 <div>
                   <label style={lbl}>Hectáreas</label>
                   <input style={inp} type="number" placeholder="Ej: 120" value={hectareas} onChange={(e) => setHectareas(e.target.value)} />

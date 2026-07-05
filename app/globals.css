@@ -2500,6 +2500,39 @@ a:focus-visible {
 /* Scroll con la rueda pero SIN barra visible (drawers limpios). */
 .mc-noscrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .mc-noscrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* Modo dibujo de lote: la cruz NUNCA se pierde. Los marcadores/etiquetas dejan
+   de interceptar el mouse y el cursor queda forzado en crosshair. */
+.mc-dibujando .mc-lote-marker,
+.mc-dibujando .mc-campo-marker { pointer-events: none !important; }
+.mc-dibujando .maplibregl-canvas,
+.mc-dibujando .maplibregl-canvas-container { cursor: crosshair !important; }
+
+/* Lupita de aumento del dibujo de lotes: mini-mapa circular junto al cursor. */
+.mc-lupa {
+  position: absolute;
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  z-index: 640;
+}
+.mc-lupa__mapa { position: absolute; inset: 0; }
+.mc-lupa__mapa .maplibregl-canvas { border-radius: 50%; }
+/* Cruz fina en el centro de la lente para apuntar el vértice con precisión */
+.mc-lupa__cruz { position: absolute; inset: 0; pointer-events: none; }
+.mc-lupa__cruz::before,
+.mc-lupa__cruz::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}
+.mc-lupa__cruz::before { left: 50%; top: 34%; bottom: 34%; width: 1.5px; transform: translateX(-50%); }
+.mc-lupa__cruz::after { top: 50%; left: 34%; right: 34%; height: 1.5px; transform: translateY(-50%); }
 @media (prefers-reduced-motion: reduce) { .mc-drawer-in { animation: none; } }
 
 /* Etiqueta de campo (establecimiento) sobre el mapa */

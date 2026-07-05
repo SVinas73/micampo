@@ -446,14 +446,15 @@ export default function TabLotes() {
     toast.show("Marcá un punto dentro de un lote o de un establecimiento delimitado", "err");
   };
 
-  const guardarNotaPunto = async (texto: string) => {
+  const guardarNotaPunto = async (texto: string, prioridad: string) => {
     if (!notaPunto) return;
     const res = await fetch("/api/marcadores-geo", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         loteId: notaPunto.loteId, establecimientoId: notaPunto.establecimientoId,
         latitud: notaPunto.lat, longitud: notaPunto.lng,
-        tipo: "Observación", titulo: "Nota", descripcion: texto, responsable: "Vos",
+        // La prioridad de la nota viaja en `tipo` (Crítica / Moderada / No urgente).
+        tipo: prioridad, titulo: "Nota", descripcion: texto, responsable: "Vos",
       }),
     }).catch(() => null);
     toast.show(res && res.ok ? `Nota guardada en ${notaPunto.nombre}` : "No se pudo guardar la nota", res && res.ok ? "ok" : "err");
@@ -680,24 +681,30 @@ function LotesMapa({
   const legend = legendByLayer[layer] || [];
   const { establecimientos } = useLoteScope();
   const nombreEst = (id?: string | null) => (id ? establecimientos.find((e) => e.id === id)?.nombre ?? null : null);
-  // Notas georreferenciadas por lote: la más reciente de cada lote se muestra como
-  // indicador rojo en el mapa y en el tooltip al pasar el mouse por encima.
-  const [notasPorLote, setNotasPorLote] = useState<Record<string, string>>({});
+  // Notas georreferenciadas: cada nota se marca en SU coordenada real (no en el
+  // centroide del lote) con color según prioridad (Crítica/Moderada/No urgente).
+  const [notasGeo, setNotasGeo] = useState<{ id: string; lat: number; lng: number; texto: string; prioridad: string; loteNombre: string }[]>([]);
   useEffect(() => {
     let cancelado = false;
     fetch("/api/marcadores-geo").then((r) => (r.ok ? r.json() : null)).then((rows) => {
       if (cancelado || !Array.isArray(rows)) return;
-      const m: Record<string, string> = {};
-      // Vienen ordenadas por fecha desc: la primera de cada lote es la más reciente.
-      rows.forEach((n: { loteId?: string | null; titulo?: string | null; descripcion?: string | null }) => {
-        if (!n.loteId || m[n.loteId]) return;
-        m[n.loteId] = [n.titulo, n.descripcion].filter(Boolean).join(" — ") || "Nota";
-      });
-      setNotasPorLote(m);
+      const idsEnVista = new Set(lotes.map((l) => l.dbId || l.id));
+      setNotasGeo(
+        rows
+          .filter((n: { loteId?: string | null; establecimientoId?: string | null }) => (n.loteId && idsEnVista.has(n.loteId)) || !n.loteId)
+          .map((n: { id: string; latitud: number; longitud: number; tipo?: string | null; titulo?: string | null; descripcion?: string | null; lote?: { nombre?: string } | null }) => ({
+            id: n.id,
+            lat: n.latitud,
+            lng: n.longitud,
+            texto: [n.titulo !== "Nota" ? n.titulo : null, n.descripcion].filter(Boolean).join(" — ") || "Nota",
+            prioridad: n.tipo || "",
+            loteNombre: n.lote?.nombre || "Campo",
+          }))
+      );
     }).catch(() => {});
     return () => { cancelado = true; };
-  }, [lotes.length, notasNonce]);
-  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId), nota: notasPorLote[l.dbId || l.id] ?? null }));
+  }, [lotes, notasNonce]);
+  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
   // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
   const establecimientosGeo = [
     ...establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, coordenadas: e.coordenadas ?? null })),
@@ -794,6 +801,7 @@ function LotesMapa({
       <div className="mc-mapwrap" style={{ height: 640, position: "relative" }}>
         <Mapa3D
           lotes={lotesGeo}
+          notas={notasGeo}
           selectedId={selected?.id ?? null}
           layer={layer}
           onSelect={(id: string) => onSelect(lotes.find((l) => l.id === id) || null)}
@@ -1523,6 +1531,15 @@ function LotesListaDetallada({
 }
 
 /* ========== MODAL NOTA GEORREFERENCIADA ========== */
+export const PRIORIDADES_NOTA = [
+  { valor: "Crítica", color: "#d13a3a" },
+  { valor: "Moderada", color: "#d9a538" },
+  { valor: "No urgente", color: "#5e7733" },
+] as const;
+export function colorPrioridadNota(p?: string | null): string {
+  return PRIORIDADES_NOTA.find((x) => x.valor === p)?.color || "#64748b";
+}
+
 function NotaPuntoModal({
   nombre, lat, lng, onClose, onConfirm,
 }: {
@@ -1530,9 +1547,10 @@ function NotaPuntoModal({
   lat: number;
   lng: number;
   onClose: () => void;
-  onConfirm: (texto: string) => void;
+  onConfirm: (texto: string, prioridad: string) => void;
 }) {
   const [texto, setTexto] = useState("");
+  const [prioridad, setPrioridad] = useState<string>("Moderada");
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onClose}>
       <div style={{ background: "var(--mc-surface)", borderRadius: 16, width: 460, maxWidth: "100%", boxShadow: "var(--sh-lg)", padding: 22 }} onClick={(e) => e.stopPropagation()}>
@@ -1544,10 +1562,32 @@ function NotaPuntoModal({
           </div>
           <button className="mc-icon-btn" onClick={onClose}><Icon name="x" size={14} /></button>
         </div>
+        <div className="mc-label" style={{ marginBottom: 6 }}>Prioridad</div>
+        <div className="row gap-8" style={{ marginBottom: 12 }}>
+          {PRIORIDADES_NOTA.map((p) => {
+            const on = prioridad === p.valor;
+            return (
+              <button
+                key={p.valor}
+                onClick={() => setPrioridad(p.valor)}
+                style={{
+                  flex: 1, padding: "8px 10px", borderRadius: 10, cursor: "pointer", fontSize: 12.5, fontWeight: 700,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  border: on ? `2px solid ${p.color}` : "1px solid var(--mc-line-2)",
+                  background: on ? `${p.color}18` : "var(--mc-surface)",
+                  color: on ? p.color : "var(--mc-text-2)",
+                }}
+              >
+                <span style={{ width: 9, height: 9, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                {p.valor}
+              </button>
+            );
+          })}
+        </div>
         <textarea className="mc-textarea" placeholder="Ej: Sector bajo con encharcamiento tras la lluvia. Revisar drenaje." value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus />
         <div className="row gap-8 mt-12" style={{ justifyContent: "flex-end" }}>
           <button className="mc-btn mc-btn--ghost" onClick={onClose}>Cancelar</button>
-          <button className="mc-btn mc-btn--primary" disabled={!texto.trim()} onClick={() => onConfirm(texto.trim())}>
+          <button className="mc-btn mc-btn--primary" disabled={!texto.trim()} onClick={() => onConfirm(texto.trim(), prioridad)}>
             <Icon name="pen" size={13} />Guardar nota
           </button>
         </div>
