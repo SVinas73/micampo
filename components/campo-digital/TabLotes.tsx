@@ -1111,7 +1111,7 @@ function LoteFichaTecnica({
       )}
 
       {innerTab === "Prescripción" && (
-        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} />
+        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} loteGeo={lote.geojson} />
           : <FichaVacio texto="Dibujá el lote en el mapa para generar un mapa de prescripción variable." />
       )}
 
@@ -1136,7 +1136,7 @@ type Prescripcion = {
   geojson: { type: "FeatureCollection"; features: { geometry: { type: "Polygon"; coordinates: number[][][] }; properties: { ndvi: number; zona: string; dosis: number; color: string } }[] };
 };
 
-function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
+function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: string; loteGeo?: { type: "Polygon"; coordinates: number[][][] } | null }) {
   const [producto, setProducto] = useState("Urea");
   const [dosisBase, setDosisBase] = useState("120");
   const [estrategia, setEstrategia] = useState<"compensar" | "potenciar">("compensar");
@@ -1165,23 +1165,67 @@ function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
     a.click(); URL.revokeObjectURL(a.href);
   };
 
-  // SVG del mapa zonificado
+  // Mapa de prescripción estilo agronómico: zonas coloreadas rojo→verde por dosis,
+  // dosis numérica en cada zona, contorno rojo del lote y brújula (N).
   const Mapa = () => {
     if (!res?.geojson.features.length) return null;
-    const all = res.geojson.features.flatMap((f) => f.geometry.coordinates[0]);
+    const feats = res.geojson.features;
+    const all = feats.flatMap((f) => f.geometry.coordinates[0]);
     const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const W = 360, H = 220, pad = 8;
+    const W = 420, H = 260, pad = 14;
     const sc = Math.min((W - 2 * pad) / (maxX - minX || 1), (H - 2 * pad) / (maxY - minY || 1));
     const ox = (W - (maxX - minX) * sc) / 2, oy = (H - (maxY - minY) * sc) / 2;
-    const proj = (p: number[]) => `${(ox + (p[0] - minX) * sc).toFixed(1)},${(oy + (maxY - p[1]) * sc).toFixed(1)}`;
+    const projXY = (p: number[]): [number, number] => [ox + (p[0] - minX) * sc, oy + (maxY - p[1]) * sc];
+    const proj = (p: number[]) => { const [x, y] = projXY(p); return `${x.toFixed(1)},${y.toFixed(1)}`; };
+
+    // Rampa por dosis (como el mapa de prescripción clásico): mínima=rojo → máxima=verde oscuro.
+    const RAMPA = ["#d92b2b", "#f97d1c", "#f5d327", "#8bc34a", "#2e7d32"];
+    const dosisVals = Array.from(new Set(feats.map((f) => f.properties.dosis))).sort((a, b) => a - b);
+    const colorDosis = (d: number) => {
+      if (dosisVals.length <= 1) return RAMPA[4];
+      const t = dosisVals.indexOf(d) / (dosisVals.length - 1);
+      return RAMPA[Math.round(t * (RAMPA.length - 1))];
+    };
+    const centro = (ring: number[][]): [number, number] => {
+      const [sx, sy] = ring.reduce((a, p) => { const [x, y] = projXY(p); return [a[0] + x, a[1] + y]; }, [0, 0]);
+      return [sx / ring.length, sy / ring.length];
+    };
+
     return (
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ borderRadius: 10, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)" }}>
-        {res.geojson.features.map((f, i) => (
-          <polygon key={i} points={f.geometry.coordinates[0].map(proj).join(" ")} fill={f.properties.color} fillOpacity={0.78} stroke="#fff" strokeWidth={0.7}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ borderRadius: 10, background: "#e9e4d8", border: "1px solid var(--mc-line)" }}>
+        {/* Zonas coloreadas por dosis */}
+        {feats.map((f, i) => (
+          <polygon key={i} points={f.geometry.coordinates[0].map(proj).join(" ")} fill={colorDosis(f.properties.dosis)} fillOpacity={0.92} stroke="#5b5244" strokeWidth={0.6}>
             <title>{f.properties.zona} · NDVI {f.properties.ndvi} · {f.properties.dosis} kg/ha</title>
           </polygon>
         ))}
+        {/* Dosis numérica en el centro de cada zona (con halo blanco, legible) */}
+        {feats.map((f, i) => {
+          const [cx, cy] = centro(f.geometry.coordinates[0]);
+          return (
+            <text key={`t${i}`} x={cx} y={cy + 4} fontSize="13" fontFamily="var(--ff-ui)" fontWeight={800} fill="#1c2417" stroke="#ffffff" strokeWidth={3} paintOrder="stroke" textAnchor="middle">
+              {f.properties.dosis}
+            </text>
+          );
+        })}
+        {/* Contorno del lote en rojo (límite de la prescripción) */}
+        {loteGeo?.coordinates?.[0]?.length ? (
+          <polygon points={loteGeo.coordinates[0].map(proj).join(" ")} fill="none" stroke="#d92b2b" strokeWidth={2.4} strokeLinejoin="round" />
+        ) : null}
+        {/* Brújula: N arriba (proyección norte-arriba) */}
+        <g transform={`translate(${W - 26}, 26)`}>
+          <circle r="16" fill="rgba(255,255,255,0.92)" stroke="#5b5244" strokeWidth="1" />
+          <path d="M 0 -11 L 4 4 L 0 1.5 L -4 4 Z" fill="#d92b2b" />
+          <path d="M 0 11 L 4 4 L 0 6.5 L -4 4 Z" fill="#5b5244" opacity="0.55" />
+          <text y="-1.5" x="7.5" fontSize="8.5" fontWeight={800} fill="#1c2417" textAnchor="middle">N</text>
+        </g>
+        {/* Escala de dosis */}
+        <g transform={`translate(${pad}, ${H - 20})`}>
+          {RAMPA.map((c, i) => <rect key={c} x={i * 26} width="26" height="9" fill={c} stroke="#fff" strokeWidth="0.5" />)}
+          <text x="0" y="-3" fontSize="8.5" fontWeight={700} fill="#4a4436">{dosisVals[0] ?? ""} kg/ha</text>
+          <text x={RAMPA.length * 26} y="-3" fontSize="8.5" fontWeight={700} fill="#4a4436" textAnchor="end">{dosisVals[dosisVals.length - 1] ?? ""} kg/ha</text>
+        </g>
       </svg>
     );
   };

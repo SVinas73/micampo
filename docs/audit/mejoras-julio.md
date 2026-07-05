@@ -39,7 +39,7 @@ Si se corta por tokens: retomar por el primer `[ ]` pendiente. Cada ítem se com
 - [x] 20. Croquis en vista lista con el color del cultivo actual
 
 ## Prescripción
-- [ ] 21. Mapa de prescripción estilo agronómico (zonas coloreadas rojo→verde con dosis numérica por zona, contorno del lote) + brújula (N/S)
+- [x] 21. Mapa de prescripción estilo agronómico (zonas coloreadas rojo→verde con dosis numérica por zona, contorno del lote) + brújula (N/S)
 
 ## Respuesta (no código)
-- [ ] 22. Análisis de QGIS (github.com/qgis/QGIS): qué es, si sirve, costo, cómo conectarlo a futuro
+- [x] 22. Análisis de QGIS (github.com/qgis/QGIS): qué es, si sirve, costo, cómo conectarlo a futuro
