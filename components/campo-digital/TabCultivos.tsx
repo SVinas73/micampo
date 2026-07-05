@@ -759,7 +759,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
   const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>([] as AnalisisRow[]);
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
   const [evolucion, setEvolucion] = useState<{ label: string; ppm: number }[]>([]);
-  const [labResults, setLabResults] = useState<{ fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]>([]);
+  const [labResults, setLabResults] = useState<{ id: string; tienePdf: boolean; fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/analisis-suelo")
@@ -778,16 +778,18 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
             .filter((a: { fechaAnalisis?: string }) => a.fechaAnalisis)
             .sort((a: { fechaAnalisis: string }, b: { fechaAnalisis: string }) => new Date(b.fechaAnalisis).getTime() - new Date(a.fechaAnalisis).getTime())
             .slice(0, 8)
-            .map((a: { lote?: { nombre: string }; fechaAnalisis: string; profundidad?: string; nitrogeno?: number; fosforo?: number; pH?: number }) => {
+            .map((a: { id: string; tienePdf?: boolean; lote?: { nombre: string }; fechaAnalisis: string; profundidad?: string; nitrogeno?: number; fosforo?: number; pH?: number }) => {
               const p = a.fosforo ?? null;
               const ph = a.pH ?? null;
               const pWarn = p != null && p < 15;
               const phWarn = ph != null && (ph < 5.5 || ph > 7.5);
               const estado = pWarn || (ph != null && ph < 5.5) ? "Crítico" : phWarn || (p != null && p < 20) ? "Alerta" : "Óptimo";
               return {
+                id: a.id,
+                tienePdf: !!a.tienePdf,
                 fecha: new Date(a.fechaAnalisis).toLocaleDateString("es-AR", { timeZone: "UTC" }),
                 lote: a.lote?.nombre || "Lote",
-                prof: a.profundidad || "0-20",
+                prof: a.profundidad || "—",
                 p: p != null ? `${Math.round(p)} ppm` : "—",
                 pWarn,
                 n: a.nitrogeno != null ? Math.round(a.nitrogeno) : 0,
@@ -967,20 +969,33 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                   <td><span style={{ color: r.phWarn ? "var(--mc-red)" : "var(--mc-ink)", display: "inline-flex", alignItems: "center", gap: 3 }}>{r.ph} {r.phWarn && <Icon name="alert" size={12} />}</span></td>
                   <td><span className={`mc-badge mc-badge--${r.estadoColor}`}>{r.estado}</span></td>
                   <td>
-                    <button
-                      className="mc-icon-btn"
-                      style={{ width: 22, height: 22, border: "none" }}
-                      onClick={() =>
-                        descargarPDF(`Laboratorio ${r.lote} ${r.fecha.replace(/\//g, "-")}`, [
-                          `Lote: ${r.lote}`,
-                          `Fecha: ${r.fecha} · Profundidad: ${r.prof} cm`,
-                          `P: ${r.p} · N: ${r.n} kg/ha · pH: ${r.ph}`,
-                          `Estado: ${r.estado}`,
-                        ])
-                      }
-                    >
-                      <Icon name="download" size={11} />
-                    </button>
+                    {r.tienePdf ? (
+                      // PDF real del laboratorio subido con el análisis
+                      <a
+                        className="mc-icon-btn"
+                        style={{ width: 22, height: 22, border: "none", display: "inline-grid", placeItems: "center", color: "var(--mc-green-700)" }}
+                        href={`/api/analisis-suelo/${r.id}/pdf`}
+                        title="Descargar el PDF del laboratorio"
+                      >
+                        <Icon name="download" size={11} />
+                      </a>
+                    ) : (
+                      <button
+                        className="mc-icon-btn"
+                        style={{ width: 22, height: 22, border: "none" }}
+                        title="Sin PDF adjunto — descarga un resumen generado"
+                        onClick={() =>
+                          descargarPDF(`Laboratorio ${r.lote} ${r.fecha.replace(/\//g, "-")}`, [
+                            `Lote: ${r.lote}`,
+                            `Fecha: ${r.fecha}`,
+                            `P: ${r.p} · N: ${r.n} kg/ha · pH: ${r.ph}`,
+                            `Estado: ${r.estado}`,
+                          ])
+                        }
+                      >
+                        <Icon name="download" size={11} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1061,6 +1076,16 @@ function NuevoAnalisisModal({
   onSaved?: () => void;
 }) {
   const [form, setForm] = useState({ loteIdx: 0, fecha: new Date().toISOString().slice(0, 10), ph: "6.2", mo: "2.6", n: "45", p: "18", k: "180" });
+  // PDF del laboratorio (opcional, máx 3 MB) — se guarda con el análisis y se descarga desde la columna PDF.
+  const [pdf, setPdf] = useState<{ nombre: string; dataUrl: string } | null>(null);
+  const elegirPdf = (f: File | null) => {
+    if (!f) return;
+    if (f.type !== "application/pdf") { toast.show("El archivo debe ser un PDF", "err"); return; }
+    if (f.size > 3 * 1024 * 1024) { toast.show("El PDF supera el máximo de 3 MB", "err"); return; }
+    const reader = new FileReader();
+    reader.onload = () => setPdf({ nombre: f.name, dataUrl: reader.result as string });
+    reader.readAsDataURL(f);
+  };
 
   const guardar = async () => {
     const l = lotes[form.loteIdx];
@@ -1073,6 +1098,7 @@ function NuevoAnalisisModal({
           loteId: l.id, fechaAnalisis: form.fecha,
           pH: parseFloat(form.ph), materiaOrganica: parseFloat(form.mo),
           nitrogeno: parseFloat(form.n), fosforo: parseFloat(form.p), potasio: parseFloat(form.k),
+          pdf: pdf?.dataUrl ?? null,
         }),
       }).catch(() => null);
       if (!res || !res.ok) { toast.show("No se pudo registrar el análisis", "err"); return; }
@@ -1116,6 +1142,20 @@ function NuevoAnalisisModal({
         <Field label="P (ppm)"><input className="mc-input" value={form.p} onChange={(e) => setForm({ ...form, p: e.target.value })} /></Field>
         <Field label="K (ppm)"><input className="mc-input" value={form.k} onChange={(e) => setForm({ ...form, k: e.target.value })} /></Field>
       </div>
+      <Field label="PDF del laboratorio (opcional, máx 3 MB)">
+        <div className="row gap-8" style={{ alignItems: "center" }}>
+          <label className="mc-btn mc-btn--secondary mc-btn--sm" style={{ cursor: "pointer" }}>
+            <Icon name="download" size={13} /> {pdf ? "Cambiar PDF" : "Adjuntar PDF"}
+            <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => elegirPdf(e.target.files?.[0] || null)} />
+          </label>
+          {pdf && (
+            <span className="text-xs" style={{ color: "var(--mc-green-700)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Icon name="check" size={12} />{pdf.nombre}
+              <button className="mc-icon-btn" style={{ width: 20, height: 20, border: "none" }} onClick={() => setPdf(null)} title="Quitar PDF"><Icon name="x" size={11} /></button>
+            </span>
+          )}
+        </div>
+      </Field>
     </Modal>
   );
 }

@@ -191,10 +191,13 @@ export default function TabLabores() {
     const conId = orden.lotes.filter((l) => l.id);
     if (conId.length === 0) { toast.show("Elegí al menos un lote guardado para emitir la orden", "err"); return; }
     const params = Object.entries(orden.parametros).map(([k, v]) => `${k.split(" (")[0]}: ${v}`).join(", ");
-    const obs = `Operario: ${orden.operario} · ${orden.tractor} + ${orden.implemento} · Insumos: ${orden.insumos.map((i) => `${i.nombre} ${i.dosis} ${i.unidad}`).join(", ") || "—"}${params ? ` · Parámetros: ${params}` : ""} · Costo est: $${orden.costoTotal} USD`;
+    const obs = `${orden.hora ? `Hora: ${orden.hora} · ` : ""}Operario: ${orden.operario}${orden.tractor ? ` · ${orden.tractor}` : ""}${orden.implemento ? ` + ${orden.implemento}` : ""} · Insumos: ${orden.insumos.map((i) => `${i.nombre} ${i.dosis} ${i.unidad}`).join(", ") || "—"}${params ? ` · Parámetros: ${params}` : ""} · Costo est: $${orden.costoTotal} USD`;
     // El costo total de la orden se reparte entre los lotes por hectáreas, para que
     // cada labor persista su parte como CostoLote (se propaga a Costos/Economía).
     const totalHa = conId.reduce((s, l) => s + (l.ha || 0), 0);
+    // Fecha y hora ELEGIDAS por el usuario (hoy, mañana, en 10 días…).
+    const fechaLabor = orden.fecha || hoyISO();
+    const [, fMes, fDia] = fechaLabor.split("-");
     try {
       const creadas: LaborUI[] = [];
       for (const lote of conId) {
@@ -203,7 +206,7 @@ export default function TabLabores() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tipo: orden.actividad, fecha: hoyISO(), loteId: lote.id,
+            tipo: orden.actividad, fecha: fechaLabor, loteId: lote.id,
             superficieTrabajada: lote.ha || 0, descripcion: orden.actividad,
             observaciones: obs, prioridad: orden.prioridad, operarios: orden.operario,
             costoTotal: costoLote,
@@ -221,8 +224,8 @@ export default function TabLabores() {
         creadas.push({
           id: d.id, dbId: d.id, tarea: orden.actividad, tipo: orden.actividad,
           lote: lote.nombre || "—", loteId: lote.id, cultivo: "—",
-          responsable: orden.operario, fecha: hoyCorta(), fechaISO: hoyISO(),
-          prioridad: orden.prioridad === "Urgente" ? "alta" : "media", estado: "Hoy",
+          responsable: orden.operario, fecha: `${fDia}/${fMes}`, fechaISO: fechaLabor,
+          prioridad: orden.prioridad === "Urgente" ? "alta" : "media", estado: estadoPorFecha(fechaLabor),
         });
       }
       if (creadas.length === 0) { toast.show("No se pudo emitir la orden", "err"); return; }

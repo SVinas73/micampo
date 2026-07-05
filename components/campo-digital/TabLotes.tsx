@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icon, KPI, useToast } from "@/components/mc";
@@ -63,15 +63,22 @@ export default function TabLotes() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { recargar, establecimientos, establecimientoId, loteId } = useLoteScope();
+  const { recargar, establecimientos, establecimientoId, setLoteId } = useLoteScope();
   // Modo "delimitar establecimiento": llega desde el card de Establecimientos.
   const delimitarId = searchParams.get("delimitar");
   const estDelimitar = delimitarId ? establecimientos.find((e) => e.id === delimitarId) || null : null;
   const [volarA, setVolarA] = useState<{ lat: number; lng: number; nonce: number } | null>(null);
   const [lotes, setLotes] = useState<LoteUI[]>([]);
   const [selected, setSelected] = useState<LoteUI | null>(null);
+  // Selección de lote (desplegable "Elegí un lote…" o click en el mapa): además de
+  // resaltarlo, publica el lote al scope GLOBAL para que lo lean los demás módulos.
+  const seleccionarLote = useCallback((l: LoteUI | null) => {
+    setSelected(l);
+    setLoteId(l?.dbId || l?.id || "todos");
+  }, [setLoteId]);
   const [view, setView] = useState<"mapa" | "lista">("mapa");
-  const [layer, setLayer] = useState("NDVI");
+  // Vista por defecto: Satélite (imagen). NDVI es el raster de vigor satelital real.
+  const [layer, setLayer] = useState("Satélite");
   const [showAgregar, setShowAgregar] = useState(searchParams.get("modal") === "nuevo");
   const [showEliminar, setShowEliminar] = useState(false);
   const [showEliminarCampo, setShowEliminarCampo] = useState(false);
@@ -157,23 +164,20 @@ export default function TabLotes() {
       .catch(() => {});
   }, [lotes]);
 
-  // Filtro LOCAL del submódulo Lotes (no toca el alcance global del sidebar).
-  // Arranca siguiendo al alcance global y se sincroniza cuando el sidebar cambia.
-  const [localEstId, setLocalEstId] = useState(establecimientoId);
-  useEffect(() => { setLocalEstId(establecimientoId); }, [establecimientoId]);
-
+  // El submódulo se rige por el ESTABLECIMIENTO del sidebar (sin filtro local propio).
+  const localEstId = establecimientoId;
   const localEst = useMemo(
     () => (localEstId === "todos" ? null : establecimientos.find((e) => e.id === localEstId) || null),
     [establecimientos, localEstId]
   );
 
-  // Lotes visibles en el submódulo según el filtro local de establecimiento y,
-  // si el sidebar tiene un lote puntual activo, se acota a ese lote.
-  const enScope = useMemo(() => {
-    const porEst = localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId);
-    if (loteId && loteId !== "todos") return porEst.filter((l) => (l.dbId || l.id) === loteId);
-    return porEst;
-  }, [lotes, localEstId, loteId]);
+  // Lotes visibles: todos los del establecimiento activo. El lote elegido se
+  // resalta en el mapa y se publica al scope global (para el resto de los módulos),
+  // sin ocultar los demás lotes de la vista.
+  const enScope = useMemo(
+    () => (localEstId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === localEstId)),
+    [lotes, localEstId]
+  );
 
   const visibles = useMemo(
     () => enScope.filter((l) => filtroCultivo === "Todos" || l.cultivo === filtroCultivo),
@@ -443,14 +447,15 @@ export default function TabLotes() {
     toast.show("Marcá un punto dentro de un lote o de un establecimiento delimitado", "err");
   };
 
-  const guardarNotaPunto = async (texto: string) => {
+  const guardarNotaPunto = async (texto: string, prioridad: string) => {
     if (!notaPunto) return;
     const res = await fetch("/api/marcadores-geo", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         loteId: notaPunto.loteId, establecimientoId: notaPunto.establecimientoId,
         latitud: notaPunto.lat, longitud: notaPunto.lng,
-        tipo: "Observación", titulo: "Nota", descripcion: texto, responsable: "Vos",
+        // La prioridad de la nota viaja en `tipo` (Crítica / Moderada / No urgente).
+        tipo: prioridad, titulo: "Nota", descripcion: texto, responsable: "Vos",
       }),
     }).catch(() => null);
     toast.show(res && res.ok ? `Nota guardada en ${notaPunto.nombre}` : "No se pudo guardar la nota", res && res.ok ? "ok" : "err");
@@ -521,21 +526,6 @@ export default function TabLotes() {
               <Icon name="list" size={13} /> Vista Lista
             </button>
           </div>
-          {establecimientos.length > 0 && (
-            <div className="mc-seg" style={{ alignSelf: "center", display: "flex", alignItems: "center", paddingLeft: 8 }} title="Filtrar la vista por establecimiento (solo este módulo)">
-              <Icon name="building" size={13} style={{ color: "var(--mc-green-700)" }} />
-              <select
-                value={localEstId}
-                onChange={(e) => { setLocalEstId(e.target.value); setSelected(null); }}
-                style={{ border: "none", background: "transparent", fontWeight: 600, fontSize: 13, color: "var(--mc-ink)", cursor: "pointer", outline: "none", padding: "6px 8px", maxWidth: 220 }}
-              >
-                <option value="todos">Todos los establecimientos</option>
-                {establecimientos.map((e) => (
-                  <option key={e.id} value={e.id}>{e.nombre}{e.lotesCount != null ? ` (${e.lotesCount})` : ""}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
         <div className="row gap-8" style={{ position: "relative" }}>
           <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => setShowFiltros(!showFiltros)}>
@@ -591,7 +581,7 @@ export default function TabLotes() {
           lotes={visibles}
           notasNonce={notasNonce}
           selected={selected}
-          onSelect={setSelected}
+          onSelect={seleccionarLote}
           layer={layer}
           onLayerChange={setLayer}
           onNota={(l) => setNotaLote(l)}
@@ -618,7 +608,7 @@ export default function TabLotes() {
       {view === "lista" && (
         <LotesListaDetallada
           lotes={visibles}
-          onVer={(l) => { setSelected(l); setView("mapa"); }}
+          onVer={(l) => { seleccionarLote(l); setView("mapa"); }}
           onTarea={(l) => abrirNuevaLabor(l)}
         />
       )}
@@ -656,20 +646,20 @@ function LotesMapa({
   onCancelarCampo?: () => void;
   notasNonce?: number;
 }) {
+  // Leyenda de Cultivos: los cultivos presentes en la vista, con su tonalidad real.
+  const cultivosEnVista = Array.from(new Set(lotes.filter((l) => l.cultivo).map((l) => l.cultivo as string))).slice(0, 6);
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
+    // Rampa NDVI real (raster satelital: marrón = suelo desnudo → verde oscuro = máximo vigor)
     NDVI: [
-      { color: "#1f6e2a", label: "Muy alto (≥0.75)" },
-      { color: "#5e7733", label: "Alto" },
-      { color: "#8ea65a", label: "Medio" },
-      { color: "#d9a538", label: "Bajo" },
-      { color: "#9aa39a", label: "Sin medición" },
+      { color: "#1f6e2a", label: "Vigor muy alto" },
+      { color: "#5e9c48", label: "Alto" },
+      { color: "#a9c169", label: "Medio" },
+      { color: "#e0d492", label: "Bajo" },
+      { color: "#cdb99c", label: "Suelo desnudo" },
     ],
     Cultivos: [
-      { color: "#8ea65a", label: "Soja" },
-      { color: "#c08a22", label: "Maíz" },
-      { color: "#d9a538", label: "Trigo" },
-      { color: "#aabd76", label: "Alfalfa" },
-      { color: "#9aa39a", label: "En descanso" },
+      ...cultivosEnVista.map((c) => ({ color: CULTIVO_COLORES[c] || "#5e7733", label: c })),
+      { color: "#f5f2ea", label: "Vacío" },
     ],
     "Satélite": [],
     Topografía: [
@@ -692,24 +682,30 @@ function LotesMapa({
   const legend = legendByLayer[layer] || [];
   const { establecimientos } = useLoteScope();
   const nombreEst = (id?: string | null) => (id ? establecimientos.find((e) => e.id === id)?.nombre ?? null : null);
-  // Notas georreferenciadas por lote: la más reciente de cada lote se muestra como
-  // indicador rojo en el mapa y en el tooltip al pasar el mouse por encima.
-  const [notasPorLote, setNotasPorLote] = useState<Record<string, string>>({});
+  // Notas georreferenciadas: cada nota se marca en SU coordenada real (no en el
+  // centroide del lote) con color según prioridad (Crítica/Moderada/No urgente).
+  const [notasGeo, setNotasGeo] = useState<{ id: string; lat: number; lng: number; texto: string; prioridad: string; loteNombre: string }[]>([]);
   useEffect(() => {
     let cancelado = false;
     fetch("/api/marcadores-geo").then((r) => (r.ok ? r.json() : null)).then((rows) => {
       if (cancelado || !Array.isArray(rows)) return;
-      const m: Record<string, string> = {};
-      // Vienen ordenadas por fecha desc: la primera de cada lote es la más reciente.
-      rows.forEach((n: { loteId?: string | null; titulo?: string | null; descripcion?: string | null }) => {
-        if (!n.loteId || m[n.loteId]) return;
-        m[n.loteId] = [n.titulo, n.descripcion].filter(Boolean).join(" — ") || "Nota";
-      });
-      setNotasPorLote(m);
+      const idsEnVista = new Set(lotes.map((l) => l.dbId || l.id));
+      setNotasGeo(
+        rows
+          .filter((n: { loteId?: string | null; establecimientoId?: string | null }) => (n.loteId && idsEnVista.has(n.loteId)) || !n.loteId)
+          .map((n: { id: string; latitud: number; longitud: number; tipo?: string | null; titulo?: string | null; descripcion?: string | null; lote?: { nombre?: string } | null }) => ({
+            id: n.id,
+            lat: n.latitud,
+            lng: n.longitud,
+            texto: [n.titulo !== "Nota" ? n.titulo : null, n.descripcion].filter(Boolean).join(" — ") || "Nota",
+            prioridad: n.tipo || "",
+            loteNombre: n.lote?.nombre || "Campo",
+          }))
+      );
     }).catch(() => {});
     return () => { cancelado = true; };
-  }, [lotes.length, notasNonce]);
-  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId), nota: notasPorLote[l.dbId || l.id] ?? null }));
+  }, [lotes, notasNonce]);
+  const lotesGeo = lotes.map((l) => ({ id: l.id, name: l.name, ndvi: l.ndvi, humedad: l.humedad, vacio: l.vacio, cultivoColor: l.cultivoColor ?? null, geojson: l.geojson ?? null, establecimientoId: l.establecimientoId ?? null, establecimientoNombre: nombreEst(l.establecimientoId) }));
   // Contornos de establecimientos con límite dibujado, para que se vean en el mapa.
   const establecimientosGeo = [
     ...establecimientos.map((e) => ({ id: e.id, nombre: e.nombre, coordenadas: e.coordenadas ?? null })),
@@ -760,7 +756,7 @@ function LotesMapa({
           </div>
           {vista === "clasica" && (
           <div className="mc-seg">
-            {["NDVI", "Satélite", "Cultivos", "Topografía", "Relieve", "Humedad"].map((l) => (
+            {["Satélite", "NDVI", "Cultivos", "Topografía", "Relieve", "Humedad"].map((l) => (
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
@@ -806,6 +802,7 @@ function LotesMapa({
       <div className="mc-mapwrap" style={{ height: 640, position: "relative" }}>
         <Mapa3D
           lotes={lotesGeo}
+          notas={notasGeo}
           selectedId={selected?.id ?? null}
           layer={layer}
           onSelect={(id: string) => onSelect(lotes.find((l) => l.id === id) || null)}
@@ -866,7 +863,7 @@ function LotesMapa({
         {selected && fichaOpen && (
           <div style={{ position: "absolute", inset: 0, zIndex: 800, display: "flex", justifyContent: "flex-end", pointerEvents: "auto" }}>
             <div onClick={() => setFichaOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(15,22,18,0.32)", backdropFilter: "blur(1.5px)" }} />
-            <div className="mc-drawer-in" style={{ position: "relative", width: 420, maxWidth: "92%", height: "100%", overflowY: "auto", background: "var(--mc-surface)", boxShadow: "-12px 0 40px rgba(0,0,0,0.25)" }}>
+            <div className="mc-drawer-in mc-noscrollbar" style={{ position: "relative", width: 480, maxWidth: "94%", height: "100%", overflowY: "auto", background: "var(--mc-surface)", boxShadow: "-12px 0 40px rgba(0,0,0,0.25)" }}>
               <LoteFichaTecnica
                 lote={selected}
                 onClose={() => setFichaOpen(false)}
@@ -1114,7 +1111,7 @@ function LoteFichaTecnica({
       )}
 
       {innerTab === "Prescripción" && (
-        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} />
+        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} loteGeo={lote.geojson} />
           : <FichaVacio texto="Dibujá el lote en el mapa para generar un mapa de prescripción variable." />
       )}
 
@@ -1139,7 +1136,7 @@ type Prescripcion = {
   geojson: { type: "FeatureCollection"; features: { geometry: { type: "Polygon"; coordinates: number[][][] }; properties: { ndvi: number; zona: string; dosis: number; color: string } }[] };
 };
 
-function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
+function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: string; loteGeo?: { type: "Polygon"; coordinates: number[][][] } | null }) {
   const [producto, setProducto] = useState("Urea");
   const [dosisBase, setDosisBase] = useState("120");
   const [estrategia, setEstrategia] = useState<"compensar" | "potenciar">("compensar");
@@ -1168,23 +1165,67 @@ function VRTPanel({ loteId, loteName }: { loteId: string; loteName: string }) {
     a.click(); URL.revokeObjectURL(a.href);
   };
 
-  // SVG del mapa zonificado
+  // Mapa de prescripción estilo agronómico: zonas coloreadas rojo→verde por dosis,
+  // dosis numérica en cada zona, contorno rojo del lote y brújula (N).
   const Mapa = () => {
     if (!res?.geojson.features.length) return null;
-    const all = res.geojson.features.flatMap((f) => f.geometry.coordinates[0]);
+    const feats = res.geojson.features;
+    const all = feats.flatMap((f) => f.geometry.coordinates[0]);
     const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const W = 360, H = 220, pad = 8;
+    const W = 420, H = 260, pad = 14;
     const sc = Math.min((W - 2 * pad) / (maxX - minX || 1), (H - 2 * pad) / (maxY - minY || 1));
     const ox = (W - (maxX - minX) * sc) / 2, oy = (H - (maxY - minY) * sc) / 2;
-    const proj = (p: number[]) => `${(ox + (p[0] - minX) * sc).toFixed(1)},${(oy + (maxY - p[1]) * sc).toFixed(1)}`;
+    const projXY = (p: number[]): [number, number] => [ox + (p[0] - minX) * sc, oy + (maxY - p[1]) * sc];
+    const proj = (p: number[]) => { const [x, y] = projXY(p); return `${x.toFixed(1)},${y.toFixed(1)}`; };
+
+    // Rampa por dosis (como el mapa de prescripción clásico): mínima=rojo → máxima=verde oscuro.
+    const RAMPA = ["#d92b2b", "#f97d1c", "#f5d327", "#8bc34a", "#2e7d32"];
+    const dosisVals = Array.from(new Set(feats.map((f) => f.properties.dosis))).sort((a, b) => a - b);
+    const colorDosis = (d: number) => {
+      if (dosisVals.length <= 1) return RAMPA[4];
+      const t = dosisVals.indexOf(d) / (dosisVals.length - 1);
+      return RAMPA[Math.round(t * (RAMPA.length - 1))];
+    };
+    const centro = (ring: number[][]): [number, number] => {
+      const [sx, sy] = ring.reduce((a, p) => { const [x, y] = projXY(p); return [a[0] + x, a[1] + y]; }, [0, 0]);
+      return [sx / ring.length, sy / ring.length];
+    };
+
     return (
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ borderRadius: 10, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)" }}>
-        {res.geojson.features.map((f, i) => (
-          <polygon key={i} points={f.geometry.coordinates[0].map(proj).join(" ")} fill={f.properties.color} fillOpacity={0.78} stroke="#fff" strokeWidth={0.7}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ borderRadius: 10, background: "#e9e4d8", border: "1px solid var(--mc-line)" }}>
+        {/* Zonas coloreadas por dosis */}
+        {feats.map((f, i) => (
+          <polygon key={i} points={f.geometry.coordinates[0].map(proj).join(" ")} fill={colorDosis(f.properties.dosis)} fillOpacity={0.92} stroke="#5b5244" strokeWidth={0.6}>
             <title>{f.properties.zona} · NDVI {f.properties.ndvi} · {f.properties.dosis} kg/ha</title>
           </polygon>
         ))}
+        {/* Dosis numérica en el centro de cada zona (con halo blanco, legible) */}
+        {feats.map((f, i) => {
+          const [cx, cy] = centro(f.geometry.coordinates[0]);
+          return (
+            <text key={`t${i}`} x={cx} y={cy + 4} fontSize="13" fontFamily="var(--ff-ui)" fontWeight={800} fill="#1c2417" stroke="#ffffff" strokeWidth={3} paintOrder="stroke" textAnchor="middle">
+              {f.properties.dosis}
+            </text>
+          );
+        })}
+        {/* Contorno del lote en rojo (límite de la prescripción) */}
+        {loteGeo?.coordinates?.[0]?.length ? (
+          <polygon points={loteGeo.coordinates[0].map(proj).join(" ")} fill="none" stroke="#d92b2b" strokeWidth={2.4} strokeLinejoin="round" />
+        ) : null}
+        {/* Brújula: N arriba (proyección norte-arriba) */}
+        <g transform={`translate(${W - 26}, 26)`}>
+          <circle r="16" fill="rgba(255,255,255,0.92)" stroke="#5b5244" strokeWidth="1" />
+          <path d="M 0 -11 L 4 4 L 0 1.5 L -4 4 Z" fill="#d92b2b" />
+          <path d="M 0 11 L 4 4 L 0 6.5 L -4 4 Z" fill="#5b5244" opacity="0.55" />
+          <text y="-1.5" x="7.5" fontSize="8.5" fontWeight={800} fill="#1c2417" textAnchor="middle">N</text>
+        </g>
+        {/* Escala de dosis */}
+        <g transform={`translate(${pad}, ${H - 20})`}>
+          {RAMPA.map((c, i) => <rect key={c} x={i * 26} width="26" height="9" fill={c} stroke="#fff" strokeWidth="0.5" />)}
+          <text x="0" y="-3" fontSize="8.5" fontWeight={700} fill="#4a4436">{dosisVals[0] ?? ""} kg/ha</text>
+          <text x={RAMPA.length * 26} y="-3" fontSize="8.5" fontWeight={700} fill="#4a4436" textAnchor="end">{dosisVals[dosisVals.length - 1] ?? ""} kg/ha</text>
+        </g>
       </svg>
     );
   };
@@ -1349,7 +1390,11 @@ function proyeccionTn(l: LoteUI): number | null {
 /** Croquis: dibuja la forma real del lote (su polígono) normalizado. */
 function LoteCroquis({ lote }: { lote: LoteUI }) {
   const ring = lote.geojson?.coordinates?.[0];
-  const color = lote.cultivoColor || ndviColorList(lote.ndvi);
+  // El croquis toma el COLOR DEL CULTIVO actual (misma paleta que la vista Cultivos);
+  // lote vacío → blanquecino con borde visible.
+  const vacio = lote.vacio || !lote.cultivoColor;
+  const color = vacio ? "#b8b2a3" : (lote.cultivoColor as string);
+  const fill = vacio ? "#f5f2ea" : `${color}55`;
   if (!ring || ring.length < 3) {
     return (
       <div className="row gap-6" style={{ alignItems: "center", color: "var(--mc-text-3)", fontSize: 11.5 }}>
@@ -1371,7 +1416,7 @@ function LoteCroquis({ lote }: { lote: LoteUI }) {
   return (
     <div className="row gap-10" style={{ alignItems: "center" }}>
       <svg width={W} height={H} style={{ flexShrink: 0, borderRadius: 8, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)" }}>
-        <polygon points={pts} fill={`${color}33`} stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+        <polygon points={pts} fill={fill} stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
       </svg>
       <div style={{ minWidth: 0, fontSize: 11.5 }}>
         <div className="row gap-4" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="map" size={11} />{cLat.toFixed(4)}°, {cLng.toFixed(4)}°</div>
@@ -1535,6 +1580,15 @@ function LotesListaDetallada({
 }
 
 /* ========== MODAL NOTA GEORREFERENCIADA ========== */
+export const PRIORIDADES_NOTA = [
+  { valor: "Crítica", color: "#d13a3a" },
+  { valor: "Moderada", color: "#d9a538" },
+  { valor: "No urgente", color: "#5e7733" },
+] as const;
+export function colorPrioridadNota(p?: string | null): string {
+  return PRIORIDADES_NOTA.find((x) => x.valor === p)?.color || "#64748b";
+}
+
 function NotaPuntoModal({
   nombre, lat, lng, onClose, onConfirm,
 }: {
@@ -1542,9 +1596,10 @@ function NotaPuntoModal({
   lat: number;
   lng: number;
   onClose: () => void;
-  onConfirm: (texto: string) => void;
+  onConfirm: (texto: string, prioridad: string) => void;
 }) {
   const [texto, setTexto] = useState("");
+  const [prioridad, setPrioridad] = useState<string>("Moderada");
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={onClose}>
       <div style={{ background: "var(--mc-surface)", borderRadius: 16, width: 460, maxWidth: "100%", boxShadow: "var(--sh-lg)", padding: 22 }} onClick={(e) => e.stopPropagation()}>
@@ -1556,10 +1611,32 @@ function NotaPuntoModal({
           </div>
           <button className="mc-icon-btn" onClick={onClose}><Icon name="x" size={14} /></button>
         </div>
+        <div className="mc-label" style={{ marginBottom: 6 }}>Prioridad</div>
+        <div className="row gap-8" style={{ marginBottom: 12 }}>
+          {PRIORIDADES_NOTA.map((p) => {
+            const on = prioridad === p.valor;
+            return (
+              <button
+                key={p.valor}
+                onClick={() => setPrioridad(p.valor)}
+                style={{
+                  flex: 1, padding: "8px 10px", borderRadius: 10, cursor: "pointer", fontSize: 12.5, fontWeight: 700,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  border: on ? `2px solid ${p.color}` : "1px solid var(--mc-line-2)",
+                  background: on ? `${p.color}18` : "var(--mc-surface)",
+                  color: on ? p.color : "var(--mc-text-2)",
+                }}
+              >
+                <span style={{ width: 9, height: 9, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                {p.valor}
+              </button>
+            );
+          })}
+        </div>
         <textarea className="mc-textarea" placeholder="Ej: Sector bajo con encharcamiento tras la lluvia. Revisar drenaje." value={texto} onChange={(e) => setTexto(e.target.value)} autoFocus />
         <div className="row gap-8 mt-12" style={{ justifyContent: "flex-end" }}>
           <button className="mc-btn mc-btn--ghost" onClick={onClose}>Cancelar</button>
-          <button className="mc-btn mc-btn--primary" disabled={!texto.trim()} onClick={() => onConfirm(texto.trim())}>
+          <button className="mc-btn mc-btn--primary" disabled={!texto.trim()} onClick={() => onConfirm(texto.trim(), prioridad)}>
             <Icon name="pen" size={13} />Guardar nota
           </button>
         </div>

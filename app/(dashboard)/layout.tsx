@@ -17,32 +17,21 @@ function EstablecimientoLabel() {
 }
 
 function LoteSelectorSidebar() {
-  const { establecimientos, establecimientoId, setEstablecimientoId, lotes, loteId, setLoteId } = useLoteScope();
-  if (lotes.length === 0 && establecimientos.length === 0) return null;
+  // El sidebar se rige por ESTABLECIMIENTO. El lote se elige dentro de cada
+  // módulo (ej. "Elegí un lote…" en Campo Digital → Lotes), conectado al scope global.
+  const { establecimientos, establecimientoId, setEstablecimientoId } = useLoteScope();
+  if (establecimientos.length === 0) return null;
   return (
     <div className="mc-sb__scopebox">
-      {establecimientos.length > 0 && (
-        <div className="mc-sb__scope">
-          <Icon name="building" size={13} />
-          <select value={establecimientoId} onChange={(e) => setEstablecimientoId(e.target.value)} aria-label="Establecimiento activo" title={establecimientos.find((e) => e.id === establecimientoId)?.nombre || "Todos los establecimientos"}>
-            <option value="todos">Todos los establecimientos</option>
-            {establecimientos.map((e) => (
-              <option key={e.id} value={e.id} title={e.nombre}>{e.nombre}{e.lotesCount != null ? ` (${e.lotesCount})` : ""}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      {lotes.length > 0 && (
-        <div className="mc-sb__scope">
-          <Icon name="map" size={13} />
-          <select value={loteId} onChange={(e) => setLoteId(e.target.value)} aria-label="Lote activo" title={lotes.find((l) => l.id === loteId)?.nombre || "Todos los lotes"}>
-            <option value="todos">Todos los lotes</option>
-            {lotes.map((l) => (
-              <option key={l.id} value={l.id} title={l.nombre}>{l.nombre}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div className="mc-sb__scope">
+        <Icon name="building" size={13} />
+        <select value={establecimientoId} onChange={(e) => setEstablecimientoId(e.target.value)} aria-label="Establecimiento activo" title={establecimientos.find((e) => e.id === establecimientoId)?.nombre || "Todos los establecimientos"}>
+          <option value="todos">Todos los establecimientos</option>
+          {establecimientos.map((e) => (
+            <option key={e.id} value={e.id} title={e.nombre}>{e.nombre}{e.lotesCount != null ? ` (${e.lotesCount})` : ""}</option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }
@@ -96,7 +85,6 @@ const NAV: { section: string; items: NavItem[] }[] = [
           { id: "calculadora", label: "Calculadora de Dosis", href: "/calculadora-dosis" },
           { id: "clima", label: "Clima", href: "/clima" },
           { id: "plan-riego", label: "Plan de Riego", href: "/plan-riego" },
-          { id: "cuaderno-campo", label: "Cuaderno de Campo", href: "/cuaderno-campo" },
         ],
       },
       {

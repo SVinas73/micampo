@@ -157,31 +157,40 @@ export function LoteOverlay({
     <div style={{ position: "absolute", inset: 0, zIndex: 600, pointerEvents: "none" }}>
       {/* Columna izquierda: header + chips. En clásico se corre del borde para no tapar las herramientas de dibujo de Leaflet; en 3D va pegada a la izquierda. */}
       <div style={{ position: "absolute", top: 16, left: 16, display: "flex", flexDirection: "column", gap: 12, width: 366, maxWidth: "calc(100% - 200px)", pointerEvents: "none" }}>
-        <motion.div
-          {...fade(0)}
-          className="mc-glass"
-          style={{ borderRadius: 18, padding: 12, display: "flex", alignItems: "center", gap: 12, pointerEvents: "auto" }}
-        >
-          <CropImg cultivo={lote.cultivo} style={{ width: 60, height: 60, borderRadius: 14, flexShrink: 0 }} />
-          <div style={{ minWidth: 0 }}>
-            <div className="row gap-6" style={{ alignItems: "center" }}>
-              <span className="font-semi" style={{ fontSize: 15.5, color: "var(--mc-ink)" }}>{lote.name}</span>
-              {lote.ndvi > 0
-                ? <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`} style={{ fontSize: 10 }}>{lote.sano ? "Saludable" : "Atención"}</span>
-                : <span className="mc-badge mc-badge--neutral" style={{ fontSize: 10 }}>Sin datos</span>}
+        {/* La X va AFUERA del card, pegada a su costado derecho. */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, pointerEvents: "none" }}>
+          <motion.div
+            {...fade(0)}
+            className="mc-glass"
+            style={{ borderRadius: 18, padding: 12, display: "flex", alignItems: "center", gap: 12, pointerEvents: "auto", flex: 1, minWidth: 0 }}
+          >
+            <CropImg cultivo={lote.cultivo} style={{ width: 60, height: 60, borderRadius: 14, flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <div className="row gap-6" style={{ alignItems: "center" }}>
+                <span className="font-semi" style={{ fontSize: 15.5, color: "var(--mc-ink)" }}>{lote.name}</span>
+                {lote.ndvi > 0
+                  ? <span className={`mc-badge mc-badge--${lote.sano ? "green" : "orange"}`} style={{ fontSize: 10 }}>{lote.sano ? "Saludable" : "Atención"}</span>
+                  : <span className="mc-badge mc-badge--neutral" style={{ fontSize: 10 }}>Sin datos</span>}
+              </div>
+              <div className="text-xs text-muted" style={{ marginTop: 2 }}>
+                {c ? `${c.lat.toFixed(4)}° , ${c.lng.toFixed(4)}°` : lote.campo}
+              </div>
+              <div className="row gap-8" style={{ marginTop: 6 }}>
+                <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="map" size={12} />{lote.ha} ha</span>
+                <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="sprout" size={12} />{lote.cultivo || "Sin cultivo"}</span>
+              </div>
             </div>
-            <div className="text-xs text-muted" style={{ marginTop: 2 }}>
-              {c ? `${c.lat.toFixed(4)}° , ${c.lng.toFixed(4)}°` : lote.campo}
-            </div>
-            <div className="row gap-8" style={{ marginTop: 6 }}>
-              <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="map" size={12} />{lote.ha} ha</span>
-              <span className="row gap-4 text-xs" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="sprout" size={12} />{lote.cultivo || "Sin cultivo"}</span>
-            </div>
-          </div>
-          <button onClick={onClose} aria-label="Cerrar ficha del lote" className="mc-icon-btn" style={{ width: 30, height: 30, border: "none", marginLeft: 4, alignSelf: "flex-start" }}>
+          </motion.div>
+          <motion.button
+            {...fade(0)}
+            onClick={onClose}
+            aria-label="Cerrar ficha del lote"
+            className="mc-glass mc-icon-btn"
+            style={{ width: 32, height: 32, border: "none", borderRadius: 10, flexShrink: 0, pointerEvents: "auto", cursor: "pointer" }}
+          >
             <Icon name="x" size={14} />
-          </button>
-        </motion.div>
+          </motion.button>
+        </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, pointerEvents: "auto" }}>
           <motion.div {...fade(1)} style={{ minWidth: 0 }}><StatChip icon="map" label="Superficie" value={`${lote.ha} ha`} color="#5e7733" /></motion.div>

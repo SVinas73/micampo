@@ -44,12 +44,6 @@ export function cropImageCandidates(cultivo?: string | null): string[] {
   return EXTS.map((e) => `/cultivos/${slug}.${e}`);
 }
 
-export const CULTIVO_COLOR: Record<string, string> = {
-  Soja: "#768f44",
-  Maíz: "#d9a538",
-  Trigo: "#c08a22",
-  Girasol: "#e8b94a",
-  Cebada: "#8aa353",
-  Alfalfa: "#aabd76",
-  Sorgo: "#b5762f",
-};
+// Paleta ÚNICA de cultivos: la misma de la vista "Cultivos" del mapa y los croquis.
+import { CULTIVO_COLORES } from "./lotes-data";
+export const CULTIVO_COLOR: Record<string, string> = CULTIVO_COLORES;

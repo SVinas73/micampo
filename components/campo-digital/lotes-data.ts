@@ -27,14 +27,29 @@ export interface LoteUI {
   perimetro?: number | null;
 }
 
+// Tonalidad FUERTE y distinta por cultivo (vista "Cultivos" del mapa y croquis).
+// Lote vacío → blanquecino (COLOR_LOTE_VACIO).
 export const CULTIVO_COLORES: Record<string, string> = {
-  Soja: "#768f44",
-  Maíz: "#d9a538",
-  Trigo: "#a88032",
-  Alfalfa: "#aabd76",
-  Girasol: "#e8b94a",
-  Trébol: "#7bc77e",
+  Soja: "#22a04a",       // verde
+  Maíz: "#f5c211",       // amarillo
+  Trigo: "#d98c21",      // dorado
+  Cebada: "#a16a1b",     // marrón dorado
+  Avena: "#7f9a3d",      // oliva
+  Sorgo: "#b3372f",      // rojo teja
+  Girasol: "#f97316",    // naranja
+  Alfalfa: "#7c3aed",    // violeta
+  Trébol: "#65a30d",     // lima
+  Arroz: "#0d9488",      // teal
+  Canola: "#c7d11f",     // amarillo verdoso
+  Lino: "#3b82f6",       // azul
+  Papa: "#8d6e63",       // marrón
+  Maní: "#c2703d",       // caramelo
+  Centeno: "#6b7280",    // gris verdoso
+  Triticale: "#94742c",
+  Quinoa: "#c026d3",     // fucsia
+  Chía: "#4b5563",
 };
+export const COLOR_LOTE_VACIO = "#f5f2ea";
 
 export function fechaCorta(d: Date): string {
   const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
