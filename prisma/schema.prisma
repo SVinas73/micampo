@@ -1003,6 +1003,7 @@ model AnalisisSuelo {
   potasio         Float? // ppm
   observaciones   String?
   recomendaciones String? // Generadas por IA
+  pdf             String? // PDF del laboratorio (data URL base64, máx ~3MB)
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())

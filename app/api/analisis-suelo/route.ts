@@ -15,14 +15,27 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const analisis = await prisma.analisisSuelo.findMany({
-      where: { userId: session.user.id },
-      include: { lote: { select: { nombre: true, cultivo: true } } },
-      orderBy: { fechaAnalisis: "desc" },
-      take: 50,
-    });
+    // El PDF (pesado) NO viaja en el listado: solo un flag; se descarga por /[id]/pdf.
+    const [analisis, conPdf] = await Promise.all([
+      prisma.analisisSuelo.findMany({
+        where: { userId: session.user.id },
+        select: {
+          id: true, loteId: true, fechaAnalisis: true, pH: true, materiaOrganica: true,
+          nitrogeno: true, fosforo: true, potasio: true, observaciones: true,
+          recomendaciones: true, createdAt: true,
+          lote: { select: { nombre: true, cultivo: true } },
+        },
+        orderBy: { fechaAnalisis: "desc" },
+        take: 50,
+      }),
+      prisma.analisisSuelo.findMany({
+        where: { userId: session.user.id, pdf: { not: null } },
+        select: { id: true },
+      }),
+    ]);
+    const idsConPdf = new Set(conPdf.map((x) => x.id));
 
-    return NextResponse.json(analisis);
+    return NextResponse.json(analisis.map((a) => ({ ...a, tienePdf: idsConPdf.has(a.id) })));
   } catch (error) {
     console.error("Error al obtener análisis de suelo:", error);
     return NextResponse.json(
@@ -40,10 +53,19 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { loteId, fechaAnalisis, pH, materiaOrganica, nitrogeno, fosforo, potasio, observaciones } = body;
+    const { loteId, fechaAnalisis, pH, materiaOrganica, nitrogeno, fosforo, potasio, observaciones, pdf } = body;
 
     if (!loteId) {
       return NextResponse.json({ error: "El lote es requerido" }, { status: 400 });
+    }
+    // PDF del laboratorio (opcional): data URL de application/pdf, máx ~3MB.
+    if (pdf != null) {
+      if (typeof pdf !== "string" || !pdf.startsWith("data:application/pdf;base64,")) {
+        return NextResponse.json({ error: "El archivo debe ser un PDF" }, { status: 400 });
+      }
+      if (pdf.length > 4_500_000) {
+        return NextResponse.json({ error: "El PDF supera el tamaño máximo (3 MB)" }, { status: 400 });
+      }
     }
 
     const lote = await prisma.lote.findUnique({ where: { id: loteId } });
@@ -73,6 +95,7 @@ export async function POST(request: Request) {
         potasio: num(potasio),
         observaciones: observaciones || null,
         recomendaciones: recomendaciones.length ? recomendaciones.join(" · ") : null,
+        pdf: pdf || null,
         userId: session.user.id,
       },
       include: { lote: { select: { nombre: true, cultivo: true } } },

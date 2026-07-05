@@ -16,8 +16,8 @@ Si se corta por tokens: retomar por el primer `[ ]` pendiente. Cada ítem se com
 - [x] 9. Wizard: "Lote y Superficie" primero, "Selección de Actividad" segundo; agregar fecha y hora de la labor (se persiste y el módulo la lee)
 
 ## Cultivos
-- [ ] 10. Nueva Siembra: "Block A/B/C…" → "Paso 1/2/3…"; quitar buscador de cultivo; círculo "…" junto a girasol con catálogo grande de cultivos; quitar paréntesis de Silo/Puerto/Acopio
-- [ ] 11. Análisis de suelo: subir PDF en "Nuevo análisis" (columna PDF lo descarga) — requiere migración
+- [x] 10. Nueva Siembra: "Block A/B/C…" → "Paso 1/2/3…"; quitar buscador de cultivo; círculo "…" junto a girasol con catálogo grande de cultivos; quitar paréntesis de Silo/Puerto/Acopio
+- [x] 11. Análisis de suelo: subir PDF en "Nuevo análisis" (columna PDF lo descarga) — requiere migración
 - [x] 12. Intercambiar pestañas: Planificador de Siembras (IA) a la izquierda de Detección de Enfermedades (IA)
 
 ## Calculadora de Dosis

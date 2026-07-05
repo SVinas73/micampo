@@ -17,6 +17,18 @@ export interface SiembraData {
   usarIA: boolean;
 }
 
+/** Catálogo agronómico ampliado (cereales, oleaginosas, forrajeras, hortícolas,
+ *  frutales e industriales) para elegir cualquier cultivo desde "…". */
+export const CATALOGO_CULTIVOS: { grupo: string; items: string[] }[] = [
+  { grupo: "Cereales", items: ["Maíz", "Trigo", "Cebada", "Avena", "Arroz", "Sorgo", "Centeno", "Triticale", "Mijo", "Quinoa", "Amaranto"] },
+  { grupo: "Oleaginosas", items: ["Soja", "Girasol", "Canola", "Lino", "Maní", "Cártamo", "Sésamo", "Chía"] },
+  { grupo: "Legumbres", items: ["Arveja", "Lenteja", "Garbanzo", "Poroto negro", "Poroto alubia", "Haba", "Lupino", "Vicia"] },
+  { grupo: "Forrajeras", items: ["Alfalfa", "Trébol blanco", "Trébol rojo", "Lotus", "Raigrás anual", "Raigrás perenne", "Festuca", "Dactylis", "Cebadilla", "Agropiro", "Moha", "Sudangrass", "Sorgo forrajero", "Avena forrajera", "Maíz para silo", "Achicoria forrajera", "Pasto ovillo"] },
+  { grupo: "Hortícolas", items: ["Papa", "Batata", "Cebolla", "Ajo", "Zanahoria", "Tomate", "Morrón", "Zapallo", "Calabaza", "Sandía", "Melón", "Lechuga", "Espinaca", "Acelga", "Brócoli", "Coliflor", "Repollo", "Remolacha", "Pepino", "Berenjena", "Zucchini", "Chaucha", "Choclo dulce", "Frutilla", "Espárrago", "Apio", "Puerro", "Rúcula", "Kale"] },
+  { grupo: "Frutales", items: ["Vid", "Olivo", "Naranja", "Mandarina", "Limón", "Pomelo", "Manzana", "Pera", "Durazno", "Ciruela", "Cereza", "Damasco", "Nectarina", "Kiwi", "Palta", "Banana", "Mango", "Ananá", "Arándano", "Frambuesa", "Mora", "Higo", "Granada", "Membrillo", "Nuez pecán", "Nogal", "Almendro", "Avellano", "Pistacho"] },
+  { grupo: "Industriales", items: ["Caña de azúcar", "Algodón", "Tabaco", "Yerba mate", "Té", "Café", "Stevia", "Remolacha azucarera", "Lúpulo", "Cáñamo industrial"] },
+];
+
 const CULTIVOS = [
   { nombre: "Maíz", emoji: "wheat" },
   { nombre: "Soja", emoji: "sprout" },
@@ -44,7 +56,10 @@ export function NuevaSiembraModal({
   const [destinos, setDestinos] = useState<string[]>([]);
   const [usarIA, setUsarIA] = useState(true);
   const [busqueda, setBusqueda] = useState("");
+  const [masCultivos, setMasCultivos] = useState(false);
   const [saving, setSaving] = useState(false);
+  // El cultivo elegido vino del catálogo "…" (no es uno de los íconos rápidos)
+  const esCultivoDelCatalogo = !!cultivo && !CULTIVOS.some((c) => c.nombre === cultivo);
 
   const toggleDestino = (d: string) =>
     setDestinos((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
@@ -73,7 +88,7 @@ export function NuevaSiembraModal({
         <div style={{ padding: 22, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
           {/* BLOCK A — Ubicación y Fecha */}
           <div className="col gap-10">
-            <div style={blockLbl}>Block A · Ubicación y Fecha</div>
+            <div style={blockLbl}>Paso 1 · Ubicación y Fecha</div>
             <div className="mc-field">
               <label className="mc-label">Seleccionar Lote</label>
               <select style={inputS} value={loteIdx} onChange={(e) => setLoteIdx(Number(e.target.value))}>
@@ -87,7 +102,7 @@ export function NuevaSiembraModal({
               <input type="date" style={inputS} value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
 
-            <div style={{ ...blockLbl, marginTop: 12 }}>Block C · Finanzas y Recursos</div>
+            <div style={{ ...blockLbl, marginTop: 12 }}>Paso 3 · Finanzas y Recursos</div>
             <div className="mc-field">
               <label className="mc-label">Inversión Estimada ($)</label>
               <input style={inputS} placeholder="Ej. 15000" value={inversion} onChange={(e) => setInversion(e.target.value)} />
@@ -98,18 +113,14 @@ export function NuevaSiembraModal({
             </div>
           </div>
 
-          {/* BLOCK B — Selección de Cultivo */}
+          {/* PASO 2 — Selección de Cultivo */}
           <div className="col gap-10">
-            <div style={blockLbl}>Block B · Selección de Cultivo</div>
-            <div style={{ position: "relative" }}>
-              <Icon name="search" size={13} style={{ position: "absolute", left: 10, top: 11, color: "var(--mc-text-3)" }} />
-              <input style={{ ...inputS, paddingLeft: 30 }} placeholder="Buscar cultivo..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-            </div>
-            <div className="row gap-8">
-              {CULTIVOS.filter((c) => !busqueda.trim() || c.nombre.toLowerCase().includes(busqueda.toLowerCase())).map((c) => (
+            <div style={blockLbl}>Paso 2 · Selección de Cultivo</div>
+            <div className="row gap-8" style={{ alignItems: "center" }}>
+              {CULTIVOS.map((c) => (
                 <button
                   key={c.nombre}
-                  onClick={() => setCultivo(c.nombre)}
+                  onClick={() => { setCultivo(c.nombre); setMasCultivos(false); }}
                   title={c.nombre}
                   style={{
                     width: 46, height: 46, borderRadius: "50%", fontSize: 20, cursor: "pointer", display: "grid", placeItems: "center",
@@ -120,7 +131,56 @@ export function NuevaSiembraModal({
                   <Icon name={c.emoji} size={20} />
                 </button>
               ))}
+              {/* "…" abre el catálogo completo de cultivos */}
+              <button
+                onClick={() => setMasCultivos((v) => !v)}
+                title="Más cultivos"
+                style={{
+                  width: 46, height: 46, borderRadius: "50%", cursor: "pointer", display: "grid", placeItems: "center",
+                  fontSize: 20, fontWeight: 800, letterSpacing: 1, color: "var(--mc-green-700)", lineHeight: 1,
+                  background: masCultivos || esCultivoDelCatalogo ? "var(--mc-green-600)" : "var(--mc-green-50)",
+                  border: masCultivos || esCultivoDelCatalogo ? "2px solid var(--mc-green-700)" : "1px solid var(--mc-green-200)",
+                }}
+              >
+                <span style={{ color: masCultivos || esCultivoDelCatalogo ? "#fff" : "var(--mc-green-700)", marginTop: -6 }}>…</span>
+              </button>
+              {esCultivoDelCatalogo && (
+                <span className="mc-badge mc-badge--green" style={{ fontSize: 11 }}>{cultivo}</span>
+              )}
             </div>
+            {masCultivos && (
+              <div style={{ border: "1px solid var(--mc-line)", borderRadius: 12, background: "var(--mc-surface)", padding: 12, maxHeight: 260, overflowY: "auto" }} className="mc-noscrollbar col gap-10">
+                <div style={{ position: "relative" }}>
+                  <Icon name="search" size={13} style={{ position: "absolute", left: 10, top: 11, color: "var(--mc-text-3)" }} />
+                  <input style={{ ...inputS, paddingLeft: 30 }} placeholder="Buscar en el catálogo…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} autoFocus />
+                </div>
+                {CATALOGO_CULTIVOS.map((g) => {
+                  const items = g.items.filter((n) => !busqueda.trim() || n.toLowerCase().includes(busqueda.toLowerCase()));
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={g.grupo}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{g.grupo}</div>
+                      <div className="row gap-6" style={{ flexWrap: "wrap" }}>
+                        {items.map((n) => (
+                          <button
+                            key={n}
+                            onClick={() => { setCultivo(n); setMasCultivos(false); setBusqueda(""); }}
+                            className="mc-btn mc-btn--sm"
+                            style={{
+                              border: cultivo === n ? "1.5px solid var(--mc-green-600)" : "1px solid var(--mc-line-2)",
+                              background: cultivo === n ? "var(--mc-green-50)" : "var(--mc-surface)",
+                              color: cultivo === n ? "var(--mc-green-700)" : "var(--mc-text)",
+                            }}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ padding: 14, border: "1px solid var(--mc-line)", borderRadius: 12, background: "var(--mc-surface-2)" }} className="col gap-10">
               <div className="mc-field">
                 <label className="mc-label">Variedad</label>
@@ -137,9 +197,9 @@ export function NuevaSiembraModal({
           </div>
         </div>
 
-        {/* BLOCK D — Planificación */}
+        {/* PASO 4 — Planificación */}
         <div style={{ padding: "0 22px 18px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Block D · Planificación</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Paso 4 · Planificación</div>
           <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
             <div className="row gap-8">
               <span className="text-sm text-muted">Destino Planificado:</span>
@@ -154,7 +214,7 @@ export function NuevaSiembraModal({
                     color: "var(--mc-green-700)",
                   }}
                 >
-                  [{d}]
+                  {d}
                 </button>
               ))}
             </div>
@@ -250,7 +310,7 @@ export function NuevaCosechaModal({
         <div style={{ padding: 22 }} className="col gap-16">
           {/* BLOCK A */}
           <div>
-            <div style={blockLbl}>Block A · Seleccionar Cultivo</div>
+            <div style={blockLbl}>Paso 1 · Seleccionar Cultivo</div>
             <div className="grid g-cols-2 gap-10">
               {cultivosListos.map((c, i) => {
                 const isSel = sel === i;
@@ -281,7 +341,7 @@ export function NuevaCosechaModal({
 
           {/* BLOCK B */}
           <div>
-            <div style={blockLbl}>Block B · Rendimiento y Calidad</div>
+            <div style={blockLbl}>Paso 2 · Rendimiento y Calidad</div>
             <div className="grid g-cols-3 gap-10">
               <div className="mc-field">
                 <label className="mc-label">Rendimiento (Tn)</label>
@@ -301,7 +361,7 @@ export function NuevaCosechaModal({
 
           {/* BLOCK C */}
           <div>
-            <div style={blockLbl}>Block C · Costos de Labor</div>
+            <div style={blockLbl}>Paso 3 · Costos de Labor</div>
             <div className="row gap-10" style={{ alignItems: "flex-end" }}>
               <div className="mc-seg">
                 {(["Maquinaria Propia", "Contratista"] as const).map((t) => (
@@ -319,7 +379,7 @@ export function NuevaCosechaModal({
 
           {/* BLOCK D */}
           <div>
-            <div style={blockLbl}>Block D · Destino & Transporte</div>
+            <div style={blockLbl}>Paso 4 · Destino & Transporte</div>
             <div className="row gap-10" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
               <div className="row gap-6">
                 {["Silo", "Puerto"].map((d) => (
@@ -333,7 +393,7 @@ export function NuevaCosechaModal({
                       color: "var(--mc-green-700)",
                     }}
                   >
-                    [{d}]
+                    {d}
                   </button>
                 ))}
                 <button className="mc-btn mc-btn--sm" style={{ border: "1px dashed var(--mc-green-300, var(--mc-green-200))", color: "var(--mc-green-700)" }} onClick={() => setDestinos((prev) => [...prev, "Acopio"])}>
