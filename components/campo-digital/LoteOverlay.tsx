@@ -185,8 +185,8 @@ export function LoteOverlay({
             {...fade(0)}
             onClick={onClose}
             aria-label="Cerrar ficha del lote"
-            className="mc-glass mc-icon-btn"
-            style={{ width: 32, height: 32, border: "none", borderRadius: 10, flexShrink: 0, pointerEvents: "auto", cursor: "pointer" }}
+            className="mc-glass"
+            style={{ width: 32, height: 32, padding: 0, border: "none", borderRadius: 10, flexShrink: 0, pointerEvents: "auto", cursor: "pointer", display: "grid", placeItems: "center", lineHeight: 0, color: "var(--mc-ink)" }}
           >
             <Icon name="x" size={14} />
           </motion.button>

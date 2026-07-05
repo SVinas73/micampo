@@ -717,14 +717,11 @@ export default function InicioPage() {
     <div className="col gap-20">
       {toast.node}
 
-      {/* Topbar — búsqueda + acción principal */}
+      {/* Topbar — búsqueda (la acción "Nueva labor" vive en Accesos rápidos) */}
       <div className="row" style={{ gap: 12 }}>
         <div className="mc-topsearch" style={{ maxWidth: 460, cursor: "pointer" }} onClick={() => router.push("/campo-digital")}>
           <Icon name="search" size={16} />
           <input placeholder="Buscar lotes, animales, labores, reportes…" />
-        </div>
-        <div className="row" style={{ marginLeft: "auto", gap: 8 }}>
-          <button className="mc-btn mc-btn--primary" onClick={() => setLaborModal(true)}><Icon name="plus" size={15} />Nueva labor</button>
         </div>
       </div>
 

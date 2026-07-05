@@ -39,9 +39,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const poly = turf.polygon(geojson.coordinates);
     const areaTotalHa = turf.area(poly) / 10000;
     const bbox = turf.bbox(poly);
-    const n = areaTotalHa > 60 ? 4 : 3; // grilla 3x3 o 4x4 según tamaño
+    // Grilla más fina (las celdas de una misma zona luego se DISUELVEN en polígonos
+    // orgánicos, como un mapa de prescripción agronómico real).
+    const n = areaTotalHa > 60 ? 6 : 5;
     const anchoKm = turf.distance([bbox[0], bbox[1]], [bbox[2], bbox[1]], { units: "kilometers" });
-    const cellKm = Math.max(0.05, anchoKm / n);
+    const cellKm = Math.max(0.04, anchoKm / n);
 
     // Grilla recortada al polígono del lote
     const grid = turf.squareGrid(bbox, cellKm, { units: "kilometers" });
@@ -49,10 +51,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     grid.features.forEach((cell) => {
       try {
         const clip = turf.intersect(turf.featureCollection([cell as any, poly as any]));
-        if (clip && clip.geometry.type === "Polygon" && turf.area(clip) > 800) recortes.push(clip as GeoJSON.Feature<GeoJSON.Polygon>);
+        if (clip && clip.geometry.type === "Polygon" && turf.area(clip) > 600) recortes.push(clip as GeoJSON.Feature<GeoJSON.Polygon>);
       } catch { /* ignora */ }
     });
-    const celdasGeom = recortes.slice(0, 16); // límite de consultas
+    const celdasGeom = recortes.slice(0, 30); // límite de consultas satelitales
 
     // NDVI por celda
     const sentinel = sentinelStatsDisponible();
@@ -80,18 +82,41 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const FACTOR = estrategia === "compensar"
       ? { Bajo: 1.2, Medio: 1.0, Alto: 0.82 }   // más insumo donde el vigor es bajo
       : { Bajo: 0.82, Medio: 1.0, Alto: 1.2 };  // más insumo donde hay potencial
-    const COLOR = { Bajo: "#c0532a", Medio: "#d9a538", Alto: "#5e7733" };
+    // Rampa clásica de prescripción: el color sigue a la DOSIS (roja la más baja,
+    // verde oscuro la más alta), independiente de la estrategia elegida.
+    const RAMPA_DOSIS = ["#d92b2b", "#f5d327", "#2e7d32"];
+    const ordenDosis = (["Bajo", "Medio", "Alto"] as const)
+      .map((z) => ({ z, d: Math.round(dosisBase * FACTOR[z]) }))
+      .sort((a, b) => a.d - b.d);
+    const COLOR = { Bajo: "", Medio: "", Alto: "" } as Record<"Bajo" | "Medio" | "Alto", string>;
+    ordenDosis.forEach((o, i) => { COLOR[o.z] = RAMPA_DOSIS[Math.min(i, RAMPA_DOSIS.length - 1)]; });
 
     let prodTotal = 0;
-    const features: GeoJSON.Feature[] = celdas.map((c) => {
-      const zona = zonaDe(c.ndvi);
-      const dosis = Math.round(dosisBase * FACTOR[zona]);
-      prodTotal += (dosis * c.areaHa);
-      return {
-        type: "Feature",
-        geometry: c.geom.geometry,
-        properties: { ndvi: Math.round(c.ndvi * 100) / 100, zona, dosis, unidad: "kg/ha", color: COLOR[zona] },
-      };
+    celdas.forEach((c) => { prodTotal += Math.round(dosisBase * FACTOR[zonaDe(c.ndvi)]) * c.areaHa; });
+
+    // DISUELVE las celdas contiguas de una misma zona en polígonos orgánicos
+    // (como un mapa de prescripción real, no una grilla cuadrada).
+    const features: GeoJSON.Feature[] = [];
+    (["Bajo", "Medio", "Alto"] as const).forEach((z) => {
+      const cs = celdas.filter((c) => zonaDe(c.ndvi) === z);
+      if (cs.length === 0) return;
+      const dosis = Math.round(dosisBase * FACTOR[z]);
+      const ndviProm = Math.round((cs.reduce((s, c) => s + c.ndvi, 0) / cs.length) * 100) / 100;
+      let union: GeoJSON.Feature | null = null;
+      try {
+        union = cs.length === 1 ? cs[0].geom : (turf.union(turf.featureCollection(cs.map((c) => c.geom as any))) as GeoJSON.Feature | null);
+      } catch { union = null; }
+      const geoms: GeoJSON.Polygon[] = [];
+      if (union?.geometry?.type === "Polygon") geoms.push(union.geometry as GeoJSON.Polygon);
+      else if (union?.geometry?.type === "MultiPolygon") (union.geometry as GeoJSON.MultiPolygon).coordinates.forEach((coords) => geoms.push({ type: "Polygon", coordinates: coords }));
+      else cs.forEach((c) => geoms.push(c.geom.geometry));
+      geoms.forEach((g) => {
+        features.push({
+          type: "Feature",
+          geometry: g,
+          properties: { ndvi: ndviProm, zona: z, dosis, unidad: "kg/ha", color: COLOR[z] },
+        });
+      });
     });
 
     const prodUniforme = dosisBase * areaTotalHa;

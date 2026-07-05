@@ -9,6 +9,7 @@ import {
   mapLotesApi, fechaCorta, CULTIVO_COLORES,
   type LoteUI,
 } from "./lotes-data";
+import type { RxMapa } from "./MapaLibre";
 
 // Mapa satelital con terreno 3D (MapLibre GL) — solo en cliente
 // Vista Clásica: mapa satelital con relieve 3D/plano (MapLibre GL)
@@ -463,6 +464,18 @@ export default function TabLotes() {
     setNotaPunto(null);
   };
 
+  // Elimina una nota georreferenciada (funciona para nuevas y existentes).
+  const eliminarNota = async (id: string) => {
+    if (!confirm("¿Eliminar esta nota del mapa?")) return;
+    const res = await fetch(`/api/marcadores-geo/${id}`, { method: "DELETE" }).catch(() => null);
+    if (res && res.ok) {
+      toast.show("Nota eliminada");
+      setNotasNonce((n) => n + 1);
+    } else {
+      toast.show("No se pudo eliminar la nota", "err");
+    }
+  };
+
   return (
     <>
       {toast.node}
@@ -598,6 +611,7 @@ export default function TabLotes() {
           modoNota={modoNota}
           onToggleNota={() => setModoNota((v) => !v)}
           onPuntoNota={onPuntoNota}
+          onEliminarNota={eliminarNota}
           onCampoConLotes={iniciarCampoConLotes}
           hullPreview={hullNuevo?.geojson ?? null}
           campoConLotesCount={modoCampoLotes ? lotesNuevos.length : null}
@@ -618,7 +632,7 @@ export default function TabLotes() {
 
 /* ========== MAPA (Figma LotesMapa) ========== */
 function LotesMapa({
-  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota, onCampoConLotes, hullPreview, campoConLotesCount, onTerminarCampo, onCancelarCampo, notasNonce,
+  lotes, selected, onSelect, layer, onLayerChange, onNota, onEditar, onTarea, onDrawn, armarDibujo, onDibujoIniciado, volarA, onBuscar, delimitandoNombre, delimitando, onReArmar, modoNota, onToggleNota, onPuntoNota, onEliminarNota, onCampoConLotes, hullPreview, campoConLotesCount, onTerminarCampo, onCancelarCampo, notasNonce,
 }: {
   lotes: LoteUI[];
   selected: LoteUI | null;
@@ -639,6 +653,7 @@ function LotesMapa({
   modoNota?: boolean;
   onToggleNota?: () => void;
   onPuntoNota?: (lat: number, lng: number) => void;
+  onEliminarNota?: (id: string) => void;
   onCampoConLotes?: () => void;
   hullPreview?: { type: "Polygon"; coordinates: number[][][] } | null;
   campoConLotesCount?: number | null;
@@ -721,6 +736,11 @@ function LotesMapa({
     if (delimitando) onReArmar?.();
   };
   const [fichaOpen, setFichaOpen] = useState(false);
+  // Panel de capas GIS: overlays independientes (satélite base, índice NDVI, prescripción).
+  const [satOn, setSatOn] = useState(true);
+  const [ndviOn, setNdviOn] = useState(false);
+  const [rxOn, setRxOn] = useState(false);
+  const [rxMapa, setRxMapa] = useState<RxMapa | null>(null);
   const [online, setOnline] = useState(true);
   // Economía por lote para el gemelo Campo 3D (altura/color por margen/costo).
   const [economia, setEconomia] = useState<Record<string, { margenPorHa: number; costoPorHa: number; margen: number; fuente: string }>>({});
@@ -756,7 +776,7 @@ function LotesMapa({
           </div>
           {vista === "clasica" && (
           <div className="mc-seg">
-            {["Satélite", "NDVI", "Cultivos", "Topografía", "Relieve", "Humedad"].map((l) => (
+            {["Satélite", "Cultivos", "Topografía", "Relieve", "Humedad"].map((l) => (
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
@@ -803,6 +823,10 @@ function LotesMapa({
         <Mapa3D
           lotes={lotesGeo}
           notas={notasGeo}
+          satVisible={satOn}
+          ndviVisible={ndviOn}
+          rx={rxMapa}
+          rxVisible={rxOn}
           selectedId={selected?.id ?? null}
           layer={layer}
           onSelect={(id: string) => onSelect(lotes.find((l) => l.id === id) || null)}
@@ -813,6 +837,7 @@ function LotesMapa({
           establecimientos={establecimientosGeo}
           modoNota={modoNota}
           onPuntoNota={onPuntoNota}
+          onEliminarNota={onEliminarNota}
           onCampoConLotes={onCampoConLotes}
         />
 
@@ -846,6 +871,23 @@ function LotesMapa({
           </div>
         )}
 
+        {/* Panel de CAPAS GIS: overlays independientes sobre la vista */}
+        <div className="mc-glass" style={{ position: "absolute", right: 16, bottom: 118, zIndex: 520, borderRadius: 12, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7, minWidth: 168 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.07em", color: "var(--mc-text-3)", textTransform: "uppercase" }}>Capas</div>
+          <label className="row gap-6" style={{ alignItems: "center", fontSize: 12.5, fontWeight: 600, color: "var(--mc-ink)", cursor: "pointer" }}>
+            <input type="checkbox" checked={satOn} onChange={(e) => setSatOn(e.target.checked)} />
+            Satélite (base)
+          </label>
+          <label className="row gap-6" style={{ alignItems: "center", fontSize: 12.5, fontWeight: 600, color: "var(--mc-ink)", cursor: "pointer" }} title="Índice de vigor satelital real (Sentinel-2 con credenciales; NASA MODIS sin ellas)">
+            <input type="checkbox" checked={ndviOn} onChange={(e) => setNdviOn(e.target.checked)} />
+            Índice NDVI
+          </label>
+          <label className="row gap-6" style={{ alignItems: "center", fontSize: 12.5, fontWeight: 600, color: rxMapa ? "var(--mc-ink)" : "var(--mc-text-3)", cursor: rxMapa ? "pointer" : "not-allowed" }} title={rxMapa ? "Zonas de dosis variable sobre el mapa" : "Generá un mapa de prescripción desde la ficha del lote (Ver ficha completa → Prescripción)"}>
+            <input type="checkbox" checked={rxOn} disabled={!rxMapa} onChange={(e) => setRxOn(e.target.checked)} />
+            Prescripción
+          </label>
+        </div>
+
 
         {selected && (
           <LoteOverlay
@@ -870,6 +912,7 @@ function LotesMapa({
                 onNota={() => { setFichaOpen(false); onNota(selected); }}
                 onEditar={() => { setFichaOpen(false); onEditar(selected); }}
                 onTarea={() => { setFichaOpen(false); onTarea(selected); }}
+                onRxGenerada={(r) => { setRxMapa(r); setRxOn(true); }}
               />
             </div>
           </div>
@@ -894,13 +937,14 @@ function LotesMapa({
 type HistItem = { fechaMs: number; fecha: string; tipo: string; detail: string };
 
 function LoteFichaTecnica({
-  lote, onClose, onNota, onEditar, onTarea,
+  lote, onClose, onNota, onEditar, onTarea, onRxGenerada,
 }: {
   lote: LoteUI;
   onClose: () => void;
   onNota: () => void;
   onEditar: () => void;
   onTarea: () => void;
+  onRxGenerada?: (rx: RxMapa) => void;
 }) {
   const [innerTab, setInnerTab] = useState("Resumen");
   const [cargando, setCargando] = useState(true);
@@ -1111,7 +1155,7 @@ function LoteFichaTecnica({
       )}
 
       {innerTab === "Prescripción" && (
-        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} loteGeo={lote.geojson} />
+        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} loteGeo={lote.geojson} onRxGenerada={onRxGenerada} />
           : <FichaVacio texto="Dibujá el lote en el mapa para generar un mapa de prescripción variable." />
       )}
 
@@ -1136,7 +1180,7 @@ type Prescripcion = {
   geojson: { type: "FeatureCollection"; features: { geometry: { type: "Polygon"; coordinates: number[][][] }; properties: { ndvi: number; zona: string; dosis: number; color: string } }[] };
 };
 
-function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: string; loteGeo?: { type: "Polygon"; coordinates: number[][][] } | null }) {
+function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string; loteName: string; loteGeo?: { type: "Polygon"; coordinates: number[][][] } | null; onRxGenerada?: (rx: RxMapa) => void }) {
   const [producto, setProducto] = useState("Urea");
   const [dosisBase, setDosisBase] = useState("120");
   const [estrategia, setEstrategia] = useState<"compensar" | "potenciar">("compensar");
@@ -1151,7 +1195,7 @@ function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: str
       body: JSON.stringify({ producto, dosisBase: Number(dosisBase), estrategia }),
     })
       .then((r) => r.json())
-      .then((d) => { if (d.error) setError(d.error); else setRes(d); })
+      .then((d) => { if (d.error) setError(d.error); else { setRes(d); onRxGenerada?.({ fc: d.geojson, contorno: loteGeo ?? null }); } })
       .catch(() => setError("No se pudo generar la prescripción"))
       .finally(() => setCargando(false));
   };
@@ -1267,6 +1311,9 @@ function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: str
                 <span className="text-muted">{z.dosis} kg/ha · {z.ha} ha</span>
               </div>
             ))}
+          </div>
+          <div className="text-xs" style={{ color: "var(--mc-green-700)", display: "flex", alignItems: "center", gap: 5 }}>
+            <Icon name="check" size={12} />La capa <b>Prescripción</b> quedó activa en el mapa (panel Capas, abajo a la derecha).
           </div>
           {res.simulado ? (
             <div className="text-xs text-muted" title="La descarga para maquinaria requiere NDVI satelital real (Sentinel)">Descarga no disponible en modo demostración (requiere NDVI satelital real).</div>
