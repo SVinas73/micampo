@@ -4,7 +4,7 @@ import React from "react";
 import { Icon, IABadge } from "@/components/mc";
 
 export type PuntoBalance = { dia: string; sinRiego: number; conRiego: number };
-export type SugerenciaIA = { fecha: string; fechaISO?: string; mm: number; motivo: string; costoUSD: number };
+export type SugerenciaIA = { fecha: string; fechaISO?: string; dia?: number; mm: number; motivo: string; costoUSD: number };
 
 function Legend({ color, label, mode }: { color: string; label: string; mode: "line" | "dashed" | "dotted" | "bar" }) {
   let line: React.ReactNode;
@@ -100,12 +100,15 @@ export default function BalanceHidrico({
   const sinRiegoPath = smoothPath(sinRiego);
   const conRiegoPath = smoothPath(conRiego);
 
-  // Cada barra IA se ubica en el día REAL de su sugerencia (matcheando el número de día
-  // de la etiqueta con el del eje) y muestra su mm propio — no por orden de barra.
+  // Cada barra IA se ancla al día EXACTO de su sugerencia: usa el índice `dia`
+  // (que viene del mismo loop del balance); si falta, matchea el número del eje.
   const iaBars = sugerencias
     .map((s) => {
-      const num = (s.fecha || "").trim().split(/\s+/).pop();
-      const day = days.findIndex((d) => d.trim().split(/\s+/).pop() === num);
+      let day = s.dia != null && s.dia >= 0 && s.dia < days.length ? s.dia : -1;
+      if (day < 0) {
+        const num = (s.fecha || "").trim().split(/\s+/).pop();
+        day = days.findIndex((d) => d.trim().split(/\s+/).pop() === num);
+      }
       return day >= 0 ? { day, level: conRiego[day] ?? 0, label: `+${s.mm}mm` } : null;
     })
     .filter((b): b is { day: number; level: number; label: string } => b !== null);

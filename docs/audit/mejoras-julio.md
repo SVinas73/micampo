@@ -21,11 +21,11 @@ Si se corta por tokens: retomar por el primer `[ ]` pendiente. Cada ítem se com
 - [x] 12. Intercambiar pestañas: Planificador de Siembras (IA) a la izquierda de Detección de Enfermedades (IA)
 
 ## Calculadora de Dosis
-- [ ] 13. "Recomendación IA de dosis" por lote — seteado para ANTHROPIC_API_KEY (mensaje honesto sin key)
+- [x] 13. "Recomendación IA de dosis" por lote — seteado para ANTHROPIC_API_KEY (mensaje honesto sin key)
 
 ## Plan de Riego
 - [x] 14. Eliminar card "Estadio fenológico" (la etapa se sigue calculando sola por fecha de siembra)
-- [ ] 15. Balance Hídrico: mostrar las barras IA de riego sugerido (como el diseño); dejar seteado para IA
+- [x] 15. Balance Hídrico: mostrar las barras IA de riego sugerido (como el diseño); dejar seteado para IA
 
 ## Cuaderno de Campo
 - [x] 16. Eliminar submódulo (página + navegación)

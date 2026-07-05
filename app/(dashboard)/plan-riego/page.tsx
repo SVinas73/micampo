@@ -177,7 +177,7 @@ function PlanRiegoInner() {
         cs = clamp(cs + (mmEvento / awc) * 100, 0, 100);
         // La fecha real de la sugerencia = hoy + i días (los días del balance son consecutivos desde hoy).
         const fecha = new Date(); fecha.setDate(fecha.getDate() + i);
-        sugs.push({ fecha: `${d.nombre} ${d.num}`, fechaISO: fecha.toISOString(), mm: mmEvento, motivo: `Humedad proyectada cae a ${Math.round(sSin)}% sin riego`, costoUSD: Math.round(mmEvento * COSTO_MM) });
+        sugs.push({ fecha: `${d.nombre} ${d.num}`, fechaISO: fecha.toISOString(), dia: i, mm: mmEvento, motivo: `Humedad proyectada cae a ${Math.round(sSin)}% sin riego`, costoUSD: Math.round(mmEvento * COSTO_MM) });
       }
       sCon = cs;
       bal.push({ dia: `${d.esHoy ? "HOY" : d.nombre.toUpperCase()} ${d.num}`, sinRiego: Math.round(sSin), conRiego: Math.round(cs) });
@@ -186,7 +186,42 @@ function PlanRiegoInner() {
     return { balance: bal, sugerencias: sugs, etcDia: etc0, proximo: sugs[0] || null };
   }, [dias, estrategia, s0, cultivo, etapa, awc]);
 
-  const costoEvento = sugerencias.reduce((s, x) => s + x.costoUSD, 0);
+  // Refinamiento IA (seteado para ANTHROPIC_API_KEY): con key, Claude afina mm y
+  // motivo de cada sugerencia; sin key responde {simulado} y queda el cálculo local.
+  const [refinosIA, setRefinosIA] = useState<Record<number, { mm: number; motivo: string }>>({});
+  const firmaSugs = sugerencias.map((s) => `${s.dia}:${s.mm}`).join("|");
+  useEffect(() => {
+    setRefinosIA({});
+    if (!firmaSugs) return;
+    let cancel = false;
+    fetch("/api/riego-ia/sugerencias", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lote: loteNombre, cultivo, etapa, balance: balance.map((b) => b.conRiego), sugerencias: sugerencias.map((s) => ({ dia: s.dia, mm: s.mm, motivo: s.motivo })) }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancel || !d || d.simulado || !Array.isArray(d.sugerencias)) return;
+        const m: Record<number, { mm: number; motivo: string }> = {};
+        d.sugerencias.forEach((x: { dia: number; mm: number; motivo: string }) => {
+          if (typeof x.dia === "number" && x.mm >= 8 && x.mm <= 25) m[x.dia] = { mm: Math.round(x.mm), motivo: String(x.motivo || "") };
+        });
+        setRefinosIA(m);
+      })
+      .catch(() => {});
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firmaSugs, loteNombre]);
+
+  // Sugerencias finales: base determinística + refinamiento IA si llegó.
+  const sugerenciasFinal = useMemo(
+    () => sugerencias.map((s) => {
+      const r = s.dia != null ? refinosIA[s.dia] : undefined;
+      return r ? { ...s, mm: r.mm, motivo: r.motivo || s.motivo, costoUSD: Math.round(r.mm * COSTO_MM) } : s;
+    }),
+    [sugerencias, refinosIA]
+  );
+
+  const costoEvento = sugerenciasFinal.reduce((s, x) => s + x.costoUSD, 0);
   const aguaUtilMm = Math.round((s0 / 100) * awc);
 
   // Asegura que el lote tenga un plan de riego (lo crea si no existe)
@@ -222,13 +257,13 @@ function PlanRiegoInner() {
   }, [ensurePlan]);
 
   const aprobarOrden = useCallback(async () => {
-    if (sugerencias.length === 0) { toast.show("No hay riego sugerido por ahora", "err"); return; }
+    if (sugerenciasFinal.length === 0) { toast.show("No hay riego sugerido por ahora", "err"); return; }
     let ok = 0;
-    for (const s of sugerencias) { if (await postEvento(s.mm, s.fechaISO || "", s.motivo)) ok++; }
+    for (const s of sugerenciasFinal) { if (await postEvento(s.mm, s.fechaISO || "", s.motivo)) ok++; }
     if (ok === 0) { toast.show("No se pudo guardar la orden de riego", "err"); return; }
-    setRiegos((prev) => [...sugerencias.map((s) => ({ t: Date.now(), mm: s.mm, estado: "Programado", ia: false })), ...prev]);
+    setRiegos((prev) => [...sugerenciasFinal.map((s) => ({ t: Date.now(), mm: s.mm, estado: "Programado", ia: false })), ...prev]);
     toast.show(`Orden de riego aprobada · ${ok} evento(s) programado(s)`);
-  }, [sugerencias, postEvento, toast]);
+  }, [sugerenciasFinal, postEvento, toast]);
 
   const registrar = useCallback(async (r: RegistroRiego) => {
     // IA: fecha ISO de la sugerencia. Manual: compone fecha + hora del formulario.
@@ -266,8 +301,8 @@ function PlanRiegoInner() {
       line(`Estrategia: ${estrategia <= 33 ? "Ahorro de agua" : estrategia >= 66 ? "Maximizar rinde" : "Balanceada"} (${estrategia}/100)`);
       line(`Costo proyectado de riego: $${costoEvento} USD`);
       y += 4; doc.setFontSize(13); doc.text("Riegos sugeridos (próximos 7 días)", 14, y); y += 8; doc.setFontSize(11);
-      if (sugerencias.length === 0) { line("Sin riego necesario según el balance proyectado."); }
-      else sugerencias.forEach((s, i) => line(`${i + 1}. ${s.fecha} — ${s.mm} mm · ${s.motivo} · $${s.costoUSD}`));
+      if (sugerenciasFinal.length === 0) { line("Sin riego necesario según el balance proyectado."); }
+      else sugerenciasFinal.forEach((s, i) => line(`${i + 1}. ${s.fecha} — ${s.mm} mm · ${s.motivo} · $${s.costoUSD}`));
       y += 4; doc.setFontSize(13); doc.text("Balance hídrico proyectado (% humedad de suelo)", 14, y); y += 8; doc.setFontSize(10);
       balance.forEach((b) => line(`${b.dia}:  sin riego ${b.sinRiego}%  ·  con riego ${b.conRiego}%`));
       doc.setFontSize(8); doc.setTextColor(140, 140, 140);
@@ -275,12 +310,12 @@ function PlanRiegoInner() {
       doc.save(`micampo-plan-riego-${loteNombre.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`);
       toast.show("Plan de riego descargado en PDF");
     } catch { toast.show("No se pudo generar el PDF", "err"); }
-  }, [loteNombre, cultivo, etapa, estadoHidrico, s0, aguaUtilMm, etcDia, estrategia, costoEvento, sugerencias, balance, toast]);
+  }, [loteNombre, cultivo, etapa, estadoHidrico, s0, aguaUtilMm, etcDia, estrategia, costoEvento, sugerenciasFinal, balance, toast]);
 
   return (
     <div className="col gap-20">
       {toast.node}
-      <RegistrarRiegoModal open={riegoOpen} onClose={() => setRiegoOpen(false)} sugerencias={sugerencias} onRegistrar={registrar} lotes={scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo, hectareas: l.hectareas }))} loteActivoId={loteId} />
+      <RegistrarRiegoModal open={riegoOpen} onClose={() => setRiegoOpen(false)} sugerencias={sugerenciasFinal} onRegistrar={registrar} lotes={scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre, cultivo: l.cultivo, hectareas: l.hectareas }))} loteActivoId={loteId} />
 
       <PageHeader
         crumbs={["Agronomía", "Plan de Riego"]}
@@ -308,7 +343,7 @@ function PlanRiegoInner() {
       <div className="grid" style={{ gridTemplateColumns: "1.6fr 1fr", gap: 14 }}>
         <BalanceHidrico
           balance={balance}
-          sugerencias={sugerencias}
+          sugerencias={sugerenciasFinal}
           estrategia={estrategia}
           onEstrategia={setEstrategia}
           onEstrategiaCommit={() => { try { window.localStorage.setItem("mc-riego-estrategia", String(estrategia)); } catch {} }}

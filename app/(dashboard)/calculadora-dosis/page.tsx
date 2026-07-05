@@ -326,6 +326,41 @@ function TabNuevo({
   const [guardando, setGuardando] = useState(false);
   const [presetModal, setPresetModal] = useState(false);
   const [presetNombre, setPresetNombre] = useState("");
+  // Recomendación IA por lote (requiere ANTHROPIC_API_KEY; sin key avisa honesto)
+  type RecoIA = { objetivo?: string; tipo?: string; producto: string; dosis: number; unidad?: string; caldo?: number; justificacion?: string; advertencias?: string[] };
+  const [recomendando, setRecomendando] = useState(false);
+  const [recoIA, setRecoIA] = useState<RecoIA | null>(null);
+
+  const recomendarIA = async () => {
+    if (!config.loteId || recomendando) return;
+    setRecomendando(true);
+    setRecoIA(null);
+    try {
+      const res = await fetch("/api/calculadora-dosis/recomendar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loteId: config.loteId }),
+      });
+      const d = await res.json();
+      if (d?.simulado) onError(d.mensaje || "La recomendación IA requiere configurar ANTHROPIC_API_KEY");
+      else if (!res.ok || d?.error) onError(d?.error || "No se pudo generar la recomendación");
+      else setRecoIA(d);
+    } catch {
+      onError("No se pudo generar la recomendación en este momento");
+    } finally {
+      setRecomendando(false);
+    }
+  };
+
+  const aplicarRecoIA = () => {
+    if (!recoIA) return;
+    const cat = (["Herbicida", "Insecticida", "Fungicida", "Nutrición", "Fertilizante"].includes(recoIA.tipo || "") ? recoIA.tipo : "Fungicida") as Categoria;
+    setConfig((c) => ({
+      ...c,
+      caldo: recoIA.caldo && recoIA.caldo > 0 ? recoIA.caldo : c.caldo,
+      productos: [...c.productos, { tipo: cat, nombre: recoIA.producto, costoUnitario: "", dosis: String(recoIA.dosis), unidad: recoIA.unidad || "Lt/Ha" }],
+    }));
+    setRecoIA(null);
+  };
 
   const { area, caldo, tanque, productos } = config;
   const ct = caldoTotal(config);
@@ -448,6 +483,32 @@ function TabNuevo({
             <div className="mc-field mt-12">
               <label className="mc-label">Tipo de aplicación</label>
               <Seg options={["Terrestre", "Aérea"]} value={config.tipoAplicacion} onChange={(v) => setField("tipoAplicacion", v)} />
+            </div>
+
+            {/* Recomendación IA de dosis: analiza el lote real (cultivo, alertas, suelo) */}
+            <div className="mt-12" style={{ padding: 12, borderRadius: 12, border: "1px dashed var(--mc-green-300, var(--mc-green-200))", background: "var(--mc-green-50)" }}>
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div className="row gap-8" style={{ alignItems: "center" }}>
+                  <IABadge />
+                  <span className="text-sm font-semi" style={{ color: "var(--mc-ink)" }}>Recomendación IA para este lote</span>
+                </div>
+                <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={recomendarIA} disabled={recomendando || !config.loteId}>
+                  <Icon name="sparkles" size={13} />{recomendando ? "Analizando lote…" : "Recomendar dosis"}
+                </button>
+              </div>
+              {!config.loteId && <div className="text-xs text-muted mt-6">Elegí un lote guardado y la IA analiza su cultivo, alertas de plaga y suelo para recomendar producto y dosis.</div>}
+              {recoIA && (
+                <div className="col gap-6 mt-10" style={{ padding: 10, borderRadius: 10, background: "var(--mc-surface)", border: "1px solid var(--mc-green-200)" }}>
+                  <div className="text-sm font-semi" style={{ color: "var(--mc-ink)" }}>{recoIA.producto} · {recoIA.dosis} {recoIA.unidad}{recoIA.caldo ? ` · caldo ${recoIA.caldo} L/Ha` : ""}</div>
+                  <div className="text-xs" style={{ color: "var(--mc-text-2)" }}><b>{recoIA.objetivo}</b>{recoIA.justificacion ? ` — ${recoIA.justificacion}` : ""}</div>
+                  {recoIA.advertencias && recoIA.advertencias.length > 0 && (
+                    <div className="text-xs" style={{ color: "var(--mc-amber)" }}>⚠ {recoIA.advertencias.join(" · ")}</div>
+                  )}
+                  <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ alignSelf: "flex-start" }} onClick={aplicarRecoIA}>
+                    <Icon name="check" size={12} />Aplicar a la mezcla
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
