@@ -59,9 +59,16 @@ function centroideAnillo(coords: number[][]): [number, number] {
   return [lng, lat];
 }
 
+export type RxMapa = { fc: GeoJSON.FeatureCollection; contorno?: { type: "Polygon"; coordinates: number[][][] } | null };
+
 type Props = {
   lotes: LoteGeo[];
   notas?: NotaGeo[];
+  // Panel de capas GIS: overlays independientes sobre la vista elegida.
+  satVisible?: boolean; // imagen satelital base
+  ndviVisible?: boolean; // raster NDVI real (Sentinel-2 / NASA GIBS)
+  rx?: RxMapa | null; // mapa de prescripción (vector + dosis) generado desde la ficha
+  rxVisible?: boolean;
   selectedId?: string | null;
   layer: string; // "NDVI" | "Satélite" | "Cultivos"
   onSelect: (id: string) => void;
@@ -72,6 +79,7 @@ type Props = {
   establecimientos?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[];
   modoNota?: boolean;
   onPuntoNota?: (lat: number, lng: number) => void;
+  onEliminarNota?: (id: string) => void;
   onCampoConLotes?: () => void;
 };
 
@@ -201,7 +209,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
-export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onCampoConLotes }: Props) {
+export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVisible = false, rx = null, rxVisible = false, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onEliminarNota, onCampoConLotes }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -216,12 +224,16 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
   const layerRef = useRef(layer);
   const lotesRef = useRef(lotes);
   const notasRef = useRef(notas);
+  const ndviVisRef = useRef(ndviVisible);
+  ndviVisRef.current = ndviVisible;
   // Lupita de aumento para el dibujo de lotes (mini-mapa circular junto al cursor).
   const lensRef = useRef<HTMLDivElement>(null);
   const lensMapRef = useRef<maplibregl.Map | null>(null);
   const establecimientosRef = useRef(establecimientos);
   const modoNotaRef = useRef(false);
   const onPuntoNotaRef = useRef(onPuntoNota);
+  const onEliminarNotaRef = useRef(onEliminarNota);
+  onEliminarNotaRef.current = onEliminarNota;
   modoNotaRef.current = !!modoNota;
   onPuntoNotaRef.current = onPuntoNota;
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -330,7 +342,7 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
       // sin API key, ~250 m). Con la key de Sentinel el detalle sube solo.
       if (SENTINEL_INSTANCE) {
         map.addSource("ndvi", { type: "raster", tiles: [ndviWmsUrl()], tileSize: 256, attribution: "NDVI © Sentinel Hub / Copernicus Sentinel-2" });
-        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: layerRef.current === "NDVI" ? "visible" : "none" }, paint: { "raster-opacity": 0.85 } as any }, "etiquetas");
+        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.85 } as any }, "etiquetas");
       } else {
         map.addSource("ndvi", {
           type: "raster",
@@ -339,7 +351,7 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
           maxzoom: 9, // GIBS Level9: MapLibre reescala (overzoom) al acercarse
           attribution: "NDVI © NASA GIBS / MODIS Terra",
         });
-        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: layerRef.current === "NDVI" ? "visible" : "none" }, paint: { "raster-opacity": 0.8 } as any }, "etiquetas");
+        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.8 } as any }, "etiquetas");
       }
 
       // Capa de Topografía (OpenTopoMap: relieve + curvas de nivel)
@@ -370,6 +382,25 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
       map.addSource("notas", { type: "geojson", data: notasFc(notasRef.current) });
       map.addLayer({ id: "notas-halo", type: "circle", source: "notas", paint: { "circle-radius": 11, "circle-color": ["get", "color"], "circle-opacity": 0.18 } as any });
       map.addLayer({ id: "notas-dot", type: "circle", source: "notas", paint: { "circle-radius": 6, "circle-color": ["get", "color"], "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } as any });
+
+      // Capa de PRESCRIPCIÓN (vector + dosis) sobre el satélite: zonas coloreadas,
+      // contorno rojo del lote y dosis numérica nítida en cada zona.
+      map.addSource("rx", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("rx-contorno", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({ id: "rx-fill", type: "fill", source: "rx", layout: { visibility: "none" }, paint: { "fill-color": ["get", "color"], "fill-opacity": 0.82 } as any });
+      map.addLayer({ id: "rx-line", type: "line", source: "rx", layout: { visibility: "none" }, paint: { "line-color": "#5b5244", "line-width": 0.8, "line-opacity": 0.8 } as any });
+      map.addLayer({ id: "rx-borde", type: "line", source: "rx-contorno", layout: { visibility: "none" }, paint: { "line-color": "#d92b2b", "line-width": 2.6 } as any });
+      map.addLayer({
+        id: "rx-label", type: "symbol", source: "rx",
+        layout: {
+          visibility: "none",
+          "text-field": ["to-string", ["get", "dosis"]],
+          "text-font": ["Noto Sans Bold"],
+          "text-size": 14,
+          "text-allow-overlap": true,
+        } as any,
+        paint: { "text-color": "#1c2417", "text-halo-color": "#ffffff", "text-halo-width": 1.8 } as any,
+      });
       renderMarkers();
       renderCampoMarkers();
       map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -385,7 +416,9 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
       }
 
       map.on("click", "lotes-fill", (e) => {
-        if (drawingRef.current || modoNotaRef.current) return;
+        if (drawingRef.current || modoNotaRef.current || e.defaultPrevented) return;
+        // Si el click cayó sobre una NOTA, la maneja el popup de la nota (no selecciona lote).
+        if (map.queryRenderedFeatures(e.point, { layers: ["notas-dot"] }).length > 0) return;
         const id = e.features?.[0]?.properties?.id;
         if (id) onSelectRef.current(String(id));
       });
@@ -410,6 +443,32 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
       map.on("mouseenter", "notas-dot", () => { if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = "pointer"; });
       map.on("mousemove", "notas-dot", mostrarNota);
       map.on("mouseleave", "notas-dot", () => { ocultarNota(); if (!drawingRef.current && !modoNotaRef.current) map.getCanvas().style.cursor = ""; });
+
+      // Click en una nota → popup persistente con la nota completa y botón ELIMINAR.
+      map.on("click", "notas-dot", (e) => {
+        if (drawingRef.current || modoNotaRef.current) return;
+        const f = e.features?.[0];
+        if (!f) return;
+        e.preventDefault();
+        ocultarNota();
+        const id = String(f.properties?.id || "");
+        const nombre = String(f.properties?.name || "");
+        const nota = String(f.properties?.nota || "");
+        const prioridad = String(f.properties?.prioridad || "");
+        const coords = f.geometry?.type === "Point" ? (f.geometry.coordinates as [number, number]) : [e.lngLat.lng, e.lngLat.lat] as [number, number];
+        const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, offset: 14, className: "mc-nota-popup", maxWidth: "280px" });
+        popup
+          .setLngLat(coords)
+          .setHTML(
+            notaPopupHtml(nombre, nota, prioridad) +
+            `<button class="mc-nota-del" data-id="${escapeHtml(id)}" style="margin-top:8px;width:100%;padding:6px 10px;border:1px solid #d13a3a44;border-radius:8px;background:#d13a3a12;color:#d13a3a;font-size:11.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">🗑 Eliminar nota</button>`
+          )
+          .addTo(map);
+        popup.getElement()?.querySelector<HTMLButtonElement>(".mc-nota-del")?.addEventListener("click", () => {
+          popup.remove();
+          if (id) onEliminarNotaRef.current?.(id);
+        });
+      });
 
       // Ajuste fino: arrastrar cualquier vértice ya marcado para reubicarlo.
       let dragIdx: number | null = null;
@@ -578,18 +637,32 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
     (map.getSource("lotes") as maplibregl.GeoJSONSource)?.setData(fc(lotes, layer));
     (map.getSource("notas") as maplibregl.GeoJSONSource)?.setData(notasFc(notas));
     (map.getSource("campos") as maplibregl.GeoJSONSource)?.setData(boundariesFc(lotes, establecimientosRef.current));
-    if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(layer, selectedId ?? null) as any);
-    if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", layer === "NDVI" ? "visible" : "none");
+    // Con NDVI activo, los rellenos van casi transparentes para que se lea el raster.
+    if (map.getLayer("lotes-fill")) map.setPaintProperty("lotes-fill", "fill-opacity", fillOpacity(ndviVisible ? "NDVI" : layer, selectedId ?? null) as any);
+    if (map.getLayer("ndvi")) map.setLayoutProperty("ndvi", "visibility", ndviVisible ? "visible" : "none");
     if (map.getLayer("topo")) map.setLayoutProperty("topo", "visibility", layer === "Topografía" ? "visible" : "none");
     if (map.getLayer("relieve")) map.setLayoutProperty("relieve", "visibility", layer === "Relieve" ? "visible" : "none");
     if (map.getLayer("relieve-hs")) map.setLayoutProperty("relieve-hs", "visibility", layer === "Relieve" ? "visible" : "none");
     // En Relieve dejamos casi apagada la imagen satelital para que domine el sombreado del terreno.
-    if (map.getLayer("satelite")) map.setPaintProperty("satelite", "raster-opacity", layer === "Relieve" ? 0.18 : 1);
+    if (map.getLayer("satelite")) {
+      map.setLayoutProperty("satelite", "visibility", satVisible ? "visible" : "none");
+      map.setPaintProperty("satelite", "raster-opacity", layer === "Relieve" ? 0.18 : 1);
+    }
+    if (map.getLayer("etiquetas")) map.setLayoutProperty("etiquetas", "visibility", satVisible ? "visible" : "none");
     if (map.getLayer("lotes-line")) map.setPaintProperty("lotes-line", "line-color", layer === "Topografía" || layer === "Relieve" ? "#111111" : "#ffffff");
+    // Capa de prescripción (vector + dosis)
+    const rxOn = rxVisible && !!rx?.fc?.features?.length;
+    (map.getSource("rx") as maplibregl.GeoJSONSource)?.setData(rx?.fc || { type: "FeatureCollection", features: [] });
+    (map.getSource("rx-contorno") as maplibregl.GeoJSONSource)?.setData(
+      rx?.contorno ? { type: "FeatureCollection", features: [{ type: "Feature", geometry: rx.contorno, properties: {} }] } : { type: "FeatureCollection", features: [] }
+    );
+    ["rx-fill", "rx-line", "rx-borde", "rx-label"].forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", rxOn ? "visible" : "none");
+    });
     renderMarkers();
     renderCampoMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lotes, notas, layer, ready]);
+  }, [lotes, notas, layer, ready, satVisible, ndviVisible, rx, rxVisible]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -625,6 +698,44 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
         <div className="mc-lupa__mapa" />
         <div className="mc-lupa__cruz" />
       </div>
+
+      {/* Leyenda NDVI (estilo GIS clásico) — visible cuando el índice está activo */}
+      {ndviVisible && (
+        <div style={{ position: "absolute", left: 14, bottom: rxVisible && rx?.fc?.features?.length ? 96 : 14, zIndex: 520, background: "rgba(20,26,16,0.88)", borderRadius: 10, padding: "10px 12px", color: "#fff", boxShadow: "0 4px 18px rgba(0,0,0,0.3)" }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.06em", marginBottom: 7 }}>LEYENDA NDVI</div>
+          <div className="row gap-8" style={{ alignItems: "stretch" }}>
+            <div style={{ width: 14, height: 64, borderRadius: 4, background: "linear-gradient(to bottom, #1f6e2a, #5e9c48, #a9c169, #f5d327, #d92b2b)", border: "1px solid rgba(255,255,255,0.35)" }} />
+            <div className="col" style={{ justifyContent: "space-between", fontSize: 10, fontWeight: 700 }}>
+              <span style={{ color: "#8fd694" }}>ALTO: 0.8</span>
+              <span style={{ color: "#ff8d7a" }}>BAJO: 0.2</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leyenda de dosis de prescripción — visible con la capa activa */}
+      {rxVisible && !!rx?.fc?.features?.length && (
+        <div style={{ position: "absolute", left: 14, bottom: 14, zIndex: 520, background: "rgba(20,26,16,0.88)", borderRadius: 10, padding: "10px 12px", color: "#fff", boxShadow: "0 4px 18px rgba(0,0,0,0.3)" }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.06em", marginBottom: 7 }}>DOSIS DE PRESCRIPCIÓN (kg/ha)</div>
+          <div className="row gap-8" style={{ flexWrap: "wrap" }}>
+            {Array.from(
+              new Map(
+                (rx.fc.features as GeoJSON.Feature[]).map((f) => {
+                  const p = (f.properties || {}) as { dosis?: number; color?: string };
+                  return [p.dosis ?? 0, p.color || "#5e7733"] as [number, string];
+                })
+              ).entries()
+            )
+              .sort((a, b) => a[0] - b[0])
+              .map(([dosis, color]) => (
+                <span key={dosis} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: color, border: "1px solid rgba(255,255,255,0.4)" }} />
+                  {dosis}
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Controles dibujo / terreno */}
       {!drawing ? (

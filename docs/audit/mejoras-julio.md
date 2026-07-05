@@ -43,3 +43,10 @@ Si se corta por tokens: retomar por el primer `[ ]` pendiente. Cada ítem se com
 
 ## Respuesta (no código)
 - [x] 22. Análisis de QGIS (github.com/qgis/QGIS): qué es, si sirve, costo, cómo conectarlo a futuro
+
+## Ronda 2 (post-review del usuario)
+- [x] R1. X del card flotante: centrar el ícono en el cuadradito
+- [x] R2. Inicio: eliminar botón "Nueva labor" del topbar
+- [x] R3. Notas: poder ELIMINAR cada nota (nuevas y existentes) desde el mapa
+- [x] R4. Panel "Capas" GIS en el mapa: checkboxes independientes Satélite / Índice NDVI / Prescripción + leyenda NDVI flotante (estilo foto) + leyenda de dosis
+- [x] R5. Prescripción sobre el MAPA real (vector + dosis nítidas sobre satélite, contorno rojo) y zonas disueltas (orgánicas, no grilla cuadrada) en el servidor
