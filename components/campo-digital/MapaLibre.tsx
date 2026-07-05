@@ -110,9 +110,11 @@ function moistureColor(v?: number) {
 }
 
 function colorDe(l: LoteGeo, layer: string) {
+  // En NDVI el color lo pone el raster satelital (los rellenos van casi transparentes).
   if (layer === "NDVI") return ndviColor(l.ndvi);
   if (layer === "Humedad") return moistureColor(l.humedad);
-  if (l.vacio || !l.cultivoColor) return "#9aa39a";
+  // Vista Cultivos: tonalidad fuerte por cultivo; lote vacío blanquecino.
+  if (l.vacio || !l.cultivoColor) return "#f5f2ea";
   return l.cultivoColor;
 }
 
@@ -189,8 +191,8 @@ function ndviWmsUrl(): string {
 }
 
 function fillOpacity(layer: string, selectedId: string | null): any {
-  // Con NDVI satelital real, los lotes quedan apenas delineados (se ve la imagen NDVI)
-  if (layer === "NDVI" && SENTINEL_INSTANCE) {
+  // Vista NDVI: el color lo pone el raster NDVI real → lotes apenas delineados.
+  if (layer === "NDVI") {
     return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], 0.18, 0.04];
   }
   const transparente = layer === "Satélite" || layer === "Topografía" || layer === "Relieve";
@@ -323,10 +325,21 @@ export default function MapaLibre({ lotes, notas = [], selectedId, layer, onSele
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
 
     map.on("load", () => {
-      // Capa NDVI real (Sentinel Hub) — solo si está configurada
+      // Capa NDVI REAL: Sentinel-2 (10 m, Sentinel Hub) si hay credenciales;
+      // si no, NASA GIBS MODIS Terra NDVI 8 días (dato satelital real, gratuito,
+      // sin API key, ~250 m). Con la key de Sentinel el detalle sube solo.
       if (SENTINEL_INSTANCE) {
         map.addSource("ndvi", { type: "raster", tiles: [ndviWmsUrl()], tileSize: 256, attribution: "NDVI © Sentinel Hub / Copernicus Sentinel-2" });
         map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: layerRef.current === "NDVI" ? "visible" : "none" }, paint: { "raster-opacity": 0.85 } as any }, "etiquetas");
+      } else {
+        map.addSource("ndvi", {
+          type: "raster",
+          tiles: ["https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/default/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png"],
+          tileSize: 256,
+          maxzoom: 9, // GIBS Level9: MapLibre reescala (overzoom) al acercarse
+          attribution: "NDVI © NASA GIBS / MODIS Terra",
+        });
+        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: layerRef.current === "NDVI" ? "visible" : "none" }, paint: { "raster-opacity": 0.8 } as any }, "etiquetas");
       }
 
       // Capa de Topografía (OpenTopoMap: relieve + curvas de nivel)

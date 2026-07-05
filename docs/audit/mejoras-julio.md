@@ -34,9 +34,9 @@ Si se corta por tokens: retomar por el primer `[ ]` pendiente. Cada ítem se com
 - [x] 17. Campanita, Reporte semanal y Cargar por voz debajo de los KPIs, alineados a la derecha
 
 ## Vistas del mapa (complejo)
-- [ ] 18. Renombrar capa "NDVI"→"Satélite"; nueva capa NDVI REAL (Sentinel Hub si hay key; fallback NASA GIBS MODIS NDVI, gratuito y real) con leyenda tipo rampa
-- [ ] 19. Vista Cultivos: tonalidad fuerte propia por cultivo; lote vacío blanquecino
-- [ ] 20. Croquis en vista lista con el color del cultivo actual
+- [x] 18. Renombrar capa "NDVI"→"Satélite"; nueva capa NDVI REAL (Sentinel Hub si hay key; fallback NASA GIBS MODIS NDVI, gratuito y real) con leyenda tipo rampa
+- [x] 19. Vista Cultivos: tonalidad fuerte propia por cultivo; lote vacío blanquecino
+- [x] 20. Croquis en vista lista con el color del cultivo actual
 
 ## Prescripción
 - [ ] 21. Mapa de prescripción estilo agronómico (zonas coloreadas rojo→verde con dosis numérica por zona, contorno del lote) + brújula (N/S)

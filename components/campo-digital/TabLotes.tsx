@@ -77,7 +77,8 @@ export default function TabLotes() {
     setLoteId(l?.dbId || l?.id || "todos");
   }, [setLoteId]);
   const [view, setView] = useState<"mapa" | "lista">("mapa");
-  const [layer, setLayer] = useState("NDVI");
+  // Vista por defecto: Satélite (imagen). NDVI es el raster de vigor satelital real.
+  const [layer, setLayer] = useState("Satélite");
   const [showAgregar, setShowAgregar] = useState(searchParams.get("modal") === "nuevo");
   const [showEliminar, setShowEliminar] = useState(false);
   const [showEliminarCampo, setShowEliminarCampo] = useState(false);
@@ -645,20 +646,20 @@ function LotesMapa({
   onCancelarCampo?: () => void;
   notasNonce?: number;
 }) {
+  // Leyenda de Cultivos: los cultivos presentes en la vista, con su tonalidad real.
+  const cultivosEnVista = Array.from(new Set(lotes.filter((l) => l.cultivo).map((l) => l.cultivo as string))).slice(0, 6);
   const legendByLayer: Record<string, { color: string; label: string }[]> = {
+    // Rampa NDVI real (raster satelital: marrón = suelo desnudo → verde oscuro = máximo vigor)
     NDVI: [
-      { color: "#1f6e2a", label: "Muy alto (≥0.75)" },
-      { color: "#5e7733", label: "Alto" },
-      { color: "#8ea65a", label: "Medio" },
-      { color: "#d9a538", label: "Bajo" },
-      { color: "#9aa39a", label: "Sin medición" },
+      { color: "#1f6e2a", label: "Vigor muy alto" },
+      { color: "#5e9c48", label: "Alto" },
+      { color: "#a9c169", label: "Medio" },
+      { color: "#e0d492", label: "Bajo" },
+      { color: "#cdb99c", label: "Suelo desnudo" },
     ],
     Cultivos: [
-      { color: "#8ea65a", label: "Soja" },
-      { color: "#c08a22", label: "Maíz" },
-      { color: "#d9a538", label: "Trigo" },
-      { color: "#aabd76", label: "Alfalfa" },
-      { color: "#9aa39a", label: "En descanso" },
+      ...cultivosEnVista.map((c) => ({ color: CULTIVO_COLORES[c] || "#5e7733", label: c })),
+      { color: "#f5f2ea", label: "Vacío" },
     ],
     "Satélite": [],
     Topografía: [
@@ -755,7 +756,7 @@ function LotesMapa({
           </div>
           {vista === "clasica" && (
           <div className="mc-seg">
-            {["NDVI", "Satélite", "Cultivos", "Topografía", "Relieve", "Humedad"].map((l) => (
+            {["Satélite", "NDVI", "Cultivos", "Topografía", "Relieve", "Humedad"].map((l) => (
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
@@ -1345,7 +1346,11 @@ function proyeccionTn(l: LoteUI): number | null {
 /** Croquis: dibuja la forma real del lote (su polígono) normalizado. */
 function LoteCroquis({ lote }: { lote: LoteUI }) {
   const ring = lote.geojson?.coordinates?.[0];
-  const color = lote.cultivoColor || ndviColorList(lote.ndvi);
+  // El croquis toma el COLOR DEL CULTIVO actual (misma paleta que la vista Cultivos);
+  // lote vacío → blanquecino con borde visible.
+  const vacio = lote.vacio || !lote.cultivoColor;
+  const color = vacio ? "#b8b2a3" : (lote.cultivoColor as string);
+  const fill = vacio ? "#f5f2ea" : `${color}55`;
   if (!ring || ring.length < 3) {
     return (
       <div className="row gap-6" style={{ alignItems: "center", color: "var(--mc-text-3)", fontSize: 11.5 }}>
@@ -1367,7 +1372,7 @@ function LoteCroquis({ lote }: { lote: LoteUI }) {
   return (
     <div className="row gap-10" style={{ alignItems: "center" }}>
       <svg width={W} height={H} style={{ flexShrink: 0, borderRadius: 8, background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)" }}>
-        <polygon points={pts} fill={`${color}33`} stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+        <polygon points={pts} fill={fill} stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
       </svg>
       <div style={{ minWidth: 0, fontSize: 11.5 }}>
         <div className="row gap-4" style={{ alignItems: "center", color: "var(--mc-text-2)", fontWeight: 600 }}><Icon name="map" size={11} />{cLat.toFixed(4)}°, {cLng.toFixed(4)}°</div>
