@@ -8,13 +8,30 @@
  *   - SENTINEL_CLIENT_ID
  *   - SENTINEL_CLIENT_SECRET
  * Son del lado servidor (NO NEXT_PUBLIC): nunca se exponen al navegador.
+ * Sirven tanto las de una cuenta clásica (services.sentinel-hub.com) como las del
+ * plan gratuito de Copernicus Data Space (CDSE): el endpoint se detecta solo.
  *
  * Degrada con elegancia: sin credenciales o ante cualquier error, devuelve null
  * y el sistema sigue funcionando (NDVI queda en 0 / "sin medición").
  */
 
-const OAUTH_URL = "https://services.sentinel-hub.com/oauth/token";
-const STATS_URL = "https://services.sentinel-hub.com/api/v1/statistics";
+// Endpoints soportados: cuenta CLÁSICA de Sentinel Hub y plan gratuito de
+// COPERNICUS DATA SPACE (CDSE). Se detecta solo contra cuál valen las
+// credenciales (el primer OAuth que responda queda cacheado); se puede forzar
+// con SENTINEL_HOST=classic | cdse.
+const ENDPOINTS = [
+  {
+    id: "classic",
+    oauth: "https://services.sentinel-hub.com/oauth/token",
+    stats: "https://services.sentinel-hub.com/api/v1/statistics",
+  },
+  {
+    id: "cdse",
+    oauth: "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token",
+    stats: "https://sh.dataspace.copernicus.eu/api/v1/statistics",
+  },
+] as const;
+type Endpoint = (typeof ENDPOINTS)[number];
 
 const EVALSCRIPT_NDVI = `//VERSION=3
 function setup() {
@@ -35,31 +52,48 @@ export function sentinelStatsDisponible(): boolean {
   return Boolean(process.env.SENTINEL_CLIENT_ID && process.env.SENTINEL_CLIENT_SECRET);
 }
 
+let endpointCache: Endpoint | null = null;
 let tokenCache: { token: string; exp: number } | null = null;
 
-async function getToken(): Promise<string | null> {
+function endpointsCandidatos(): readonly Endpoint[] {
+  const forzado = (process.env.SENTINEL_HOST || "").toLowerCase();
+  if (forzado) {
+    const e = ENDPOINTS.find((x) => x.id === forzado || x.oauth.includes(forzado) || x.stats.includes(forzado));
+    if (e) return [e];
+  }
+  return endpointCache ? [endpointCache] : ENDPOINTS;
+}
+
+/** Token OAuth + URL de Statistics del endpoint contra el que valen las credenciales. */
+async function getAuth(): Promise<{ token: string; stats: string } | null> {
   if (!sentinelStatsDisponible()) return null;
   // Reutiliza el token mientras no esté por expirar (margen de 60 s).
-  if (tokenCache && tokenCache.exp - 60_000 > Date.now()) return tokenCache.token;
-  try {
-    const body = new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: process.env.SENTINEL_CLIENT_ID as string,
-      client_secret: process.env.SENTINEL_CLIENT_SECRET as string,
-    });
-    const res = await fetch(OAUTH_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { access_token?: string; expires_in?: number };
-    if (!json.access_token) return null;
-    tokenCache = { token: json.access_token, exp: Date.now() + (json.expires_in ?? 3600) * 1000 };
-    return tokenCache.token;
-  } catch {
-    return null;
+  if (tokenCache && endpointCache && tokenCache.exp - 60_000 > Date.now()) {
+    return { token: tokenCache.token, stats: endpointCache.stats };
   }
+  for (const ep of endpointsCandidatos()) {
+    try {
+      const body = new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: process.env.SENTINEL_CLIENT_ID as string,
+        client_secret: process.env.SENTINEL_CLIENT_SECRET as string,
+      });
+      const res = await fetch(ep.oauth, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as { access_token?: string; expires_in?: number };
+      if (!json.access_token) continue;
+      endpointCache = ep;
+      tokenCache = { token: json.access_token, exp: Date.now() + (json.expires_in ?? 3600) * 1000 };
+      return { token: tokenCache.token, stats: ep.stats };
+    } catch {
+      /* probamos el siguiente endpoint */
+    }
+  }
+  return null;
 }
 
 export type NdviLote = { ndvi: number; fecha: string | null; stale?: boolean };
@@ -79,8 +113,8 @@ export type NdviSerie = {
 export async function ndviDePoligono(
   geometry: GeoJSON.Polygon
 ): Promise<NdviLote | null> {
-  const token = await getToken();
-  if (!token) return null;
+  const auth = await getAuth();
+  if (!auth) return null;
 
   const hoy = new Date();
   const desde = new Date(hoy.getTime() - 90 * 86400000);
@@ -104,11 +138,11 @@ export async function ndviDePoligono(
   };
 
   try {
-    const res = await fetch(STATS_URL, {
+    const res = await fetch(auth.stats, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${auth.token}`,
       },
       body: JSON.stringify(payload),
     });
@@ -144,8 +178,8 @@ export async function ndviDePoligono(
  * de anomalía: compara el último valor contra la media de los anteriores.
  */
 export async function ndviSerieDePoligono(geometry: GeoJSON.Polygon): Promise<NdviSerie | null> {
-  const token = await getToken();
-  if (!token) return null;
+  const auth = await getAuth();
+  if (!auth) return null;
 
   const hoy = new Date();
   const desde = new Date(hoy.getTime() - 180 * 86400000);
@@ -166,9 +200,9 @@ export async function ndviSerieDePoligono(geometry: GeoJSON.Polygon): Promise<Nd
   };
 
   try {
-    const res = await fetch(STATS_URL, {
+    const res = await fetch(auth.stats, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
       body: JSON.stringify(payload),
     });
     if (!res.ok) return null;
