@@ -3,17 +3,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import * as turf from "@turf/turf";
-import { ndviDePoligono, sentinelStatsDisponible } from "@/lib/sentinel";
+import { ndviEstableDePoligono, sentinelStatsDisponible } from "@/lib/sentinel";
 import { getInsight } from "@/lib/insight";
+import { detectarFertilizante, dosisAgronomica, factorRindeZona, rindeReferencia, esLeguminosa, type SueloAnalisis } from "@/lib/prescripcion-agro";
 
 export const maxDuration = 60;
 
 /**
  * POST /api/lotes/[id]/prescripcion
- * Genera un MAPA DE PRESCRIPCIÓN VARIABLE (VRT): divide el lote en una grilla,
- * mide el NDVI por zona (Sentinel Hub) y asigna una dosis variable por zona.
- * Devuelve un GeoJSON listo para descargar/llevar a la maquinaria.
- * Body: { producto, dosisBase (kg/ha o L/ha), estrategia: "compensar"|"potenciar" }
+ * Genera un MAPA DE PRESCRIPCIÓN VARIABLE (VRT) de nivel agronómico:
+ *  - Muestrea NDVI ESTABLE (promedio de ~15 meses de Sentinel-2) → zonas de manejo
+ *    consistentes (no una sola foto que puede tener nubes/heladas).
+ *  - Interpola (IDW) y traza isobandas → zonas orgánicas suaves.
+ *  - Calcula la dosis por ZONA con un modelo de BALANCE DE NUTRIENTES: requerimiento
+ *    del cultivo (rinde objetivo × extracción) − aporte del suelo (análisis real).
+ * Body: { producto, rindeObjetivo? (t/ha), dosisBase? (fallback), estrategia }
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -21,14 +25,26 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { id } = await context.params;
     if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const lote = await prisma.lote.findUnique({ where: { id } });
+    // Lote + último análisis de suelo (resiliente: si la relación no está disponible
+    // en la base, sigue con los datos básicos del lote y sin aporte de suelo).
+    let lote: Awaited<ReturnType<typeof prisma.lote.findUnique>> & { analisisSuelo?: Array<{ nitrogeno: number | null; fosforo: number | null; potasio: number | null; pH: number | null; materiaOrganica: number | null }> };
+    try {
+      lote = await prisma.lote.findUnique({ where: { id }, include: { analisisSuelo: { orderBy: { fechaAnalisis: "desc" }, take: 1 } } }) as typeof lote;
+    } catch {
+      lote = await prisma.lote.findUnique({ where: { id } }) as typeof lote;
+    }
     if (!lote || lote.userId !== session.user.id) return NextResponse.json({ error: "Lote no encontrado" }, { status: 404 });
     if (!lote.coordenadas) return NextResponse.json({ error: "El lote no tiene geometría dibujada" }, { status: 400 });
 
     const body = await request.json().catch(() => ({}));
-    const producto: string = body.producto || "Fertilizante";
-    const dosisBase: number = Number(body.dosisBase) || 100;
+    const producto: string = body.producto || "Urea";
+    const dosisBase: number = Number(body.dosisBase) || 120;
+    const rindeObjetivo: number | null = Number(body.rindeObjetivo) > 0 ? Number(body.rindeObjetivo) : null;
     const estrategia: "compensar" | "potenciar" = body.estrategia === "potenciar" ? "potenciar" : "compensar";
+    const suelo: SueloAnalisis = lote.analisisSuelo?.[0]
+      ? { nitrogeno: lote.analisisSuelo[0].nitrogeno, fosforo: lote.analisisSuelo[0].fosforo, potasio: lote.analisisSuelo[0].potasio, pH: lote.analisisSuelo[0].pH, materiaOrganica: lote.analisisSuelo[0].materiaOrganica }
+      : null;
+    const cultivo = lote.cultivo;
 
     let geojson: GeoJSON.Polygon;
     try { geojson = JSON.parse(lote.coordenadas); } catch { return NextResponse.json({ error: "Geometría inválida" }, { status: 400 }); }
@@ -66,20 +82,22 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     let sentinel = sentinelStatsDisponible();
     const bufKm = Math.max(0.03, cellKm / 2);
     let controles: { lng: number; lat: number; ndvi: number }[];
+    let fechasNdvi = 0; // promedio de fechas Sentinel usadas por punto (evidencia de "estable")
     if (sentinel) {
-      // Muestreo satelital con TIMEOUT global: si Sentinel tarda o falla, caemos al
-      // gradiente demo para que el mapa igual salga (marcado como estimación).
+      // Muestreo satelital de NDVI ESTABLE (promedio de ~15 meses) por punto, con
+      // TIMEOUT global: si Sentinel tarda o falla, caemos al gradiente demo.
       const consultas = muestra.map((pt) => {
         const circ = turf.buffer(pt, bufKm, { units: "kilometers" });
-        return (circ ? ndviDePoligono(circ.geometry as GeoJSON.Polygon) : Promise.resolve(null)).catch(() => null);
+        return (circ ? ndviEstableDePoligono(circ.geometry as GeoJSON.Polygon) : Promise.resolve(null)).catch(() => null);
       });
       const res = await Promise.race([
         Promise.all(consultas),
-        new Promise<null>((r) => setTimeout(() => r(null), 22_000)),
+        new Promise<null>((r) => setTimeout(() => r(null), 35_000)),
       ]);
-      const validos = (res || []).filter((n): n is NonNullable<typeof n> => n?.ndvi != null).map((n) => n.ndvi);
-      if (res && validos.length > 0) {
-        const media = validos.reduce((s, v) => s + v, 0) / validos.length;
+      const validas = (res || []).filter((n): n is NonNullable<typeof n> => n?.ndvi != null);
+      if (res && validas.length > 0) {
+        const media = validas.reduce((s, v) => s + v.ndvi, 0) / validas.length;
+        fechasNdvi = Math.round(validas.reduce((s, v) => s + v.fechas, 0) / validas.length);
         controles = muestra.map((pt, i) => ({ lng: pt.geometry.coordinates[0], lat: pt.geometry.coordinates[1], ndvi: res[i]?.ndvi ?? media }));
       } else {
         sentinel = false;
@@ -115,15 +133,53 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     // Colapsa breaks repetidos (lote muy homogéneo) para que isobands no falle.
     for (let i = 1; i < breaks.length; i++) if (breaks[i] <= breaks[i - 1]) breaks[i] = breaks[i - 1] + 1e-6;
 
-    // Dosis por zona (según estrategia) y color por DOSIS (rojo=baja → verde=alta),
-    // independiente de la estrategia elegida.
-    const FACTOR: Record<Zona, number> = estrategia === "compensar"
-      ? { "Muy bajo": 1.3, Bajo: 1.15, Medio: 1.0, Alto: 0.88, "Muy alto": 0.78 }   // más insumo donde el vigor es bajo
-      : { "Muy bajo": 0.78, Bajo: 0.88, Medio: 1.0, Alto: 1.15, "Muy alto": 1.3 }; // más insumo donde hay potencial
+    // NDVI representativo de cada zona (punto medio de su rango) y del lote.
+    const ndviMedio = vals.reduce((s, v) => s + v, 0) / vals.length;
+    const ndviZona = ZONAS.map((_, i) => (breaks[i] + breaks[i + 1]) / 2);
+
+    // DOSIS POR ZONA — modelo agronómico (balance de nutrientes) si se reconoce el
+    // fertilizante; si no, fallback simple (dosis base × factor por estrategia).
     const RAMPA_DOSIS = ["#d7191c", "#fdae61", "#f5e04e", "#a6d96a", "#1a9641"];
-    const dosisZona = ZONAS.map((z) => Math.round(dosisBase * FACTOR[z]));
+    const fert = detectarFertilizante(producto);
+    const rinde = rindeObjetivo ?? rindeReferencia(cultivo);
+    let dosisZona: number[];
+    let modelo: "agronómico" | "simple";
+    let detalleAgro: {
+      fertilizante: string; nutriente: "N" | "P" | "K"; pctNutriente: number;
+      cultivo: string; rindeObjetivo: number; requerimiento: number; aporteSuelo: number;
+      dosisLote: number; detalle: string; conSuelo: boolean; advertencia: string | null;
+    } | null = null;
+    if (fert) {
+      modelo = "agronómico";
+      dosisZona = ZONAS.map((_, i) => {
+        const rindeZ = rinde * factorRindeZona(ndviZona[i], ndviMedio, estrategia);
+        return Math.max(0, dosisAgronomica({ fert, cultivo, rinde: rindeZ, suelo }).dosis);
+      });
+      const loteAgro = dosisAgronomica({ fert, cultivo, rinde, suelo });
+      const legN = fert.nutriente === "N" && esLeguminosa(cultivo);
+      detalleAgro = {
+        fertilizante: fert.etiqueta, nutriente: fert.nutriente, pctNutriente: fert.pct,
+        cultivo: cultivo || "genérico", rindeObjetivo: Math.round(rinde * 10) / 10,
+        requerimiento: loteAgro.requerido, aporteSuelo: loteAgro.aporte, dosisLote: loteAgro.dosis,
+        detalle: loteAgro.detalle, conSuelo: !!suelo,
+        advertencia: legN ? `${cultivo} fija nitrógeno: no requiere fertilización nitrogenada. Para P o K, elegí DAP/MAP o cloruro de potasio.` : null,
+      };
+    } else {
+      modelo = "simple";
+      const FACTOR: Record<Zona, number> = estrategia === "compensar"
+        ? { "Muy bajo": 1.3, Bajo: 1.15, Medio: 1.0, Alto: 0.88, "Muy alto": 0.78 }
+        : { "Muy bajo": 0.78, Bajo: 0.88, Medio: 1.0, Alto: 1.15, "Muy alto": 1.3 };
+      dosisZona = ZONAS.map((z) => Math.round(dosisBase * FACTOR[z]));
+    }
+
+    // Color: por DOSIS (rojo=baja → verde=alta) si hay variación; si todas las dosis
+    // son iguales (lote homogéneo o dosis 0), por VIGOR NDVI para que el mapa igual hable.
     const colorZona: string[] = new Array(ZONAS.length);
-    dosisZona.map((d, i) => ({ i, d })).sort((a, b) => a.d - b.d).forEach((o, rank) => { colorZona[o.i] = RAMPA_DOSIS[Math.min(rank, RAMPA_DOSIS.length - 1)]; });
+    if (new Set(dosisZona).size > 1) {
+      dosisZona.map((d, i) => ({ i, d })).sort((a, b) => a.d - b.d).forEach((o, rank) => { colorZona[o.i] = RAMPA_DOSIS[Math.min(rank, RAMPA_DOSIS.length - 1)]; });
+    } else {
+      ZONAS.forEach((_, i) => { colorZona[i] = RAMPA_DOSIS[i]; });
+    }
 
     // 4) ISOBANDAS (curvas de nivel rellenas) → recorte al lote → un polígono por
     //    porción de zona. Da el aspecto orgánico y suave de un mapa de prescripción.
@@ -161,16 +217,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
     if (features.length === 0) return NextResponse.json({ error: "No se pudo zonificar el lote" }, { status: 422 });
 
-    // 5) RESUMEN (ahorro de insumo vs dosis fija).
+    // 5) RESUMEN (ahorro de insumo vs dosis uniforme).
+    const dosisUniforme = modelo === "agronómico" && detalleAgro ? detalleAgro.dosisLote : dosisBase;
     const prodTotal = haPorZona.reduce((s, ha, i) => s + ha * dosisZona[i], 0);
-    const prodUniforme = dosisBase * areaTotalHa;
+    const prodUniforme = dosisUniforme * areaTotalHa;
     const ahorroPct = prodUniforme > 0 ? Math.round(((prodUniforme - prodTotal) / prodUniforme) * 100) : 0;
-    const zonas = ZONAS.map((z, i) => ({ zona: z, dosis: dosisZona[i], ha: Math.round(haPorZona[i] * 10) / 10, color: colorZona[i] })).filter((z) => z.ha > 0);
+    const zonas = ZONAS.map((z, i) => ({ zona: z, dosis: dosisZona[i], ha: Math.round(haPorZona[i] * 10) / 10, color: colorZona[i], ndvi: Math.round(ndviZona[i] * 100) / 100 })).filter((z) => z.ha > 0);
 
     return NextResponse.json({
-      producto, dosisBase, estrategia, fuente: sentinel ? "Sentinel-2" : "estimado",
-      // Sin NDVI satelital real (Sentinel), la zonificación es una estimación demostrativa.
+      producto, dosisBase, estrategia, modelo,
+      fuente: sentinel ? `Sentinel-2 · NDVI estable (~${fechasNdvi} fechas)` : "estimado",
       simulado: !sentinel,
+      agro: detalleAgro,
       areaHa: Math.round(areaTotalHa * 10) / 10,
       resumen: { celdas: zonas.length, prodTotal: Math.round(prodTotal), prodUniforme: Math.round(prodUniforme), ahorroPct, zonas },
       geojson: { type: "FeatureCollection", features },

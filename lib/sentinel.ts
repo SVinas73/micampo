@@ -251,6 +251,66 @@ export async function ndviDePoligono(
   }
 }
 
+export type NdviEstable = { ndvi: number; fechas: number; cv: number };
+
+/**
+ * NDVI ESTABLE de un polígono: promedio temporal del NDVI sobre ~15 meses
+ * (intervalos mensuales), en vez de una sola foto reciente. Sirve para zonas de
+ * manejo estables — separa lo que rinde consistentemente bien/mal de un bache
+ * puntual (una nube, una helada). Devuelve la media, la cantidad de fechas válidas
+ * y el coeficiente de variación (estabilidad). Null si no hay credenciales/datos.
+ */
+export async function ndviEstableDePoligono(
+  geometry: GeoJSON.Polygon,
+  dias = 450
+): Promise<NdviEstable | null> {
+  const auth = await getAuth();
+  if (!auth) return null;
+
+  const hoy = new Date();
+  const desde = new Date(hoy.getTime() - dias * 86400000);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+  const payload = {
+    input: {
+      bounds: { geometry, properties: { crs: "http://www.opengis.net/def/crs/EPSG/0/4326" } },
+      data: [{ type: "sentinel-2-l2a", dataFilter: { maxCloudCoverage: 40 } }],
+    },
+    aggregation: {
+      timeRange: { from: `${iso(desde)}T00:00:00Z`, to: `${iso(hoy)}T23:59:59Z` },
+      aggregationInterval: { of: "P30D" },
+      evalscript: EVALSCRIPT_NDVI,
+      resx: 10,
+      resy: 10,
+    },
+  };
+
+  try {
+    const res = await fetch(auth.stats, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      data?: Array<{ outputs?: { ndvi?: { bands?: { B0?: { stats?: { mean?: number; sampleCount?: number; noDataCount?: number } } } } } }>;
+    };
+    const vals: number[] = [];
+    for (const it of json.data ?? []) {
+      const stats = it?.outputs?.ndvi?.bands?.B0?.stats;
+      const valido = stats && typeof stats.mean === "number" && !Number.isNaN(stats.mean) &&
+        (stats.sampleCount ?? 0) - (stats.noDataCount ?? 0) > 0;
+      if (valido) vals.push(Math.max(0, Math.min(1, stats!.mean as number)));
+    }
+    if (vals.length === 0) return null;
+    const media = vals.reduce((s, v) => s + v, 0) / vals.length;
+    const sd = Math.sqrt(vals.reduce((s, v) => s + (v - media) ** 2, 0) / vals.length);
+    return { ndvi: Number(media.toFixed(3)), fechas: vals.length, cv: media > 0 ? Number((sd / media).toFixed(3)) : 0 };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Serie temporal de NDVI (un punto cada ~15 días, últimos 180 días) + detección
  * de anomalía: compara el último valor contra la media de los anteriores.
