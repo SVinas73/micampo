@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Icon } from "@/components/mc";
+
+// Mapa satelital real (vista plana) para elegir lotes — solo en cliente (MapLibre).
+const MapaLotesSelector = dynamic(() => import("./labores-MapaLotes"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 13 }}>Cargando mapa…</div>
+  ),
+});
 
 /* ============================================================
    Wizard "Nueva Orden de Labor" — 6 pasos, fiel al Figma:
@@ -88,11 +97,36 @@ export function NuevaOrdenLaborModal({
   // Inventario y maquinaria reales.
   const [productos, setProductos] = useState<ProdApi[]>([]);
   const [maquinas, setMaquinas] = useState<MaqApi[]>([]);
+  // Geometría real de los lotes (para el mapa satelital de selección), por id.
+  const [geomById, setGeomById] = useState<Record<string, { type: "Polygon"; coordinates: number[][][] }>>({});
 
   useEffect(() => {
     fetch("/api/productos").then((r) => (r.ok ? r.json() : [])).then((d) => { if (Array.isArray(d)) setProductos(d); }).catch(() => {});
     fetch("/api/maquinaria").then((r) => (r.ok ? r.json() : [])).then((d) => { if (Array.isArray(d)) setMaquinas(d); }).catch(() => {});
+    fetch("/api/lotes").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      if (!Array.isArray(d)) return;
+      const m: Record<string, { type: "Polygon"; coordinates: number[][][] }> = {};
+      d.forEach((r: { id?: string; coordenadas?: unknown }) => {
+        if (r.id && typeof r.coordenadas === "string" && r.coordenadas) {
+          try { const g = JSON.parse(r.coordenadas); if (g?.type === "Polygon" && Array.isArray(g.coordinates)) m[r.id] = g; } catch { /* geometría inválida */ }
+        }
+      });
+      setGeomById(m);
+    }).catch(() => {});
   }, []);
+
+  // Lotes con geometría real, para el mapa de selección (índice = posición en la lista).
+  const lotesGeo = useMemo(
+    () => lotesDisponibles
+      .map((l, idx) => ({ idx, nombre: l.nombre, ha: l.ha, geojson: l.id ? geomById[l.id] : undefined }))
+      .filter((l): l is { idx: number; nombre: string; ha: number; geojson: { type: "Polygon"; coordinates: number[][][] } } => !!l.geojson),
+    [lotesDisponibles, geomById]
+  );
+  const toggleLote = (idx: number) => setLotesSel((prev) => {
+    const n = new Set(prev);
+    if (n.has(idx)) n.delete(idx); else n.add(idx);
+    return n;
+  });
 
   const maqLabel = (m: MaqApi) => `${m.marca} ${m.modelo}${m.tipo ? ` · ${m.tipo}` : ""}`;
   const tractorSel = maquinas.find((m) => m.id === tractorId) || null;
@@ -328,32 +362,22 @@ export function NuevaOrdenLaborModal({
                       );
                     })}
                   </div>
-                  <div className="mc-map" style={{ minHeight: 320, position: "relative" }}>
-                    <div className="mc-map__grid"></div>
-                    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox="0 0 500 360" preserveAspectRatio="xMidYMid slice">
-                      {lotesDisponibles.slice(0, 4).map((l, i) => {
-                        const sel = lotesSel.has(i);
-                        const polys = ["60,60 240,50 260,170 70,180", "260,170 70,180 80,300 270,310", "260,60 430,70 445,190 280,180", "445,190 280,180 275,300 440,315"];
-                        return (
-                          <g key={i}>
-                            <polygon points={polys[i % 4]} fill={sel ? "#768f44" : "#d5d9d2"} opacity={sel ? 0.85 : 0.5} stroke={sel ? "#4a5e29" : "#8a938d"} strokeWidth={sel ? 3 : 1.5} />
-                            <text x={polys[i % 4].split(" ")[0].split(",")[0]} y={polys[i % 4].split(" ")[0].split(",")[1]} dx="30" dy="60" fontSize="12" fontWeight="700" fill={sel ? "white" : "#58645c"}>{l.nombre}</text>
-                          </g>
-                        );
-                      })}
-                      <ellipse cx="330" cy="270" rx="28" ry="16" fill="#7a4a2a" opacity="0.75" stroke="#c93434" strokeWidth="2" />
-                    </svg>
-                    <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(255,255,255,0.96)", padding: "12px 16px", borderRadius: 10, fontSize: 12.5, boxShadow: "var(--sh-md)" }}>
+                  {/* Mapa satelital REAL (vista plana): tocá los lotes para elegirlos */}
+                  <div className="mc-map" style={{ minHeight: 360, position: "relative", overflow: "hidden", borderRadius: 12 }}>
+                    {lotesGeo.length > 0 ? (
+                      <MapaLotesSelector lotes={lotesGeo} seleccionados={lotesSel} onToggle={toggleLote} />
+                    ) : (
+                      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", padding: 24, color: "var(--mc-text-3)", fontSize: 13, lineHeight: 1.5 }}>
+                        Estos lotes todavía no tienen su contorno dibujado.<br />Seleccionalos de la lista; dibujá sus polígonos en <b>Campo Digital → Lotes</b> para verlos y elegirlos en el mapa.
+                      </div>
+                    )}
+                    {/* Resumen de área — arriba a la izquierda (los controles de zoom van abajo-derecha) */}
+                    <div style={{ position: "absolute", top: 12, left: 12, background: "rgba(255,255,255,0.96)", padding: "12px 16px", borderRadius: 10, fontSize: 12.5, boxShadow: "var(--sh-md)", zIndex: 5 }}>
                       <div className="row" style={{ justifyContent: "space-between", gap: 20 }}><span>Área Bruta:</span><b>{haBrutas} Ha</b></div>
                       <div className="row" style={{ justifyContent: "space-between", gap: 20, color: "var(--mc-red)" }}><span>Exclusiones:</span><b>-{haBrutas - haNetas} Ha</b></div>
                       <div className="mc-divider"></div>
                       <div className="row" style={{ justifyContent: "space-between", gap: 20, fontSize: 13.5 }}><span className="font-semi">Área Neta Laborable:</span><b>{haNetas} Ha</b></div>
                     </div>
-                    {lotesSel.size > 1 && (
-                      <div style={{ position: "absolute", bottom: 12, right: 12, background: "var(--mc-red-bg)", color: "var(--mc-red)", padding: "4px 12px", borderRadius: 999, fontSize: 11, fontWeight: 600 }}>
-                        Zona de Exclusión (Laguna)
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

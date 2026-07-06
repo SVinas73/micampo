@@ -442,7 +442,7 @@ function ClimaInicio({ actual, onVerDetalle, dias, lugar, horas, lat, lon, marca
       {actual && (
         <div className="mc-card" style={{ padding: 0, overflow: "hidden", border: "none" }}>
           <WeatherScene cond={actual.cond || actual.icono} windy={(actual.viento ?? 0) >= 25} night={actual.esDeNoche} style={{ color: "#fff" }}>
-          <div style={{ padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, position: "relative" }}>
+          <div style={{ padding: "20px 150px 20px 24px", display: "flex", alignItems: "center", justifyContent: "flex-start", flexWrap: "wrap", gap: 18, position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 18, position: "relative" }}>
               <span style={{ width: 92, height: 92, borderRadius: "50%", background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", display: "grid", placeItems: "center", boxShadow: "0 8px 22px rgba(0,0,0,0.18)", flexShrink: 0, backdropFilter: "blur(10px) saturate(1.1)", WebkitBackdropFilter: "blur(10px) saturate(1.1)" }}>
                 <AnimatedWeatherIcon cond={actual.cond || actual.icono} size={66} night={actual.esDeNoche} />
