@@ -69,7 +69,6 @@ type Props = {
   ndviVisible?: boolean; // raster NDVI real (Sentinel-2 / NASA GIBS)
   rx?: RxMapa | null; // mapa de prescripción (vector + dosis) generado desde la ficha
   rxVisible?: boolean;
-  onRxCerrar?: () => void; // oculta la capa de prescripción (desde su leyenda)
   selectedId?: string | null;
   layer: string; // "NDVI" | "Satélite" | "Cultivos"
   onSelect: (id: string) => void;
@@ -198,7 +197,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
-export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVisible = false, rx = null, rxVisible = false, onRxCerrar, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onEliminarNota, onCampoConLotes }: Props) {
+export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVisible = false, rx = null, rxVisible = false, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onEliminarNota, onCampoConLotes }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -717,41 +716,6 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
         <div className="mc-lupa__mapa" />
         <div className="mc-lupa__cruz" />
       </div>
-
-      {/* Leyenda de dosis de prescripción — abajo a la derecha, estilo cuadro GIS
-          clásico. (La leyenda NDVI se quitó a pedido; el degradado ya se entiende
-          en el propio raster.) */}
-      {rxVisible && !!rx?.fc?.features?.length && (
-        <div style={{ position: "absolute", right: 16, bottom: 118, zIndex: 520 }}>
-          <div style={{ background: "rgba(255,255,255,0.96)", borderRadius: 10, padding: "10px 12px", boxShadow: "0 4px 18px rgba(0,0,0,0.28)", border: "1px solid rgba(0,0,0,0.08)", maxWidth: 240 }}>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 7 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.05em", color: "#1c2417" }}>DOSIS DE PRESCRIPCIÓN (kg/ha)</div>
-              {onRxCerrar && (
-                <button onClick={onRxCerrar} aria-label="Ocultar capa de prescripción" title="Ocultar capa de prescripción" style={{ border: "none", background: "none", cursor: "pointer", color: "#6b7263", display: "grid", placeItems: "center", padding: 2, flexShrink: 0 }}>
-                  <Icon name="x" size={12} />
-                </button>
-              )}
-            </div>
-            <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-              {Array.from(
-                new Map(
-                  (rx.fc.features as GeoJSON.Feature[]).map((f) => {
-                    const p = (f.properties || {}) as { dosis?: number; color?: string };
-                    return [p.dosis ?? 0, p.color || "#5e7733"] as [number, string];
-                  })
-                ).entries()
-              )
-                .sort((a, b) => a[0] - b[0])
-                .map(([dosis, color]) => (
-                  <span key={dosis} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "#1c2417" }}>
-                    <span style={{ width: 12, height: 12, borderRadius: 3, background: color, border: "1px solid rgba(0,0,0,0.18)" }} />
-                    {dosis}
-                  </span>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Controles dibujo / terreno */}
       {!drawing ? (

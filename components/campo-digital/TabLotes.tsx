@@ -9,7 +9,6 @@ import {
   mapLotesApi, fechaCorta, CULTIVO_COLORES,
   type LoteUI,
 } from "./lotes-data";
-import type { RxMapa } from "./MapaLibre";
 
 // Mapa satelital con terreno 3D (MapLibre GL) — solo en cliente
 // Vista Clásica: mapa satelital con relieve 3D/plano (MapLibre GL)
@@ -731,10 +730,6 @@ function LotesMapa({
     if (delimitando) onReArmar?.();
   };
   const [fichaOpen, setFichaOpen] = useState(false);
-  // Capa de prescripción (vector + dosis): se activa sola al generar el mapa desde
-  // la ficha del lote y se oculta desde su leyenda (abajo a la derecha).
-  const [rxOn, setRxOn] = useState(false);
-  const [rxMapa, setRxMapa] = useState<RxMapa | null>(null);
   const [online, setOnline] = useState(true);
   // Economía por lote para el gemelo Campo 3D (altura/color por margen/costo).
   const [economia, setEconomia] = useState<Record<string, { margenPorHa: number; costoPorHa: number; margen: number; fuente: string }>>({});
@@ -818,9 +813,6 @@ function LotesMapa({
           lotes={lotesGeo}
           notas={notasGeo}
           ndviVisible={layer === "NDVI"}
-          rx={rxMapa}
-          rxVisible={rxOn}
-          onRxCerrar={() => setRxOn(false)}
           selectedId={selected?.id ?? null}
           layer={layer}
           onSelect={(id: string) => onSelect(lotes.find((l) => l.id === id) || null)}
@@ -888,7 +880,6 @@ function LotesMapa({
                 onNota={() => { setFichaOpen(false); onNota(selected); }}
                 onEditar={() => { setFichaOpen(false); onEditar(selected); }}
                 onTarea={() => { setFichaOpen(false); onTarea(selected); }}
-                onRxGenerada={(r) => { setRxMapa(r); setRxOn(true); }}
               />
             </div>
           </div>
@@ -913,14 +904,13 @@ function LotesMapa({
 type HistItem = { fechaMs: number; fecha: string; tipo: string; detail: string };
 
 function LoteFichaTecnica({
-  lote, onClose, onNota, onEditar, onTarea, onRxGenerada,
+  lote, onClose, onNota, onEditar, onTarea,
 }: {
   lote: LoteUI;
   onClose: () => void;
   onNota: () => void;
   onEditar: () => void;
   onTarea: () => void;
-  onRxGenerada?: (rx: RxMapa) => void;
 }) {
   const [innerTab, setInnerTab] = useState("Resumen");
   const [cargando, setCargando] = useState(true);
@@ -1131,7 +1121,7 @@ function LoteFichaTecnica({
       )}
 
       {innerTab === "Prescripción" && (
-        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} loteGeo={lote.geojson} onRxGenerada={onRxGenerada} />
+        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} loteGeo={lote.geojson} />
           : <FichaVacio texto="Dibujá el lote en el mapa para generar un mapa de prescripción variable." />
       )}
 
@@ -1156,7 +1146,7 @@ type Prescripcion = {
   geojson: { type: "FeatureCollection"; features: { geometry: { type: "Polygon"; coordinates: number[][][] }; properties: { ndvi: number; zona: string; dosis: number; color: string; areaHa?: number } }[] };
 };
 
-function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string; loteName: string; loteGeo?: { type: "Polygon"; coordinates: number[][][] } | null; onRxGenerada?: (rx: RxMapa) => void }) {
+function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: string; loteGeo?: { type: "Polygon"; coordinates: number[][][] } | null }) {
   const [producto, setProducto] = useState("Urea");
   const [dosisBase, setDosisBase] = useState("120");
   const [estrategia, setEstrategia] = useState<"compensar" | "potenciar">("compensar");
@@ -1181,7 +1171,6 @@ function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string;
       if (d.error) { setError(d.error); return; }
       if (!d.geojson?.features?.length) { setError("No se pudieron generar zonas para este lote."); return; }
       setRes(d);
-      onRxGenerada?.({ fc: d.geojson, contorno: loteGeo ?? null });
     } catch (e) {
       setError(e instanceof DOMException && e.name === "AbortError"
         ? "La generación tardó demasiado. Probá de nuevo."
@@ -1201,13 +1190,13 @@ function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string;
     a.click(); URL.revokeObjectURL(a.href);
   };
 
-  // Mapa de prescripción estilo agronómico: zonas orgánicas coloreadas por dosis
-  // SOBRE la imagen satelital real del lote, dosis numérica nítida por zona,
-  // contorno rojo del lote, brújula (N) y escala discreta de dosis.
+  // Mapa de prescripción estilo agronómico: zonas de manejo orgánicas (isobandas
+  // suaves) coloreadas por dosis SOBRE la imagen satelital real del lote, dosis
+  // numérica por zona, contorno rojo, brújula (N) y leyenda discreta de dosis.
   const Mapa = () => {
     if (!res?.geojson.features.length) return null;
     const feats = res.geojson.features;
-    const W = 420, H = 280;
+    const W = 460, H = 300;
 
     // Proyección Web Mercator (la misma de la imagen satelital) para que el fondo
     // calce exacto con las zonas, sin deformación.
@@ -1229,6 +1218,8 @@ function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string;
     const sc = W / spanX;
     const projXY = (p: number[]): [number, number] => [(mx(p[0]) - x0) * sc, (y1 - my(p[1])) * sc];
     const proj = (p: number[]) => { const [x, y] = projXY(p); return `${x.toFixed(1)},${y.toFixed(1)}`; };
+    // Cada zona puede tener huecos (anillos interiores) → path con fill-rule evenodd.
+    const pathDe = (rings: number[][][]) => rings.map((r) => `M${r.map(proj).join("L")}Z`).join(" ");
 
     // Imagen satelital REAL del encuadre (Esri World Imagery, misma fuente que el mapa).
     const satUrl =
@@ -1236,44 +1227,41 @@ function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string;
       `?bbox=${x0.toFixed(1)},${(cy0 - spanY / 2).toFixed(1)},${(cx0 + spanX / 2).toFixed(1)},${y1.toFixed(1)}` +
       `&bboxSR=3857&imageSR=3857&size=${W * 2},${H * 2}&format=jpg&f=image`;
 
-    // El color lo define el servidor (rampa discreta por dosis, misma en toda la app).
+    // Leyenda: una casilla por dosis real, ordenada de menor a mayor.
     const dosisOrdenadas = [...res.resumen.zonas].sort((a, b) => a.dosis - b.dosis);
-    const centro = (ring: number[][]): [number, number] => {
-      const [sx, sy] = ring.reduce((a, p) => { const [x, y] = projXY(p); return [a[0] + x, a[1] + y]; }, [0, 0]);
-      return [sx / ring.length, sy / ring.length];
-    };
-    // Área en píxeles (shoelace) para etiquetar solo las zonas donde el número entra.
-    const areaPx = (ring: number[][]): number => {
-      let s = 0;
-      for (let i = 0; i < ring.length; i++) {
-        const [xa, ya] = projXY(ring[i]);
-        const [xb, yb] = projXY(ring[(i + 1) % ring.length]);
-        s += xa * yb - xb * ya;
-      }
-      return Math.abs(s / 2);
+
+    // Punto de etiqueta DENTRO de cada zona (respeta huecos): centroide si cae
+    // dentro; si no (zona cóncava o con hueco), un punto garantizado en la superficie.
+    const puntoEtiqueta = (coords: number[][][]): [number, number] | null => {
+      try {
+        const f = turf.polygon(coords);
+        if (turf.area(f) / 10000 < 0.25) return null; // zona chica: sin número, no amontona
+        let p = turf.centroid(f);
+        if (!turf.booleanPointInPolygon(p, f)) p = turf.pointOnFeature(f);
+        return projXY(p.geometry.coordinates);
+      } catch { return null; }
     };
 
     return (
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ borderRadius: 10, background: "#dbd6c8", border: "1px solid var(--mc-line)" }}>
         {/* Fondo satelital real (si no carga, queda el fondo neutro del SVG) */}
         <image href={satUrl} x={0} y={0} width={W} height={H} preserveAspectRatio="none" />
-        {/* Zonas de manejo coloreadas por dosis */}
+        {/* Zonas de manejo coloreadas por dosis (con huecos vía evenodd) */}
         {feats.map((f, i) => (
-          <polygon key={i} points={f.geometry.coordinates[0].map(proj).join(" ")} fill={f.properties.color || "#5e7733"} fillOpacity={0.88} stroke="#4a4436" strokeWidth={0.7} strokeLinejoin="round">
+          <path key={i} d={pathDe(f.geometry.coordinates)} fillRule="evenodd" fill={f.properties.color || "#5e7733"} fillOpacity={0.82} stroke="#3f3a30" strokeWidth={0.5} strokeLinejoin="round">
             <title>{f.properties.zona} · NDVI {f.properties.ndvi} · {f.properties.dosis} kg/ha</title>
-          </polygon>
+          </path>
         ))}
         {/* Contorno del lote en rojo (límite de la prescripción) */}
         {loteGeo?.coordinates?.[0]?.length ? (
           <polygon points={loteGeo.coordinates[0].map(proj).join(" ")} fill="none" stroke="#d92b2b" strokeWidth={2.4} strokeLinejoin="round" />
         ) : null}
-        {/* Dosis numérica en el centro de cada zona legible (halo blanco) */}
+        {/* Dosis numérica en el interior de cada zona legible (halo blanco) */}
         {feats.map((f, i) => {
-          const ring = f.geometry.coordinates[0];
-          if (areaPx(ring) < 360) return null;
-          const [cx, cy] = centro(ring);
+          const pt = puntoEtiqueta(f.geometry.coordinates);
+          if (!pt) return null;
           return (
-            <text key={`t${i}`} x={cx} y={cy + 4} fontSize="13" fontFamily="var(--ff-ui)" fontWeight={800} fill="#1c2417" stroke="#ffffff" strokeWidth={3} paintOrder="stroke" textAnchor="middle">
+            <text key={`t${i}`} x={pt[0]} y={pt[1] + 4} fontSize="13" fontFamily="var(--ff-ui)" fontWeight={800} fill="#1c2417" stroke="#ffffff" strokeWidth={3} paintOrder="stroke" textAnchor="middle">
               {f.properties.dosis}
             </text>
           );
@@ -1285,14 +1273,14 @@ function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string;
           <path d="M 0 11 L 4 4 L 0 6.5 L -4 4 Z" fill="#5b5244" opacity="0.55" />
           <text y="-1.5" x="7.5" fontSize="8.5" fontWeight={800} fill="#1c2417" textAnchor="middle">N</text>
         </g>
-        {/* Escala discreta de dosis (kg/ha), una casilla por dosis real */}
-        <g transform={`translate(12, ${H - 34})`}>
-          <rect x={-6} y={-14} width={dosisOrdenadas.length * 40 + 12} height={42} rx={8} fill="rgba(20,26,16,0.55)" />
-          <text x={0} y={-3} fontSize="8.5" fontWeight={800} fill="#ffffff">kg/ha</text>
+        {/* Leyenda discreta de dosis (kg/ha) abajo a la izquierda, como la referencia */}
+        <g transform={`translate(12, ${H - 44})`}>
+          <rect x={-6} y={-4} width={dosisOrdenadas.length * 42 + 12} height={40} rx={8} fill="rgba(20,26,16,0.6)" />
+          <text x={0} y={9} fontSize="9" fontWeight={800} fill="#ffffff" letterSpacing="0.04em">kg/ha</text>
           {dosisOrdenadas.map((z, i) => (
-            <g key={z.zona} transform={`translate(${i * 40}, 2)`}>
-              <rect width="40" height="10" fill={z.color} stroke="#ffffff" strokeWidth="0.6" />
-              <text x="20" y="21" fontSize="9" fontWeight={800} fill="#ffffff" textAnchor="middle">{z.dosis}</text>
+            <g key={z.zona} transform={`translate(${i * 42}, 14)`}>
+              <rect width="42" height="11" fill={z.color} stroke="#ffffff" strokeWidth="0.6" />
+              <text x="21" y="22" fontSize="9.5" fontWeight={800} fill="#ffffff" textAnchor="middle">{z.dosis}</text>
             </g>
           ))}
         </g>
@@ -1338,13 +1326,9 @@ function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string;
               </div>
             ))}
           </div>
-          <div className="text-xs" style={{ color: "var(--mc-green-700)", display: "flex", alignItems: "center", gap: 5 }}>
-            <Icon name="check" size={12} />La capa <b>Prescripción</b> quedó activa en el mapa (se oculta con la ✕ de su leyenda, abajo a la derecha).
-          </div>
-          {res.simulado ? (
-            <div className="text-xs text-muted" title="La descarga para maquinaria requiere NDVI satelital real (Sentinel)">Descarga no disponible en modo demostración (requiere NDVI satelital real).</div>
-          ) : (
-            <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargar}><Icon name="download" size={13} />Descargar GeoJSON (para maquinaria)</button>
+          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargar}><Icon name="download" size={13} />Descargar GeoJSON (para maquinaria)</button>
+          {res.simulado && (
+            <div className="text-xs text-muted">Zonificación estimada (sin NDVI satelital disponible en este momento). El mapa y la descarga funcionan igual.</div>
           )}
         </div>
       )}
