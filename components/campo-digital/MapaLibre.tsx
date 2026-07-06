@@ -181,97 +181,11 @@ function notaPopupHtml(nombre: string, nota: string, prioridad?: string | null):
   );
 }
 
+// Con Sentinel configurado (instance id presente), el raster NDVI se sirve desde
+// nuestro proxy server-side (/api/sentinel/ndvi/z/x/y), que usa la Process API con
+// las credenciales OAuth del servidor y devuelve Sentinel-2 real a 10 m coloreado.
+// No depende de las capas WMS de la instancia (por eso ya no hay 400 en consola).
 const SENTINEL_INSTANCE = process.env.NEXT_PUBLIC_SENTINEL_INSTANCE_ID || "";
-// ID de la capa NDVI dentro de la instancia de Sentinel Hub. El default "3_NDVI"
-// es el ID de la plantilla estándar de Sentinel Hub; se puede sobreescribir.
-const SENTINEL_LAYER = process.env.NEXT_PUBLIC_SENTINEL_NDVI_LAYER || "3_NDVI";
-// Hosts posibles del servicio OGC: las cuentas clásicas de Sentinel Hub viven en
-// services.sentinel-hub.com; las del plan gratuito de Copernicus Data Space, en
-// sh.dataspace.copernicus.eu. Si NEXT_PUBLIC_SENTINEL_HOST no está seteado, se
-// prueban ambos automáticamente (GetCapabilities) y se usa el que responda.
-const SENTINEL_HOSTS = [
-  ...(process.env.NEXT_PUBLIC_SENTINEL_HOST ? [process.env.NEXT_PUBLIC_SENTINEL_HOST.replace(/\/+$/, "")] : []),
-  "https://services.sentinel-hub.com",
-  "https://sh.dataspace.copernicus.eu",
-];
-
-// Visualización NDVI agronómica: rampa CONTINUA rojo → naranja → amarillo → verde
-// claro → verde oscuro (como los mapas de vigor de dron/satélite). Viaja en el
-// request WMS y reemplaza al estilo configurado en la instancia, así el render
-// no depende de cómo esté armada la capa en el panel de Sentinel Hub.
-const EVALSCRIPT_NDVI_VISUAL = `//VERSION=3
-function setup() {
-  return { input: ["B04", "B08", "dataMask"], output: { bands: 4 } };
-}
-var rampa = [
-  [0.20, [0.84, 0.19, 0.15]],
-  [0.35, [0.96, 0.43, 0.26]],
-  [0.45, [0.99, 0.68, 0.38]],
-  [0.55, [1.00, 0.93, 0.55]],
-  [0.62, [0.85, 0.94, 0.55]],
-  [0.70, [0.65, 0.85, 0.42]],
-  [0.78, [0.40, 0.74, 0.39]],
-  [0.85, [0.10, 0.60, 0.31]]
-];
-function colorNdvi(v) {
-  if (v <= rampa[0][0]) return rampa[0][1];
-  for (var i = 1; i < rampa.length; i++) {
-    if (v <= rampa[i][0]) {
-      var t = (v - rampa[i - 1][0]) / (rampa[i][0] - rampa[i - 1][0]);
-      var a = rampa[i - 1][1], b = rampa[i][1];
-      return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-    }
-  }
-  return rampa[rampa.length - 1][1];
-}
-function evaluatePixel(s) {
-  var ndvi = (s.B08 - s.B04) / (s.B08 + s.B04);
-  var c = colorNdvi(ndvi);
-  return [c[0], c[1], c[2], s.dataMask];
-}`;
-
-function ndviWmsUrl(host: string, capa: string): string {
-  const hoy = new Date();
-  const desde = new Date(hoy.getTime() - 90 * 86400000);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  const time = `${fmt(desde)}/${fmt(hoy)}`;
-  return (
-    `${host}/ogc/wms/${SENTINEL_INSTANCE}` +
-    `?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=${encodeURIComponent(capa)}` +
-    `&FORMAT=image/png&TRANSPARENT=true&MAXCC=30&PRIORITY=mostRecent` +
-    `&EVALSCRIPT=${encodeURIComponent(btoa(EVALSCRIPT_NDVI_VISUAL))}` +
-    `&TIME=${time}&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}`
-  );
-}
-
-// Resuelve UNA vez por sesión en qué host vive la instancia y qué capa usar,
-// leyendo el GetCapabilities del WMS. Si ningún host responde (instancia mal
-// configurada, sin red, etc.), el mapa cae a NASA MODIS con elegancia.
-let wmsSentinelPromise: Promise<{ host: string; capa: string } | null> | null = null;
-function resolverWmsSentinel(): Promise<{ host: string; capa: string } | null> {
-  if (!SENTINEL_INSTANCE) return Promise.resolve(null);
-  if (!wmsSentinelPromise) {
-    wmsSentinelPromise = (async () => {
-      for (const host of SENTINEL_HOSTS) {
-        try {
-          const r = await fetch(`${host}/ogc/wms/${SENTINEL_INSTANCE}?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0`);
-          if (!r.ok) continue;
-          const xml = await r.text();
-          const nombres = Array.from(xml.matchAll(/<Name>([^<]*)<\/Name>/g)).map((m) => m[1]).filter((n) => n && n !== "WMS");
-          // Usa la capa configurada si existe en la instancia; si no, la primera
-          // cuyo ID mencione NDVI; como último recurso, la configurada igual
-          // (el evalscript de arriba define el render de todos modos).
-          const capa = nombres.includes(SENTINEL_LAYER)
-            ? SENTINEL_LAYER
-            : nombres.find((n) => /ndvi/i.test(n)) || SENTINEL_LAYER;
-          return { host, capa };
-        } catch { /* probamos el siguiente host */ }
-      }
-      return null;
-    })();
-  }
-  return wmsSentinelPromise;
-}
 
 function fillOpacity(layer: string, selectedId: string | null): any {
   // Vista NDVI: el color lo pone el raster NDVI real → lotes apenas delineados.
@@ -412,12 +326,21 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
 
     map.on("load", () => {
-      // Capa NDVI REAL: Sentinel-2 (10 m, Sentinel Hub) si hay credenciales —
-      // funciona igual con cuenta clásica o de Copernicus Data Space, el host se
-      // detecta solo. Sin credenciales: NASA GIBS MODIS Terra NDVI 8 días (dato
-      // satelital real, gratuito, sin API key, ~250 m).
-      const agregarNdviModis = () => {
-        if (map.getSource("ndvi")) return;
+      // Capa NDVI. Con Sentinel configurado → proxy propio de tiles Sentinel-2 real
+      // (10 m). Sin credenciales → NASA GIBS MODIS Terra NDVI 8 días (dato satelital
+      // real, gratuito, sin API key, ~250 m). Ambos degradan a transparente sin
+      // ensuciar la consola.
+      if (SENTINEL_INSTANCE) {
+        map.addSource("ndvi", {
+          type: "raster",
+          tiles: [`${location.origin}/api/sentinel/ndvi/{z}/{x}/{y}`],
+          tileSize: 256,
+          minzoom: 9, // por debajo de z9 los tiles Sentinel-2 no aportan detalle
+          maxzoom: 17,
+          attribution: "NDVI © Copernicus Sentinel-2",
+        });
+        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.9 } as any }, "etiquetas");
+      } else {
         map.addSource("ndvi", {
           type: "raster",
           tiles: ["https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/default/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png"],
@@ -426,18 +349,6 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
           attribution: "NDVI © NASA GIBS / MODIS Terra",
         });
         map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.8 } as any }, "etiquetas");
-      };
-      if (SENTINEL_INSTANCE) {
-        resolverWmsSentinel()
-          .then((wms) => {
-            if (mapRef.current !== map || map.getSource("ndvi")) return;
-            if (!wms) { agregarNdviModis(); return; }
-            map.addSource("ndvi", { type: "raster", tiles: [ndviWmsUrl(wms.host, wms.capa)], tileSize: 256, attribution: "NDVI © Sentinel Hub / Copernicus Sentinel-2" });
-            map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.92 } as any }, "etiquetas");
-          })
-          .catch(() => { if (mapRef.current === map) agregarNdviModis(); });
-      } else {
-        agregarNdviModis();
       }
 
       // Capa de Topografía (OpenTopoMap: relieve + curvas de nivel)
@@ -602,16 +513,31 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
         finalizarDibujo();
       });
 
-      // Lupita de aumento mientras se dibuja: mini-mapa circular pegado al cursor.
+      // Lupa de aumento mientras se dibuja: lente circular que SIGUE al cursor y
+      // muestra la imagen satelital ampliada (+3 zoom) centrada en la cruz.
       map.on("mousemove", (e) => {
-        if (!drawingRef.current) { if (lensRef.current) lensRef.current.style.display = "none"; return; }
         const lens = lensRef.current;
+        if (!drawingRef.current) { if (lens) lens.style.display = "none"; return; }
         if (!lens) return;
+        // ¿Reaparece tras estar oculta? Entonces el mapa de la lente se creó en un
+        // contenedor de 0px y hay que recalcular su tamaño, si no no dibuja nada.
+        const reaparece = lens.style.display !== "block";
         lens.style.display = "block";
-        lens.style.left = `${e.point.x + 24}px`;
-        lens.style.top = `${e.point.y - 164}px`;
+        const SIZE = 148, GAP = 16;
+        const cont = map.getContainer();
+        const w = cont.clientWidth, h = cont.clientHeight;
+        // Por defecto arriba-derecha del cursor; se reacomoda si se saldría del mapa.
+        let lx = e.point.x + GAP;
+        let ly = e.point.y - SIZE - GAP;
+        if (lx + SIZE > w - 4) lx = e.point.x - SIZE - GAP;
+        if (ly < 4) ly = Math.min(h - SIZE - 4, e.point.y + GAP);
+        lens.style.left = `${Math.max(4, lx)}px`;
+        lens.style.top = `${Math.max(4, ly)}px`;
         const lm = lensMapRef.current;
-        if (lm) lm.jumpTo({ center: e.lngLat, zoom: Math.min(19, map.getZoom() + 2.5) });
+        if (lm) {
+          if (reaparece) lm.resize();
+          lm.jumpTo({ center: e.lngLat, zoom: Math.min(19, map.getZoom() + 3) });
+        }
       });
       map.on("mouseout", () => { if (lensRef.current) lensRef.current.style.display = "none"; });
 
@@ -672,7 +598,9 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
     // Modo dibujo TOTAL: nada interrumpe la cruz (los marcadores de lote no
     // interceptan el mouse y el cursor queda forzado por CSS).
     map.getContainer().classList.add("mc-dibujando");
-    // Lupita: mini-mapa satelital con aumento, que sigue al cursor.
+    // Lupa: mini-mapa satelital con aumento, que sigue al cursor. El source va con
+    // maxzoom 19 (máximo de Esri) para que MapLibre AMPLÍE (overzoom) esos tiles al
+    // acercarse en vez de pedir tiles inexistentes → la lente siempre muestra algo.
     if (lensRef.current && !lensMapRef.current) {
       lensMapRef.current = new maplibregl.Map({
         container: lensRef.current.querySelector(".mc-lupa__mapa") as HTMLElement,
@@ -683,15 +611,18 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
               type: "raster",
               tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
               tileSize: 256,
+              maxzoom: 19,
             },
           },
           layers: [{ id: "satelite", type: "raster", source: "satelite" }],
         } as any,
         center: map.getCenter(),
-        zoom: Math.min(19, map.getZoom() + 2.5),
+        zoom: Math.min(19, map.getZoom() + 3),
         interactive: false,
         attributionControl: false,
       });
+      // El contenedor arranca oculto (0px): al primer render la lente se ajusta sola.
+      requestAnimationFrame(() => lensMapRef.current?.resize());
     }
   };
 
@@ -787,52 +718,38 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
         <div className="mc-lupa__cruz" />
       </div>
 
-      {/* Leyendas GIS (NDVI y dosis de prescripción) — abajo a la derecha,
-          apiladas sobre los controles de zoom, estilo cuadro de leyenda clásico */}
-      {(ndviVisible || (rxVisible && !!rx?.fc?.features?.length)) && (
-        <div style={{ position: "absolute", right: 16, bottom: 118, zIndex: 520, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, pointerEvents: "none" }}>
-          {ndviVisible && (
-            <div style={{ pointerEvents: "auto", background: "rgba(255,255,255,0.96)", borderRadius: 10, padding: "10px 12px", boxShadow: "0 4px 18px rgba(0,0,0,0.28)", border: "1px solid rgba(0,0,0,0.08)" }}>
-              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.05em", color: "#1c2417", marginBottom: 7 }}>LEYENDA NDVI</div>
-              <div className="row gap-8" style={{ alignItems: "stretch" }}>
-                {/* El degradado replica la rampa del evalscript NDVI (verde oscuro → rojo) */}
-                <div style={{ width: 14, height: 64, borderRadius: 4, background: "linear-gradient(to bottom, #1a9950, #66bd63, #a6d96a, #d9ef8b, #ffed8c, #fdae61, #f46d43, #d73027)", border: "1px solid rgba(0,0,0,0.15)" }} />
-                <div className="col" style={{ justifyContent: "space-between", fontSize: 10, fontWeight: 800 }}>
-                  <span style={{ color: "#187a3e" }}>ALTO: 0.8</span>
-                  <span style={{ color: "#c0271f" }}>BAJO: 0.2</span>
-                </div>
-              </div>
+      {/* Leyenda de dosis de prescripción — abajo a la derecha, estilo cuadro GIS
+          clásico. (La leyenda NDVI se quitó a pedido; el degradado ya se entiende
+          en el propio raster.) */}
+      {rxVisible && !!rx?.fc?.features?.length && (
+        <div style={{ position: "absolute", right: 16, bottom: 118, zIndex: 520 }}>
+          <div style={{ background: "rgba(255,255,255,0.96)", borderRadius: 10, padding: "10px 12px", boxShadow: "0 4px 18px rgba(0,0,0,0.28)", border: "1px solid rgba(0,0,0,0.08)", maxWidth: 240 }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 7 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.05em", color: "#1c2417" }}>DOSIS DE PRESCRIPCIÓN (kg/ha)</div>
+              {onRxCerrar && (
+                <button onClick={onRxCerrar} aria-label="Ocultar capa de prescripción" title="Ocultar capa de prescripción" style={{ border: "none", background: "none", cursor: "pointer", color: "#6b7263", display: "grid", placeItems: "center", padding: 2, flexShrink: 0 }}>
+                  <Icon name="x" size={12} />
+                </button>
+              )}
             </div>
-          )}
-          {rxVisible && !!rx?.fc?.features?.length && (
-            <div style={{ pointerEvents: "auto", background: "rgba(255,255,255,0.96)", borderRadius: 10, padding: "10px 12px", boxShadow: "0 4px 18px rgba(0,0,0,0.28)", border: "1px solid rgba(0,0,0,0.08)", maxWidth: 240 }}>
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 7 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.05em", color: "#1c2417" }}>DOSIS DE PRESCRIPCIÓN (kg/ha)</div>
-                {onRxCerrar && (
-                  <button onClick={onRxCerrar} aria-label="Ocultar capa de prescripción" title="Ocultar capa de prescripción" style={{ border: "none", background: "none", cursor: "pointer", color: "#6b7263", display: "grid", placeItems: "center", padding: 2, flexShrink: 0 }}>
-                    <Icon name="x" size={12} />
-                  </button>
-                )}
-              </div>
-              <div className="row gap-8" style={{ flexWrap: "wrap" }}>
-                {Array.from(
-                  new Map(
-                    (rx.fc.features as GeoJSON.Feature[]).map((f) => {
-                      const p = (f.properties || {}) as { dosis?: number; color?: string };
-                      return [p.dosis ?? 0, p.color || "#5e7733"] as [number, string];
-                    })
-                  ).entries()
-                )
-                  .sort((a, b) => a[0] - b[0])
-                  .map(([dosis, color]) => (
-                    <span key={dosis} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "#1c2417" }}>
-                      <span style={{ width: 12, height: 12, borderRadius: 3, background: color, border: "1px solid rgba(0,0,0,0.18)" }} />
-                      {dosis}
-                    </span>
-                  ))}
-              </div>
+            <div className="row gap-8" style={{ flexWrap: "wrap" }}>
+              {Array.from(
+                new Map(
+                  (rx.fc.features as GeoJSON.Feature[]).map((f) => {
+                    const p = (f.properties || {}) as { dosis?: number; color?: string };
+                    return [p.dosis ?? 0, p.color || "#5e7733"] as [number, string];
+                  })
+                ).entries()
+              )
+                .sort((a, b) => a[0] - b[0])
+                .map(([dosis, color]) => (
+                  <span key={dosis} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "#1c2417" }}>
+                    <span style={{ width: 12, height: 12, borderRadius: 3, background: color, border: "1px solid rgba(0,0,0,0.18)" }} />
+                    {dosis}
+                  </span>
+                ))}
             </div>
-          )}
+          </div>
         </div>
       )}
 

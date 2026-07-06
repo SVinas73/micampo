@@ -1019,7 +1019,7 @@ function LoteFichaTecnica({
         </div>
       </div>
 
-      <div className="row gap-2" style={{ borderBottom: "1px solid var(--mc-line)", padding: 0, overflowX: "auto", flexWrap: "nowrap" }}>
+      <div className="row gap-2 mc-noscrollbar" style={{ borderBottom: "1px solid var(--mc-line)", padding: 0, overflowX: "auto", flexWrap: "nowrap" }}>
         {["Resumen", "Historia", "Suelo", "Labores", "Prescripción"].map((t) => (
           <button
             key={t}
@@ -1164,16 +1164,32 @@ function VRTPanel({ loteId, loteName, loteGeo, onRxGenerada }: { loteId: string;
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generar = () => {
+  const generar = async () => {
     setCargando(true); setError(null); setRes(null);
-    fetch(`/api/lotes/${loteId}/prescripcion`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ producto, dosisBase: Number(dosisBase), estrategia }),
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.error) setError(d.error); else { setRes(d); onRxGenerada?.({ fc: d.geojson, contorno: loteGeo ?? null }); } })
-      .catch(() => setError("No se pudo generar la prescripción"))
-      .finally(() => setCargando(false));
+    // Timeout de red: el muestreo satelital puede tardar; si no responde en ~60 s,
+    // cortamos con un mensaje claro en vez de dejar el botón colgado.
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 60_000);
+    try {
+      const r = await fetch(`/api/lotes/${loteId}/prescripcion`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ producto, dosisBase: Number(dosisBase), estrategia }),
+        signal: ctrl.signal,
+      });
+      const d = await r.json().catch(() => null);
+      if (!r.ok || !d) { setError(d?.error || `No se pudo generar la prescripción (error ${r.status}).`); return; }
+      if (d.error) { setError(d.error); return; }
+      if (!d.geojson?.features?.length) { setError("No se pudieron generar zonas para este lote."); return; }
+      setRes(d);
+      onRxGenerada?.({ fc: d.geojson, contorno: loteGeo ?? null });
+    } catch (e) {
+      setError(e instanceof DOMException && e.name === "AbortError"
+        ? "La generación tardó demasiado. Probá de nuevo."
+        : "No se pudo generar la prescripción.");
+    } finally {
+      clearTimeout(t);
+      setCargando(false);
+    }
   };
 
   const descargar = () => {

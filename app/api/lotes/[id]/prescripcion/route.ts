@@ -56,22 +56,39 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         if (clip && clip.geometry.type === "Polygon" && turf.area(clip) > 600) recortes.push(clip as GeoJSON.Feature<GeoJSON.Polygon>);
       } catch { /* ignora */ }
     });
-    const celdasGeom = recortes.slice(0, 30); // límite de consultas satelitales
+    const celdasGeom = recortes.slice(0, 24); // límite de consultas satelitales
 
-    // NDVI por celda
-    const sentinel = sentinelStatsDisponible();
-    const baseNdvi = (await getInsight<{ ndvi: number }>(session.user.id, `ndvi:${id}`, 7 * 24 * 60))?.ndvi || 0.6;
-    let celdas: Celda[];
-    if (sentinel) {
-      const ndvis = await Promise.all(celdasGeom.map((c) => ndviDePoligono(c.geometry).catch(() => null)));
-      celdas = celdasGeom.map((geom, i) => ({ geom, areaHa: turf.area(geom) / 10000, ndvi: ndvis[i]?.ndvi ?? baseNdvi }));
-    } else {
-      // Sin credenciales: gradiente sintético alrededor del NDVI base (para demo)
-      celdas = celdasGeom.map((geom, i) => {
+    // Gradiente sintético alrededor del NDVI base (demo / respaldo si Sentinel tarda).
+    const gradienteDemo = (): Celda[] =>
+      celdasGeom.map((geom, i) => {
         const c = turf.centroid(geom).geometry.coordinates;
         const grad = ((c[0] - bbox[0]) / (bbox[2] - bbox[0] || 1) - 0.5) * 0.18 + ((i % 2) - 0.5) * 0.05;
         return { geom, areaHa: turf.area(geom) / 10000, ndvi: Math.max(0.2, Math.min(0.92, baseNdvi + grad)) };
       });
+
+    // NDVI por celda
+    let sentinel = sentinelStatsDisponible();
+    const baseNdvi = (await getInsight<{ ndvi: number }>(session.user.id, `ndvi:${id}`, 7 * 24 * 60))?.ndvi || 0.6;
+    let celdas: Celda[];
+    if (sentinel) {
+      // Muestreo satelital con TIMEOUT global: si Sentinel tarda demasiado (rate
+      // limit, red), no colgamos el request — devolvemos zonas con el gradiente demo.
+      const muestreo = Promise.all(celdasGeom.map((c) => ndviDePoligono(c.geometry).catch(() => null)));
+      const ndvis = await Promise.race([
+        muestreo,
+        new Promise<null>((res) => setTimeout(() => res(null), 22_000)),
+      ]);
+      if (ndvis) {
+        celdas = celdasGeom.map((geom, i) => ({ geom, areaHa: turf.area(geom) / 10000, ndvi: ndvis[i]?.ndvi ?? baseNdvi }));
+        // Si TODAS las celdas cayeron al baseNdvi (Sentinel no devolvió nada útil),
+        // usamos el gradiente para que igual se vean zonas distintas.
+        if (ndvis.every((n) => n?.ndvi == null)) { celdas = gradienteDemo(); sentinel = false; }
+      } else {
+        celdas = gradienteDemo();
+        sentinel = false; // el mapa sale igual, marcado como estimación
+      }
+    } else {
+      celdas = gradienteDemo();
     }
     if (celdas.length === 0) return NextResponse.json({ error: "No se pudo zonificar el lote" }, { status: 422 });
 

@@ -15,32 +15,27 @@ export async function GET(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const lote = await prisma.lote.findUnique({
-      where: { id: params.id },
-      include: {
-        siembras: {
-          orderBy: { fechaSiembra: "desc" }
+    // Intenta el detalle completo (con relaciones). Si alguna relación no está
+    // disponible en la base (p. ej. migración sin aplicar en un entorno), no
+    // rompe: reintenta con los datos básicos del lote para que la ficha igual abra.
+    let lote;
+    try {
+      lote = await prisma.lote.findUnique({
+        where: { id: params.id },
+        include: {
+          siembras: { orderBy: { fechaSiembra: "desc" } },
+          cosechas: { orderBy: { fechaCosecha: "desc" } },
+          marcadoresGeo: { orderBy: { fecha: "desc" } },
+          imagenesSatelitales: { orderBy: { fecha: "desc" } },
+          analisisSuelo: { orderBy: { fechaAnalisis: "desc" } },
+          planesSiembra: { orderBy: { fechaSiembraRecomendada: "desc" } },
+          costos: { orderBy: { fecha: "desc" } },
         },
-        cosechas: {
-          orderBy: { fechaCosecha: "desc" }
-        },
-        marcadoresGeo: {
-          orderBy: { fecha: "desc" }
-        },
-        imagenesSatelitales: {
-          orderBy: { fecha: "desc" }
-        },
-        analisisSuelo: {
-          orderBy: { fechaAnalisis: "desc" }
-        },
-        planesSiembra: {
-          orderBy: { fechaSiembraRecomendada: "desc" }
-        },
-        costos: {
-          orderBy: { fecha: "desc" }
-        },
-      },
-    });
+      });
+    } catch (err) {
+      console.error("Detalle de lote: relación no disponible, devuelvo datos básicos:", err);
+      lote = await prisma.lote.findUnique({ where: { id: params.id } });
+    }
 
     if (!lote || lote.userId !== session.user.id) {
       return NextResponse.json(
