@@ -39,11 +39,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const poly = turf.polygon(geojson.coordinates);
     const areaTotalHa = turf.area(poly) / 10000;
     const bbox = turf.bbox(poly);
-    // Grilla más fina (las celdas de una misma zona luego se DISUELVEN en polígonos
-    // orgánicos, como un mapa de prescripción agronómico real).
-    const n = areaTotalHa > 60 ? 6 : 5;
+    // Tamaño de celda: apunta a ~26 celdas dentro del bbox — el máximo que permite
+    // el límite de consultas satelitales SIN truncar nunca una parte del lote.
+    // (Las celdas de una misma zona luego se disuelven y suavizan en polígonos
+    // orgánicos, como un mapa de prescripción agronómico real.)
     const anchoKm = turf.distance([bbox[0], bbox[1]], [bbox[2], bbox[1]], { units: "kilometers" });
-    const cellKm = Math.max(0.04, anchoKm / n);
+    const altoKm = turf.distance([bbox[0], bbox[1]], [bbox[0], bbox[3]], { units: "kilometers" });
+    const cellKm = Math.max(0.04, Math.sqrt((anchoKm * altoKm) / 26));
 
     // Grilla recortada al polígono del lote
     const grid = turf.squareGrid(bbox, cellKm, { units: "kilometers" });
@@ -73,31 +75,39 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     if (celdas.length === 0) return NextResponse.json({ error: "No se pudo zonificar el lote" }, { status: 422 });
 
-    // Zonificación por terciles de NDVI
+    // Zonificación por QUINTILES de NDVI → 5 zonas de manejo con 5 dosis distintas,
+    // como los mapas de prescripción comerciales.
+    const ZONAS = ["Muy bajo", "Bajo", "Medio", "Alto", "Muy alto"] as const;
+    type Zona = (typeof ZONAS)[number];
     const orden = [...celdas].sort((a, b) => a.ndvi - b.ndvi);
-    const t1 = orden[Math.floor(orden.length / 3)]?.ndvi ?? 0;
-    const t2 = orden[Math.floor((2 * orden.length) / 3)]?.ndvi ?? 0;
-    const zonaDe = (ndvi: number): "Bajo" | "Medio" | "Alto" => (ndvi <= t1 ? "Bajo" : ndvi <= t2 ? "Medio" : "Alto");
+    const q = (k: number) => orden[Math.min(orden.length - 1, Math.floor((k * orden.length) / 5))]?.ndvi ?? 0;
+    const cortes = [q(1), q(2), q(3), q(4)];
+    const zonaDe = (ndvi: number): Zona =>
+      ndvi <= cortes[0] ? "Muy bajo" : ndvi <= cortes[1] ? "Bajo" : ndvi <= cortes[2] ? "Medio" : ndvi <= cortes[3] ? "Alto" : "Muy alto";
     // Factor de dosis por estrategia
-    const FACTOR = estrategia === "compensar"
-      ? { Bajo: 1.2, Medio: 1.0, Alto: 0.82 }   // más insumo donde el vigor es bajo
-      : { Bajo: 0.82, Medio: 1.0, Alto: 1.2 };  // más insumo donde hay potencial
-    // Rampa clásica de prescripción: el color sigue a la DOSIS (roja la más baja,
-    // verde oscuro la más alta), independiente de la estrategia elegida.
-    const RAMPA_DOSIS = ["#d92b2b", "#f5d327", "#2e7d32"];
-    const ordenDosis = (["Bajo", "Medio", "Alto"] as const)
+    const FACTOR: Record<Zona, number> = estrategia === "compensar"
+      ? { "Muy bajo": 1.3, Bajo: 1.15, Medio: 1.0, Alto: 0.88, "Muy alto": 0.78 }   // más insumo donde el vigor es bajo
+      : { "Muy bajo": 0.78, Bajo: 0.88, Medio: 1.0, Alto: 1.15, "Muy alto": 1.3 }; // más insumo donde hay potencial
+    // Rampa clásica de prescripción (5 clases): el color sigue a la DOSIS (roja la
+    // más baja → verde oscuro la más alta), independiente de la estrategia elegida.
+    const RAMPA_DOSIS = ["#d7191c", "#fdae61", "#f5e04e", "#a6d96a", "#1a9641"];
+    const ordenDosis = ZONAS
       .map((z) => ({ z, d: Math.round(dosisBase * FACTOR[z]) }))
       .sort((a, b) => a.d - b.d);
-    const COLOR = { Bajo: "", Medio: "", Alto: "" } as Record<"Bajo" | "Medio" | "Alto", string>;
+    const COLOR = {} as Record<Zona, string>;
     ordenDosis.forEach((o, i) => { COLOR[o.z] = RAMPA_DOSIS[Math.min(i, RAMPA_DOSIS.length - 1)]; });
 
     let prodTotal = 0;
     celdas.forEach((c) => { prodTotal += Math.round(dosisBase * FACTOR[zonaDe(c.ndvi)]) * c.areaHa; });
 
-    // DISUELVE las celdas contiguas de una misma zona en polígonos orgánicos
-    // (como un mapa de prescripción real, no una grilla cuadrada).
+    // DISUELVE las celdas contiguas de una misma zona y SUAVIZA el borde aserrado
+    // de la grilla (Chaikin + leve buffer expansivo), recortando al contorno del
+    // lote y RESTANDO lo ya ocupado por las zonas anteriores → teselado orgánico
+    // sin huecos ni solapes, como un mapa de prescripción agronómico real.
+    const bufferKm = 0.2 * cellKm;
+    let ocupado: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon> | null = null;
     const features: GeoJSON.Feature[] = [];
-    (["Bajo", "Medio", "Alto"] as const).forEach((z) => {
+    ZONAS.forEach((z) => {
       const cs = celdas.filter((c) => zonaDe(c.ndvi) === z);
       if (cs.length === 0) return;
       const dosis = Math.round(dosisBase * FACTOR[z]);
@@ -111,17 +121,39 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       else if (union?.geometry?.type === "MultiPolygon") (union.geometry as GeoJSON.MultiPolygon).coordinates.forEach((coords) => geoms.push({ type: "Polygon", coordinates: coords }));
       else cs.forEach((c) => geoms.push(c.geom.geometry));
       geoms.forEach((g) => {
-        features.push({
-          type: "Feature",
-          geometry: g,
-          properties: { ndvi: ndviProm, zona: z, dosis, unidad: "kg/ha", color: COLOR[z] },
+        let final: GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon> | null = null;
+        try {
+          let suave = turf.polygonSmooth(turf.feature(g), { iterations: 3 }).features[0] as GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>;
+          suave = (turf.buffer(suave, bufferKm, { units: "kilometers" }) as typeof suave | undefined) || suave;
+          let recorte = turf.intersect(turf.featureCollection<GeoJSON.Polygon | GeoJSON.MultiPolygon>([suave, poly]));
+          if (recorte && ocupado) recorte = turf.difference(turf.featureCollection<GeoJSON.Polygon | GeoJSON.MultiPolygon>([recorte, ocupado]));
+          final = recorte;
+        } catch { /* sin suavizado, va la geometría original */ }
+        if (!final) final = turf.feature(g);
+        try {
+          ocupado = ocupado ? (turf.union(turf.featureCollection<GeoJSON.Polygon | GeoJSON.MultiPolygon>([ocupado, final])) as typeof ocupado) : final;
+        } catch { /* si la unión falla, sigue con lo acumulado */ }
+        const polys: GeoJSON.Polygon[] = [];
+        if (final.geometry.type === "Polygon") polys.push(final.geometry);
+        else final.geometry.coordinates.forEach((coords) => polys.push({ type: "Polygon", coordinates: coords }));
+        polys.forEach((gg) => {
+          const haPoly = turf.area(turf.feature(gg)) / 10000;
+          if (haPoly < 0.02) return; // astillas del recorte: ensucian sin aportar
+          features.push({
+            type: "Feature",
+            geometry: gg,
+            properties: {
+              ndvi: ndviProm, zona: z, dosis, unidad: "kg/ha", color: COLOR[z],
+              areaHa: Math.round(haPoly * 100) / 100,
+            },
+          });
         });
       });
     });
 
     const prodUniforme = dosisBase * areaTotalHa;
     const ahorroPct = prodUniforme > 0 ? Math.round(((prodUniforme - prodTotal) / prodUniforme) * 100) : 0;
-    const zonas = (["Bajo", "Medio", "Alto"] as const).map((z) => {
+    const zonas = ZONAS.map((z) => {
       const cs = celdas.filter((c) => zonaDe(c.ndvi) === z);
       const ha = cs.reduce((s, c) => s + c.areaHa, 0);
       return { zona: z, dosis: Math.round(dosisBase * FACTOR[z]), ha: Math.round(ha * 10) / 10, color: COLOR[z] };
