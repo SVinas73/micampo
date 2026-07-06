@@ -1121,7 +1121,7 @@ function LoteFichaTecnica({
       )}
 
       {innerTab === "Prescripción" && (
-        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} loteGeo={lote.geojson} />
+        lote.dbId && lote.geojson ? <VRTPanel loteId={lote.dbId} loteName={lote.name} loteGeo={lote.geojson} cultivo={lote.cultivo} />
           : <FichaVacio texto="Dibujá el lote en el mapa para generar un mapa de prescripción variable." />
       )}
 
@@ -1140,30 +1140,38 @@ function LoteFichaTecnica({
   );
 }
 
+type AgroDetalle = {
+  fertilizante: string; nutriente: "N" | "P" | "K"; pctNutriente: number;
+  cultivo: string; rindeObjetivo: number; requerimiento: number; aporteSuelo: number;
+  dosisLote: number; detalle: string; conSuelo: boolean; advertencia: string | null;
+};
 type Prescripcion = {
   producto: string; dosisBase: number; estrategia: string; fuente: string; areaHa: number; simulado?: boolean;
+  modelo?: "agronómico" | "simple"; agro?: AgroDetalle | null;
   resumen: { celdas: number; prodTotal: number; prodUniforme: number; ahorroPct: number; zonas: { zona: string; dosis: number; ha: number; color: string }[] };
   geojson: { type: "FeatureCollection"; features: { geometry: { type: "Polygon"; coordinates: number[][][] }; properties: { ndvi: number; zona: string; dosis: number; color: string; areaHa?: number } }[] };
 };
 
-function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: string; loteGeo?: { type: "Polygon"; coordinates: number[][][] } | null }) {
+function VRTPanel({ loteId, loteName, loteGeo, cultivo }: { loteId: string; loteName: string; loteGeo?: { type: "Polygon"; coordinates: number[][][] } | null; cultivo?: string | null }) {
   const [producto, setProducto] = useState("Urea");
-  const [dosisBase, setDosisBase] = useState("120");
-  const [estrategia, setEstrategia] = useState<"compensar" | "potenciar">("compensar");
+  const [rinde, setRinde] = useState("");
+  const [estrategia, setEstrategia] = useState<"compensar" | "potenciar">("potenciar");
   const [res, setRes] = useState<Prescripcion | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [descargandoShp, setDescargandoShp] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nombreArchivo = loteName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "prescripcion";
 
   const generar = async () => {
     setCargando(true); setError(null); setRes(null);
-    // Timeout de red: el muestreo satelital puede tardar; si no responde en ~60 s,
-    // cortamos con un mensaje claro en vez de dejar el botón colgado.
+    // Timeout de red: el muestreo satelital multi-fecha puede tardar; si no responde
+    // en ~75 s, cortamos con un mensaje claro en vez de dejar el botón colgado.
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 60_000);
+    const t = setTimeout(() => ctrl.abort(), 75_000);
     try {
       const r = await fetch(`/api/lotes/${loteId}/prescripcion`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ producto, dosisBase: Number(dosisBase), estrategia }),
+        body: JSON.stringify({ producto, rindeObjetivo: Number(rinde) || undefined, estrategia }),
         signal: ctrl.signal,
       });
       const d = await r.json().catch(() => null);
@@ -1181,13 +1189,35 @@ function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: str
     }
   };
 
-  const descargar = () => {
+  const descargarGeojson = () => {
     if (!res) return;
     const blob = new Blob([JSON.stringify(res.geojson, null, 2)], { type: "application/geo+json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `prescripcion-${loteName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.geojson`;
+    a.download = `prescripcion-${nombreArchivo}.geojson`;
     a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  // Descarga el Shapefile (ZIP) para la maquinaria, generado en el servidor.
+  const descargarShapefile = async () => {
+    if (!res) return;
+    setDescargandoShp(true);
+    try {
+      const r = await fetch(`/api/prescripcion/shapefile`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geojson: res.geojson, producto: res.producto, nombre: nombreArchivo }),
+      });
+      if (!r.ok) throw new Error();
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `prescripcion-${nombreArchivo}-shapefile.zip`;
+      a.click(); URL.revokeObjectURL(a.href);
+    } catch {
+      setError("No se pudo generar el Shapefile.");
+    } finally {
+      setDescargandoShp(false);
+    }
   };
 
   // Mapa de prescripción estilo agronómico: zonas de manejo orgánicas (isobandas
@@ -1290,33 +1320,62 @@ function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: str
 
   return (
     <div className="col gap-12">
-      <div className="text-xs text-muted">Zonifica el lote por vigor (NDVI) y asigna dosis variable por zona. Descargá el mapa para la maquinaria.</div>
+      <div className="text-xs text-muted">Zonas de manejo por NDVI estable (varias fechas) y dosis variable por <b>balance de nutrientes</b> (rinde objetivo × extracción del cultivo − aporte del suelo). Descargá el mapa para la maquinaria.</div>
       <div className="grid g-cols-2 gap-8">
-        <div><div className="mc-label" style={{ marginBottom: 4 }}>Producto</div><input className="mc-input" value={producto} onChange={(e) => setProducto(e.target.value)} /></div>
-        <div><div className="mc-label" style={{ marginBottom: 4 }}>Dosis base (kg/ha)</div><input className="mc-input" type="number" value={dosisBase} onChange={(e) => setDosisBase(e.target.value)} /></div>
+        <div>
+          <div className="mc-label" style={{ marginBottom: 4 }}>Producto (fertilizante)</div>
+          <input className="mc-input" value={producto} onChange={(e) => setProducto(e.target.value)} placeholder="Urea, DAP, MAP, KCl…" list="mc-fert-list" />
+          <datalist id="mc-fert-list">
+            {["Urea", "UAN", "CAN", "Sulfato de amonio", "DAP", "MAP", "Superfosfato triple", "Cloruro de potasio"].map((f) => <option key={f} value={f} />)}
+          </datalist>
+        </div>
+        <div>
+          <div className="mc-label" style={{ marginBottom: 4 }}>Rinde objetivo (t/ha){cultivo ? ` · ${cultivo}` : ""}</div>
+          <input className="mc-input" type="number" step="0.1" value={rinde} onChange={(e) => setRinde(e.target.value)} placeholder="auto según cultivo" />
+        </div>
       </div>
       <div>
         <div className="mc-label" style={{ marginBottom: 4 }}>Estrategia</div>
         <div className="mc-seg">
-          <button className={estrategia === "compensar" ? "is-on" : ""} onClick={() => setEstrategia("compensar")}>Compensar (más donde rinde poco)</button>
           <button className={estrategia === "potenciar" ? "is-on" : ""} onClick={() => setEstrategia("potenciar")}>Potenciar (más donde rinde más)</button>
+          <button className={estrategia === "compensar" ? "is-on" : ""} onClick={() => setEstrategia("compensar")}>Compensar (más donde rinde poco)</button>
         </div>
       </div>
       <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={generar} disabled={cargando}>
-        <Icon name="map" size={13} />{cargando ? "Generando zonas…" : "Generar mapa de prescripción"}
+        <Icon name="map" size={13} />{cargando ? "Calculando zonas y dosis…" : "Generar mapa de prescripción"}
       </button>
       {error && <div className="text-xs" style={{ color: "var(--mc-red)" }}>{error}</div>}
       {res && (
         <div className="col gap-10">
           <Mapa />
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <span className="text-xs text-muted">{res.resumen.celdas} zonas · fuente {res.fuente}</span>
-            {res.simulado ? (
-              <span className="mc-badge mc-badge--neutral" style={{ fontSize: 10.5 }} title="Sin NDVI satelital real (Sentinel), la zonificación es una estimación demostrativa">Demostración · sin NDVI real</span>
-            ) : res.resumen.ahorroPct !== 0 && (
-              <span className="mc-badge mc-badge--green" style={{ fontSize: 10.5 }}>{res.resumen.ahorroPct > 0 ? `−${res.resumen.ahorroPct}% insumo` : `+${-res.resumen.ahorroPct}% insumo`} vs dosis fija</span>
+            <span className="text-xs text-muted">{res.resumen.celdas} zonas · {res.fuente}</span>
+            {res.resumen.ahorroPct !== 0 && (
+              <span className="mc-badge mc-badge--green" style={{ fontSize: 10.5 }}>{res.resumen.ahorroPct > 0 ? `−${res.resumen.ahorroPct}% insumo` : `+${-res.resumen.ahorroPct}% insumo`} vs dosis uniforme</span>
             )}
           </div>
+
+          {/* Fundamento agronómico del cálculo */}
+          {res.agro && (
+            <div style={{ padding: "10px 12px", background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)", borderRadius: 10 }}>
+              <div className="row gap-6" style={{ alignItems: "center", marginBottom: 6 }}>
+                <Icon name="flask" size={13} style={{ color: "var(--mc-green-700)" }} />
+                <span className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>Cálculo agronómico · {res.agro.fertilizante}</span>
+              </div>
+              <div className="text-xs text-muted" style={{ lineHeight: 1.7 }}>
+                Nutriente <b>{res.agro.nutriente}</b> ({res.agro.pctNutriente}%) · Cultivo {res.agro.cultivo} · Rinde objetivo {res.agro.rindeObjetivo} t/ha<br />
+                Requerimiento {res.agro.requerimiento} kg/ha {res.agro.nutriente === "N" ? "de N" : res.agro.nutriente === "P" ? "de P₂O₅" : "de K₂O"} · Aporte del suelo {res.agro.aporteSuelo} kg/ha<br />
+                Dosis media del lote <b>{res.agro.dosisLote} kg/ha</b> · {res.agro.detalle}
+                {!res.agro.conSuelo && <><br /><span style={{ color: "var(--mc-amber)" }}>Sin análisis de suelo cargado: no se descuenta aporte del suelo. Cargá uno en Suelo para afinar.</span></>}
+              </div>
+              {res.agro.advertencia && (
+                <div className="text-xs" style={{ marginTop: 6, color: "var(--mc-amber)", display: "flex", gap: 5, alignItems: "flex-start" }}>
+                  <Icon name="alert" size={12} style={{ marginTop: 2, flexShrink: 0 }} />{res.agro.advertencia}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="col gap-6">
             {res.resumen.zonas.map((z) => (
               <div key={z.zona} className="row gap-8" style={{ alignItems: "center", fontSize: 12.5 }}>
@@ -1326,9 +1385,15 @@ function VRTPanel({ loteId, loteName, loteGeo }: { loteId: string; loteName: str
               </div>
             ))}
           </div>
-          <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargar}><Icon name="download" size={13} />Descargar GeoJSON (para maquinaria)</button>
+
+          <div className="row gap-8" style={{ flexWrap: "wrap" }}>
+            <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={descargarShapefile} disabled={descargandoShp}>
+              <Icon name="download" size={13} />{descargandoShp ? "Generando…" : "Shapefile (maquinaria)"}
+            </button>
+            <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={descargarGeojson}><Icon name="download" size={13} />GeoJSON</button>
+          </div>
           {res.simulado && (
-            <div className="text-xs text-muted">Zonificación estimada (sin NDVI satelital disponible en este momento). El mapa y la descarga funcionan igual.</div>
+            <div className="text-xs text-muted">Zonas estimadas (sin NDVI satelital disponible en este momento). El mapa, el cálculo de dosis y las descargas funcionan igual.</div>
           )}
         </div>
       )}
