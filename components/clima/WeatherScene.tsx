@@ -103,21 +103,40 @@ function SunSVG({ size = 150 }: { size?: number }) {
   );
 }
 
-/* ---------- Nube realista: silueta esponjosa con volumen ---------- */
+/* ---------- Nube realista: cúmulos esponjosos con volumen y sombreado ---------- */
 function CloudSVG({ w = 150, dark }: { w?: number; dark?: boolean }) {
   const id = useId();
+  const top = dark ? "#d5dce4" : "#ffffff";
+  const bot = dark ? "#98a5b3" : "#dbe3ec";
+  const shade = dark ? "#7e8a99" : "#bcc6d3";
   return (
-    <svg viewBox="0 0 130 78" width={w} style={{ display: "block", filter: "drop-shadow(0 5px 7px rgba(20,30,40,0.18))" }}>
+    <svg viewBox="0 0 140 92" width={w} style={{ display: "block", filter: `drop-shadow(0 7px 9px rgba(18,28,44,${dark ? 0.3 : 0.22}))` }}>
       <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={dark ? "#cfd6de" : "#ffffff"} />
-          <stop offset="100%" stopColor={dark ? "#9aa6b4" : "#e6ecf2"} />
+        {/* Volumen: iluminado arriba-izquierda, más oscuro hacia abajo */}
+        <radialGradient id={`${id}-v`} cx="40%" cy="30%" r="80%">
+          <stop offset="0%" stopColor={top} />
+          <stop offset="58%" stopColor={top} />
+          <stop offset="100%" stopColor={bot} />
+        </radialGradient>
+        {/* Sombra de la panza (base) */}
+        <linearGradient id={`${id}-b`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={shade} stopOpacity="0" />
+          <stop offset="100%" stopColor={shade} stopOpacity={dark ? 0.7 : 0.55} />
         </linearGradient>
       </defs>
-      <path
-        d="M30 66 C14 66 6 56 9 45 C11 36 21 32 30 34 C32 20 45 12 58 16 C68 6 86 8 92 22 C95 21 99 20 103 21 C116 23 122 34 118 46 C124 49 126 56 122 62 C119 66 113 66 108 66 Z"
-        fill={`url(#${id})`}
-      />
+      {/* Cuerpo: varios lóbulos superpuestos → silueta "pomposa" */}
+      <g fill={`url(#${id}-v)`}>
+        <ellipse cx="44" cy="60" rx="31" ry="24" />
+        <circle cx="50" cy="42" r="23" />
+        <circle cx="80" cy="37" r="29" />
+        <circle cx="106" cy="53" r="22" />
+        <ellipse cx="92" cy="64" rx="31" ry="20" />
+        <rect x="28" y="58" width="88" height="22" rx="11" />
+      </g>
+      {/* Sombreado de la base para dar volumen */}
+      <ellipse cx="72" cy="74" rx="52" ry="13" fill={`url(#${id}-b)`} />
+      {/* Brillo superior (sol/luz pegando arriba) */}
+      <ellipse cx="70" cy="34" rx="27" ry="14" fill="#ffffff" opacity={dark ? 0.16 : 0.5} />
     </svg>
   );
 }
@@ -194,12 +213,12 @@ export function WeatherScene({
         {night && cieloDespejado && <StarsScene n={c === "sun" ? 24 : 16} />}
         {cieloDespejado && (
           night ? (
-            <div style={{ position: "absolute", top: c === "sun" ? -16 : -10, right: c === "sun" ? 10 : 60 }}>
-              <MoonSVG size={c === "sun" ? 122 : 96} />
+            <div style={{ position: "absolute", top: c === "sun" ? -2 : 2, right: c === "sun" ? 12 : 64 }}>
+              <MoonSVG size={c === "sun" ? 108 : 86} />
             </div>
           ) : (
-            <div style={{ position: "absolute", top: c === "sun" ? -34 : -22, right: c === "sun" ? -8 : 56 }}>
-              <SunSVG size={c === "sun" ? 168 : 120} />
+            <div style={{ position: "absolute", top: c === "sun" ? -8 : -6, right: c === "sun" ? 4 : 60 }}>
+              <SunSVG size={c === "sun" ? 140 : 106} />
             </div>
           )
         )}
