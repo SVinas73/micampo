@@ -16,20 +16,35 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
     const { id } = await context.params;
     if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const lote = await prisma.lote.findUnique({
-      where: { id },
-      include: {
-        siembras: true,
-        cosechas: true,
-        labores: true,
-        analisisSuelo: true,
-        registrosPluviometricos: true,
-        alertasPlagas: true,
-        marcadoresGeo: true,
-        planesRiego: { include: { eventosRiego: true } },
-      },
-    });
-    if (!lote || lote.userId !== session.user.id) {
+    // Verifica propiedad con una consulta mínima (siempre disponible).
+    const dueño = await prisma.lote.findUnique({ where: { id }, select: { userId: true } });
+    if (!dueño || dueño.userId !== session.user.id) {
+      return NextResponse.json({ error: "Lote no encontrado" }, { status: 404 });
+    }
+
+    // Historia completa (con relaciones). Si alguna relación no está disponible en
+    // la base (migración sin aplicar en un entorno), degrada a una línea de tiempo
+    // vacía en vez de un 500 — la ficha muestra "Sin historia todavía".
+    let lote;
+    try {
+      lote = await prisma.lote.findUnique({
+        where: { id },
+        include: {
+          siembras: true,
+          cosechas: true,
+          labores: true,
+          analisisSuelo: true,
+          registrosPluviometricos: true,
+          alertasPlagas: true,
+          marcadoresGeo: true,
+          planesRiego: { include: { eventosRiego: true } },
+        },
+      });
+    } catch (err) {
+      console.error("Timeline de lote: relación no disponible, devuelvo historia vacía:", err);
+      return NextResponse.json({ lote: { id }, eventos: [] });
+    }
+    if (!lote) {
       return NextResponse.json({ error: "Lote no encontrado" }, { status: 404 });
     }
 
