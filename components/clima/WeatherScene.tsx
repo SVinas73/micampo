@@ -103,39 +103,31 @@ function SunSVG({ size = 150 }: { size?: number }) {
   );
 }
 
-/* ---------- Nube realista: cúmulos esponjosos con volumen y sombreado ---------- */
+/* ---------- Nube realista: cúmulos esponjosos con volumen (sin base) ---------- */
 function CloudSVG({ w = 150, dark }: { w?: number; dark?: boolean }) {
   const id = useId();
   const top = dark ? "#d5dce4" : "#ffffff";
-  const bot = dark ? "#98a5b3" : "#dbe3ec";
-  const shade = dark ? "#7e8a99" : "#bcc6d3";
+  const bot = dark ? "#9fabb9" : "#e3e9f0";
   return (
-    <svg viewBox="0 0 140 92" width={w} style={{ display: "block", filter: `drop-shadow(0 7px 9px rgba(18,28,44,${dark ? 0.3 : 0.22}))` }}>
+    <svg viewBox="0 0 140 84" width={w} style={{ display: "block", filter: `drop-shadow(0 2px 4px rgba(18,28,44,${dark ? 0.2 : 0.12}))` }}>
       <defs>
-        {/* Volumen: iluminado arriba-izquierda, más oscuro hacia abajo */}
-        <radialGradient id={`${id}-v`} cx="40%" cy="30%" r="80%">
+        {/* Volumen: iluminado arriba-izquierda, apenas más tenue hacia abajo */}
+        <radialGradient id={`${id}-v`} cx="42%" cy="34%" r="82%">
           <stop offset="0%" stopColor={top} />
-          <stop offset="58%" stopColor={top} />
+          <stop offset="62%" stopColor={top} />
           <stop offset="100%" stopColor={bot} />
         </radialGradient>
-        {/* Sombra de la panza (base) */}
-        <linearGradient id={`${id}-b`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={shade} stopOpacity="0" />
-          <stop offset="100%" stopColor={shade} stopOpacity={dark ? 0.7 : 0.55} />
-        </linearGradient>
       </defs>
-      {/* Cuerpo: varios lóbulos superpuestos → silueta "pomposa" */}
+      {/* Cuerpo: varios lóbulos superpuestos → silueta "pomposa", sin base plana */}
       <g fill={`url(#${id}-v)`}>
-        <ellipse cx="44" cy="60" rx="31" ry="24" />
+        <ellipse cx="44" cy="56" rx="30" ry="23" />
         <circle cx="50" cy="42" r="23" />
         <circle cx="80" cy="37" r="29" />
-        <circle cx="106" cy="53" r="22" />
-        <ellipse cx="92" cy="64" rx="31" ry="20" />
-        <rect x="28" y="58" width="88" height="22" rx="11" />
+        <circle cx="106" cy="51" r="22" />
+        <ellipse cx="92" cy="58" rx="31" ry="21" />
+        <ellipse cx="72" cy="62" rx="46" ry="18" />
       </g>
-      {/* Sombreado de la base para dar volumen */}
-      <ellipse cx="72" cy="74" rx="52" ry="13" fill={`url(#${id}-b)`} />
-      {/* Brillo superior (sol/luz pegando arriba) */}
+      {/* Brillo superior (luz pegando arriba) */}
       <ellipse cx="70" cy="34" rx="27" ry="14" fill="#ffffff" opacity={dark ? 0.16 : 0.5} />
     </svg>
   );
@@ -189,6 +181,33 @@ function Wind() {
   );
 }
 
+/* ---------- Icono "hero" FIJO arriba a la derecha, con movimiento, por condición ---------- */
+function Hero({ c, night }: { c: WxCond; night: boolean }) {
+  // Despejado: sol (impecable) o luna.
+  if (c === "sun") {
+    return night
+      ? <div style={{ position: "absolute", top: -2, right: 12 }}><MoonSVG size={108} /></div>
+      : <div style={{ position: "absolute", top: -8, right: 4 }}><SunSVG size={140} /></div>;
+  }
+  // Parcial: sol/luna con una nube adelante (sol con nube).
+  if (c === "partly") {
+    return (
+      <div style={{ position: "absolute", top: -4, right: 8, width: 150, height: 118 }}>
+        <div style={{ position: "absolute", top: 0, right: 0 }}>{night ? <MoonSVG size={80} /> : <SunSVG size={96} />}</div>
+        <div className="wx-scene-hero" style={{ position: "absolute", top: 52, left: 0 }}><CloudSVG w={104} /></div>
+      </div>
+    );
+  }
+  // Resto: nube fija (oscura para niebla/lluvia/tormenta) con leve flotación.
+  const dark = c === "rain" || c === "storm" || c === "fog";
+  const size = c === "wind" ? 128 : c === "snow" ? 138 : 148;
+  return (
+    <div className="wx-scene-hero" style={{ position: "absolute", top: 10, right: 12 }}>
+      <CloudSVG w={size} dark={dark} />
+    </div>
+  );
+}
+
 export function WeatherScene({
   cond,
   windy,
@@ -211,43 +230,32 @@ export function WeatherScene({
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden>
         {/* De noche con cielo despejado/parcial: estrellas titilando */}
         {night && cieloDespejado && <StarsScene n={c === "sun" ? 24 : 16} />}
-        {cieloDespejado && (
-          night ? (
-            <div style={{ position: "absolute", top: c === "sun" ? -2 : 2, right: c === "sun" ? 12 : 64 }}>
-              <MoonSVG size={c === "sun" ? 108 : 86} />
-            </div>
-          ) : (
-            <div style={{ position: "absolute", top: c === "sun" ? -8 : -6, right: c === "sun" ? 4 : 60 }}>
-              <SunSVG size={c === "sun" ? 140 : 106} />
-            </div>
-          )
-        )}
-        {c === "partly" && <Clouds defs={[{ top: "44%", w: 130, dur: 32, delay: -4, opacity: 0.78 }, { top: "16%", w: 88, dur: 46, delay: -20, opacity: 0.7 }]} />}
-        {c === "cloud" && <Clouds defs={[{ top: "12%", w: 150, dur: 38, delay: 0, opacity: 0.5 }, { top: "40%", w: 116, dur: 30, delay: -12, opacity: 0.42 }, { top: "60%", w: 92, dur: 52, delay: -26, opacity: 0.38 }]} />}
-        {c === "fog" && (
-          <>
-            <Clouds defs={[{ top: "8%", w: 150, dur: 50, delay: 0, dark: true }]} />
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="wx-scene-fogband" style={{ top: `${30 + i * 15}%`, animationDelay: `${-i * 1.3}s` }} />
-            ))}
-          </>
-        )}
-        {c === "rain" && (<><Clouds defs={[{ top: "4%", w: 150, dur: 40, delay: 0, dark: true }, { top: "20%", w: 110, dur: 34, delay: -10, dark: true }]} /><Rain /></>)}
+
+        {/* Icono FIJO con movimiento, arriba a la derecha — presente en TODA condición */}
+        <Hero c={c} night={night} />
+
+        {/* Nubes que pasan (ambiance suave) cuando está nublado */}
+        {c === "cloud" && <Clouds defs={[{ top: "20%", w: 116, dur: 44, delay: 0, opacity: 0.26 }, { top: "56%", w: 88, dur: 58, delay: -22, opacity: 0.2 }]} />}
+
+        {/* Efectos de escena completa según la condición */}
+        {c === "fog" && Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="wx-scene-fogband" style={{ top: `${30 + i * 15}%`, animationDelay: `${-i * 1.3}s` }} />
+        ))}
+        {c === "rain" && <Rain />}
         {c === "storm" && (
           <>
-            <Clouds defs={[{ top: "2%", w: 158, dur: 42, delay: 0, dark: true }, { top: "22%", w: 118, dur: 30, delay: -14, dark: true }]} />
             <Rain heavy />
             <div className="wx-scene-flash" />
-            <svg className="wx-scene-bolt" viewBox="0 0 24 48" width="28" height="58" style={{ position: "absolute", top: "30%", left: "58%", filter: "drop-shadow(0 0 6px rgba(255,226,122,0.8))" }}>
+            <svg className="wx-scene-bolt" viewBox="0 0 24 48" width="28" height="58" style={{ position: "absolute", top: "34%", left: "56%", filter: "drop-shadow(0 0 6px rgba(255,226,122,0.8))" }}>
               <path d="M13 0 L3 26 H11 L8 48 L21 18 H12 Z" fill="#ffe27a" />
             </svg>
-            <svg className="wx-scene-bolt2" viewBox="0 0 24 48" width="20" height="42" style={{ position: "absolute", top: "40%", left: "30%", filter: "drop-shadow(0 0 5px rgba(255,226,122,0.7))" }}>
+            <svg className="wx-scene-bolt2" viewBox="0 0 24 48" width="20" height="42" style={{ position: "absolute", top: "44%", left: "30%", filter: "drop-shadow(0 0 5px rgba(255,226,122,0.7))" }}>
               <path d="M13 0 L3 26 H11 L8 48 L21 18 H12 Z" fill="#fff0b0" />
             </svg>
           </>
         )}
-        {c === "snow" && (<><Clouds defs={[{ top: "6%", w: 140, dur: 46, delay: 0, dark: true }]} /><Snow /></>)}
-        {c === "wind" && (<><Clouds defs={[{ top: "14%", w: 138, dur: 22, delay: 0, opacity: 0.6 }, { top: "44%", w: 100, dur: 16, delay: -8, opacity: 0.5 }]} /><Wind /></>)}
+        {c === "snow" && <Snow />}
+        {c === "wind" && <Wind />}
         {(windy && c !== "storm" && c !== "rain" && c !== "wind") && <Wind />}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(105deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.12) 38%, rgba(0,0,0,0) 68%)" }} />
       </div>
