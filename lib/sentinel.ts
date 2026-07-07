@@ -137,10 +137,16 @@ const EVALSCRIPT_TRUECOLOR_TILE = `//VERSION=3
 function setup() {
   return { input: [{ bands: ["B02", "B03", "B04", "dataMask"] }], output: { bands: 4 } };
 }
+// Realce "natural color" luminoso: ganancia + gamma para levantar medios y sombras
+// (Sentinel-2 L2A viene con reflectancias bajas → sin esto se ve oscuro).
+function tc(v) {
+  v = v * 3.2;
+  v = v < 0 ? 0 : (v > 1 ? 1 : v);
+  return Math.pow(v, 1 / 1.55);
+}
 function evaluatePixel(s) {
   if (s.dataMask === 0) return [0, 0, 0, 0];
-  var g = 2.5; // ganancia de brillo
-  return [Math.min(1, s.B04 * g), Math.min(1, s.B03 * g), Math.min(1, s.B02 * g), 1];
+  return [tc(s.B04), tc(s.B03), tc(s.B02), 1];
 }`;
 
 /**

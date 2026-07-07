@@ -121,6 +121,18 @@ function boundsDeCampos(lotes: LoteGeo[], ests?: { id: string; nombre: string; c
   return [minX - dx, minY - dy, maxX + dx, maxY + dy];
 }
 
+/** Polígono "mundo con huecos": un rectángulo enorme con los lotes/campos recortados
+ *  como huecos. Se usa como MÁSCARA para mostrar los rasters (NDVI/topo/relieve) SOLO
+ *  sobre los campos (afuera se atenúa). Vacío si no hay geometría. */
+function mascaraFc(lotes: LoteGeo[], ests?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[]): GeoJSON.FeatureCollection {
+  const huecos: number[][][] = [];
+  lotes.forEach((l) => { const r = l.geojson?.coordinates?.[0]; if (r && r.length >= 4) huecos.push(r); });
+  (ests || []).forEach((e) => { const r = e.coordenadas?.coordinates?.[0]; if (r && r.length >= 4) huecos.push(r); });
+  if (!huecos.length) return { type: "FeatureCollection", features: [] };
+  const mundo: number[][] = [[-179.9, -85], [179.9, -85], [179.9, 85], [-179.9, 85], [-179.9, -85]];
+  return { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Polygon", coordinates: [mundo, ...huecos] }, properties: {} }] };
+}
+
 function ndviColor(v: number) {
   if (!v || v <= 0) return "#9aa39a";
   if (v >= 0.75) return "#1f6e2a";
@@ -304,6 +316,8 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
   // relieve. Por defecto van acotadas al bbox de los campos (menos tiles → más
   // fluido); con capaCompleta se muestran en todo el mapa. Idempotente.
   const removerCapasRaster = (map: maplibregl.Map) => {
+    if (map.getLayer("mascara-fill")) map.removeLayer("mascara-fill");
+    if (map.getSource("mascara")) map.removeSource("mascara");
     ["truecolor", "ndvi", "topo", "relieve-hs", "relieve"].forEach((id) => {
       if (map.getLayer(id)) map.removeLayer(id);
       if (map.getSource(id)) map.removeSource(id);
@@ -341,6 +355,14 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
     map.addLayer({ id: "relieve-hs", type: "raster", source: "relieve-hs", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 1 } as any }, antes);
     map.addSource("relieve", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 8, ...conBounds(acot), attribution: "© Esri" } as any);
     map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 0.45 } as any }, antes);
+
+    // MÁSCARA: encima de los rasters (NDVI/topo/relieve) para mostrarlos SOLO sobre
+    // los campos; afuera se atenúa. Solo cuando la vista es una de esas y NO es "todo
+    // el mapa". Los huecos son los lotes/campos reales → recorte exacto (no un rectángulo).
+    const vistaRaster = layerRef.current === "NDVI" || layerRef.current === "Topografía" || layerRef.current === "Relieve";
+    const mascaraOn = vistaRaster && !capaCompletaRef.current && !!boundsRef.current;
+    map.addSource("mascara", { type: "geojson", data: mascaraFc(lotesRef.current, establecimientosRef.current) });
+    map.addLayer({ id: "mascara-fill", type: "fill", source: "mascara", layout: { visibility: mascaraOn ? "visible" : "none" }, paint: { "fill-color": "#0b1016", "fill-opacity": 0.62 } as any }, antes);
   };
 
   // ---- init ----
@@ -715,6 +737,12 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
     if (map.getLayer("etiquetas")) map.setLayoutProperty("etiquetas", "visibility", satVisible ? "visible" : "none");
     // Imagen satelital ACTUAL (Sentinel-2) sobre los campos, cuando está activada.
     if (map.getLayer("truecolor")) map.setLayoutProperty("truecolor", "visibility", satActualRef.current && satVisible ? "visible" : "none");
+    // Máscara "solo sobre mis campos" para las vistas raster (NDVI/topo/relieve).
+    (map.getSource("mascara") as maplibregl.GeoJSONSource)?.setData(mascaraFc(lotes, establecimientosRef.current));
+    if (map.getLayer("mascara-fill")) {
+      const vistaRaster = layer === "NDVI" || layer === "Topografía" || layer === "Relieve";
+      map.setLayoutProperty("mascara-fill", "visibility", vistaRaster && !capaCompletaRef.current && !!boundsRef.current ? "visible" : "none");
+    }
     if (map.getLayer("lotes-line")) map.setPaintProperty("lotes-line", "line-color", layer === "Topografía" || layer === "Relieve" ? "#111111" : "#ffffff");
     // Capa de prescripción (vector + dosis)
     const rxOn = rxVisible && !!rx?.fc?.features?.length;
