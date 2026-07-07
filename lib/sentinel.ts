@@ -130,23 +130,33 @@ function evaluatePixel(s) {
   return [c[0], c[1], c[2], 1];
 }`;
 
+// Color natural (true color) Sentinel-2: bandas B04/B03/B02 con ganancia. Salida
+// RGBA transparente donde no hay dato. Es la IMAGEN ACTUAL del satélite (misma
+// ventana temporal que el NDVI), para que satélite y NDVI COINCIDAN en el tiempo.
+const EVALSCRIPT_TRUECOLOR_TILE = `//VERSION=3
+function setup() {
+  return { input: [{ bands: ["B02", "B03", "B04", "dataMask"] }], output: { bands: 4 } };
+}
+function evaluatePixel(s) {
+  if (s.dataMask === 0) return [0, 0, 0, 0];
+  var g = 2.5; // ganancia de brillo
+  return [Math.min(1, s.B04 * g), Math.min(1, s.B03 * g), Math.min(1, s.B02 * g), 1];
+}`;
+
 /**
- * Renderiza UN tile (256×256) de NDVI Sentinel-2 real vía la Process API, para el
- * bbox dado en EPSG:3857. Usa el mosaico menos nuboso de los últimos 90 días.
- * No depende de las capas configuradas en la instancia WMS (solo del OAuth).
+ * Renderiza UN tile (256×256) Sentinel-2 vía la Process API para el bbox dado
+ * (EPSG:3857), con el evalscript indicado, usando el mosaico menos nuboso de los
+ * últimos 90 días. No depende de las capas WMS de la instancia (solo del OAuth).
  * Devuelve el PNG, o null si no hay credenciales / falla / no hay datos.
  */
-export async function ndviTilePng(bbox3857: [number, number, number, number]): Promise<Buffer | null> {
+async function procesarTilePng(bbox3857: [number, number, number, number], evalscript: string): Promise<Buffer | null> {
   const auth = await getAuth();
   if (!auth) return null;
   const hoy = new Date();
   const desde = new Date(hoy.getTime() - 90 * 86400000);
   const payload = {
     input: {
-      bounds: {
-        bbox: bbox3857,
-        properties: { crs: "http://www.opengis.net/def/crs/EPSG/0/3857" },
-      },
+      bounds: { bbox: bbox3857, properties: { crs: "http://www.opengis.net/def/crs/EPSG/0/3857" } },
       data: [
         {
           type: "sentinel-2-l2a",
@@ -159,7 +169,7 @@ export async function ndviTilePng(bbox3857: [number, number, number, number]): P
       ],
     },
     output: { width: 256, height: 256, responses: [{ identifier: "default", format: { type: "image/png" } }] },
-    evalscript: EVALSCRIPT_NDVI_TILE,
+    evalscript,
   };
   try {
     const res = await fetch(auth.process, {
@@ -172,6 +182,16 @@ export async function ndviTilePng(bbox3857: [number, number, number, number]): P
   } catch {
     return null;
   }
+}
+
+/** Tile de NDVI Sentinel-2 (coloreado). */
+export function ndviTilePng(bbox3857: [number, number, number, number]): Promise<Buffer | null> {
+  return procesarTilePng(bbox3857, EVALSCRIPT_NDVI_TILE);
+}
+
+/** Tile de imagen SATELITAL ACTUAL (color natural) Sentinel-2 — coincide en tiempo con el NDVI. */
+export function truecolorTilePng(bbox3857: [number, number, number, number]): Promise<Buffer | null> {
+  return procesarTilePng(bbox3857, EVALSCRIPT_TRUECOLOR_TILE);
 }
 
 export type NdviLote = { ndvi: number; fecha: string | null; stale?: boolean };
