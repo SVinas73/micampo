@@ -731,12 +731,6 @@ function LotesMapa({
   };
   const [fichaOpen, setFichaOpen] = useState(false);
   const [online, setOnline] = useState(true);
-  // Rendimiento: por defecto NDVI/topo/relieve solo sobre los campos; toggle "todo el mapa".
-  const [capaCompleta, setCapaCompleta] = useState(false);
-  // Vista satélite: imagen ACTUAL de Sentinel-2 sobre los campos (coincide con NDVI).
-  const [satActual, setSatActual] = useState(false);
-  // La opción de acotado/actual aplica a la vista activa.
-  const capaAcotable = layer === "NDVI" || layer === "Topografía" || layer === "Relieve";
   // Economía por lote para el gemelo Campo 3D (altura/color por margen/costo).
   const [economia, setEconomia] = useState<Record<string, { margenPorHa: number; costoPorHa: number; margen: number; fuente: string }>>({});
   useEffect(() => {
@@ -775,20 +769,6 @@ function LotesMapa({
               <button key={l} className={layer === l ? "is-on" : ""} onClick={() => onLayerChange(l)}>{l}</button>
             ))}
           </div>
-          )}
-          {/* Opción por vista: acotar a mis campos (rápido) o ver en todo el mapa */}
-          {vista === "clasica" && capaAcotable && (
-            <label className="row gap-6" style={{ alignItems: "center", fontSize: 12, fontWeight: 600, color: "var(--mc-text-2)", cursor: "pointer" }} title="Por defecto la capa se muestra solo sobre tus campos (carga más rápido). Activá para verla en todo el mapa.">
-              <input type="checkbox" checked={capaCompleta} onChange={(e) => setCapaCompleta(e.target.checked)} />
-              Ver en todo el mapa
-            </label>
-          )}
-          {/* Vista satélite: imagen actual (Sentinel-2) que coincide con NDVI */}
-          {vista === "clasica" && layer === "Satélite" && (
-            <label className="row gap-6" style={{ alignItems: "center", fontSize: 12, fontWeight: 600, color: "var(--mc-text-2)", cursor: "pointer" }} title="Muestra la imagen satelital ACTUAL (Sentinel-2, ~10 m) sobre tus campos, que coincide en fecha con el NDVI. Sin activar, ves el mosaico de alta resolución (Esri), que puede ser más viejo.">
-              <input type="checkbox" checked={satActual} onChange={(e) => setSatActual(e.target.checked)} />
-              Imagen actual (Sentinel-2)
-            </label>
           )}
           {lotes.length > 0 && (
             <div className="mc-seg" style={{ display: "flex", alignItems: "center", paddingLeft: 8 }} title="Elegir lote">
@@ -833,8 +813,6 @@ function LotesMapa({
           lotes={lotesGeo}
           notas={notasGeo}
           ndviVisible={layer === "NDVI"}
-          capaCompleta={capaCompleta}
-          satActual={satActual}
           selectedId={selected?.id ?? null}
           layer={layer}
           onSelect={(id: string) => onSelect(lotes.find((l) => l.id === id) || null)}

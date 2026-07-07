@@ -130,25 +130,6 @@ function evaluatePixel(s) {
   return [c[0], c[1], c[2], 1];
 }`;
 
-// Color natural (true color) Sentinel-2: bandas B04/B03/B02 con ganancia. Salida
-// RGBA transparente donde no hay dato. Es la IMAGEN ACTUAL del satélite (misma
-// ventana temporal que el NDVI), para que satélite y NDVI COINCIDAN en el tiempo.
-const EVALSCRIPT_TRUECOLOR_TILE = `//VERSION=3
-function setup() {
-  return { input: [{ bands: ["B02", "B03", "B04", "dataMask"] }], output: { bands: 4 } };
-}
-// Realce "natural color" luminoso: ganancia + gamma para levantar medios y sombras
-// (Sentinel-2 L2A viene con reflectancias bajas → sin esto se ve oscuro).
-function tc(v) {
-  v = v * 3.2;
-  v = v < 0 ? 0 : (v > 1 ? 1 : v);
-  return Math.pow(v, 1 / 1.55);
-}
-function evaluatePixel(s) {
-  if (s.dataMask === 0) return [0, 0, 0, 0];
-  return [tc(s.B04), tc(s.B03), tc(s.B02), 1];
-}`;
-
 /**
  * Renderiza UN tile (256×256) Sentinel-2 vía la Process API para el bbox dado
  * (EPSG:3857), con el evalscript indicado, usando el mosaico menos nuboso de los
@@ -193,11 +174,6 @@ async function procesarTilePng(bbox3857: [number, number, number, number], evals
 /** Tile de NDVI Sentinel-2 (coloreado). */
 export function ndviTilePng(bbox3857: [number, number, number, number]): Promise<Buffer | null> {
   return procesarTilePng(bbox3857, EVALSCRIPT_NDVI_TILE);
-}
-
-/** Tile de imagen SATELITAL ACTUAL (color natural) Sentinel-2 — coincide en tiempo con el NDVI. */
-export function truecolorTilePng(bbox3857: [number, number, number, number]): Promise<Buffer | null> {
-  return procesarTilePng(bbox3857, EVALSCRIPT_TRUECOLOR_TILE);
 }
 
 export type NdviLote = { ndvi: number; fecha: string | null; stale?: boolean };

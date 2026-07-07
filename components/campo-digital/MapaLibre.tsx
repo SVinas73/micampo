@@ -69,12 +69,6 @@ type Props = {
   ndviVisible?: boolean; // raster NDVI real (Sentinel-2 / NASA GIBS)
   rx?: RxMapa | null; // mapa de prescripción (vector + dosis) generado desde la ficha
   rxVisible?: boolean;
-  // Rendimiento: por defecto NDVI/topo/relieve se acotan a los campos. Con true se
-  // muestran en TODO el mapa (opción por pestaña de vista).
-  capaCompleta?: boolean;
-  // Muestra la imagen satelital ACTUAL (Sentinel-2 color natural) sobre los campos,
-  // para que la vista satélite coincida en el tiempo con NDVI/prescripción.
-  satActual?: boolean;
   selectedId?: string | null;
   layer: string; // "NDVI" | "Satélite" | "Cultivos"
   onSelect: (id: string) => void;
@@ -103,34 +97,6 @@ function boundariesFc(lotes: LoteGeo[], ests?: { id: string; nombre: string; coo
   // Para los establecimientos sin límite dibujado, usar el hull de sus lotes
   const hull = camposFc(lotes.filter((l) => !l.establecimientoId || !conLimite.has(l.establecimientoId)));
   return { type: "FeatureCollection", features: [...feats, ...hull.features] };
-}
-
-/** BBox [minLng,minLat,maxLng,maxLat] que encierra TODOS los lotes/campos creados,
- *  con un margen chico. Se usa para acotar los rasters (NDVI/topo/relieve/satélite
- *  actual) a los campos por defecto → menos tiles, más fluido. Null si no hay geometría. */
-function boundsDeCampos(lotes: LoteGeo[], ests?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[]): [number, number, number, number] | null {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, hay = false;
-  const add = (ring: number[][]) => ring.forEach((p) => {
-    if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
-    if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; hay = true;
-  });
-  lotes.forEach((l) => { const r = l.geojson?.coordinates?.[0]; if (r?.length) add(r); });
-  (ests || []).forEach((e) => { const r = e.coordenadas?.coordinates?.[0]; if (r?.length) add(r); });
-  if (!hay) return null;
-  const dx = (maxX - minX) * 0.06 || 0.01, dy = (maxY - minY) * 0.06 || 0.01;
-  return [minX - dx, minY - dy, maxX + dx, maxY + dy];
-}
-
-/** Polígono "mundo con huecos": un rectángulo enorme con los lotes/campos recortados
- *  como huecos. Se usa como MÁSCARA para mostrar los rasters (NDVI/topo/relieve) SOLO
- *  sobre los campos (afuera se atenúa). Vacío si no hay geometría. */
-function mascaraFc(lotes: LoteGeo[], ests?: { id: string; nombre: string; coordenadas?: GeoJSON.Polygon | null }[]): GeoJSON.FeatureCollection {
-  const huecos: number[][][] = [];
-  lotes.forEach((l) => { const r = l.geojson?.coordinates?.[0]; if (r && r.length >= 4) huecos.push(r); });
-  (ests || []).forEach((e) => { const r = e.coordenadas?.coordinates?.[0]; if (r && r.length >= 4) huecos.push(r); });
-  if (!huecos.length) return { type: "FeatureCollection", features: [] };
-  const mundo: number[][] = [[-179.9, -85], [179.9, -85], [179.9, 85], [-179.9, 85], [-179.9, -85]];
-  return { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Polygon", coordinates: [mundo, ...huecos] }, properties: {} }] };
 }
 
 function ndviColor(v: number) {
@@ -231,7 +197,7 @@ function fillOpacity(layer: string, selectedId: string | null): any {
   return ["case", ["==", ["get", "id"], selectedId ?? "__none__"], sel, base];
 }
 
-export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVisible = false, rx = null, rxVisible = false, capaCompleta = false, satActual = false, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onEliminarNota, onCampoConLotes }: Props) {
+export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVisible = false, rx = null, rxVisible = false, selectedId, layer, onSelect, onDrawn, armarDibujo, onDibujoIniciado, volarA, establecimientos, modoNota, onPuntoNota, onEliminarNota, onCampoConLotes }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -248,13 +214,6 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
   const notasRef = useRef(notas);
   const ndviVisRef = useRef(ndviVisible);
   ndviVisRef.current = ndviVisible;
-  // Acotado de rasters a los campos (rendimiento) + imagen satelital actual.
-  const capaCompletaRef = useRef(capaCompleta);
-  const satActualRef = useRef(satActual);
-  const boundsRef = useRef<[number, number, number, number] | null>(null);
-  capaCompletaRef.current = capaCompleta;
-  satActualRef.current = satActual;
-  boundsRef.current = boundsDeCampos(lotes, establecimientos);
   // Lupita de aumento para el dibujo de lotes (mini-mapa circular junto al cursor).
   const lensRef = useRef<HTMLDivElement>(null);
   const lensMapRef = useRef<maplibregl.Map | null>(null);
@@ -312,59 +271,6 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
     });
   };
 
-  // (Re)crea las capas raster acotables: satélite ACTUAL (Sentinel-2), NDVI, topo y
-  // relieve. Por defecto van acotadas al bbox de los campos (menos tiles → más
-  // fluido); con capaCompleta se muestran en todo el mapa. Idempotente.
-  const removerCapasRaster = (map: maplibregl.Map) => {
-    if (map.getLayer("mascara-fill")) map.removeLayer("mascara-fill");
-    if (map.getSource("mascara")) map.removeSource("mascara");
-    ["truecolor", "ndvi", "topo", "relieve-hs", "relieve"].forEach((id) => {
-      if (map.getLayer(id)) map.removeLayer(id);
-      if (map.getSource(id)) map.removeSource(id);
-    });
-  };
-  const agregarCapasRaster = (map: maplibregl.Map) => {
-    removerCapasRaster(map);
-    const campos = boundsRef.current || undefined;                  // bbox de mis campos
-    const acot = capaCompletaRef.current ? undefined : campos;      // acotado según toggle
-    const antes = map.getLayer("etiquetas") ? "etiquetas" : undefined;
-    const conBounds = (b?: [number, number, number, number]) => (b ? { bounds: b } : {});
-
-    // Imagen satelital ACTUAL (Sentinel-2 color natural) sobre los campos → coincide con NDVI.
-    if (SENTINEL_INSTANCE) {
-      map.addSource("truecolor", { type: "raster", tiles: [`${location.origin}/api/sentinel/truecolor/{z}/{x}/{y}`], tileSize: 256, minzoom: 9, maxzoom: 17, ...conBounds(campos), attribution: "© Copernicus Sentinel-2" } as any);
-      map.addLayer({ id: "truecolor", type: "raster", source: "truecolor", layout: { visibility: satActualRef.current && satVisible ? "visible" : "none" }, paint: { "raster-opacity": 1 } as any }, antes);
-    }
-
-    // NDVI (Sentinel-2 con credenciales; NASA MODIS sin ellas).
-    if (SENTINEL_INSTANCE) {
-      map.addSource("ndvi", { type: "raster", tiles: [`${location.origin}/api/sentinel/ndvi/{z}/{x}/{y}`], tileSize: 256, minzoom: 9, maxzoom: 17, ...conBounds(acot), attribution: "NDVI © Copernicus Sentinel-2" } as any);
-      map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.9 } as any }, antes);
-    } else {
-      map.addSource("ndvi", { type: "raster", tiles: ["https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/default/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png"], tileSize: 256, maxzoom: 9, ...conBounds(acot), attribution: "NDVI © NASA GIBS / MODIS Terra" } as any);
-      map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.8 } as any }, antes);
-    }
-
-    // Topografía (OpenTopoMap).
-    map.addSource("topo", { type: "raster", tiles: ["https://a.tile.opentopomap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 17, ...conBounds(acot), attribution: "© OpenTopoMap (CC-BY-SA)" } as any);
-    map.addLayer({ id: "topo", type: "raster", source: "topo", layout: { visibility: layerRef.current === "Topografía" ? "visible" : "none" }, paint: { "raster-opacity": 0.92 } as any }, antes);
-
-    // Relieve (sombreado Esri + tinte hipsométrico).
-    const relieveOn = layerRef.current === "Relieve";
-    map.addSource("relieve-hs", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 16, ...conBounds(acot), attribution: "© Esri — Sombreado de relieve" } as any);
-    map.addLayer({ id: "relieve-hs", type: "raster", source: "relieve-hs", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 1 } as any }, antes);
-    map.addSource("relieve", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 8, ...conBounds(acot), attribution: "© Esri" } as any);
-    map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 0.45 } as any }, antes);
-
-    // MÁSCARA: encima de los rasters (NDVI/topo/relieve) para mostrarlos SOLO sobre
-    // los campos; afuera se atenúa. Solo cuando la vista es una de esas y NO es "todo
-    // el mapa". Los huecos son los lotes/campos reales → recorte exacto (no un rectángulo).
-    const vistaRaster = layerRef.current === "NDVI" || layerRef.current === "Topografía" || layerRef.current === "Relieve";
-    const mascaraOn = vistaRaster && !capaCompletaRef.current && !!boundsRef.current;
-    map.addSource("mascara", { type: "geojson", data: mascaraFc(lotesRef.current, establecimientosRef.current) });
-    map.addLayer({ id: "mascara-fill", type: "fill", source: "mascara", layout: { visibility: mascaraOn ? "visible" : "none" }, paint: { "fill-color": "#0b1016", "fill-opacity": 0.62 } as any }, antes);
-  };
-
   // ---- init ----
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
@@ -419,9 +325,45 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
 
     map.on("load", () => {
-      // Capas raster (satélite actual / NDVI / topo / relieve), acotadas a los campos
-      // por defecto para que cargue más rápido. Ver agregarCapasRaster().
-      agregarCapasRaster(map);
+      // Capa NDVI. Con Sentinel configurado → proxy propio de tiles Sentinel-2 real
+      // (10 m). Sin credenciales → NASA GIBS MODIS Terra NDVI 8 días (dato satelital
+      // real, gratuito, sin API key, ~250 m). Ambos degradan a transparente sin
+      // ensuciar la consola.
+      if (SENTINEL_INSTANCE) {
+        map.addSource("ndvi", {
+          type: "raster",
+          tiles: [`${location.origin}/api/sentinel/ndvi/{z}/{x}/{y}`],
+          tileSize: 256,
+          minzoom: 9, // por debajo de z9 los tiles Sentinel-2 no aportan detalle
+          maxzoom: 17,
+          attribution: "NDVI © Copernicus Sentinel-2",
+        });
+        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.9 } as any }, "etiquetas");
+      } else {
+        map.addSource("ndvi", {
+          type: "raster",
+          tiles: ["https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/default/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png"],
+          tileSize: 256,
+          maxzoom: 9, // GIBS Level9: MapLibre reescala (overzoom) al acercarse
+          attribution: "NDVI © NASA GIBS / MODIS Terra",
+        });
+        map.addLayer({ id: "ndvi", type: "raster", source: "ndvi", layout: { visibility: ndviVisRef.current ? "visible" : "none" }, paint: { "raster-opacity": 0.8 } as any }, "etiquetas");
+      }
+
+      // Capa de Topografía (OpenTopoMap: relieve + curvas de nivel)
+      map.addSource("topo", { type: "raster", tiles: ["https://a.tile.opentopomap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 17, attribution: "© OpenTopoMap (CC-BY-SA)" });
+      map.addLayer({ id: "topo", type: "raster", source: "topo", layout: { visibility: layerRef.current === "Topografía" ? "visible" : "none" }, paint: { "raster-opacity": 0.92 } as any }, "etiquetas");
+
+      // Capa de Relieve = sombreado de relieve de alta definición + tinte hipsométrico.
+      // "relieve-hs" (Esri World Hillshade) es un sombreado nítido hasta z16 → da toda la
+      //   definición de la forma del terreno (lomas, bajos, pendientes) sin pixelarse al hacer zoom.
+      // "relieve" (World_Physical_Map, tinte de color) solo llega a z8, así que va con baja opacidad
+      //   por encima solo para aportar el color hipsométrico; los bordes nítidos los pone el hillshade.
+      const relieveOn = layerRef.current === "Relieve";
+      map.addSource("relieve-hs", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 16, attribution: "© Esri — Sombreado de relieve" });
+      map.addLayer({ id: "relieve-hs", type: "raster", source: "relieve-hs", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 1 } as any }, "etiquetas");
+      map.addSource("relieve", { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, maxzoom: 8, attribution: "© Esri — U.S. National Park Service" });
+      map.addLayer({ id: "relieve", type: "raster", source: "relieve", layout: { visibility: relieveOn ? "visible" : "none" }, paint: { "raster-opacity": 0.45 } as any }, "etiquetas");
 
       // Envolvente de cada campo (establecimiento)
       map.addSource("campos", { type: "geojson", data: boundariesFc(lotes, establecimientosRef.current) });
@@ -706,16 +648,6 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modoNota, ready]);
 
-  // Re-crea las capas raster cuando cambian el acotado (rendimiento), la imagen
-  // satelital actual o el bbox de los campos (nuevo/movido lote).
-  const boundsKey = boundsRef.current?.map((n) => n.toFixed(3)).join(",") ?? "";
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return;
-    agregarCapasRaster(map);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [capaCompleta, satActual, boundsKey, ready]);
-
   // ---- updates ----
   useEffect(() => {
     const map = mapRef.current;
@@ -735,14 +667,6 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
       map.setPaintProperty("satelite", "raster-opacity", layer === "Relieve" ? 0.18 : 1);
     }
     if (map.getLayer("etiquetas")) map.setLayoutProperty("etiquetas", "visibility", satVisible ? "visible" : "none");
-    // Imagen satelital ACTUAL (Sentinel-2) sobre los campos, cuando está activada.
-    if (map.getLayer("truecolor")) map.setLayoutProperty("truecolor", "visibility", satActualRef.current && satVisible ? "visible" : "none");
-    // Máscara "solo sobre mis campos" para las vistas raster (NDVI/topo/relieve).
-    (map.getSource("mascara") as maplibregl.GeoJSONSource)?.setData(mascaraFc(lotes, establecimientosRef.current));
-    if (map.getLayer("mascara-fill")) {
-      const vistaRaster = layer === "NDVI" || layer === "Topografía" || layer === "Relieve";
-      map.setLayoutProperty("mascara-fill", "visibility", vistaRaster && !capaCompletaRef.current && !!boundsRef.current ? "visible" : "none");
-    }
     if (map.getLayer("lotes-line")) map.setPaintProperty("lotes-line", "line-color", layer === "Topografía" || layer === "Relieve" ? "#111111" : "#ffffff");
     // Capa de prescripción (vector + dosis)
     const rxOn = rxVisible && !!rx?.fc?.features?.length;
