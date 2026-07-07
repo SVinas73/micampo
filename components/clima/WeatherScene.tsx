@@ -198,8 +198,19 @@ function Hero({ c, night }: { c: WxCond; night: boolean }) {
       </div>
     );
   }
-  // Resto: nube fija (oscura para niebla/lluvia/tormenta) con leve flotación.
-  const dark = c === "rain" || c === "storm" || c === "fog";
+  // Tormenta: nube oscura + rayo DEBAJO de la nube, que destella como si cayera.
+  if (c === "storm") {
+    return (
+      <div style={{ position: "absolute", top: 10, right: 12, width: 148 }}>
+        <div className="wx-scene-hero"><CloudSVG w={148} dark /></div>
+        <svg className="wx-strike" viewBox="0 0 24 48" width="26" height="52" style={{ position: "absolute", top: 54, left: 60, filter: "drop-shadow(0 0 8px rgba(255,226,122,0.95))" }}>
+          <path d="M13 0 L3 26 H11 L8 48 L21 18 H12 Z" fill="#ffe27a" stroke="#fff6c8" strokeWidth="0.6" />
+        </svg>
+      </div>
+    );
+  }
+  // Resto: nube fija (oscura para niebla/lluvia) con leve flotación.
+  const dark = c === "rain" || c === "fog";
   const size = c === "wind" ? 128 : c === "snow" ? 138 : 148;
   return (
     <div className="wx-scene-hero" style={{ position: "absolute", top: 10, right: 12 }}>
@@ -245,13 +256,8 @@ export function WeatherScene({
         {c === "storm" && (
           <>
             <Rain heavy />
-            <div className="wx-scene-flash" />
-            <svg className="wx-scene-bolt" viewBox="0 0 24 48" width="28" height="58" style={{ position: "absolute", top: "34%", left: "56%", filter: "drop-shadow(0 0 6px rgba(255,226,122,0.8))" }}>
-              <path d="M13 0 L3 26 H11 L8 48 L21 18 H12 Z" fill="#ffe27a" />
-            </svg>
-            <svg className="wx-scene-bolt2" viewBox="0 0 24 48" width="20" height="42" style={{ position: "absolute", top: "44%", left: "30%", filter: "drop-shadow(0 0 5px rgba(255,226,122,0.7))" }}>
-              <path d="M13 0 L3 26 H11 L8 48 L21 18 H12 Z" fill="#fff0b0" />
-            </svg>
+            {/* Destello sincronizado con el rayo (el rayo va en el hero, bajo la nube) */}
+            <div className="wx-strike" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.5)" }} />
           </>
         )}
         {c === "snow" && <Snow />}

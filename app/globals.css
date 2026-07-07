@@ -2493,8 +2493,21 @@ a:focus-visible {
 }
 .wx-scene-flash { position: absolute; inset: 0; background: rgba(255,255,255,0.7); opacity: 0; animation: wx-flash 6s ease-in-out infinite; }
 .wx-scene-bolt { opacity: 0; animation: wx-flash 6s ease-in-out infinite; }
+/* Rayo/relámpago: casi siempre apagado, con destellos rápidos (parpadeo) como si cayera */
+.wx-strike { opacity: 0; animation: wx-strike 3.8s ease-in-out infinite; }
+@keyframes wx-strike {
+  0%, 11%, 100% { opacity: 0; }
+  12% { opacity: 1; }
+  14% { opacity: 0.15; }
+  16% { opacity: 1; }
+  20% { opacity: 0; }
+  60% { opacity: 0; }
+  61% { opacity: 1; }
+  64% { opacity: 0.2; }
+  66% { opacity: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .wx-scene-cloud-wrap, .wx-scene-rays-g, .wx-scene-pulse, .wx-scene-raindrop, .wx-scene-flake, .wx-scene-fogband, .wx-scene-gust, .wx-scene-flash, .wx-scene-bolt, .wx-scene-star, .wx-scene-hero { animation: none; }
+  .wx-scene-cloud-wrap, .wx-scene-rays-g, .wx-scene-pulse, .wx-scene-raindrop, .wx-scene-flake, .wx-scene-fogband, .wx-scene-gust, .wx-scene-flash, .wx-scene-bolt, .wx-scene-star, .wx-scene-hero, .wx-strike { animation: none; }
 }
 
 /* Drawer lateral (ficha técnica del lote) */
