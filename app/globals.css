@@ -2445,6 +2445,9 @@ a:focus-visible {
 }
 .wx-scene-rays-g { transform-box: view-box; transform-origin: 70px 70px; animation: wx-spin 38s linear infinite; }
 .wx-scene-pulse { transform-box: fill-box; transform-origin: center; animation: wx-pulse 4.5s ease-in-out infinite; }
+/* Icono "hero" fijo (nube / sol+nube) con leve flotación */
+.wx-scene-hero { animation: wx-hero-float 6.5s ease-in-out infinite; }
+@keyframes wx-hero-float { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(3px); } }
 .wx-scene-raindrop {
   position: absolute; top: -20px; width: 2px;
   background: linear-gradient(180deg, rgba(205,228,245,0) 0%, rgba(205,228,245,0.9) 100%);
@@ -2491,7 +2494,7 @@ a:focus-visible {
 .wx-scene-flash { position: absolute; inset: 0; background: rgba(255,255,255,0.7); opacity: 0; animation: wx-flash 6s ease-in-out infinite; }
 .wx-scene-bolt { opacity: 0; animation: wx-flash 6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .wx-scene-cloud-wrap, .wx-scene-rays-g, .wx-scene-pulse, .wx-scene-raindrop, .wx-scene-flake, .wx-scene-fogband, .wx-scene-gust, .wx-scene-flash, .wx-scene-bolt, .wx-scene-star { animation: none; }
+  .wx-scene-cloud-wrap, .wx-scene-rays-g, .wx-scene-pulse, .wx-scene-raindrop, .wx-scene-flake, .wx-scene-fogband, .wx-scene-gust, .wx-scene-flash, .wx-scene-bolt, .wx-scene-star, .wx-scene-hero { animation: none; }
 }
 
 /* Drawer lateral (ficha técnica del lote) */
