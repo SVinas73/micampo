@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropic, IA_MODEL } from "@/lib/ia";
 
+// Analiza todo el establecimiento con IA (hasta 2000 tokens sobre muchos datos):
+// sin este límite Vercel corta a ~10s y la generación devuelve 504.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
