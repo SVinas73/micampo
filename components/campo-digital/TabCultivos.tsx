@@ -9,7 +9,7 @@ import { CropImg } from "./LoteOverlay";
 
 /* ========== TAB CULTIVOS (Figma CDCultivos) ========== */
 
-type DistCultivo = { nombre: string; ha: number; pct: number; color: string; icon: string };
+type DistCultivo = { nombre: string; ha: number; pct: number; color: string; icon: string; lotes: number };
 type PlanSiembraApi = { id: string; cultivo: string; hectareas: number; costoEstimado?: number; fechaSiembraRecomendada: string; variedad?: string; lote?: { nombre: string }; estado?: string };
 type AnalisisSueloApi = { pH?: number | null; materiaOrganica?: number | null; nitrogeno?: number | null; fosforo?: number | null; potasio?: number | null; fechaAnalisis: string; lote?: { nombre: string } | null };
 const CULTIVO_COLOR: Record<string, string> = { Maíz: "#c08a22", Soja: "#768f44", Trigo: "#d9a538", Sorgo: "#8ea65a", Girasol: "#e8b94a", Cebada: "#5e7733", Alfalfa: "#aabd76" };
@@ -128,14 +128,18 @@ export default function TabCultivos({ initialSub }: { initialSub?: string }) {
     setLotes(d.map((l) => ({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0, cultivo: l.cultivo })));
     // Distribución real por cultivo (0 si no hay lotes con cultivo sembrado)
     const porCultivo = new Map<string, number>();
+    const lotesPorCultivo = new Map<string, number>();
     d.forEach((l) => {
-      if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0));
+      if (l.cultivo) {
+        porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0));
+        lotesPorCultivo.set(l.cultivo, (lotesPorCultivo.get(l.cultivo) || 0) + 1);
+      }
     });
     const tot = Array.from(porCultivo.values()).reduce((s, v) => s + v, 0) || 1;
     setDistribucion(
       Array.from(porCultivo.entries())
         .sort((a, b) => b[1] - a[1])
-        .map(([nombre, ha]) => ({ nombre, ha: Math.round(ha), pct: Math.round((ha / tot) * 100), color: CULTIVO_COLOR[nombre] || "#5e7733", icon: CULTIVO_ICON[nombre] || "leaf" }))
+        .map(([nombre, ha]) => ({ nombre, ha: Math.round(ha), pct: Math.round((ha / tot) * 100), color: CULTIVO_COLOR[nombre] || "#5e7733", icon: CULTIVO_ICON[nombre] || "leaf", lotes: lotesPorCultivo.get(nombre) || 0 }))
     );
   }, [scopeLotes, loteActivo?.id]);
 
@@ -271,6 +275,8 @@ function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }:
   const [soloActivos, setSoloActivos] = useState(false);
   const [filtroCultivo, setFiltroCultivo] = useState("Todos");
   const [expandido, setExpandido] = useState<number | null>(null);
+  // Cultivo resaltado: sincroniza el hover entre el donut y la lista de distribución.
+  const [distActivo, setDistActivo] = useState<string | null>(null);
   const base = lotesReales.map((l) => {
     const c = l.cultivo ? (ESTADO_COLOR[l.cultivo] || { color: "#5e7733", bg: "#f1faf2" }) : { color: "#9aa39a", bg: "var(--mc-surface-2)" };
     return {
@@ -389,7 +395,7 @@ function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }:
           <span className={`mc-badge ${distribucion.length ? "mc-badge--green" : "mc-badge--neutral"}`} style={{ fontSize: 11 }}>{distribucion.length} activos</span>
         </div>
         <div style={{ display: "flex", justifyContent: "center", padding: "8px 0 4px" }}>
-          <DonutResumen data={distribucion} />
+          <DonutResumen data={distribucion} activo={distActivo} onActivo={setDistActivo} />
         </div>
         {distribucion.length === 0 ? (
           <div className="text-xs text-muted" style={{ textAlign: "center", padding: "10px 0 4px" }}>
@@ -397,14 +403,21 @@ function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }:
           </div>
         ) : (
           <div className="col gap-10 mt-12">
-            {distribucion.map((d) => (
-              <div key={d.nombre} style={{ padding: "10px 12px", background: `${d.color}0d`, borderRadius: 10, border: `1px solid ${d.color}25` }}>
+            {distribucion.map((d) => {
+              const on = distActivo === d.nombre;
+              return (
+              <div
+                key={d.nombre}
+                onMouseEnter={() => setDistActivo(d.nombre)}
+                onMouseLeave={() => setDistActivo(null)}
+                style={{ padding: "10px 12px", background: on ? `${d.color}1f` : `${d.color}0d`, borderRadius: 10, border: `1px solid ${on ? d.color : `${d.color}25`}`, cursor: "default", transition: "background .15s, border-color .15s", boxShadow: on ? `0 2px 10px ${d.color}22` : "none" }}
+              >
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                   <div className="row gap-8" style={{ alignItems: "center" }}>
                     <CropImg cultivo={d.nombre} style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0 }} />
                     <div>
                       <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13 }}>{d.nombre}</div>
-                      <div className="text-xs text-muted">{d.ha} Ha</div>
+                      <div className="text-xs text-muted">{d.ha} Ha · {d.lotes} lote{d.lotes === 1 ? "" : "s"}</div>
                     </div>
                   </div>
                   <div className="col" style={{ alignItems: "flex-end", gap: 1 }}>
@@ -412,10 +425,11 @@ function CultivosEstados({ lotesReales, onNuevaTarea, onVerMapa, distribucion }:
                   </div>
                 </div>
                 <div style={{ height: 4, background: `${d.color}20`, borderRadius: 999, marginTop: 8, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${d.pct}%`, background: d.color, borderRadius: 999 }}></div>
+                  <div style={{ height: "100%", width: `${d.pct}%`, background: d.color, borderRadius: 999, transition: "width .3s" }}></div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -446,10 +460,12 @@ function Pill({ label, value, color }: { label: string; value: React.ReactNode; 
   );
 }
 
-function DonutResumen({ data }: { data: DistCultivo[] }) {
+function DonutResumen({ data, activo, onActivo }: { data: DistCultivo[]; activo: string | null; onActivo: (n: string | null) => void }) {
   const cx = 130, cy = 130, r = 88, sw = 26, gap = 5;
   const totalHa = data.reduce((s, d) => s + d.ha, 0);
+  const totalLotes = data.reduce((s, d) => s + d.lotes, 0);
   const vacio = data.length === 0;
+  const sel = data.find((d) => d.nombre === activo) || null;
   let cumPct = 0;
   const seg = data.map((d) => {
     const startDeg = cumPct * 3.6 - 90;
@@ -475,23 +491,43 @@ function DonutResumen({ data }: { data: DistCultivo[] }) {
   });
 
   return (
-    <svg width="260" height="260" viewBox="0 0 260 260">
+    <svg width="260" height="260" viewBox="0 0 260 260" onMouseLeave={() => onActivo(null)}>
       {ticks.map((t, i) => (
         <line key={i} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} stroke={t.major ? "var(--mc-line)" : "var(--mc-surface-2)"} strokeWidth={t.major ? 1.5 : 1} opacity="0.7" />
       ))}
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mc-surface-3)" strokeWidth={sw} />
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mc-line)" strokeWidth="1" opacity="0.6" />
-      {!vacio && seg.map((s, i) => (
-        <path key={i} d={`M ${s.x1} ${s.y1} A ${r} ${r} 0 ${s.large} 1 ${s.x2} ${s.y2}`} stroke={s.color} strokeWidth={sw} fill="none" strokeLinecap="round" />
-      ))}
+      {!vacio && seg.map((s, i) => {
+        const on = activo === null || s.nombre === activo;
+        return (
+          <path
+            key={i}
+            d={`M ${s.x1} ${s.y1} A ${r} ${r} 0 ${s.large} 1 ${s.x2} ${s.y2}`}
+            stroke={s.color}
+            strokeWidth={s.nombre === activo ? sw + 5 : sw}
+            fill="none"
+            strokeLinecap="round"
+            opacity={on ? 1 : 0.25}
+            style={{ cursor: "pointer", transition: "stroke-width .18s ease, opacity .18s ease" }}
+            onMouseEnter={() => onActivo(s.nombre)}
+          />
+        );
+      })}
       <circle cx={cx} cy={cy} r={r - sw / 2 - 4} fill="var(--mc-surface)" />
       <circle cx={cx} cy={cy} r={r - sw / 2 - 4} fill="none" stroke="var(--mc-line)" strokeWidth="1" opacity="0.5" />
-      <text x={cx} y={cy - 30} textAnchor="middle" fontSize="11" fontFamily="var(--ff-ui)" fontWeight="700" fill="var(--mc-text-3)" letterSpacing="0.1em">SUPERFICIE</text>
-      <text x={cx} y={cy + 10} textAnchor="middle" fontSize="38" fontFamily="var(--ff-display)" fontWeight="800" fill={vacio ? "var(--mc-text-3)" : "var(--mc-ink)"}>{totalHa}</text>
-      <text x={cx} y={cy + 30} textAnchor="middle" fontSize="11" fontFamily="var(--ff-mono)" fontWeight="600" fill="var(--mc-text-2)">Ha Totales</text>
-      {data.slice(0, 5).map((d, i) => (
-        <circle key={i} cx={cx + (i - (Math.min(data.length, 5) - 1) / 2) * 10} cy={cy + 44} r="3" fill={d.color} />
-      ))}
+      {sel ? (
+        <>
+          <text x={cx} y={cy - 26} textAnchor="middle" fontSize="12" fontFamily="var(--ff-ui)" fontWeight="700" fill={sel.color} letterSpacing="0.04em" style={{ textTransform: "uppercase" }}>{sel.nombre}</text>
+          <text x={cx} y={cy + 12} textAnchor="middle" fontSize="40" fontFamily="var(--ff-display)" fontWeight="800" fill="var(--mc-ink)">{sel.pct}%</text>
+          <text x={cx} y={cy + 33} textAnchor="middle" fontSize="11" fontFamily="var(--ff-mono)" fontWeight="600" fill="var(--mc-text-2)">{sel.ha} Ha · {sel.lotes} lote{sel.lotes === 1 ? "" : "s"}</text>
+        </>
+      ) : (
+        <>
+          <text x={cx} y={cy - 26} textAnchor="middle" fontSize="11" fontFamily="var(--ff-ui)" fontWeight="700" fill="var(--mc-text-3)" letterSpacing="0.1em">SUPERFICIE</text>
+          <text x={cx} y={cy + 12} textAnchor="middle" fontSize="38" fontFamily="var(--ff-display)" fontWeight="800" fill={vacio ? "var(--mc-text-3)" : "var(--mc-ink)"}>{totalHa}</text>
+          <text x={cx} y={cy + 33} textAnchor="middle" fontSize="10.5" fontFamily="var(--ff-mono)" fontWeight="600" fill="var(--mc-text-2)">Ha · {data.length} cultivo{data.length === 1 ? "" : "s"} · {totalLotes} lote{totalLotes === 1 ? "" : "s"}</text>
+        </>
+      )}
     </svg>
   );
 }
@@ -769,22 +805,40 @@ type AnalisisRow = { lote: string; cultivo: string; n: number; p: number; k: num
 function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: ReturnType<typeof useToast>; onVerMapa: () => void; refreshKey?: number }) {
   const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>([] as AnalisisRow[]);
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
-  const [evolucion, setEvolucion] = useState<{ label: string; ppm: number }[]>([]);
+  // Serie cruda de fósforo por análisis (con su lote) para poder filtrar la gráfica.
+  const [serieRaw, setSerieRaw] = useState<{ lote: string; ppm: number; fecha: number; label: string }[]>([]);
+  // Lote seleccionado en "Últimos Resultados": la gráfica de fósforo lo sigue.
+  const [loteSel, setLoteSel] = useState<string | null>(null);
   const [labResults, setLabResults] = useState<{ id: string; tienePdf: boolean; fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]>([]);
   // Refresco local tras eliminar un análisis (además del refreshKey del padre).
   const [localRefresh, setLocalRefresh] = useState(0);
+
+  // Evolución de fósforo del lote seleccionado (datos reales, orden cronológico).
+  const evolucion = useMemo(
+    () => serieRaw.filter((s) => !loteSel || s.lote === loteSel).sort((a, b) => a.fecha - b.fecha).map((s) => ({ label: s.label, ppm: s.ppm })),
+    [serieRaw, loteSel]
+  );
 
   useEffect(() => {
     fetch("/api/analisis-suelo")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
-        if (!Array.isArray(d) || d.length === 0) return;
-        // Evolución histórica real de Fósforo (ppm) ordenada por fecha
-        const pts = [...d]
+        if (!Array.isArray(d) || d.length === 0) { setSerieRaw([]); return; }
+        // Serie real de Fósforo (ppm) por análisis, con su lote (para filtrar la gráfica).
+        const serie = [...d]
           .filter((a: { fosforo?: number; fechaAnalisis?: string }) => a.fosforo != null && a.fechaAnalisis)
-          .sort((a: { fechaAnalisis: string }, b: { fechaAnalisis: string }) => new Date(a.fechaAnalisis).getTime() - new Date(b.fechaAnalisis).getTime())
-          .map((a: { fosforo: number; fechaAnalisis: string }) => ({ label: new Date(a.fechaAnalisis).toLocaleDateString("es-AR", { month: "short", year: "2-digit" }), ppm: Math.round(a.fosforo) }));
-        setEvolucion(pts);
+          .map((a: { fosforo: number; fechaAnalisis: string; lote?: { nombre: string } }) => ({
+            lote: a.lote?.nombre || "Lote",
+            ppm: Math.round(a.fosforo),
+            fecha: new Date(a.fechaAnalisis).getTime(),
+            label: new Date(a.fechaAnalisis).toLocaleDateString("es-AR", { month: "short", year: "2-digit" }),
+          }));
+        setSerieRaw(serie);
+        // Por defecto la gráfica sigue el lote del análisis más reciente.
+        const reciente = [...d]
+          .filter((a: { fechaAnalisis?: string }) => a.fechaAnalisis)
+          .sort((a: { fechaAnalisis: string }, b: { fechaAnalisis: string }) => new Date(b.fechaAnalisis).getTime() - new Date(a.fechaAnalisis).getTime())[0] as { lote?: { nombre: string } } | undefined;
+        setLoteSel((prev) => prev ?? (reciente?.lote?.nombre || null));
         // Tabla "Últimos Resultados de Laboratorio" con datos reales
         setLabResults(
           [...d]
@@ -915,19 +969,18 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
 
       <div className="mc-card ia-card">
         <div className="mc-card__head">
-          <div className="mc-card__title">Analisis del Suelo</div>
-          <IABadge />
+          <div className="mc-card__title">Análisis del Suelo</div>
         </div>
         <div className="grid g-cols-2 gap-12">
           {lotesAnalisis.map((l, i) => (
             <div key={i} style={{ padding: 14, border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "1.2fr 1fr 0.8fr auto", gap: 14, alignItems: "center" }}>
               <div>
-                <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>Identity</div>
+                <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>Identidad</div>
                 <div className="font-semi text-sm mt-4" style={{ color: "var(--mc-ink)", display: "flex", alignItems: "center", gap: 4 }}><Icon name="wheat" size={13} /> {l.lote}</div>
                 <div className="text-xs text-muted mt-2">{l.cultivo}</div>
               </div>
               <div>
-                <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>Macro Nutrients</div>
+                <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>Macronutrientes</div>
                 <div className="col gap-4 mt-4">
                   <NutBar letter="N" value={l.n} />
                   <NutBar letter="P" value={l.p} />
@@ -935,7 +988,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                 </div>
               </div>
               <div>
-                <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>Soil Health</div>
+                <div className="text-xs text-muted" style={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.04em" }}>Salud del suelo</div>
                 <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12 }}>
                   <span className="mc-badge mc-badge--neutral">
                     pH {l.ph ?? "—"} <span style={{ color: l.phStatus === "ok" ? "var(--mc-green-600)" : "var(--mc-amber)" }}>●</span>
@@ -956,7 +1009,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                     title="Descargar PDF"
                     onClick={() => descargarPDF(`Analisis ${l.lote}`, [`Lote: ${l.lote}`, l.cultivo, `N ${l.n}% · P ${l.p}% · K ${l.k}%`, `pH ${l.ph ?? "—"} · MO ${l.mo}`])}
                   >
-                    <Icon name="download" size={13} />
+                    <Icon name="pdf" size={14} />
                   </button>
                 </div>
                 <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "5px 8px", fontSize: 11, justifyContent: "center", gap: 5 }} onClick={() => setReceta(l)}>
@@ -980,7 +1033,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                 <tr><td colSpan={8} style={{ textAlign: "center", color: "var(--mc-text-3)", padding: "22px 8px", fontSize: 13 }}>Sin análisis cargados. Cargá uno con “Nuevo Análisis” y aparece acá.</td></tr>
               )}
               {labResults.map((r, i) => (
-                <tr key={i}>
+                <tr key={i} onClick={() => setLoteSel(r.lote)} style={{ cursor: "pointer", background: r.lote === loteSel ? "var(--mc-green-50)" : undefined }} title={`Ver la evolución de fósforo de ${r.lote}`}>
                   <td className="mc-cell--mono">{r.fecha}</td>
                   <td>{r.lote}</td>
                   <td className="mc-cell--mono">{r.prof}</td>
@@ -988,23 +1041,23 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                   <td className="mc-cell--mono">{r.n}</td>
                   <td><span style={{ color: r.phWarn ? "var(--mc-red)" : "var(--mc-ink)", display: "inline-flex", alignItems: "center", gap: 3 }}>{r.ph} {r.phWarn && <Icon name="alert" size={12} />}</span></td>
                   <td><span className={`mc-badge mc-badge--${r.estadoColor}`}>{r.estado}</span></td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <div className="row gap-2" style={{ alignItems: "center" }}>
                     {r.tienePdf ? (
                       // PDF real del laboratorio subido con el análisis
                       <a
                         className="mc-icon-btn"
-                        style={{ width: 22, height: 22, border: "none", display: "inline-grid", placeItems: "center", color: "var(--mc-green-700)" }}
+                        style={{ width: 24, height: 24, border: "none", display: "inline-grid", placeItems: "center", color: "var(--mc-red)" }}
                         href={`/api/analisis-suelo/${r.id}/pdf`}
                         title="Descargar el PDF del laboratorio"
                       >
-                        <Icon name="download" size={11} />
+                        <Icon name="pdf" size={14} />
                       </a>
                     ) : (
                       <button
                         className="mc-icon-btn"
-                        style={{ width: 22, height: 22, border: "none" }}
-                        title="Sin PDF adjunto — descarga un resumen generado"
+                        style={{ width: 24, height: 24, border: "none", color: "var(--mc-text-2)" }}
+                        title="Sin PDF adjunto — descarga un resumen en PDF"
                         onClick={() =>
                           descargarPDF(`Laboratorio ${r.lote} ${r.fecha.replace(/\//g, "-")}`, [
                             `Lote: ${r.lote}`,
@@ -1014,7 +1067,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                           ])
                         }
                       >
-                        <Icon name="download" size={11} />
+                        <Icon name="pdf" size={14} />
                       </button>
                     )}
                     <button
@@ -1036,8 +1089,8 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
 
         <div className="mc-card">
           <div className="mc-card__head">
-            <div className="mc-card__title">Evolución histórica de Fósforo</div>
-            <span className="text-xs text-muted">ppm · por análisis</span>
+            <div className="mc-card__title">Evolución de Fósforo{loteSel ? ` · ${loteSel}` : ""}</div>
+            <span className="text-xs text-muted">ppm · elegí un lote en la tabla</span>
           </div>
           {evolucion.length === 0 ? (
             <div className="mc-empty">
