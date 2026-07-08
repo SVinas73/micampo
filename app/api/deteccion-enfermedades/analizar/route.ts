@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropic, IA_VISION_MODEL, parseJsonTolerante } from "@/lib/ia";
 
+// Visión sobre la foto del cultivo: sin este límite Vercel corta a ~10s y la
+// detección devuelve 504 (aparece "no responsive").
+export const maxDuration = 45;
+
 type AnthropicMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 
 interface Lesion {

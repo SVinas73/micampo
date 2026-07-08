@@ -6,6 +6,10 @@ import { getAnthropic, IA_MODEL, parseJsonTolerante, modeloPropio } from "@/lib/
 import { getInsight, saveInsight } from "@/lib/insight";
 import { prescripcionPara, PRECIO_GRANO_REF, type Prescripcion } from "@/lib/tratamientos";
 
+// Pronóstico climático + refinamiento IA opcional: el límite evita el corte de
+// Vercel (~10s) en la primera carga sin caché.
+export const maxDuration = 30;
+
 /**
  * GET /api/lotes/presion-plagas
  * Pronostica la presión de plagas/enfermedades para los próximos días a partir

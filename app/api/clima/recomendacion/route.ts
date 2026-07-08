@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { getAnthropic, IA_MODEL, parseJsonTolerante } from "@/lib/ia";
 import { getInsight, saveInsight } from "@/lib/insight";
 
+// Recomendación del día con IA: el límite evita el corte de Vercel (~10s) en la
+// primera generación sin caché.
+export const maxDuration = 30;
+
 /**
  * POST /api/clima/recomendacion
  * Recomendación agronómica del día: cruza el clima (actual + pronóstico + alertas)
