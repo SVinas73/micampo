@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon, KPI, Badge, Seg, Modal, Field, useToast, PageHeader, Tabs, IABadge } from "@/components/mc";
 import { AgregarProductoModal } from "@/components/calculadora/AgregarProductoModal";
@@ -44,7 +44,7 @@ function CalculadoraInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { lotes: scopeLotes, loteIdsEnScope, esTodos } = useLoteScope();
+  const { lotes: scopeLotes, loteIdsEnScope, esTodos, establecimientoId, loteId: scopeLoteId } = useLoteScope();
   const scopeKey = loteIdsEnScope.join(",");
 
   const initialTab = TABS.includes(searchParams.get("tab") || "")
@@ -198,6 +198,8 @@ function CalculadoraInner() {
       {tab === "Preestablecidos" && (
         <TabPreset
           userPresets={userPresets}
+          establecimientoId={establecimientoId}
+          loteId={scopeLoteId}
           onEliminarPreset={eliminarPreset}
           onCrear={() => abrirNuevo({ ...CONFIG_VACIA, productos: [] })}
           onUsar={(cfg) => {
@@ -817,16 +819,40 @@ function TabHistorial({ rows, onEliminar, onDuplicar }: { rows: HistRow[]; onEli
 
 type SugeridoPreset = { nombre: string; tipo: string; dosis: string; caldo: string; productos: number; color: string; justificacion?: string; config: ConfigCalculo };
 
-function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear }: { userPresets: UserPreset[]; onUsar: (cfg: ConfigCalculo) => void; onEliminarPreset: (id: string) => void; onCrear: () => void }) {
+function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear, establecimientoId, loteId }: { userPresets: UserPreset[]; onUsar: (cfg: ConfigCalculo) => void; onEliminarPreset: (id: string) => void; onCrear: () => void; establecimientoId?: string; loteId?: string }) {
   const [detalle, setDetalle] = useState<{ nombre: string; tipo: string; caldo: string; config: ConfigCalculo } | null>(null);
   const [sugeridos, setSugeridos] = useState<SugeridoPreset[] | null>(null);
+  const [refrescando, setRefrescando] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/dosis-presets/sugeridos")
+  // Query del alcance (establecimiento/lote) del sidebar para pedir sugerencias.
+  const scopeQs = useCallback(() => {
+    const p = new URLSearchParams();
+    if (establecimientoId && establecimientoId !== "todos") p.set("establecimientoId", establecimientoId);
+    if (loteId && loteId !== "todos") p.set("loteId", loteId);
+    return p;
+  }, [establecimientoId, loteId]);
+
+  // Botón "Actualizar": fuerza regenerar (ignora la caché de 24 h).
+  const actualizarSugeridos = () => {
+    const p = scopeQs(); p.set("refresh", "1");
+    setRefrescando(true);
+    fetch(`/api/dosis-presets/sugeridos?${p.toString()}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setSugeridos(Array.isArray(d) ? d : []))
-      .catch(() => setSugeridos([]));
-  }, []);
+      .catch(() => setSugeridos([]))
+      .finally(() => setRefrescando(false));
+  };
+
+  // Carga inicial y ante cada cambio de alcance (sin setState síncrono en el efecto).
+  useEffect(() => {
+    const qs = scopeQs().toString();
+    let cancel = false;
+    fetch(`/api/dosis-presets/sugeridos${qs ? `?${qs}` : ""}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (!cancel) setSugeridos(Array.isArray(d) ? d : []); })
+      .catch(() => { if (!cancel) setSugeridos([]); });
+    return () => { cancel = true; };
+  }, [scopeQs]);
 
   const resumen = (cfg: ConfigCalculo) => {
     const p0 = cfg.productos[0];
@@ -885,9 +911,14 @@ function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear }: { userPre
       )}
 
       {/* Sugeridos por IA según tus cultivos */}
-      <div className="row mt-12" style={{ alignItems: "center", gap: 8 }}>
-        <div className="mc-card__title">Sugeridos para tus cultivos</div>
-        <IABadge />
+      <div className="row mt-12" style={{ alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <div className="row" style={{ alignItems: "center", gap: 8 }}>
+          <div className="mc-card__title">Sugeridos para tus cultivos</div>
+          <IABadge />
+        </div>
+        <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={actualizarSugeridos} disabled={refrescando || sugeridos === null}>
+          <Icon name="bolt" size={12} />{refrescando ? "Actualizando…" : "Actualizar"}
+        </button>
       </div>
       {sugeridos === null ? (
         <div className="mc-card" style={{ textAlign: "center", color: "var(--mc-text-3)", padding: 22 }}>Analizando tus cultivos…</div>

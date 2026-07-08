@@ -11,12 +11,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const establecimientoId = new URL(request.url).searchParams.get("establecimientoId");
+    const sp = new URL(request.url).searchParams;
+    const establecimientoId = sp.get("establecimientoId");
+    const loteId = sp.get("loteId");
 
     const alertas = await prisma.alertaPlaga.findMany({
       where: {
         userId: session.user.id,
-        ...(establecimientoId && establecimientoId !== "todos" ? { lote: { establecimientoId } } : {}),
+        ...(loteId && loteId !== "todos"
+          ? { loteId }
+          : establecimientoId && establecimientoId !== "todos"
+          ? { lote: { establecimientoId } }
+          : {}),
       },
       include: { lote: { select: { nombre: true, cultivo: true } } },
       orderBy: { fechaDeteccion: "desc" },

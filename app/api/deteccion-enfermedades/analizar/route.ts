@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { image, mediaType, cultivo, loteId } = body as { image?: string; mediaType?: string; loteId?: string; cultivo?: string };
+    const { image, mediaType, cultivo, loteId, thumb } = body as { image?: string; mediaType?: string; loteId?: string; cultivo?: string; thumb?: string };
 
     if (!image) {
       return NextResponse.json({ error: "No se proporcionó imagen" }, { status: 400 });
@@ -116,6 +116,9 @@ Las coordenadas x,y,w,h son relativas (0-1) respecto al tamaño de la imagen y d
               severidad: sev,
               confianza: Math.max(0, Math.min(100, Number(parsed.confianzaGlobal) || 0)),
               metodoDeteccion: "IA-Imagen",
+              // Miniatura de la foto analizada (la manda el cliente ya reducida)
+              // para poder mostrar lo detectado en la lista de alertas.
+              imagenUrl: thumb || null,
               sintomas: parsed.nombreCientifico || null,
               recomendacion: parsed.recomendacion?.producto
                 ? `${parsed.recomendacion.producto} — ${parsed.recomendacion.dosis} (${parsed.recomendacion.ventanaAplicacion})`

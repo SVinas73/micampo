@@ -5,11 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { getAnthropic, IA_MODEL, parseJsonTolerante } from "@/lib/ia";
 import { getInsight, saveInsight } from "@/lib/insight";
 
+// La ruta de IA (Claude) puede superar el timeout por defecto de Vercel (~10s).
+export const maxDuration = 30;
+
 /**
- * GET /api/dosis-presets/sugeridos
- * Sugiere mezclas de aplicación según los CULTIVOS reales del usuario.
- * Con IA (Claude) si hay API key; si no, reglas agronómicas por cultivo.
- * Cachea 24 h en Insight. Cada sugerencia trae una config lista para usar.
+ * GET /api/dosis-presets/sugeridos?establecimientoId=&loteId=&refresh=1
+ * Sugiere mezclas de aplicación según los CULTIVOS reales del ALCANCE elegido
+ * (establecimiento o lote del sidebar). Con IA (Claude) si hay API key; si no,
+ * reglas agronómicas por cultivo. Cachea 24 h por alcance; refresh=1 la fuerza.
  */
 
 type ProdMix = { tipo: string; nombre: string; costoUnitario: string; dosis: string; unidad: string; concentracion?: string; carencia?: string };
@@ -66,15 +69,37 @@ function aSugerido(m: { nombre: string; tipo: string; caldo: number; productos: 
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) return NextResponse.json([], { status: 200 });
 
-    const cache = await getInsight<Sugerido[]>(session.user.id, "dosis-sugeridos", 24 * 60);
-    if (cache) return NextResponse.json(cache);
+    const sp = new URL(request.url).searchParams;
+    const establecimientoId = sp.get("establecimientoId");
+    const loteId = sp.get("loteId");
+    const refrescar = sp.get("refresh") === "1";
+    // Clave de caché por alcance: así cada establecimiento/lote tiene su sugerencia.
+    const scopeKey =
+      loteId && loteId !== "todos" ? `lote:${loteId}` :
+      establecimientoId && establecimientoId !== "todos" ? `est:${establecimientoId}` : "todos";
+    const cacheKey = `dosis-sugeridos:${scopeKey}`;
 
-    const lotes = await prisma.lote.findMany({ where: { userId: session.user.id }, select: { cultivo: true, hectareas: true } });
+    if (!refrescar) {
+      const cache = await getInsight<Sugerido[]>(session.user.id, cacheKey, 24 * 60);
+      if (cache) return NextResponse.json(cache);
+    }
+
+    const lotes = await prisma.lote.findMany({
+      where: {
+        userId: session.user.id,
+        ...(loteId && loteId !== "todos"
+          ? { id: loteId }
+          : establecimientoId && establecimientoId !== "todos"
+          ? { establecimientoId }
+          : {}),
+      },
+      select: { cultivo: true, hectareas: true },
+    });
     const porCultivo = new Map<string, number>();
     lotes.forEach((l) => { if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0)); });
     const cultivos = [...porCultivo.entries()].sort((a, b) => b[1] - a[1]);
@@ -103,7 +128,7 @@ Sugerí 3-4 mezclas de aplicación realistas y pertinentes para esos cultivos y 
               tipo: p.tipo || "Herbicida", nombre: p.nombre || "", costoUnitario: String(p.costoUnitario ?? ""), dosis: String(p.dosis ?? "1"), unidad: p.unidad || "Lt/Ha", concentracion: p.concentracion ? String(p.concentracion) : undefined, carencia: p.carencia ? String(p.carencia) : undefined,
             })),
           }, areaTipica));
-          await saveInsight(session.user.id, "dosis-sugeridos", "dosis-sugeridos", out, IA_MODEL);
+          await saveInsight(session.user.id, cacheKey, "dosis-sugeridos", out, IA_MODEL);
           return NextResponse.json(out);
         }
       } catch { /* cae a reglas */ }
@@ -118,7 +143,7 @@ Sugerí 3-4 mezclas de aplicación realistas y pertinentes para esos cultivos y 
       if (out.length === 0) out.push(aSugerido(GENERICO, areaTipica));
     }
     const final = out.slice(0, 4);
-    await saveInsight(session.user.id, "dosis-sugeridos", "dosis-sugeridos", final, "reglas");
+    await saveInsight(session.user.id, cacheKey, "dosis-sugeridos", final, "reglas");
     return NextResponse.json(final);
   } catch (error) {
     console.error("Error en sugeridos de dosis:", error);
