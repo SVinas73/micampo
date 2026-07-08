@@ -24,8 +24,11 @@ type Sugerido = {
   productos: number;
   color: string;
   justificacion?: string;
+  cultivo?: string;
+  lote?: string; // para qué lote(s) del establecimiento aplica
   config: { loteNombre: string; loteId: string | null; area: number; caldo: number; tanque: number; tipoAplicacion: string; productos: ProdMix[] };
 };
+type LoteCultivo = { id: string; nombre: string; ha: number };
 
 const COLOR: Record<string, string> = {
   Herbicida: "var(--mc-green-600)", Fungicida: "var(--mc-blue)", Insecticida: "var(--mc-orange-600)",
@@ -56,8 +59,18 @@ const REGLAS: Record<string, { nombre: string; tipo: string; caldo: number; prod
 
 const GENERICO = { nombre: "Barbecho general", tipo: "Herbicida", caldo: 120, justificacion: "Control de malezas en barbecho para cualquier cultivo.", productos: [{ tipo: "Herbicida", nombre: "Glifosato 48%", costoUnitario: "5.5", dosis: "3.0", unidad: "Lt/Ha", concentracion: "48", carencia: "15" }] };
 
-function aSugerido(m: { nombre: string; tipo: string; caldo: number; productos: ProdMix[]; justificacion: string }, area: number): Sugerido {
+function aSugerido(
+  m: { nombre: string; tipo: string; caldo: number; productos: ProdMix[]; justificacion: string; cultivo?: string },
+  areaFallback: number,
+  lotesDeCultivo: LoteCultivo[] = []
+): Sugerido {
   const p0 = m.productos[0];
+  const l0 = lotesDeCultivo[0];
+  const haTotal = lotesDeCultivo.reduce((s, l) => s + (l.ha || 0), 0);
+  const lote =
+    lotesDeCultivo.length === 0 ? "Todo el establecimiento" :
+    lotesDeCultivo.length === 1 ? l0.nombre :
+    `${lotesDeCultivo.length} lotes${m.cultivo ? ` de ${m.cultivo}` : ""}`;
   return {
     nombre: m.nombre, tipo: m.tipo,
     dosis: p0 ? `${p0.dosis} ${p0.unidad}` : "—",
@@ -65,7 +78,9 @@ function aSugerido(m: { nombre: string; tipo: string; caldo: number; productos: 
     productos: m.productos.length,
     color: COLOR[m.tipo] || COLOR.Mezcla,
     justificacion: m.justificacion,
-    config: { loteNombre: "", loteId: null, area, caldo: m.caldo, tanque: 3000, tipoAplicacion: "Terrestre", productos: m.productos },
+    cultivo: m.cultivo,
+    lote,
+    config: { loteNombre: l0?.nombre || "", loteId: l0?.id || null, area: haTotal > 0 ? Math.round(haTotal) : areaFallback, caldo: m.caldo, tanque: 3000, tipoAplicacion: "Terrestre", productos: m.productos },
   };
 }
 
@@ -78,11 +93,15 @@ export async function GET(request: Request) {
     const establecimientoId = sp.get("establecimientoId");
     const loteId = sp.get("loteId");
     const refrescar = sp.get("refresh") === "1";
-    // Clave de caché por alcance: así cada establecimiento/lote tiene su sugerencia.
-    const scopeKey =
-      loteId && loteId !== "todos" ? `lote:${loteId}` :
-      establecimientoId && establecimientoId !== "todos" ? `est:${establecimientoId}` : "todos";
-    const cacheKey = `dosis-sugeridos:${scopeKey}`;
+
+    // Alcance: SIEMPRE el establecimiento completo. Si el sidebar tiene un lote
+    // puntual, se resuelve su establecimiento y se analizan TODOS sus lotes.
+    let estId: string | null = establecimientoId && establecimientoId !== "todos" ? establecimientoId : null;
+    if (!estId && loteId && loteId !== "todos") {
+      const l = await prisma.lote.findFirst({ where: { id: loteId, userId: session.user.id }, select: { establecimientoId: true } });
+      estId = l?.establecimientoId || null;
+    }
+    const cacheKey = `dosis-sugeridos:${estId ? `est:${estId}` : "todos"}`;
 
     if (!refrescar) {
       const cache = await getInsight<Sugerido[]>(session.user.id, cacheKey, 24 * 60);
@@ -90,18 +109,19 @@ export async function GET(request: Request) {
     }
 
     const lotes = await prisma.lote.findMany({
-      where: {
-        userId: session.user.id,
-        ...(loteId && loteId !== "todos"
-          ? { id: loteId }
-          : establecimientoId && establecimientoId !== "todos"
-          ? { establecimientoId }
-          : {}),
-      },
-      select: { cultivo: true, hectareas: true },
+      where: { userId: session.user.id, ...(estId ? { establecimientoId: estId } : {}) },
+      select: { id: true, nombre: true, cultivo: true, hectareas: true },
     });
     const porCultivo = new Map<string, number>();
-    lotes.forEach((l) => { if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0)); });
+    const lotesPorCultivo = new Map<string, LoteCultivo[]>();
+    lotes.forEach((l) => {
+      if (l.cultivo) {
+        porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0));
+        const arr = lotesPorCultivo.get(l.cultivo) || [];
+        arr.push({ id: l.id, nombre: l.nombre, ha: l.hectareas || 0 });
+        lotesPorCultivo.set(l.cultivo, arr);
+      }
+    });
     const cultivos = [...porCultivo.entries()].sort((a, b) => b[1] - a[1]);
     const areaTipica = lotes.length ? Math.round(lotes.reduce((s, l) => s + (l.hectareas || 0), 0) / lotes.length) : 85;
 
@@ -124,10 +144,11 @@ Sugerí 3-4 mezclas de aplicación realistas y pertinentes para esos cultivos y 
         if (Array.isArray(parsed) && parsed.length) {
           const out: Sugerido[] = parsed.slice(0, 4).map((m) => aSugerido({
             nombre: m.nombre || "Sugerencia", tipo: m.tipo || "Herbicida", caldo: Number(m.caldo) || 120,
+            cultivo: m.cultivo || undefined,
             justificacion: m.justificacion || "", productos: (m.productos || []).map((p: any) => ({
               tipo: p.tipo || "Herbicida", nombre: p.nombre || "", costoUnitario: String(p.costoUnitario ?? ""), dosis: String(p.dosis ?? "1"), unidad: p.unidad || "Lt/Ha", concentracion: p.concentracion ? String(p.concentracion) : undefined, carencia: p.carencia ? String(p.carencia) : undefined,
             })),
-          }, areaTipica));
+          }, areaTipica, lotesPorCultivo.get(m.cultivo) || []));
           await saveInsight(session.user.id, cacheKey, "dosis-sugeridos", out, IA_MODEL);
           return NextResponse.json(out);
         }
@@ -139,7 +160,7 @@ Sugerí 3-4 mezclas de aplicación realistas y pertinentes para esos cultivos y 
     if (cultivos.length === 0) {
       out.push(aSugerido(GENERICO, areaTipica));
     } else {
-      cultivos.forEach(([c]) => (REGLAS[c] || []).forEach((m) => out.push(aSugerido(m, areaTipica))));
+      cultivos.forEach(([c]) => (REGLAS[c] || []).forEach((m) => out.push(aSugerido({ ...m, cultivo: c }, areaTipica, lotesPorCultivo.get(c) || []))));
       if (out.length === 0) out.push(aSugerido(GENERICO, areaTipica));
     }
     const final = out.slice(0, 4);

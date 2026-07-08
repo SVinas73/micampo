@@ -156,6 +156,16 @@ export default function TabDeteccion() {
     toast.show(`Alerta de "${a.enfermedad}" marcada como resuelta`);
   };
 
+  // Elimina la alerta del sistema (para errores / falsos positivos). Distinto de
+  // Resolver: no queda en el historial, se borra.
+  const eliminarAlerta = async (a: AlertaInfo) => {
+    if (!a.id) { toast.show("Esta alerta aún no está guardada", "err"); return; }
+    if (!window.confirm(`¿Eliminar la alerta de "${a.enfermedad}"? Se borra del sistema. Usá esto solo si fue un error o un falso positivo.`)) return;
+    setAlertas((prev) => prev.filter((x) => x.id !== a.id));
+    try { await fetch(`/api/alertas-plagas/${a.id}`, { method: "DELETE" }); cargarAlertas(); } catch { cargarAlertas(); }
+    toast.show("Alerta eliminada");
+  };
+
   const generarAlerta = async (data: { loteId?: string; plaga: string; tipo: string; incidencia: number; observaciones: string; imagenUrl?: string | null }) => {
     if (data.loteId) {
       const res = await fetch("/api/deteccion-enfermedades", {
@@ -206,15 +216,17 @@ export default function TabDeteccion() {
         </div>
       </div>
 
-      {sub === "Información" && <EnfermedadesInfo alertas={alertas} onAgregar={agregarALabores} onResolver={resolverAlerta} />}
+      {sub === "Información" && <EnfermedadesInfo alertas={alertas} onAgregar={agregarALabores} onResolver={resolverAlerta} onEliminar={eliminarAlerta} />}
       {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} onGuardado={cargarAlertas} />}
     </>
   );
 }
 
 /* ========== SUBTAB INFORMACIÓN (Figma EnfermedadesInfo) ========== */
-function EnfermedadesInfo({ alertas, onAgregar, onResolver }: { alertas: AlertaInfo[]; onAgregar: (a: AlertaInfo) => void; onResolver: (a: AlertaInfo) => void }) {
+function EnfermedadesInfo({ alertas, onAgregar, onResolver, onEliminar }: { alertas: AlertaInfo[]; onAgregar: (a: AlertaInfo) => void; onResolver: (a: AlertaInfo) => void; onEliminar: (a: AlertaInfo) => void }) {
   const [enlarged, setEnlarged] = useState<AlertaInfo | null>(null);
+  // Alerta elegida por el usuario: la "Estrategia de Control" muestra la suya.
+  const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
   // Miniatura: foto real analizada si existe; si no, ícono de hoja como respaldo.
   const Thumb = ({ a, size }: { a: AlertaInfo; size: number }) =>
     a.imagenUrl ? (
@@ -251,9 +263,11 @@ function EnfermedadesInfo({ alertas, onAgregar, onResolver }: { alertas: AlertaI
         <div className="mc-card ia-card">
           <div className="mc-card__head"><div className="mc-card__title">Alertas Activas</div><IABadge /></div>
           <div className="col gap-8 mc-hscroll">
-            {alertas.map((a, i) => (
-              <div key={i} style={{ padding: "10px 12px", border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "120px minmax(160px, 1fr) 100px 120px 130px 150px", gap: 10, alignItems: "center", minWidth: 660 }}>
-                <div style={{ width: 120, height: 80, borderRadius: 8, background: a.imgBg, position: "relative", overflow: "hidden", cursor: "pointer", flexShrink: 0 }} onClick={() => setEnlarged(a)}>
+            {alertas.map((a, i) => {
+              const sel = !!a.id && a.id === seleccionadaId;
+              return (
+              <div key={i} onClick={() => setSeleccionadaId(a.id ?? null)} title="Elegí esta alerta para ver su estrategia de control" style={{ padding: "10px 12px", border: `1px solid ${sel ? "var(--mc-green-600)" : "var(--mc-line)"}`, borderRadius: 10, display: "grid", gridTemplateColumns: "120px minmax(160px, 1fr) 100px 120px 130px 150px", gap: 10, alignItems: "center", minWidth: 660, cursor: "pointer", background: sel ? "var(--mc-green-50)" : undefined, boxShadow: sel ? "0 2px 10px rgba(118,143,68,0.18)" : undefined, transition: "border-color .15s, background .15s" }}>
+                <div style={{ width: 120, height: 80, borderRadius: 8, background: a.imgBg, position: "relative", overflow: "hidden", cursor: "pointer", flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setEnlarged(a); }}>
                   <Thumb a={a} size={32} />
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.65)", padding: "4px 6px" }}>
                     <div style={{ color: "white", fontSize: 9, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.deteccion}</div>
@@ -283,22 +297,30 @@ function EnfermedadesInfo({ alertas, onAgregar, onResolver }: { alertas: AlertaI
                   <div style={{ padding: "5px 8px", fontSize: 10, borderRadius: 6, background: a.riesgoColor === "red" ? "var(--mc-green-50)" : "var(--mc-surface-2)", border: "1px solid var(--mc-line)", color: "var(--mc-green-700)", fontWeight: 600, textAlign: "center" }}>
                     Rec: {a.recom.length > 24 ? a.recom.slice(0, 24) + "…" : a.recom}
                   </div>
-                  <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ padding: "5px 8px", fontSize: 10, width: "100%", justifyContent: "center" }} onClick={() => onAgregar(a)}>
+                  <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ padding: "5px 8px", fontSize: 10, width: "100%", justifyContent: "center" }} onClick={(e) => { e.stopPropagation(); onAgregar(a); }}>
                     <Icon name="plus" size={10} />Agregar a Labores
                   </button>
-                  <button className="mc-btn mc-btn--sm" style={{ padding: "5px 8px", fontSize: 10, width: "100%", justifyContent: "center", background: "var(--mc-green-50)", color: "var(--mc-green-700)", border: "1px solid var(--mc-green-200)" }} onClick={() => onResolver(a)} title="Marcar la alerta como resuelta (deja de estar activa)">
-                    <Icon name="check" size={10} />Resolver
-                  </button>
+                  <div className="row gap-4">
+                    <button className="mc-btn mc-btn--sm" style={{ padding: "5px 8px", fontSize: 10, flex: 1, justifyContent: "center", background: "var(--mc-green-50)", color: "var(--mc-green-700)", border: "1px solid var(--mc-green-200)" }} onClick={(e) => { e.stopPropagation(); onResolver(a); }} title="Marcar la alerta como resuelta (queda en el historial, deja de estar activa)">
+                      <Icon name="check" size={10} />Resolver
+                    </button>
+                    <button className="mc-icon-btn" style={{ width: 28, height: 28, border: "1px solid var(--mc-line)", color: "var(--mc-red)", flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); onEliminar(a); }} title="Eliminar la alerta (para errores o falsos positivos)">
+                      <Icon name="trash" size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         <div className="col gap-14">
           {(() => {
             const rank = { red: 3, amber: 2, green: 1 } as const;
-            const prioritaria = [...alertas].sort((a, b) => rank[b.riesgoColor] - rank[a.riesgoColor])[0];
+            // Muestra la estrategia de la alerta ELEGIDA; si no hay elegida, la más prioritaria.
+            const elegida = alertas.find((a) => a.id && a.id === seleccionadaId);
+            const prioritaria = elegida || [...alertas].sort((a, b) => rank[b.riesgoColor] - rank[a.riesgoColor])[0];
             return prioritaria ? <EstrategiaControl alerta={prioritaria} /> : <EstrategiaVacia />;
           })()}
           <Probabilidades />

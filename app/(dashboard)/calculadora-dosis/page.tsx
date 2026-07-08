@@ -817,7 +817,7 @@ function TabHistorial({ rows, onEliminar, onDuplicar }: { rows: HistRow[]; onEli
 /* TAB PREESTABLECIDOS                                                 */
 /* =================================================================== */
 
-type SugeridoPreset = { nombre: string; tipo: string; dosis: string; caldo: string; productos: number; color: string; justificacion?: string; config: ConfigCalculo };
+type SugeridoPreset = { nombre: string; tipo: string; dosis: string; caldo: string; productos: number; color: string; justificacion?: string; cultivo?: string; lote?: string; config: ConfigCalculo };
 
 function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear, establecimientoId, loteId }: { userPresets: UserPreset[]; onUsar: (cfg: ConfigCalculo) => void; onEliminarPreset: (id: string) => void; onCrear: () => void; establecimientoId?: string; loteId?: string }) {
   const [detalle, setDetalle] = useState<{ nombre: string; tipo: string; caldo: string; config: ConfigCalculo } | null>(null);
@@ -937,6 +937,11 @@ function TabPreset({ userPresets, onUsar, onEliminarPreset, onCrear, establecimi
                 </div>
                 <Badge tone="neutral">{p.productos} prod.</Badge>
               </div>
+              {p.lote && (
+                <div className="row gap-4 mt-4" style={{ alignItems: "center", fontSize: 12, color: "var(--mc-green-700)", fontWeight: 600 }}>
+                  <Icon name="map" size={12} />Para: {p.lote}
+                </div>
+              )}
               {p.justificacion && <div className="text-xs text-muted mt-8" style={{ lineHeight: 1.45 }}>{p.justificacion}</div>}
               <div className="grid g-cols-3 gap-8 mt-12">
                 <div><div className="text-xs text-muted">Dosis</div><div className="font-semi">{p.dosis}</div></div>
