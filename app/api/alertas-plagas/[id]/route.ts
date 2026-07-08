@@ -26,13 +26,14 @@ export async function PATCH(
       );
     }
 
-    const { estado, tratamientoAplicado, fechaResolucion } = await request.json();
+    const { estado, tratamientoAplicado, fechaResolucion, plaga } = await request.json();
 
     const updated = await prisma.alertaPlaga.update({
       where: { id: params.id },
       data: {
         ...(estado !== undefined && { estado }),
         ...(tratamientoAplicado !== undefined && { tratamientoAplicado }),
+        ...(typeof plaga === "string" && plaga.trim() && { plaga: plaga.trim() }),
         ...(fechaResolucion !== undefined && {
           fechaResolucion: fechaResolucion ? new Date(fechaResolucion) : null,
         }),

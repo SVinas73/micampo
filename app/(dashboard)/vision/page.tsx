@@ -76,8 +76,9 @@ async function prepararImagen(file: File, maxLado = 1600, calidad = 0.85): Promi
   }
 }
 
-/** Miniatura chica (para la galería del historial), como data URL JPEG. */
-async function generarThumb(file: File, lado = 320, calidad = 0.7): Promise<string | null> {
+/** Imagen reducida (para la galería y el visor del historial), como data URL JPEG.
+ *  Se guarda a buena resolución (~1200px) para que al ampliarla no se vea borrosa. */
+async function generarThumb(file: File, lado = 1200, calidad = 0.82): Promise<string | null> {
   try {
     if (typeof createImageBitmap !== "function") return null;
     const bitmap = await createImageBitmap(file);
