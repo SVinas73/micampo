@@ -21,12 +21,14 @@ type Analisis = {
 };
 
 type AlertaInfo = {
+  id?: string;
   lote: string;
   loteId?: string;
   enfermedad: string;
   estadio: string;
   img: string;
   imgBg: string;
+  imagenUrl?: string | null;
   deteccion: string;
   afect: string;
   riesgo: string;
@@ -39,6 +41,27 @@ type AlertaInfo = {
   // del sistema esté conectado; mientras tanto queda indefinida).
   estrategia?: { producto: string; dosis: string; ventana: string; costo: string; analisis: string };
 };
+
+// Reduce una imagen (dataURL) a una miniatura JPEG liviana para guardarla con la
+// alerta y mostrar "lo detectado" sin almacenar la foto completa.
+function hacerThumb(dataUrl: string, max = 220): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * escala));
+      const h = Math.max(1, Math.round(img.height * escala));
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const ctx = c.getContext("2d");
+      if (!ctx) { resolve(dataUrl); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      try { resolve(c.toDataURL("image/jpeg", 0.7)); } catch { resolve(dataUrl); }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
 
 export default function TabDeteccion() {
   const searchParams = useSearchParams();
@@ -74,15 +97,17 @@ export default function TabDeteccion() {
           deteccionesIA: vigentes.filter((a: { metodoDeteccion?: string }) => (a.metodoDeteccion || "").includes("IA")).length,
         });
         setAlertas(
-          vigentes.slice(0, 6).map((a: { lote?: { nombre: string; cultivo?: string }; loteId: string; plaga: string; severidad: string; areaAfectada?: number; recomendacion?: string; metodoDeteccion?: string }) => {
+          vigentes.slice(0, 6).map((a: { id: string; lote?: { nombre: string; cultivo?: string }; loteId: string; plaga: string; severidad: string; areaAfectada?: number; recomendacion?: string; metodoDeteccion?: string; imagenUrl?: string | null }) => {
             const sevColor: "red" | "amber" | "green" = a.severidad === "Alta" || a.severidad === "Crítica" ? "red" : a.severidad === "Media" ? "amber" : "green";
             return {
+              id: a.id,
               lote: `${a.lote?.nombre || "Lote"} (${a.lote?.cultivo || "—"})`,
               loteId: a.loteId,
               enfermedad: a.plaga,
               estadio: "—",
               img: "leaf",
               imgBg: "linear-gradient(135deg,#6db870,#768f44)",
+              imagenUrl: a.imagenUrl || null,
               deteccion: a.metodoDeteccion || "Manual",
               afect: `${a.areaAfectada || 0} Ha afectadas · Reciente`,
               riesgo: `${a.severidad.toUpperCase()}`,
@@ -115,6 +140,20 @@ export default function TabDeteccion() {
       }).catch(() => {});
     }
     toast.show(`"${a.recom}" agregado a Labores para ${a.lote}`);
+  };
+
+  // Marca la alerta como Resuelta: deja de estar activa y desaparece de la lista.
+  const resolverAlerta = async (a: AlertaInfo) => {
+    if (!a.id) { toast.show("Esta alerta aún no está guardada", "err"); return; }
+    setAlertas((prev) => prev.filter((x) => x.id !== a.id));
+    try {
+      await fetch(`/api/alertas-plagas/${a.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "Resuelta", fechaResolucion: new Date().toISOString() }),
+      });
+      cargarAlertas();
+    } catch { cargarAlertas(); }
+    toast.show(`Alerta de "${a.enfermedad}" marcada como resuelta`);
   };
 
   const generarAlerta = async (data: { loteId?: string; plaga: string; tipo: string; incidencia: number; observaciones: string; imagenUrl?: string | null }) => {
@@ -167,15 +206,23 @@ export default function TabDeteccion() {
         </div>
       </div>
 
-      {sub === "Información" && <EnfermedadesInfo alertas={alertas} onAgregar={agregarALabores} />}
+      {sub === "Información" && <EnfermedadesInfo alertas={alertas} onAgregar={agregarALabores} onResolver={resolverAlerta} />}
       {sub === "Análisis (IA)" && <EnfermedadesAnalisisIA fileRef={fileRef} lotes={lotes} toast={toast} onGuardado={cargarAlertas} />}
     </>
   );
 }
 
 /* ========== SUBTAB INFORMACIÓN (Figma EnfermedadesInfo) ========== */
-function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgregar: (a: AlertaInfo) => void }) {
+function EnfermedadesInfo({ alertas, onAgregar, onResolver }: { alertas: AlertaInfo[]; onAgregar: (a: AlertaInfo) => void; onResolver: (a: AlertaInfo) => void }) {
   const [enlarged, setEnlarged] = useState<AlertaInfo | null>(null);
+  // Miniatura: foto real analizada si existe; si no, ícono de hoja como respaldo.
+  const Thumb = ({ a, size }: { a: AlertaInfo; size: number }) =>
+    a.imagenUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={a.imagenUrl} alt={a.enfermedad} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    ) : (
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-60%)" }}><Icon name={a.img} size={size} /></div>
+    );
 
   return (
     <>
@@ -183,7 +230,12 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 200, display: "grid", placeItems: "center" }} onClick={() => setEnlarged(null)}>
           <div style={{ background: "var(--mc-surface)", borderRadius: 14, padding: 20, width: 460, maxWidth: "92vw", boxShadow: "0 12px 48px rgba(0,0,0,0.35)" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: "100%", aspectRatio: "16/10", background: enlarged.imgBg, borderRadius: 10, position: "relative", marginBottom: 14, overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 64 }}><Icon name={enlarged.img} size={64} /></div>
+              {enlarged.imagenUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={enlarged.imagenUrl} alt={enlarged.enfermedad} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 64 }}><Icon name={enlarged.img} size={64} /></div>
+              )}
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.7))", padding: "14px 16px" }}>
                 <div style={{ color: "white", fontWeight: 700, fontSize: 13 }}>{enlarged.deteccion}</div>
                 <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 12 }}>{enlarged.afect}</div>
@@ -202,7 +254,7 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
             {alertas.map((a, i) => (
               <div key={i} style={{ padding: "10px 12px", border: "1px solid var(--mc-line)", borderRadius: 10, display: "grid", gridTemplateColumns: "120px minmax(160px, 1fr) 100px 120px 130px 150px", gap: 10, alignItems: "center", minWidth: 660 }}>
                 <div style={{ width: 120, height: 80, borderRadius: 8, background: a.imgBg, position: "relative", overflow: "hidden", cursor: "pointer", flexShrink: 0 }} onClick={() => setEnlarged(a)}>
-                  <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-60%)", fontSize: 32 }}><Icon name={a.img} size={32} /></div>
+                  <Thumb a={a} size={32} />
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.65)", padding: "4px 6px" }}>
                     <div style={{ color: "white", fontSize: 9, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.deteccion}</div>
                   </div>
@@ -233,6 +285,9 @@ function EnfermedadesInfo({ alertas, onAgregar }: { alertas: AlertaInfo[]; onAgr
                   </div>
                   <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ padding: "5px 8px", fontSize: 10, width: "100%", justifyContent: "center" }} onClick={() => onAgregar(a)}>
                     <Icon name="plus" size={10} />Agregar a Labores
+                  </button>
+                  <button className="mc-btn mc-btn--sm" style={{ padding: "5px 8px", fontSize: 10, width: "100%", justifyContent: "center", background: "var(--mc-green-50)", color: "var(--mc-green-700)", border: "1px solid var(--mc-green-200)" }} onClick={() => onResolver(a)} title="Marcar la alerta como resuelta (deja de estar activa)">
+                    <Icon name="check" size={10} />Resolver
                   </button>
                 </div>
               </div>
@@ -452,11 +507,12 @@ function EnfermedadesAnalisisIA({
     reader.onload = async () => {
       const dataUrl = reader.result as string;
       setImgUrl(dataUrl);
+      const thumb = await hacerThumb(dataUrl);
       try {
         const res = await fetch("/api/deteccion-enfermedades/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: dataUrl, mediaType: file.type, loteId, cultivo: loteSel?.cultivo }),
+          body: JSON.stringify({ image: dataUrl, mediaType: file.type, loteId, cultivo: loteSel?.cultivo, thumb }),
         });
         const d = await res.json();
         if (!res.ok || d.error) {

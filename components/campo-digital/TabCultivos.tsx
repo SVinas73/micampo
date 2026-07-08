@@ -510,6 +510,11 @@ function CultivosPlanificador({
   const [activos, setActivos] = useState<PlanActivo[]>([]);
   const [recomendados, setRecomendados] = useState<PlanIA[]>([]);
   const [generando, setGenerando] = useState(false);
+  // Paginación del carrusel de Planes Activos (3 por página).
+  const [pagina, setPagina] = useState(0);
+  const POR_PAGINA = 3;
+  const totalPags = Math.max(1, Math.ceil(activos.length / POR_PAGINA));
+  useEffect(() => { setPagina((p) => Math.min(p, totalPags - 1)); }, [totalPags]);
   // Lote objetivo: el activo del sidebar si tiene id, si no el primero con id.
   const loteObjetivo = (loteActivoId ? lotes.find((l) => l.id === loteActivoId) : null) || lotes.find((l) => l.id) || null;
 
@@ -519,7 +524,7 @@ function CultivosPlanificador({
     const colores = ["#d9a538", "#768f44", "#c08a22"];
     const emojis: Record<string, string> = { Maíz: "wheat", Soja: "sprout", Girasol: "sun", Trigo: "wheat", Sorgo: "leaf" };
     setActivos(
-      planes.slice(0, 6).map((p, i) => ({
+      planes.map((p, i) => ({
         id: p.id,
         titulo: `${p.cultivo} - ${p.lote?.nombre || "Plan"}`,
         emoji: emojis[p.cultivo] || "leaf",
@@ -630,10 +635,16 @@ function CultivosPlanificador({
             <div className="mc-card__title">Planes Activos</div>
             <IABadge />
           </div>
-          <button className="mc-icon-btn"><Icon name="chevRight" size={13} /></button>
+          {activos.length > POR_PAGINA && (
+            <div className="row gap-6" style={{ alignItems: "center" }}>
+              <span className="text-xs text-muted">{pagina * POR_PAGINA + 1}–{Math.min(activos.length, (pagina + 1) * POR_PAGINA)} de {activos.length}</span>
+              <button className="mc-icon-btn" disabled={pagina === 0} onClick={() => setPagina((p) => Math.max(0, p - 1))} aria-label="Planes anteriores"><Icon name="chevLeft" size={13} /></button>
+              <button className="mc-icon-btn" disabled={pagina >= totalPags - 1} onClick={() => setPagina((p) => Math.min(totalPags - 1, p + 1))} aria-label="Más planes"><Icon name="chevRight" size={13} /></button>
+            </div>
+          )}
         </div>
         <div className="grid g-cols-3 gap-14">
-          {activos.slice(0, 3).map((p, i) => (
+          {activos.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA).map((p, i) => (
             <div key={i} style={{ border: `1.5px solid ${p.color}50`, borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ background: `${p.color}15`, borderBottom: `1.5px solid ${p.color}30`, padding: "12px 16px" }}>
                 <div className="row gap-10" style={{ alignItems: "center" }}>
@@ -760,6 +771,8 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
   const [evolucion, setEvolucion] = useState<{ label: string; ppm: number }[]>([]);
   const [labResults, setLabResults] = useState<{ id: string; tienePdf: boolean; fecha: string; lote: string; prof: string; p: string; pWarn: boolean; n: number; ph: string; phWarn: boolean; estado: string; estadoColor: string }[]>([]);
+  // Refresco local tras eliminar un análisis (además del refreshKey del padre).
+  const [localRefresh, setLocalRefresh] = useState(0);
 
   useEffect(() => {
     fetch("/api/analisis-suelo")
@@ -816,8 +829,15 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
         );
       })
       .catch(() => {});
-  }, [refreshKey]);
+  }, [refreshKey, localRefresh]);
 
+  // Elimina un análisis del historial (con confirmación) y refresca la vista.
+  const eliminarAnalisis = async (id: string, lote: string) => {
+    if (!window.confirm(`¿Eliminar el análisis de ${lote}? Esta acción no se puede deshacer.`)) return;
+    const res = await fetch(`/api/analisis-suelo/${id}`, { method: "DELETE" }).catch(() => null);
+    if (res && res.ok) { toast.show("Análisis eliminado"); setLocalRefresh((n) => n + 1); }
+    else toast.show("No se pudo eliminar el análisis", "err");
+  };
 
   const descargarPDF = async (titulo: string, lineas: string[]) => {
     const { default: jsPDF } = await import("jspdf");
@@ -969,6 +989,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                   <td><span style={{ color: r.phWarn ? "var(--mc-red)" : "var(--mc-ink)", display: "inline-flex", alignItems: "center", gap: 3 }}>{r.ph} {r.phWarn && <Icon name="alert" size={12} />}</span></td>
                   <td><span className={`mc-badge mc-badge--${r.estadoColor}`}>{r.estado}</span></td>
                   <td>
+                    <div className="row gap-2" style={{ alignItems: "center" }}>
                     {r.tienePdf ? (
                       // PDF real del laboratorio subido con el análisis
                       <a
@@ -996,6 +1017,16 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                         <Icon name="download" size={11} />
                       </button>
                     )}
+                    <button
+                      className="mc-icon-btn"
+                      style={{ width: 22, height: 22, border: "none", color: "var(--mc-red)" }}
+                      title="Eliminar análisis"
+                      aria-label="Eliminar análisis"
+                      onClick={() => eliminarAnalisis(r.id, r.lote)}
+                    >
+                      <Icon name="trash" size={11} />
+                    </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1014,34 +1045,60 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
               Sin análisis históricos todavía. Cargá análisis de suelo y la evolución del fósforo se grafica acá.
             </div>
           ) : (() => {
-            const W = 400, H = 220, padL = 40, padR = 12, padT = 14, padB = 22;
-            const maxPpm = Math.max(40, ...evolucion.map((e) => e.ppm));
+            const W = 440, H = 250, padL = 44, padR = 18, padT = 24, padB = 34;
+            const ppms = evolucion.map((e) => e.ppm);
+            const maxPpm = Math.max(30, Math.ceil((Math.max(...ppms) * 1.25) / 5) * 5);
             const n = evolucion.length;
+            const baseY = H - padB;
             const X = (i: number) => padL + (n === 1 ? 0.5 : i / (n - 1)) * (W - padL - padR);
-            const Y = (v: number) => H - padB - (v / maxPpm) * (H - padT - padB);
+            const Y = (v: number) => baseY - (v / maxPpm) * (H - padT - padB);
             const yThr = Y(15);
+            const pts = evolucion.map((e, i) => [X(i), Y(e.ppm)] as [number, number]);
+            const linePath = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+            const areaPath = `M${pts[0][0].toFixed(1)} ${baseY} ` + pts.map((p) => `L${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ") + ` L${pts[n - 1][0].toFixed(1)} ${baseY} Z`;
             const ticks = [0, 0.25, 0.5, 0.75, 1].map((p) => Math.round(maxPpm * p));
             return (
               <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block" }}>
+                <defs>
+                  <linearGradient id="pAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--mc-green-500)" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="var(--mc-green-500)" stopOpacity="0.02" />
+                  </linearGradient>
+                  <linearGradient id="pLineGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="var(--mc-green-600)" />
+                    <stop offset="100%" stopColor="var(--mc-green-500)" />
+                  </linearGradient>
+                </defs>
+                {/* Banda de riesgo por debajo del umbral */}
+                <rect x={padL} y={yThr} width={W - padL - padR} height={baseY - yThr} fill="var(--mc-red)" opacity="0.05" />
                 {ticks.map((v, i) => {
                   const y = Y(v);
                   return (
                     <g key={i}>
-                      <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--mc-line)" strokeDasharray="2,3" />
-                      <text x={padL - 8} y={y + 3} fontSize="9" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">{v}</text>
+                      <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--mc-line)" strokeDasharray="1,4" opacity="0.7" />
+                      <text x={padL - 9} y={y + 3} fontSize="9" fontFamily="var(--ff-mono)" fill="var(--mc-text-3)" textAnchor="end">{v}</text>
                     </g>
                   );
                 })}
-                <text x="18" y={H / 2} fontSize="9" fontFamily="var(--ff-ui)" fill="var(--mc-text-3)" textAnchor="middle" transform={`rotate(-90, 18, ${H / 2})`}>ppm</text>
-                <line x1={padL} y1={yThr} x2={W - padR} y2={yThr} stroke="var(--mc-red)" strokeDasharray="4,3" opacity="0.6" />
-                <text x={W - padR} y={yThr - 4} fontSize="9" fill="var(--mc-red)" textAnchor="end">Umbral Crítico (15 ppm)</text>
-                <polyline points={evolucion.map((e, i) => `${X(i)},${Y(e.ppm)}`).join(" ")} fill="none" stroke="var(--mc-blue)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                {evolucion.map((e, i) => (
-                  <g key={i}>
-                    <circle cx={X(i)} cy={Y(e.ppm)} r="3.5" fill={e.ppm < 15 ? "var(--mc-red)" : "var(--mc-blue)"} stroke="#fff" strokeWidth="1.5" />
-                    <text x={X(i)} y={H - 6} fontSize="9" fontFamily="var(--ff-ui)" fill="var(--mc-text-2)" textAnchor="middle">{e.label}</text>
-                  </g>
-                ))}
+                <text x="16" y={(padT + baseY) / 2} fontSize="9" fontFamily="var(--ff-ui)" fill="var(--mc-text-3)" textAnchor="middle" transform={`rotate(-90, 16, ${(padT + baseY) / 2})`}>ppm</text>
+                {/* Umbral crítico */}
+                <line x1={padL} y1={yThr} x2={W - padR} y2={yThr} stroke="var(--mc-red)" strokeDasharray="4,3" strokeWidth="1.2" opacity="0.75" />
+                <text x={W - padR} y={yThr - 5} fontSize="9" fontWeight="600" fill="var(--mc-red)" textAnchor="end">Umbral crítico · 15 ppm</text>
+                {/* Área + línea (solo con 2+ puntos) */}
+                {n > 1 && <path d={areaPath} fill="url(#pAreaGrad)" />}
+                {n > 1 && <path d={linePath} fill="none" stroke="url(#pLineGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+                {/* Puntos con su valor */}
+                {evolucion.map((e, i) => {
+                  const col = e.ppm < 15 ? "var(--mc-red)" : "var(--mc-green-600)";
+                  return (
+                    <g key={i}>
+                      <circle cx={X(i)} cy={Y(e.ppm)} r="7" fill={col} opacity="0.14" />
+                      <circle cx={X(i)} cy={Y(e.ppm)} r="4" fill={col} stroke="#fff" strokeWidth="1.8" />
+                      <text x={X(i)} y={Y(e.ppm) - 12} fontSize="10" fontWeight="700" fontFamily="var(--ff-display)" fill={col} textAnchor="middle">{e.ppm}</text>
+                      <text x={X(i)} y={H - 8} fontSize="9" fontFamily="var(--ff-ui)" fill="var(--mc-text-2)" textAnchor="middle">{e.label}</text>
+                    </g>
+                  );
+                })}
               </svg>
             );
           })()}
