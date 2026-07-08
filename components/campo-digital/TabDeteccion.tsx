@@ -18,6 +18,8 @@ type Analisis = {
   recomendacion: { producto: string; dosis: string; ventanaAplicacion: string; costoEstimadoHa: string };
   analisis: string;
   simulado?: boolean;
+  alertaId?: string | null;
+  guardado?: boolean;
 };
 
 type AlertaInfo = {
@@ -42,9 +44,9 @@ type AlertaInfo = {
   estrategia?: { producto: string; dosis: string; ventana: string; costo: string; analisis: string };
 };
 
-// Reduce una imagen (dataURL) a una miniatura JPEG liviana para guardarla con la
-// alerta y mostrar "lo detectado" sin almacenar la foto completa.
-function hacerThumb(dataUrl: string, max = 220): Promise<string> {
+// Reduce una imagen (dataURL) a un JPEG para guardar con la alerta. Se guarda a
+// buena resolución (~1200px) para que al ampliarla en Información no se vea borrosa.
+function hacerThumb(dataUrl: string, max = 1200): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -56,7 +58,7 @@ function hacerThumb(dataUrl: string, max = 220): Promise<string> {
       const ctx = c.getContext("2d");
       if (!ctx) { resolve(dataUrl); return; }
       ctx.drawImage(img, 0, 0, w, h);
-      try { resolve(c.toDataURL("image/jpeg", 0.7)); } catch { resolve(dataUrl); }
+      try { resolve(c.toDataURL("image/jpeg", 0.82)); } catch { resolve(dataUrl); }
     };
     img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
@@ -249,7 +251,7 @@ function EnfermedadesInfo({ alertas, onAgregar, onResolver, onEliminar }: { aler
                 <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 64 }}><Icon name={enlarged.img} size={64} /></div>
               )}
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.7))", padding: "14px 16px" }}>
-                <div style={{ color: "white", fontWeight: 700, fontSize: 13 }}>{enlarged.deteccion}</div>
+                <div style={{ color: "white", fontWeight: 700, fontSize: 13 }}>{enlarged.enfermedad}</div>
                 <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 12 }}>{enlarged.afect}</div>
               </div>
             </div>
@@ -270,7 +272,7 @@ function EnfermedadesInfo({ alertas, onAgregar, onResolver, onEliminar }: { aler
                 <div style={{ width: 120, height: 80, borderRadius: 8, background: a.imgBg, position: "relative", overflow: "hidden", cursor: "pointer", flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); setEnlarged(a); }}>
                   <Thumb a={a} size={32} />
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.65)", padding: "4px 6px" }}>
-                    <div style={{ color: "white", fontSize: 9, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.deteccion}</div>
+                    <div style={{ color: "white", fontSize: 9, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.enfermedad}</div>
                   </div>
                 </div>
                 <div>
@@ -514,6 +516,27 @@ function EnfermedadesAnalisisIA({
   const [error, setError] = useState<string | null>(null);
   const [loteId, setLoteId] = useState("");
   const [creandoLabor, setCreandoLabor] = useState(false);
+  // Nombre elegido por el usuario para la detección (lo que se ve en Información).
+  const [nombre, setNombre] = useState("");
+  const [guardandoNombre, setGuardandoNombre] = useState(false);
+
+  // Renombra la detección ya guardada (actualiza el campo plaga de la alerta).
+  const guardarNombre = async () => {
+    if (!resultado?.alertaId || !nombre.trim()) return;
+    setGuardandoNombre(true);
+    try {
+      const res = await fetch(`/api/alertas-plagas/${resultado.alertaId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plaga: nombre.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      onGuardado?.();
+      toast.show(`Guardado como "${nombre.trim()}" — ya figura en Información`);
+    } catch {
+      toast.show("No se pudo guardar el nombre", "err");
+    } finally {
+      setGuardandoNombre(false);
+    }
+  };
 
   useEffect(() => {
     if (!loteId && lotes.find((l) => l.id)) setLoteId(lotes.find((l) => l.id)!.id!);
@@ -541,10 +564,11 @@ function EnfermedadesAnalisisIA({
           setError(d.error || "No se pudo analizar la imagen");
         } else {
           setResultado(d);
+          setNombre(d.enfermedad || "");
           if (d.guardado) onGuardado?.();
           toast.show(
             d.guardado
-              ? `Detección guardada: ${d.enfermedad} (${d.confianzaGlobal}%) — ya figura en Información`
+              ? `Detección: ${d.enfermedad} (${d.confianzaGlobal}%) — poné un nombre y guardá`
               : `Detección: ${d.enfermedad} (${d.confianzaGlobal}%)`
           );
         }
@@ -697,6 +721,19 @@ function EnfermedadesAnalisisIA({
             </div>
           )}
         </div>
+
+        {datos && (
+          <div className="mc-card" style={{ padding: "12px 14px" }}>
+            <div className="text-xs text-muted" style={{ marginBottom: 6, fontWeight: 600 }}>Guardá la imagen con el nombre que quieras (así figura en Información)</div>
+            <div className="row gap-8" style={{ alignItems: "center", flexWrap: "wrap" }}>
+              <input className="mc-input" style={{ flex: 1, minWidth: 150 }} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Mancha en Lote 5" />
+              <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={guardarNombre} disabled={guardandoNombre || !nombre.trim() || !datos.alertaId}>
+                <Icon name="save" size={12} />{guardandoNombre ? "Guardando…" : "Guardar nombre"}
+              </button>
+            </div>
+            {!datos.alertaId && <div className="text-xs text-muted mt-4">Elegí el lote arriba antes de analizar para poder guardar la detección con nombre.</div>}
+          </div>
+        )}
 
         <div className="mc-card ia-card">
           <div className="mc-card__head">

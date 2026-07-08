@@ -13,6 +13,7 @@ import { CapturaRapida } from "@/components/CapturaRapida";
 import { postOffline } from "@/lib/offline";
 import { ubicacionClima } from "@/lib/clima-ubicacion";
 import { BenchmarkCard } from "@/components/BenchmarkCard";
+import { CULTIVO_COLORES } from "@/components/campo-digital/lotes-data";
 
 /* ============================================================
    MiCampo — Inicio (dashboard)
@@ -74,30 +75,44 @@ function smoothPath(pts: { x: number; y: number }[]) {
 }
 
 /* ---------- Donut (anillo con segmentos redondeados) ---------- */
-function Donut({ segments, size = 150, thickness = 16, gap = 2, rounded = true, children }: {
+function Donut({ segments, size = 150, thickness = 16, gap = 2.5, rounded = true, children, activeIndex = null, onActive }: {
   segments: { value: number; color: string }[]; size?: number; thickness?: number; gap?: number; rounded?: boolean; children?: React.ReactNode;
+  activeIndex?: number | null; onActive?: (i: number | null) => void;
 }) {
-  const r = (size - thickness) / 2;
-  const c = 2 * Math.PI * r;
+  const cx = size / 2, cy = size / 2, r = (size - thickness) / 2 - 2;
   const total = segments.reduce((s, x) => s + x.value, 0) || 1;
-  let offset = 0;
+  const interactivo = !!onActive;
+  const conValor = segments.map((s, i) => ({ ...s, i })).filter((s) => s.value > 0);
+  const soloUno = conValor.length === 1;
+  let cum = 0;
+  const arcs = segments.map((s) => {
+    const f0 = cum / total; cum += s.value; const f1 = cum / total;
+    const a0 = f0 * 2 * Math.PI - Math.PI / 2, a1 = f1 * 2 * Math.PI - Math.PI / 2;
+    const gapRad = (gap / (2 * Math.PI * r)) * Math.PI * 2;
+    const b0 = a0 + gapRad / 2, b1 = a1 - gapRad / 2;
+    return { color: s.color, val: s.value, x1: cx + r * Math.cos(b0), y1: cy + r * Math.sin(b0), x2: cx + r * Math.cos(b1), y2: cy + r * Math.sin(b1), large: (f1 - f0) > 0.5 ? 1 : 0 };
+  });
   return (
-    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--mc-surface-3)" strokeWidth={thickness} />
-        {segments.map((s, i) => {
-          const full = (s.value / total) * c;
-          const len = Math.max(0.5, full - gap);
-          const el = (
-            <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color}
-              strokeWidth={thickness} strokeDasharray={`${len} ${c - len}`} strokeDashoffset={-offset}
-              strokeLinecap={rounded ? "round" : "butt"} />
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }} onMouseLeave={interactivo ? () => onActive!(null) : undefined}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mc-surface-3)" strokeWidth={thickness} />
+        {soloUno ? (
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke={conValor[0].color} strokeWidth={activeIndex != null ? thickness + 5 : thickness}
+            style={{ cursor: interactivo ? "pointer" : "default", transition: "stroke-width .18s" }}
+            onMouseEnter={interactivo ? () => onActive!(conValor[0].i) : undefined} />
+        ) : arcs.map((s, i) => {
+          if (s.val <= 0) return null;
+          const active = activeIndex === i;
+          const dim = activeIndex != null && !active;
+          return (
+            <path key={i} d={`M ${s.x1} ${s.y1} A ${r} ${r} 0 ${s.large} 1 ${s.x2} ${s.y2}`} stroke={s.color}
+              strokeWidth={active ? thickness + 5 : thickness} fill="none" strokeLinecap={rounded ? "round" : "butt"} opacity={dim ? 0.28 : 1}
+              style={{ cursor: interactivo ? "pointer" : "default", transition: "stroke-width .18s, opacity .18s" }}
+              onMouseEnter={interactivo ? () => onActive!(i) : undefined} />
           );
-          offset += full;
-          return el;
         })}
       </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", pointerEvents: "none" }}>
         {children}
       </div>
     </div>
@@ -355,24 +370,41 @@ function FieldHealth() {
   const sanos = Math.max(0, conCultivo - conAlerta);
   const vacio = conCultivo === 0;
   const pct = conCultivo > 0 ? Math.round((sanos / conCultivo) * 100) : 0;
+  const [activo, setActivo] = useState<number | null>(null);
+  const segs = [
+    { label: "Saludables", value: sanos, color: "#5e7733" },
+    { label: "En alerta", value: conAlerta, color: "#c93434" },
+  ];
+  const sel = activo != null && segs[activo] && segs[activo].value > 0 ? segs[activo] : null;
   return (
     <div className="mc-card">
       <div className="mc-card__head"><div><div className="mc-card__eyebrow">Sanidad de los cultivos</div><div className="mc-card__title mt-4">Salud de los lotes</div></div><span className={`mc-badge ${vacio ? "mc-badge--neutral" : conAlerta > 0 ? "mc-badge--amber" : "mc-badge--green"}`}>{vacio ? "Sin datos" : conAlerta > 0 ? `${conAlerta} en alerta` : "Sin alertas"}</span></div>
       <div className="row" style={{ gap: 18, alignItems: "center" }}>
-        <Donut segments={vacio ? [{ value: 1, color: "var(--mc-surface-3)" }] : [{ value: sanos, color: "#5e7733" }, { value: conAlerta, color: "#c93434" }].filter((s) => s.value > 0)} size={140} thickness={15} rounded={!vacio}>
-          <span style={{ fontFamily: "var(--ff-display)", fontSize: 36, color: vacio ? "var(--mc-text-3)" : "var(--mc-ink)", lineHeight: 1 }}>{vacio ? "—" : `${pct}%`}</span>
-          <span style={{ fontSize: 11, color: "var(--mc-text-3)", fontWeight: 600 }}>{vacio ? "Sin cultivos" : "saludables"}</span>
+        <Donut
+          segments={vacio ? [{ value: 1, color: "var(--mc-surface-3)" }] : segs}
+          size={140} thickness={15} rounded={!vacio}
+          activeIndex={vacio ? null : activo} onActive={vacio ? undefined : setActivo}
+        >
+          {sel ? (
+            <>
+              <span style={{ fontFamily: "var(--ff-display)", fontSize: 34, color: sel.color, lineHeight: 1 }}>{sel.value}</span>
+              <span style={{ fontSize: 11, color: "var(--mc-text-3)", fontWeight: 600 }}>{sel.label}</span>
+            </>
+          ) : (
+            <>
+              <span style={{ fontFamily: "var(--ff-display)", fontSize: 36, color: vacio ? "var(--mc-text-3)" : "var(--mc-ink)", lineHeight: 1 }}>{vacio ? "—" : `${pct}%`}</span>
+              <span style={{ fontSize: 11, color: "var(--mc-text-3)", fontWeight: 600 }}>{vacio ? "Sin cultivos" : "saludables"}</span>
+            </>
+          )}
         </Donut>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
-            <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: "#5e7733" }} /><span style={{ color: "var(--mc-text-2)" }}>Saludables</span></div>
-            <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{sanos}</span>
-          </div>
-          <div className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
-            <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: "#c93434" }} /><span style={{ color: "var(--mc-text-2)" }}>En alerta</span></div>
-            <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{conAlerta}</span>
-          </div>
-          <div className="row" style={{ justifyContent: "space-between", fontSize: 13 }}>
+          {segs.map((s, i) => (
+            <div key={i} onMouseEnter={() => !vacio && setActivo(i)} onMouseLeave={() => setActivo(null)} className="row" style={{ justifyContent: "space-between", fontSize: 13, padding: "3px 6px", margin: "0 -6px", borderRadius: 7, cursor: vacio ? "default" : "pointer", background: activo === i ? `${s.color}14` : "transparent", transition: "background .15s" }}>
+              <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: s.color }} /><span style={{ color: "var(--mc-text-2)" }}>{s.label}</span></div>
+              <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{s.value}</span>
+            </div>
+          ))}
+          <div className="row" style={{ justifyContent: "space-between", fontSize: 13, padding: "3px 6px", margin: "0 -6px" }}>
             <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--mc-surface-3)" }} /><span style={{ color: "var(--mc-text-2)" }}>Lotes con cultivo</span></div>
             <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{conCultivo}</span>
           </div>
@@ -419,18 +451,34 @@ function SoilHealth() {
 function CropDistribution({ cultivos }: { cultivos: { label: string; ha: string; pct: number; color: string }[] }) {
   const total = cultivos.reduce((s, c) => s + (parseFloat(c.ha) || 0), 0);
   const vacio = cultivos.length === 0;
+  const [activo, setActivo] = useState<number | null>(null);
+  const sel = activo != null ? cultivos[activo] : null;
   return (
     <div className="mc-card">
       <div className="mc-card__head"><div><div className="mc-card__eyebrow">Por superficie</div><div className="mc-card__title mt-4">Distribución de cultivos</div></div></div>
       <div className="row" style={{ gap: 20, alignItems: "center" }}>
-        <Donut segments={vacio ? [{ value: 1, color: "var(--mc-surface-3)" }] : cultivos.map((c) => ({ value: c.pct, color: c.color }))} size={158} thickness={28} gap={2.5} rounded={!vacio}>
-          <span style={{ fontFamily: "var(--ff-display)", fontSize: 30, color: vacio ? "var(--mc-text-3)" : "var(--mc-ink)", lineHeight: 1 }}>{Math.round(total) || 0}</span>
-          <span style={{ fontSize: 10.5, color: "var(--mc-text-3)" }}>Ha totales</span>
+        <Donut
+          segments={vacio ? [{ value: 1, color: "var(--mc-surface-3)" }] : cultivos.map((c) => ({ value: c.pct, color: c.color }))}
+          size={158} thickness={28} gap={2.5} rounded={!vacio}
+          activeIndex={vacio ? null : activo} onActive={vacio ? undefined : setActivo}
+        >
+          {sel ? (
+            <>
+              <span style={{ fontFamily: "var(--ff-ui)", fontSize: 12, fontWeight: 700, color: sel.color, textTransform: "uppercase", letterSpacing: "0.03em" }}>{sel.label}</span>
+              <span style={{ fontFamily: "var(--ff-display)", fontSize: 30, color: "var(--mc-ink)", lineHeight: 1.1 }}>{sel.pct}%</span>
+              <span style={{ fontSize: 10.5, color: "var(--mc-text-3)" }}>{sel.ha}</span>
+            </>
+          ) : (
+            <>
+              <span style={{ fontFamily: "var(--ff-display)", fontSize: 30, color: vacio ? "var(--mc-text-3)" : "var(--mc-ink)", lineHeight: 1 }}>{Math.round(total) || 0}</span>
+              <span style={{ fontSize: 10.5, color: "var(--mc-text-3)" }}>Ha totales</span>
+            </>
+          )}
         </Donut>
         <div style={{ flex: 1 }}>
           {vacio && <div className="text-sm text-muted" style={{ padding: "8px 0" }}>Cargá tus lotes y cultivos para ver la distribución.</div>}
-          {cultivos.map((c) => (
-            <div key={c.label} className="row" style={{ justifyContent: "space-between", padding: "5px 0", borderBottom: "1px dashed var(--mc-line)", fontSize: 13 }}>
+          {cultivos.map((c, i) => (
+            <div key={c.label} onMouseEnter={() => setActivo(i)} onMouseLeave={() => setActivo(null)} className="row" style={{ justifyContent: "space-between", padding: "5px 6px", margin: "0 -6px", borderBottom: "1px dashed var(--mc-line)", fontSize: 13, borderRadius: 7, cursor: "pointer", background: activo === i ? `${c.color}14` : "transparent", transition: "background .15s" }}>
               <div className="row gap-8"><span style={{ width: 9, height: 9, borderRadius: "50%", background: c.color }} /><span style={{ color: "var(--mc-ink)", fontWeight: 500 }}>{c.label}</span></div>
               <div className="row gap-16"><span style={{ color: "var(--mc-text-3)", fontFamily: "var(--ff-mono)", fontSize: 12 }}>{c.ha}</span><span style={{ fontWeight: 600, color: "var(--mc-ink)", width: 32, textAlign: "right" }}>{c.pct}%</span></div>
             </div>
@@ -583,7 +631,8 @@ export default function InicioPage() {
     const totalHa = scopeLotes.reduce((s, l) => s + (l.hectareas || 0), 0);
     setKpiValues((p) => ({ ...p, hectareas: { value: `${Math.round(totalHa).toLocaleString("es-AR")} Ha`, delta: `${scopeLotes.length} ${scopeLotes.length === 1 ? "lote" : "lotes"}` } }));
     setLotes(scopeLotes.map((l) => ({ id: l.id, nombre: l.nombre })));
-    const colores: Record<string, string> = { Trigo: "#d9a538", Maíz: "#c08a22", Soja: "#8ea65a", Cebada: "#5e7733", Alfalfa: "#aabd76", Girasol: "#e8b94a", Sorgo: "#c08a22" };
+    // Colores por cultivo consistentes con la gráfica de Cultivos (misma fuente).
+    const colores: Record<string, string> = CULTIVO_COLORES;
     const porCultivo = new Map<string, number>();
     scopeLotes.forEach((l) => { if (l.cultivo) porCultivo.set(l.cultivo, (porCultivo.get(l.cultivo) || 0) + (l.hectareas || 0)); });
     if (porCultivo.size > 0) {

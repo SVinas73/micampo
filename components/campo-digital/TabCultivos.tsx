@@ -663,6 +663,14 @@ function CultivosPlanificador({
     toast.show(`Orden de trabajo generada para "${p.titulo}"`);
   };
 
+  // Descarta un plan activo (con confirmación): lo borra de la lista y del backend.
+  const descartarActivo = async (p: PlanActivo) => {
+    if (!window.confirm(`¿Descartar el plan "${p.titulo}"? Se elimina de tus planes.`)) return;
+    setActivos((prev) => prev.filter((x) => x !== p));
+    if (p.id) { await fetch(`/api/planes-siembra/${p.id}`, { method: "DELETE" }).catch(() => {}); onChanged?.(); }
+    toast.show("Plan descartado");
+  };
+
   return (
     <>
       <div className="mc-card ia-card">
@@ -726,6 +734,9 @@ function CultivosPlanificador({
                 </button>
                 <button className="mc-btn mc-btn--sm flex-1" style={{ fontSize: 11, background: p.color, color: "white", border: "none" }} onClick={() => generarOrden(p)}>
                   <Icon name="settings" size={11} />Generar Orden de Trabajo
+                </button>
+                <button className="mc-icon-btn" style={{ width: 30, height: 30, border: "1px solid var(--mc-line)", color: "var(--mc-red)", flexShrink: 0 }} onClick={() => descartarActivo(p)} title="Descartar este plan">
+                  <Icon name="trash" size={13} />
                 </button>
               </div>
             </div>
