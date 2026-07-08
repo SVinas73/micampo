@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropic, IA_MODEL } from "@/lib/ia";
 
+// La generación con IA analiza historial + suelo + clima (hasta 3000 tokens):
+// sin este límite Vercel corta la función a ~10s y el plan nunca vuelve (504).
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);

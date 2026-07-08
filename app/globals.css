@@ -2536,8 +2536,8 @@ a:focus-visible {
   pointer-events: none;
   z-index: 640;
 }
-.mc-lupa__mapa { position: absolute; inset: 0; }
-.mc-lupa__mapa .maplibregl-canvas { border-radius: 50%; }
+/* Canvas 2D donde se pinta la región ampliada del mapa (la lupa la recorta en círculo). */
+.mc-lupa__mapa { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* Cruz fina en el centro de la lente para apuntar el vértice con precisión */
 .mc-lupa__cruz { position: absolute; inset: 0; pointer-events: none; }
 .mc-lupa__cruz::before,

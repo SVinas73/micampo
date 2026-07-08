@@ -216,7 +216,7 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
   ndviVisRef.current = ndviVisible;
   // Lupita de aumento para el dibujo de lotes (mini-mapa circular junto al cursor).
   const lensRef = useRef<HTMLDivElement>(null);
-  const lensMapRef = useRef<maplibregl.Map | null>(null);
+  const lensCanvasRef = useRef<HTMLCanvasElement>(null);
   const establecimientosRef = useRef(establecimientos);
   const modoNotaRef = useRef(false);
   const onPuntoNotaRef = useRef(onPuntoNota);
@@ -283,6 +283,9 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
 
     const map = new maplibregl.Map({
       container: ref.current,
+      // Necesario para que la lupa pueda copiar (drawImage) los píxeles ya
+      // renderizados del mapa mientras se dibuja un lote.
+      preserveDrawingBuffer: true,
       style: {
         version: 8,
         glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
@@ -513,30 +516,42 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
       });
 
       // Lupa de aumento mientras se dibuja: lente circular que SIGUE al cursor y
-      // muestra la imagen satelital ampliada (+3 zoom) centrada en la cruz.
-      map.on("mousemove", (e) => {
-        const lens = lensRef.current;
-        if (!drawingRef.current) { if (lens) lens.style.display = "none"; return; }
-        if (!lens) return;
-        // ¿Reaparece tras estar oculta? Entonces el mapa de la lente se creó en un
-        // contenedor de 0px y hay que recalcular su tamaño, si no no dibuja nada.
-        const reaparece = lens.style.display !== "block";
+      // AMPLÍA la región bajo la cruz copiando los píxeles ya renderizados del
+      // mapa (drawImage sobre el canvas del propio mapa). Un solo contexto WebGL,
+      // sin mini-mapa aparte → siempre muestra imagen y va perfecto con la cruz.
+      const dibujarLupa = (px: number, py: number) => {
+        const lens = lensRef.current, lc = lensCanvasRef.current;
+        if (!lens || !lc) return;
         lens.style.display = "block";
-        const SIZE = 148, GAP = 16;
+        const SIZE = 148, GAP = 16, ZOOM = 2.6;
         const cont = map.getContainer();
         const w = cont.clientWidth, h = cont.clientHeight;
         // Por defecto arriba-derecha del cursor; se reacomoda si se saldría del mapa.
-        let lx = e.point.x + GAP;
-        let ly = e.point.y - SIZE - GAP;
-        if (lx + SIZE > w - 4) lx = e.point.x - SIZE - GAP;
-        if (ly < 4) ly = Math.min(h - SIZE - 4, e.point.y + GAP);
+        let lx = px + GAP;
+        let ly = py - SIZE - GAP;
+        if (lx + SIZE > w - 4) lx = px - SIZE - GAP;
+        if (ly < 4) ly = Math.min(h - SIZE - 4, py + GAP);
         lens.style.left = `${Math.max(4, lx)}px`;
         lens.style.top = `${Math.max(4, ly)}px`;
-        const lm = lensMapRef.current;
-        if (lm) {
-          if (reaparece) lm.resize();
-          lm.jumpTo({ center: e.lngLat, zoom: Math.min(19, map.getZoom() + 3) });
-        }
+
+        const canvas = map.getCanvas();
+        const ctx = lc.getContext("2d");
+        if (!ctx || !canvas.width || !canvas.height) return;
+        const dpr = window.devicePixelRatio || 1;
+        const backing = Math.round(SIZE * dpr);
+        if (lc.width !== backing) { lc.width = backing; lc.height = backing; }
+        // canvas.width/height están en px de dispositivo; px/py en px CSS del mapa.
+        const sxScale = canvas.width / w, syScale = canvas.height / h;
+        const srcCss = SIZE / ZOOM;                 // ventana (px CSS) que se amplía
+        const sw = srcCss * sxScale, sh = srcCss * syScale;
+        const sx = px * sxScale - sw / 2, sy = py * syScale - sh / 2;
+        ctx.imageSmoothingEnabled = true;
+        ctx.clearRect(0, 0, lc.width, lc.height);
+        try { ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, lc.width, lc.height); } catch { /* frame no legible */ }
+      };
+      map.on("mousemove", (e) => {
+        if (!drawingRef.current) { if (lensRef.current) lensRef.current.style.display = "none"; return; }
+        dibujarLupa(e.point.x, e.point.y);
       });
       map.on("mouseout", () => { if (lensRef.current) lensRef.current.style.display = "none"; });
 
@@ -544,7 +559,7 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
       setReady(true);
     });
 
-    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; campoMarkersRef.current.forEach((m) => m.remove()); campoMarkersRef.current = []; notaPopupRef.current?.remove(); notaPopupRef.current = null; lensMapRef.current?.remove(); lensMapRef.current = null; map.remove(); mapRef.current = null; readyRef.current = false; };
+    return () => { markersRef.current.forEach((m) => m.remove()); markersRef.current = []; campoMarkersRef.current.forEach((m) => m.remove()); campoMarkersRef.current = []; notaPopupRef.current?.remove(); notaPopupRef.current = null; map.remove(); mapRef.current = null; readyRef.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -581,10 +596,8 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
       // Los marcadores vuelven a ser interactivos y se apaga la cruz forzada.
       map.getContainer().classList.remove("mc-dibujando");
     }
-    // Apaga y destruye la lupita.
+    // Apaga la lupita (el canvas 2D se reutiliza; no hay mapa aparte que destruir).
     if (lensRef.current) lensRef.current.style.display = "none";
-    lensMapRef.current?.remove();
-    lensMapRef.current = null;
   };
 
   const iniciarDibujo = () => {
@@ -597,32 +610,8 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
     // Modo dibujo TOTAL: nada interrumpe la cruz (los marcadores de lote no
     // interceptan el mouse y el cursor queda forzado por CSS).
     map.getContainer().classList.add("mc-dibujando");
-    // Lupa: mini-mapa satelital con aumento, que sigue al cursor. El source va con
-    // maxzoom 19 (máximo de Esri) para que MapLibre AMPLÍE (overzoom) esos tiles al
-    // acercarse en vez de pedir tiles inexistentes → la lente siempre muestra algo.
-    if (lensRef.current && !lensMapRef.current) {
-      lensMapRef.current = new maplibregl.Map({
-        container: lensRef.current.querySelector(".mc-lupa__mapa") as HTMLElement,
-        style: {
-          version: 8,
-          sources: {
-            satelite: {
-              type: "raster",
-              tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
-              tileSize: 256,
-              maxzoom: 19,
-            },
-          },
-          layers: [{ id: "satelite", type: "raster", source: "satelite" }],
-        } as any,
-        center: map.getCenter(),
-        zoom: Math.min(19, map.getZoom() + 3),
-        interactive: false,
-        attributionControl: false,
-      });
-      // El contenedor arranca oculto (0px): al primer render la lente se ajusta sola.
-      requestAnimationFrame(() => lensMapRef.current?.resize());
-    }
+    // La lupa se dibuja en el mousemove copiando el canvas del mapa (drawImage):
+    // no hay mini-mapa que crear ni tiles que cargar.
   };
 
   // Disparador externo: el botón "Nuevo lote" del header arma el dibujo
@@ -713,7 +702,7 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
 
       {/* Lupita de aumento (solo visible mientras se dibuja) */}
       <div ref={lensRef} className="mc-lupa" style={{ display: "none" }} aria-hidden>
-        <div className="mc-lupa__mapa" />
+        <canvas ref={lensCanvasRef} className="mc-lupa__mapa" width={148} height={148} />
         <div className="mc-lupa__cruz" />
       </div>
 
