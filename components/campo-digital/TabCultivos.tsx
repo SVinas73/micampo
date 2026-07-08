@@ -800,11 +800,15 @@ function CultivosPlanificador({
 }
 
 /* ========== ANÁLISIS DE SUELO (Figma CultivosAnalisisSuelo) ========== */
-type AnalisisRow = { lote: string; cultivo: string; n: number; p: number; k: number; ph: number | null; mo: string; phStatus: string; moStatus: string };
+type AnalisisRow = { id?: string; lote: string; cultivo: string; n: number; p: number; k: number; ph: number | null; mo: string; phStatus: string; moStatus: string };
+type RecetaIA = { simulado: boolean; resumen: string; items: { producto: string; dosis: string; momento: string; motivo: string }[]; notas?: string; fuente: string };
 
 function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: ReturnType<typeof useToast>; onVerMapa: () => void; refreshKey?: number }) {
   const [lotesAnalisis, setLotesAnalisis] = useState<AnalisisRow[]>([] as AnalisisRow[]);
   const [receta, setReceta] = useState<AnalisisRow | null>(null);
+  // Receta de fertilización generada con IA para el análisis abierto en el modal.
+  const [recetaIA, setRecetaIA] = useState<RecetaIA | null>(null);
+  const [cargandoReceta, setCargandoReceta] = useState(false);
   // Serie cruda de fósforo por análisis (con su lote) para poder filtrar la gráfica.
   const [serieRaw, setSerieRaw] = useState<{ lote: string; ppm: number; fecha: number; label: string }[]>([]);
   // Lote seleccionado en "Últimos Resultados": la gráfica de fósforo lo sigue.
@@ -868,7 +872,8 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
             })
         );
         setLotesAnalisis(
-          d.slice(0, 4).map((a: { lote?: { nombre: string }; fechaAnalisis: string; nitrogeno?: number; fosforo?: number; potasio?: number; pH?: number; materiaOrganica?: number }) => ({
+          d.slice(0, 4).map((a: { id: string; lote?: { nombre: string }; fechaAnalisis: string; nitrogeno?: number; fosforo?: number; potasio?: number; pH?: number; materiaOrganica?: number }) => ({
+            id: a.id,
             lote: a.lote?.nombre || "Lote",
             cultivo: `Análisis · ${new Date(a.fechaAnalisis).toLocaleDateString("es-AR", { timeZone: "UTC" })}`,
             // Valores reales (0 si el análisis no reporta el nutriente); sin defaults inventados.
@@ -884,6 +889,21 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
       })
       .catch(() => {});
   }, [refreshKey, localRefresh]);
+
+  // Abre la receta de un análisis y genera la recomendación con IA (fallback a reglas).
+  const abrirReceta = (l: AnalisisRow) => {
+    setReceta(l);
+    setRecetaIA(null);
+    if (!l.id) return;
+    setCargandoReceta(true);
+    fetch("/api/analisis-suelo/recomendacion", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analisisId: l.id }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && Array.isArray(d.items)) setRecetaIA(d); })
+      .catch(() => {})
+      .finally(() => setCargandoReceta(false));
+  };
 
   // Elimina un análisis del historial (con confirmación) y refresca la vista.
   const eliminarAnalisis = async (id: string, lote: string) => {
@@ -923,46 +943,83 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
     <>
       <Modal
         open={!!receta}
-        onClose={() => setReceta(null)}
+        onClose={() => { setReceta(null); setRecetaIA(null); }}
         title={`Receta de fertilización — ${receta?.lote || ""}`}
-        subtitle="Recomendación generada a partir del análisis N/P/K, pH y MO del lote."
+        subtitle="La IA analiza el suelo (N/P/K, pH y MO) y recomienda el plan de corrección."
         footer={
           <>
-            <button className="mc-btn mc-btn--ghost" onClick={() => setReceta(null)}>Cerrar</button>
+            <button className="mc-btn mc-btn--ghost" onClick={() => { setReceta(null); setRecetaIA(null); }}>Cerrar</button>
+            <button className="mc-btn mc-btn--secondary" onClick={() => receta && abrirReceta(receta)} disabled={cargandoReceta}>
+              <Icon name="bolt" size={13} />{cargandoReceta ? "Analizando…" : "Regenerar con IA"}
+            </button>
             <button
               className="mc-btn mc-btn--primary"
+              disabled={cargandoReceta}
               onClick={() =>
                 receta &&
                 descargarPDF(`Receta ${receta.lote}`, [
                   `Lote: ${receta.lote}`,
-                  `N: ${receta.n}% · P: ${receta.p}% · K: ${receta.k}% · pH ${receta.ph ?? "—"} · MO ${receta.mo}`,
+                  `pH ${receta.ph ?? "—"} · MO ${receta.mo}`,
                   "",
+                  ...(recetaIA?.resumen ? [recetaIA.resumen, ""] : []),
                   "Recomendaciones:",
-                  ...recomendacion(receta).map((r) => `- ${r}`),
+                  ...(recetaIA?.items?.length
+                    ? recetaIA.items.map((it) => `- ${it.producto}: ${it.dosis} (${it.momento}) — ${it.motivo}`)
+                    : receta ? recomendacion(receta).map((r) => `- ${r}`) : []),
+                  ...(recetaIA?.notas ? ["", `Notas: ${recetaIA.notas}`] : []),
                 ])
               }
             >
-              <Icon name="download" size={13} />Descargar PDF
+              <Icon name="pdf" size={14} />Descargar PDF
             </button>
           </>
         }
       >
         {receta && (
-          <div className="col gap-10">
-            <div className="row gap-16 text-sm">
-              <span><b>N:</b> {receta.n}%</span>
-              <span><b>P:</b> {receta.p}%</span>
-              <span><b>K:</b> {receta.k}%</span>
+          <div className="col gap-12">
+            <div className="row gap-16 text-sm" style={{ flexWrap: "wrap" }}>
               <span><b>pH:</b> {receta.ph ?? "—"}</span>
               <span><b>MO:</b> {receta.mo}</span>
+              <span style={{ color: "var(--mc-text-3)", fontSize: 12 }}>{receta.cultivo}</span>
             </div>
-            <div className="col gap-8">
-              {recomendacion(receta).map((r, i) => (
-                <div key={i} style={{ padding: "10px 12px", background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)", borderRadius: 8, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Icon name="sprout" size={13} /> {r}
+
+            {cargandoReceta ? (
+              <div className="row gap-8" style={{ alignItems: "center", padding: "18px 4px", color: "var(--mc-green-700)" }}>
+                <Icon name="sparkles" size={16} /> <span className="text-sm">Analizando el suelo con IA…</span>
+              </div>
+            ) : recetaIA ? (
+              <>
+                <div className="row gap-8" style={{ alignItems: "center" }}>
+                  <span className={`mc-badge ${recetaIA.simulado ? "mc-badge--neutral" : "mc-badge--green"}`} style={{ fontSize: 10 }}>
+                    {recetaIA.simulado ? "Reglas agronómicas" : "Generado con IA"}
+                  </span>
+                  {recetaIA.simulado && <span className="text-xs text-muted">Configurá ANTHROPIC_API_KEY para el análisis con IA.</span>}
                 </div>
-              ))}
-            </div>
+                {recetaIA.resumen && <div className="text-sm" style={{ color: "var(--mc-ink)", lineHeight: 1.5 }}>{recetaIA.resumen}</div>}
+                <div className="col gap-8">
+                  {recetaIA.items.map((it, i) => (
+                    <div key={i} style={{ padding: "10px 12px", background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)", borderRadius: 8 }}>
+                      <div className="row gap-6" style={{ alignItems: "center", flexWrap: "wrap" }}>
+                        <Icon name="sprout" size={13} style={{ color: "var(--mc-green-700)" }} />
+                        <span className="font-semi text-sm" style={{ color: "var(--mc-ink)" }}>{it.producto}</span>
+                        <span className="mc-badge mc-badge--green" style={{ fontSize: 10 }}>{it.dosis}</span>
+                        <span className="text-xs" style={{ color: "var(--mc-green-700)", display: "inline-flex", alignItems: "center", gap: 3 }}><Icon name="clock" size={11} />{it.momento}</span>
+                      </div>
+                      <div className="text-xs text-muted" style={{ marginTop: 4, lineHeight: 1.4 }}>{it.motivo}</div>
+                    </div>
+                  ))}
+                </div>
+                {recetaIA.notas && <div className="text-xs text-muted" style={{ lineHeight: 1.45 }}><b>Notas:</b> {recetaIA.notas}</div>}
+              </>
+            ) : (
+              <div className="col gap-8">
+                {recomendacion(receta).map((r, i) => (
+                  <div key={i} style={{ padding: "10px 12px", background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)", borderRadius: 8, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Icon name="sprout" size={13} /> {r}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -970,6 +1027,7 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
       <div className="mc-card ia-card">
         <div className="mc-card__head">
           <div className="mc-card__title">Análisis del Suelo</div>
+          <IABadge />
         </div>
         <div className="grid g-cols-2 gap-12">
           {lotesAnalisis.map((l, i) => (
@@ -1012,8 +1070,8 @@ function CultivosAnalisisSuelo({ toast, onVerMapa, refreshKey }: { toast: Return
                     <Icon name="pdf" size={14} />
                   </button>
                 </div>
-                <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "5px 8px", fontSize: 11, justifyContent: "center", gap: 5 }} onClick={() => setReceta(l)}>
-                  Receta <Icon name="pen" size={10} />
+                <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ padding: "5px 8px", fontSize: 11, justifyContent: "center", gap: 5 }} onClick={() => abrirReceta(l)}>
+                  Receta IA <Icon name="sparkles" size={10} />
                 </button>
               </div>
             </div>
@@ -1188,6 +1246,7 @@ function NuevoAnalisisModal({
   const [form, setForm] = useState({ loteIdx: 0, fecha: new Date().toISOString().slice(0, 10), ph: "6.2", mo: "2.6", n: "45", p: "18", k: "180" });
   // PDF del laboratorio (opcional, máx 3 MB) — se guarda con el análisis y se descarga desde la columna PDF.
   const [pdf, setPdf] = useState<{ nombre: string; dataUrl: string } | null>(null);
+  const [interpretando, setInterpretando] = useState(false);
   const elegirPdf = (f: File | null) => {
     if (!f) return;
     if (f.type !== "application/pdf") { toast.show("El archivo debe ser un PDF", "err"); return; }
@@ -1195,6 +1254,34 @@ function NuevoAnalisisModal({
     const reader = new FileReader();
     reader.onload = () => setPdf({ nombre: f.name, dataUrl: reader.result as string });
     reader.readAsDataURL(f);
+  };
+
+  // La IA lee el PDF del laboratorio y precarga los valores del formulario.
+  const interpretarPDF = async () => {
+    if (!pdf) return;
+    setInterpretando(true);
+    try {
+      const res = await fetch("/api/analisis-suelo/interpretar", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pdf: pdf.dataUrl }),
+      });
+      const d = await res.json();
+      if (d?.simulado) { toast.show("La lectura del PDF con IA requiere configurar ANTHROPIC_API_KEY", "err"); return; }
+      if (!res.ok || d?.error) { toast.show(d?.error || "No se pudo interpretar el PDF", "err"); return; }
+      setForm((f) => ({
+        ...f,
+        ph: d.ph != null ? String(d.ph) : f.ph,
+        mo: d.materiaOrganica != null ? String(d.materiaOrganica) : f.mo,
+        n: d.nitrogeno != null ? String(d.nitrogeno) : f.n,
+        p: d.fosforo != null ? String(d.fosforo) : f.p,
+        k: d.potasio != null ? String(d.potasio) : f.k,
+        fecha: typeof d.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.fecha) ? d.fecha : f.fecha,
+      }));
+      toast.show("Valores cargados del PDF con IA ✓ — revisalos antes de guardar");
+    } catch {
+      toast.show("No se pudo interpretar el PDF", "err");
+    } finally {
+      setInterpretando(false);
+    }
   };
 
   const guardar = async () => {
@@ -1252,17 +1339,22 @@ function NuevoAnalisisModal({
         <Field label="P (ppm)"><input className="mc-input" value={form.p} onChange={(e) => setForm({ ...form, p: e.target.value })} /></Field>
         <Field label="K (ppm)"><input className="mc-input" value={form.k} onChange={(e) => setForm({ ...form, k: e.target.value })} /></Field>
       </div>
-      <Field label="PDF del laboratorio (opcional, máx 3 MB)">
-        <div className="row gap-8" style={{ alignItems: "center" }}>
+      <Field label="PDF del laboratorio (opcional, máx 3 MB) — la IA puede leerlo y cargar los valores">
+        <div className="row gap-8" style={{ alignItems: "center", flexWrap: "wrap" }}>
           <label className="mc-btn mc-btn--secondary mc-btn--sm" style={{ cursor: "pointer" }}>
-            <Icon name="download" size={13} /> {pdf ? "Cambiar PDF" : "Adjuntar PDF"}
+            <Icon name="pdf" size={14} /> {pdf ? "Cambiar PDF" : "Adjuntar PDF"}
             <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => elegirPdf(e.target.files?.[0] || null)} />
           </label>
           {pdf && (
-            <span className="text-xs" style={{ color: "var(--mc-green-700)", display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <Icon name="check" size={12} />{pdf.nombre}
-              <button className="mc-icon-btn" style={{ width: 20, height: 20, border: "none" }} onClick={() => setPdf(null)} title="Quitar PDF"><Icon name="x" size={11} /></button>
-            </span>
+            <>
+              <span className="text-xs" style={{ color: "var(--mc-green-700)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Icon name="check" size={12} />{pdf.nombre}
+                <button className="mc-icon-btn" style={{ width: 20, height: 20, border: "none" }} onClick={() => setPdf(null)} title="Quitar PDF"><Icon name="x" size={11} /></button>
+              </span>
+              <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={interpretarPDF} disabled={interpretando} title="La IA lee el PDF y precarga pH, MO, N, P y K">
+                <Icon name="sparkles" size={12} />{interpretando ? "Leyendo…" : "Interpretar con IA"}
+              </button>
+            </>
           )}
         </div>
       </Field>
