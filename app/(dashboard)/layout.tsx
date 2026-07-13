@@ -97,7 +97,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
           { id: "mov-tropas", label: "Mov. de Tropas", href: "/mov-tropas" },
           { id: "prod-lechera", label: "Producción Lechera", href: "/produccion-lechera" },
           { id: "engorde", label: "Engorde", href: "/engorde" },
-          { id: "genetica", label: "Genética", href: "/ganaderia-avanzada" },
+          { id: "genetica", label: "Genética", href: "/genetica" },
           { id: "trazabilidad", label: "Trazabilidad", href: "/trazabilidad" },
         ],
       },
@@ -135,7 +135,7 @@ const SEARCH_INDEX: { label: string; href: string; group: string }[] = [
   { label: "Movimiento de Tropas", href: "/mov-tropas", group: "Ganadería" },
   { label: "Producción Lechera", href: "/produccion-lechera", group: "Ganadería" },
   { label: "Engorde", href: "/engorde", group: "Ganadería" },
-  { label: "Genética", href: "/ganaderia-avanzada", group: "Ganadería" },
+  { label: "Genética", href: "/genetica", group: "Ganadería" },
   { label: "Trazabilidad", href: "/trazabilidad", group: "Ganadería" },
   { label: "Logística e Inventario", href: "/logistica-inventario", group: "Operaciones" },
   { label: "Maquinaria y MTM", href: "/maquinaria", group: "Operaciones" },
@@ -167,6 +167,7 @@ function moduloDeRuta(pathname: string): string {
     p.startsWith("/mov-tropas") ||
     p.startsWith("/produccion-lechera") ||
     p.startsWith("/engorde") ||
+    p.startsWith("/genetica") ||
     p.startsWith("/ganaderia-avanzada") ||
     p.startsWith("/trazabilidad")
   )
