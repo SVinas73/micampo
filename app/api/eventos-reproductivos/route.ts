@@ -148,6 +148,21 @@ export async function POST(request: Request) {
           estadoActual: "Vacía",
         },
       });
+    } else if (tipo === "Celo") {
+      await prisma.historialReproductivo.update({
+        where: { animalId: animalId },
+        data: {
+          estadoActual: "En Celo",
+        },
+      });
+    } else if (tipo === "Aborto") {
+      await prisma.historialReproductivo.update({
+        where: { animalId: animalId },
+        data: {
+          estadoActual: "Vacía",
+          fechaEsperadaParto: null,
+        },
+      });
     }
 
     return NextResponse.json(evento, { status: 201 });

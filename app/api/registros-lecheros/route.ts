@@ -13,6 +13,8 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const animalId = searchParams.get("animalId");
+    const desde = searchParams.get("desde");
+    const hasta = searchParams.get("hasta");
 
     const where: any = {
       userId: session.user.id,
@@ -20,6 +22,12 @@ export async function GET(request: Request) {
 
     if (animalId) {
       where.animalId = animalId;
+    }
+    if (desde || hasta) {
+      where.fecha = {
+        ...(desde ? { gte: new Date(desde) } : {}),
+        ...(hasta ? { lte: new Date(hasta + "T23:59:59") } : {}),
+      };
     }
 
     const registros = await prisma.registroLechero.findMany({
@@ -35,7 +43,8 @@ export async function GET(request: Request) {
       orderBy: {
         fecha: "desc",
       },
-      take: 200,
+      // Con rango de fechas se permite traer la serie completa (gráficas)
+      take: desde || hasta ? 5000 : 200,
     });
 
     return NextResponse.json(registros);
@@ -56,7 +65,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { animalId, fecha, litros, turno, calidad, observaciones } = await request.json();
+    const body = await request.json();
+
+    // Carga masiva: { registros: [{ animalId, fecha, litros, turno, observaciones }, ...] }
+    if (Array.isArray(body.registros)) {
+      const filas = body.registros.filter(
+        (r: { animalId?: string; fecha?: string; litros?: number }) => r.animalId && r.fecha && r.litros !== undefined
+      );
+      if (filas.length === 0) {
+        return NextResponse.json({ error: "Sin registros válidos" }, { status: 400 });
+      }
+      const creados = await prisma.registroLechero.createMany({
+        data: filas.map((r: { animalId: string; fecha: string; litros: number | string; turno?: string; calidad?: string; observaciones?: string }) => ({
+          animalId: r.animalId,
+          fecha: new Date(r.fecha),
+          litros: parseFloat(String(r.litros)),
+          turno: r.turno || null,
+          calidad: r.calidad || null,
+          observaciones: r.observaciones || null,
+          userId: session.user.id,
+        })),
+      });
+      return NextResponse.json({ creados: creados.count }, { status: 201 });
+    }
+
+    const { animalId, fecha, litros, turno, calidad, observaciones } = body;
 
     if (!animalId || !fecha || litros === undefined) {
       return NextResponse.json(

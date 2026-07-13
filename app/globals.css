@@ -2615,3 +2615,11 @@ a:focus-visible {
 @media (max-width: 640px) {
   .mc-wx-info { grid-template-columns: 1fr 1fr !important; }
 }
+
+/* ============ GANADERÍA — Mov. de Tropas (referencia) ============ */
+@keyframes pulse-red { 0%,100%{box-shadow:0 0 0 0 rgba(201,52,52,.3)} 50%{box-shadow:0 0 0 6px rgba(201,52,52,0)} }
+@keyframes pulse-val { 0%,100%{opacity:1} 50%{opacity:0.6} }
+@keyframes mc-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.mc-kpi-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -4px rgba(0,0,0,.12); }
+.mc-gantt-row:hover { background: var(--mc-green-50) !important; }
+.mc-rutina-card:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -4px rgba(0,0,0,.1); cursor: grab; }

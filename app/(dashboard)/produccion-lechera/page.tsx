@@ -1,452 +1,98 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Icon, Modal, Field, useToast, KPI } from "@/components/mc";
-import { 
-  Droplets, 
-  TrendingUp, 
-  TrendingDown, 
-  Calendar,
-  AlertTriangle,
-  Sparkles,
-  RefreshCw,
-  Award,
-  Activity,
-} from "lucide-react";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+// GANADERÍA / PRODUCCIÓN LECHERA — seguimiento de ordeñe, curvas de lactancia
+// y calidad. Tabs: Resumen · Ordeñe · Estado de Lactancia · Curvas · Calidad.
+// Todos los datos derivan de /api/animales, /api/registros-lecheros y
+// /api/boletas-lecheras. Sin datos demo.
 
-const COLORS = ["#5e7733", "#1a5fa0", "#475569", "#c08a22", "#d9a538"];
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageHeader, Tabs } from "@/components/mc";
+import { AnimalAPI } from "@/components/ganaderia/tipos";
+import {
+  BoletaAPI,
+  RegLecheroAPI,
+  TurnoDef,
+  TURNOS_BASE,
+  WOOD_REFERENCIA,
+  WoodParams,
+  derivarVacas,
+  fitWood,
+  turnosExtraHoy,
+} from "@/components/ganaderia/lechera-tipos";
+import { PLResumen } from "@/components/ganaderia/lechera-tab-resumen";
+import { PLOrdene } from "@/components/ganaderia/lechera-tab-ordene";
+import { PLEstadoLactancia } from "@/components/ganaderia/lechera-tab-lactancia";
+import { PLCurvas } from "@/components/ganaderia/lechera-tab-curvas";
+import { PLCalidad } from "@/components/ganaderia/lechera-tab-calidad";
+
+const TABS = ["Resumen", "Ordeñe", "Estado de Lactancia", "Curvas", "Calidad"];
 
 export default function ProduccionLecheraPage() {
-  const [estadisticas, setEstadisticas] = useState<any>(null);
-  const [prediccion, setPrediccion] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [generandoPrediccion, setGenerandoPrediccion] = useState(false);
-  const [periodo, setPeriodo] = useState("30");
-  const toast = useToast();
-  const [registroOpen, setRegistroOpen] = useState(false);
-  const [animales, setAnimales] = useState<{ id: string; caravana: string }[]>([]);
-  const [form, setForm] = useState({ animalId: "", fecha: new Date().toISOString().slice(0, 10), litrosManana: "", litrosTarde: "", grasaButirosa: "", proteina: "" });
+  const [tab, setTab] = useState("Resumen");
+  const [animales, setAnimales] = useState<AnimalAPI[]>([]);
+  const [registros, setRegistros] = useState<RegLecheroAPI[]>([]);
+  const [boletas, setBoletas] = useState<BoletaAPI[]>([]);
+  const [turnosExtra, setTurnosExtra] = useState<TurnoDef[]>(() => turnosExtraHoy());
 
-  useEffect(() => {
-    fetchEstadisticas();
-  }, [periodo]);
-
-  useEffect(() => {
-    fetch("/api/animales").then((r) => (r.ok ? r.json() : [])).then((d) => {
-      if (Array.isArray(d)) setAnimales(d.filter((a: { sexo?: string }) => a.sexo === "Hembra" || !a.sexo).map((a: { id: string; caravana: string }) => ({ id: a.id, caravana: a.caravana })));
-    }).catch(() => {});
+  const cargar = useCallback(() => {
+    // Últimos 12 meses de registros para curvas y comparativos
+    const desde = new Date();
+    desde.setMonth(desde.getMonth() - 12);
+    const desdeStr = `${desde.getFullYear()}-${String(desde.getMonth() + 1).padStart(2, "0")}-${String(desde.getDate()).padStart(2, "0")}`;
+    fetch("/api/animales").then((r) => (r.ok ? r.json() : [])).then((d) => setAnimales(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch(`/api/registros-lecheros?desde=${desdeStr}`).then((r) => (r.ok ? r.json() : [])).then((d) => setRegistros(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch("/api/boletas-lecheras").then((r) => (r.ok ? r.json() : [])).then((d) => setBoletas(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
 
-  const crearRegistro = async () => {
-    if (!form.animalId || (!form.litrosManana && !form.litrosTarde)) { toast.show("Elegí el animal y al menos un ordeñe", "err"); return; }
-    try {
-      const res = await fetch("/api/produccion-lechera", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ animalId: form.animalId, fecha: form.fecha, litrosManana: form.litrosManana || "0", litrosTarde: form.litrosTarde || "0", grasaButirosa: form.grasaButirosa || null, proteina: form.proteina || null }),
-      });
-      if (!res.ok) throw new Error();
-      toast.show("Ordeñe registrado");
-      setRegistroOpen(false);
-      setForm({ ...form, litrosManana: "", litrosTarde: "", grasaButirosa: "", proteina: "" });
-      fetchEstadisticas();
-    } catch { toast.show("No se pudo registrar el ordeñe", "err"); }
-  };
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
 
-  const registroModal = (
-    <Modal
-      open={registroOpen}
-      onClose={() => setRegistroOpen(false)}
-      title="Registrar ordeñe"
-      subtitle="Cargá la producción de un animal (mañana y/o tarde)."
-      footer={<>
-        <button className="mc-btn mc-btn--ghost" onClick={() => setRegistroOpen(false)}>Cancelar</button>
-        <button className="mc-btn mc-btn--primary" onClick={crearRegistro}><Icon name="check" size={14} />Guardar</button>
-      </>}
-    >
-      <Field label="Animal">
-        <select className="mc-select" value={form.animalId} onChange={(e) => setForm({ ...form, animalId: e.target.value })}>
-          <option value="">{animales.length ? "Seleccioná un animal…" : "Sin animales (cargá el rodeo primero)"}</option>
-          {animales.map((a) => <option key={a.id} value={a.id}>Caravana {a.caravana}</option>)}
-        </select>
-      </Field>
-      <div className="grid g-cols-2 gap-12">
-        <Field label="Fecha"><input type="date" className="mc-input" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} /></Field>
-        <div className="grid g-cols-2 gap-12">
-          <Field label="Litros mañana"><input className="mc-input" type="number" placeholder="0" value={form.litrosManana} onChange={(e) => setForm({ ...form, litrosManana: e.target.value })} /></Field>
-          <Field label="Litros tarde"><input className="mc-input" type="number" placeholder="0" value={form.litrosTarde} onChange={(e) => setForm({ ...form, litrosTarde: e.target.value })} /></Field>
-        </div>
-      </div>
-      <div className="grid g-cols-2 gap-12">
-        <Field label="Grasa butirosa (%)"><input className="mc-input" type="number" placeholder="opcional" value={form.grasaButirosa} onChange={(e) => setForm({ ...form, grasaButirosa: e.target.value })} /></Field>
-        <Field label="Proteína (%)"><input className="mc-input" type="number" placeholder="opcional" value={form.proteina} onChange={(e) => setForm({ ...form, proteina: e.target.value })} /></Field>
-      </div>
-    </Modal>
-  );
-
-  const fetchEstadisticas = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/produccion-lechera/estadisticas?dias=${periodo}`);
-      if (response.ok) {
-        const data = await response.json();
-        setEstadisticas(data);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
+  // Curva esperada del rodeo: ajuste de Wood si hay datos, si no la de referencia
+  const esperada: WoodParams = useMemo(() => {
+    const pts: { del: number; litros: number }[] = [];
+    const porAnimal = new Map<string, RegLecheroAPI[]>();
+    for (const r of registros) {
+      if (!porAnimal.has(r.animalId)) porAnimal.set(r.animalId, []);
+      porAnimal.get(r.animalId)!.push(r);
     }
-  };
-
-  const generarPrediccion = async () => {
-    try {
-      setGenerandoPrediccion(true);
-      const response = await fetch("/api/produccion-lechera/prediccion", {
-        method: "POST",
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPrediccion(data);
-      } else {
-        const error = await response.json();
-        alert(error.error || "Error al generar predicción");
+    for (const a of animales) {
+      const up = a.historialReproductivo?.ultimoParto;
+      if (!up) continue;
+      const parto = new Date(up.slice(0, 10) + "T00:00:00").getTime();
+      for (const r of porAnimal.get(a.id) || []) {
+        const t = Math.round((new Date(r.fecha.slice(0, 10) + "T00:00:00").getTime() - parto) / (24 * 3600 * 1000));
+        if (t > 0 && t <= 400) pts.push({ del: t, litros: r.litros });
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error al generar predicción");
-    } finally {
-      setGenerandoPrediccion(false);
     }
-  };
+    return fitWood(pts) || WOOD_REFERENCIA;
+  }, [animales, registros]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  const vacas = useMemo(() => derivarVacas(animales, registros, esperada), [animales, registros, esperada]);
 
-  if (!estadisticas) {
-    return (
-      <div className="text-center py-12">
-        {toast.node}
-        <Droplets className="h-16 w-16 mx-auto text-blue-400 mb-4" />
-        <p className="text-gray-600">No hay datos de producción lechera</p>
-        <p className="text-sm text-gray-500 mt-2 mb-4">Registrá el primer ordeñe para ver el dashboard.</p>
-        <button className="mc-btn mc-btn--primary" onClick={() => setRegistroOpen(true)}><Icon name="plus" size={14} />Registrar ordeñe</button>
-        {registroModal}
-      </div>
-    );
-  }
+  const turnos: TurnoDef[] = useMemo(() => [...TURNOS_BASE, ...turnosExtra], [turnosExtra]);
 
-  const { resumen, serieProduccion, produccionPorTurno, topAnimales, alertas } = estadisticas;
-
-  // Preparar datos para gráficos
-  const dataTurnos = Object.entries(produccionPorTurno).map(([turno, litros]) => ({
-    turno,
-    litros: Math.round(litros as number),
-  }));
-
-  // Combinar datos históricos con predicción
-  const dataCombinada = [...serieProduccion];
-  if (prediccion?.prediccion) {
-    prediccion.prediccion.forEach((p: any) => {
-      dataCombinada.push({
-        fecha: p.fecha,
-        litros: null,
-        litrosPredichos: p.litrosPredichos,
-        limiteInferior: p.limiteInferior,
-        limiteSuperior: p.limiteSuperior,
-      });
-    });
-  }
+  const refrescar = useCallback(() => {
+    cargar();
+    setTurnosExtra(turnosExtraHoy());
+  }, [cargar]);
 
   return (
-    <div className="space-y-6">
-      {toast.node}
-      {registroModal}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Producción Lechera</h1>
-          <p className="text-gray-600 mt-2">
-            Monitoreo en tiempo real y análisis predictivo
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button className="mc-btn mc-btn--primary" onClick={() => setRegistroOpen(true)}>
-            <Icon name="plus" size={14} />Registrar ordeñe
-          </button>
-          <Select value={periodo} onValueChange={setPeriodo}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Últimos 7 días</SelectItem>
-              <SelectItem value="30">Últimos 30 días</SelectItem>
-              <SelectItem value="90">Últimos 90 días</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={generarPrediccion}
-            className="bg-[#5e7733] hover:bg-[#4a5e29] text-white"
-            disabled={generandoPrediccion || resumen.totalRegistros < 7}
-          >
-            {generandoPrediccion ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Analizando...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Predicción IA
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+    <div className="col gap-20">
+      <PageHeader
+        crumbs={["Ganadería", "Producción Lechera"]}
+        title="Producción Lechera"
+        subtitle="Seguimiento de ordeñe, curvas de lactancia y calidad."
+      />
+      <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
-      {/* Alertas */}
-      {alertas && alertas.length > 0 && (
-        <div className="space-y-2">
-          {alertas.map((alerta: any, idx: number) => (
-            <Alert
-              key={idx}
-              className={`border-2 ${
-                alerta.severidad === "Crítica"
-                  ? "border-red-500 bg-red-50"
-                  : alerta.severidad === "Alta"
-                  ? "border-orange-500 bg-orange-50"
-                  : "border-yellow-500 bg-yellow-50"
-              }`}
-            >
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>{alerta.tipo}</AlertTitle>
-              <AlertDescription>{alerta.mensaje}</AlertDescription>
-            </Alert>
-          ))}
-        </div>
+      {tab === "Resumen" && (
+        <PLResumen vacas={vacas} registros={registros} turnos={turnos} esperada={esperada} onRefresh={refrescar} onGoToOrdene={() => setTab("Ordeñe")} />
       )}
-
-      {/* KPIs */}
-      <div className="grid g-cols-4">
-        <KPI label="Total Producido" value={`${resumen.totalLitros.toLocaleString("es-AR")} L`} delta={`Últimos ${periodo} días`} trend="up" icon="droplet" accent />
-        <KPI label="Promedio Diario" value={`${resumen.promedioLitros} L`} delta="Por ordeñe" trend="up" icon="activity" />
-        <KPI label="Calidad Promedio" value={resumen.promedioGrasa ? `Grasa ${resumen.promedioGrasa}%` : "—"} delta={`${resumen.promedioProteina ? `Proteína ${resumen.promedioProteina}%` : "—"}${resumen.promedioSCC ? ` · SCC ${Math.round(resumen.promedioSCC / 1000)}k` : ""}`} trend="up" icon="scale" />
-        <KPI label="Registros" value={String(resumen.totalRegistros)} delta="Ordeñes registrados" trend="up" icon="calendar" />
-      </div>
-
-      {/* Gráfico Principal */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Producción Diaria</CardTitle>
-          <CardDescription>
-            {prediccion ? "Histórico y Predicción IA" : "Serie temporal histórica"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={dataCombinada}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="fecha" 
-                tick={{ fontSize: 12 }}
-                tickFormatter={(value) => new Date(value).toLocaleDateString('es', { day: '2-digit', month: 'short' })}
-              />
-              <YAxis />
-              <Tooltip 
-                labelFormatter={(value) => new Date(value).toLocaleDateString('es')}
-                formatter={(value: any) => [`${Math.round(value)}L`, '']}
-              />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="litros" 
-                stroke="#1a5fa0" 
-                strokeWidth={2}
-                name="Producción Real"
-                dot={{ r: 4 }}
-              />
-              {prediccion && (
-                <>
-                  <Line 
-                    type="monotone" 
-                    dataKey="litrosPredichos" 
-                    stroke="#475569" 
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    name="Predicción IA"
-                    dot={{ r: 4 }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="limiteInferior" 
-                    stroke="#d5d9d2" 
-                    strokeWidth={1}
-                    strokeDasharray="2 2"
-                    name="Límite Inferior"
-                    dot={false}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="limiteSuperior" 
-                    stroke="#d5d9d2" 
-                    strokeWidth={1}
-                    strokeDasharray="2 2"
-                    name="Límite Superior"
-                    dot={false}
-                  />
-                </>
-              )}
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Producción por Turno */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Producción por Turno</CardTitle>
-            <CardDescription>Distribución de ordeñe</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={dataTurnos}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry: any) => `${entry.turno}: ${((entry.litros / dataTurnos.reduce((sum, d) => sum + d.litros, 0)) * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#768f44"
-                  dataKey="litros"
-                >
-                  {dataTurnos.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: any) => `${value}L`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Top Productoras */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top 10 Productoras</CardTitle>
-            <CardDescription>Animales con mayor producción</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topAnimales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="caravana" tick={{ fontSize: 11 }} />
-                <YAxis />
-                <Tooltip formatter={(value: any) => `${Math.round(value)}L`} />
-                <Bar dataKey="litros" fill="#5e7733" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Análisis de Predicción */}
-      {prediccion && (
-        <Card className="bg-purple-50 border-purple-200">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-purple-900">Análisis Predictivo IA</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="font-medium text-purple-900">Tendencia:</p>
-              <Badge className={`mt-1 ${
-                prediccion.tendencia === "Creciente" 
-                  ? "bg-green-100 text-green-800" 
-                  : prediccion.tendencia === "Decreciente"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-blue-100 text-blue-800"
-              }`}>
-                {prediccion.tendencia === "Creciente" && <TrendingUp className="h-3 w-3 mr-1" />}
-                {prediccion.tendencia === "Decreciente" && <TrendingDown className="h-3 w-3 mr-1" />}
-                {prediccion.tendencia}
-              </Badge>
-            </div>
-
-            {prediccion.analisis && (
-              <div className="p-3 bg-white rounded-lg border border-purple-200">
-                <p className="font-medium text-purple-900 text-sm inline-flex items-center gap-1"><Icon name="chart" size={14} /> Análisis:</p>
-                <p className="text-sm text-purple-800 mt-1">{prediccion.analisis}</p>
-              </div>
-            )}
-
-            {prediccion.factoresRiesgo && prediccion.factoresRiesgo.length > 0 && (
-              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <p className="font-medium text-orange-900 text-sm inline-flex items-center gap-1"><Icon name="alert" size={14} /> Factores de Riesgo:</p>
-                <ul className="text-sm text-orange-800 mt-1 list-disc list-inside">
-                  {prediccion.factoresRiesgo.map((factor: string, idx: number) => (
-                    <li key={idx}>{factor}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {prediccion.recomendaciones && prediccion.recomendaciones.length > 0 && (
-              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                <p className="font-medium text-green-900 text-sm inline-flex items-center gap-1"><Icon name="bolt" size={14} /> Recomendaciones:</p>
-                <ul className="text-sm text-green-800 mt-1 list-disc list-inside">
-                  {prediccion.recomendaciones.map((rec: string, idx: number) => (
-                    <li key={idx}>{rec}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <Droplets className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900">Dashboard en Tiempo Real</p>
-              <p className="text-sm text-blue-700 mt-1">
-                Monitoreá tu producción lechera, detectá anomalías automáticamente y recibí predicciones
-                generadas por IA basadas en tu historial. Los datos se actualizan cada vez que registrás
-                un nuevo ordeñe.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {tab === "Ordeñe" && <PLOrdene vacas={vacas} registros={registros} boletas={boletas} turnos={turnos} onRefresh={refrescar} />}
+      {tab === "Estado de Lactancia" && <PLEstadoLactancia vacas={vacas} esperada={esperada} />}
+      {tab === "Curvas" && <PLCurvas vacas={vacas} esperada={esperada} />}
+      {tab === "Calidad" && <PLCalidad boletas={boletas} onRefresh={refrescar} />}
     </div>
   );
 }
