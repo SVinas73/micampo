@@ -129,6 +129,15 @@ model User {
   trabajosContratista      TrabajoContratista[]
   establecimientos         Establecimiento[] // ⬅️ AGREGAR ESTA LÍNEA
   EvaluacionOperador       EvaluacionOperador[]
+  tropas                   Tropa[]
+  tratamientosSanitarios   TratamientoSanitario[]
+  rutinasTropa             RutinaTropa[]
+  movimientosTropa         MovimientoTropa[]
+  corralesEngorde          CorralEngorde[]
+  pesadasCorral            PesadaCorral[]
+  boletasLecheras          BoletaLechera[]
+  documentosTransito       DocumentoTransito[]
+  auditoriasTrazabilidad   AuditoriaTrazabilidad[]
 
   @@map("users")
 }
@@ -212,6 +221,7 @@ model Lote {
   controlCargaAnimal      ControlCargaAnimal[] // ← NUEVO
   // NUEVA RELACIÓN:
   recetasAgronomicas      RecetaAgronomica[]
+  tropas                  Tropa[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -220,22 +230,22 @@ model Lote {
 }
 
 model Siembra {
-  id           String    @id @default(cuid())
-  cultivo      String
-  variedad     String?
-  fechaSiembra DateTime
-  hectareas    Float
+  id            String    @id @default(cuid())
+  cultivo       String
+  variedad      String?
+  fechaSiembra  DateTime
+  hectareas     Float
   densidad      Float?
   costoSemilla  Float?
   responsable   String?
   observaciones String?
-  loteId       String
-  lote         Lote      @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cosechas     Cosecha[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  loteId        String
+  lote          Lote      @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cosechas      Cosecha[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([userId])
   @@index([loteId])
@@ -274,7 +284,19 @@ model Animal {
   pesoNacimiento        Float?
   madre                 String? // Caravana de la madre
   padre                 String? // Caravana del padre
-  estado                String                 @default("Activo") // Activo, Vendido, Muerto
+  estado                String                 @default("Activo") // Activo, Vendido, Muerto, Baja
+  nombre                String? // Nombre propio (ej: "Rosa")
+  categoria             String? // Vaca, Vaquillona, Novillo, Ternero, Toro
+  rfid                  String? // ID electrónico
+  origen                String? // Nacimiento, Compra
+  condicionNacimiento   String? // Normal, Distócico, Cesárea, Gemelar
+  foto                  String? // data URL o path
+  ubicacion             String? // lote/corral actual (nombre legible)
+  fechaBaja             DateTime?
+  motivoBaja            String? // Venta, Muerte, Descarte...
+  tropaId               String?
+  tropa                 Tropa?                 @relation(fields: [tropaId], references: [id], onDelete: SetNull)
+  tratamientos          TratamientoSanitario[]
   userId                String
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   eventosSanitarios     EventoSanitario[]
@@ -627,29 +649,29 @@ model TransferenciaProducto {
 }
 
 model AlertaClimatica {
-  id            String    @id @default(cuid())
-  tipo          String // Helada, Lluvia, Viento, Temperatura, Sequía
-  severidad     String // Baja, Media, Alta, Extrema
-  titulo        String
-  descripcion   String
-  fechaInicio   DateTime
-  fechaFin      DateTime?
-  temperatura   Float?
-  precipitacion Float?
-  viento        Float?
-  humedad       Float?
-  ubicacion     String
-  latitud       Float?
-  longitud      Float?
-  recomendacion String?
-  fuenteDatos   String    @default("OpenMeteo")
-  leida         Boolean   @default(false)
+  id                String    @id @default(cuid())
+  tipo              String // Helada, Lluvia, Viento, Temperatura, Sequía
+  severidad         String // Baja, Media, Alta, Extrema
+  titulo            String
+  descripcion       String
+  fechaInicio       DateTime
+  fechaFin          DateTime?
+  temperatura       Float?
+  precipitacion     Float?
+  viento            Float?
+  humedad           Float?
+  ubicacion         String
+  latitud           Float?
+  longitud          Float?
+  recomendacion     String?
+  fuenteDatos       String    @default("OpenMeteo")
+  leida             Boolean   @default(false)
   // Establecimiento al que corresponde el clima de la alerta (alcance del sidebar).
   establecimientoId String?
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([userId])
   @@index([fechaInicio])
@@ -709,6 +731,7 @@ model Racion {
   observaciones   String?
   recomendacionIA String? // Recomendación generada por IA
   componentes     ComponenteRacion[]
+  corralesEngorde CorralEngorde[]
   userId          String
   user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt       DateTime           @default(now())
@@ -4580,4 +4603,264 @@ model AnalisisVision {
 
   @@index([userId, createdAt])
   @@index([loteId])
+}
+
+// ============================================================
+// GANADERÍA — Tropas, Hospital Digital, Rutinas, Engorde, Tambo, Trazabilidad SENASA
+// ============================================================
+
+model Tropa {
+  id        String       @id @default(cuid())
+  nombre    String
+  categoria String? // Cría, Recría, Invernada, Tambo, Guachera...
+  color     String? // color de identificación en mapas/planificador
+  estado    String       @default("Activa") // Activa, En traslado, Disuelta
+  loteId    String? // lote/potrero actual
+  lote      Lote?        @relation(fields: [loteId], references: [id], onDelete: SetNull)
+  rutinaId  String?
+  rutina    RutinaTropa? @relation(fields: [rutinaId], references: [id], onDelete: SetNull)
+  notas     String?
+
+  animales    Animal[]
+  movimientos MovimientoTropa[]
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([loteId])
+}
+
+// Tratamiento con seguimiento multi-día (Hospital Digital)
+model TratamientoSanitario {
+  id       String @id @default(cuid())
+  animalId String
+  animal   Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  tipo        String  @default("Tratamiento") // Tratamiento, Vacunación, Control, Otro
+  diagnostico String
+  zona        String? // zona del cuerpo (cabeza, ubre, patas...)
+  sintomas    String? // JSON string[]
+  severidad   String? // Leve, Moderada, Grave
+  notas       String?
+
+  medicamento String?
+  dosis       String? // ml u otra unidad
+  via         String? // Intramuscular, Subcutánea, Endovenosa, Oral, Local
+
+  dosisTotales   Int       @default(1)
+  dosisAplicadas Int       @default(0)
+  proximaDosis   DateTime?
+  proximoControl DateTime?
+
+  retiroHoras Int? // carencia en horas (leche/carne)
+  finRetiro   DateTime?
+
+  marcaZonas String? // JSON string[] (columna, cola, patas, cabeza)
+  marcaColor String?
+
+  estado      String    @default("En curso") // En curso, Completado, En retiro, Cerrado
+  fechaInicio DateTime  @default(now())
+  fechaFin    DateTime?
+
+  responsable String?
+  costo       Float?
+  origenIA    Boolean @default(false)
+  protocolo   String? // JSON del protocolo IA elegido
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([animalId])
+  @@index([estado])
+}
+
+// Rutina de pastoreo / manejo de tropas
+model RutinaTropa {
+  id          String  @id @default(cuid())
+  nombre      String
+  tipo        String  @default("rotacion") // rotacion, fija, evento
+  emoji       String?
+  color       String?
+  descripcion String?
+  config      String? // JSON: {secuencia:[{lote,dias}], modo:"siempre"|"rango", desde, hasta, hora...}
+  estado      String  @default("Activa") // Activa, Pausada
+
+  tropas      Tropa[]
+  movimientos MovimientoTropa[]
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Movimiento de tropa (planificado o ejecutado) — planificador semanal e historial
+model MovimientoTropa {
+  id      String @id @default(cuid())
+  tropaId String
+  tropa   Tropa  @relation(fields: [tropaId], references: [id], onDelete: Cascade)
+
+  fecha         DateTime
+  horario       String? // "07:30"
+  origenNombre  String?
+  destinoNombre String?
+  motivo        String? // Rotación, Sanidad, Destete, Venta...
+  estado        String   @default("Planificado") // Planificado, En curso, Ejecutado, Cancelado
+  cabezas       Int?
+  distanciaKm   Float?
+  duracionMin   Int?
+  responsable   String?
+  notas         String?
+
+  rutinaId String?
+  rutina   RutinaTropa? @relation(fields: [rutinaId], references: [id], onDelete: SetNull)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tropaId])
+  @@index([fecha])
+  @@index([estado])
+}
+
+// Corral / lote de engorde (feedlot)
+model CorralEngorde {
+  id        String  @id @default(cuid())
+  nombre    String
+  categoria String? // Novillos, Vaquillonas...
+  capacidad Int?
+  cabezas   Int     @default(0)
+
+  fechaIngreso  DateTime?
+  pesoIngreso   Float? // kg promedio al ingreso
+  pesoActual    Float? // kg promedio actual
+  pesoObjetivo  Float? // kg objetivo de faena
+  gdpObjetivo   Float? // kg/día objetivo
+  diasEstimados Int?
+
+  racionId String?
+  racion   Racion? @relation(fields: [racionId], references: [id], onDelete: SetNull)
+
+  consumoDiario Float? // kg MS/cab/día
+  costoDiario   Float? // $/cab/día
+  precioMercado Float? // $/kg venta referencia
+  fechaFaenaEst DateTime?
+
+  estado String  @default("Activo") // Activo, Listo, Cerrado
+  notas  String?
+
+  pesadas PesadaCorral[]
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([estado])
+}
+
+// Pesada promedio de un corral de engorde (seguimiento de curva)
+model PesadaCorral {
+  id       String        @id @default(cuid())
+  corralId String
+  corral   CorralEngorde @relation(fields: [corralId], references: [id], onDelete: Cascade)
+
+  fecha        DateTime @default(now())
+  pesoPromedio Float // kg promedio del corral
+  cabezas      Int?
+  gdp          Float? // kg/día desde pesada anterior
+  consumo      Float? // kg MS/cab/día del período
+  notas        String?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([corralId])
+  @@index([fecha])
+}
+
+// Boleta de calidad de leche (liquidación industria)
+model BoletaLechera {
+  id    String   @id @default(cuid())
+  fecha DateTime @default(now())
+
+  industria   String?
+  litros      Float?
+  grasa       Float? // %
+  proteina    Float? // %
+  ccs         Float? // células somáticas (miles/ml)
+  ufc         Float? // UFC (miles/ml)
+  temperatura Float? // °C de entrega
+  precioLitro Float?
+  importe     Float?
+  notas       String?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fecha])
+}
+
+// Documento de tránsito (DT-e / guía según país)
+model DocumentoTransito {
+  id     String   @id @default(cuid())
+  numero String
+  fecha  DateTime @default(now())
+
+  origen      String?
+  destino     String?
+  motivo      String? // Venta, Traslado, Feria...
+  categoria   String?
+  cabezas     Int?
+  transporte  String?
+  vencimiento DateTime?
+  estado      String    @default("Vigente") // Vigente, Usado, Vencido, Anulado
+  notas       String?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fecha])
+  @@index([estado])
+}
+
+// Auditoría de trazabilidad (interna o externa)
+model AuditoriaTrazabilidad {
+  id    String   @id @default(cuid())
+  fecha DateTime @default(now())
+
+  tipo          String // Interna, Externa
+  organismo     String? // SENASA, certificadora...
+  alcance       String?
+  resultado     String? // Aprobada, Observada, Rechazada
+  observaciones String?
+  proximaFecha  DateTime?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fecha])
 }
