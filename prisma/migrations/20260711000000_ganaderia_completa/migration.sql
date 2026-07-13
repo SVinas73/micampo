@@ -177,6 +177,8 @@ ALTER TABLE "PesadaCorral" ADD CONSTRAINT "PesadaCorral_userId_fkey" FOREIGN KEY
 CREATE TABLE "BoletaLechera" (
     "id" TEXT NOT NULL,
     "fecha" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "numero" TEXT,
+    "tipo" TEXT NOT NULL DEFAULT 'retiro',
     "industria" TEXT,
     "litros" DOUBLE PRECISION,
     "grasa" DOUBLE PRECISION,

@@ -4798,6 +4798,8 @@ model BoletaLechera {
   id    String   @id @default(cuid())
   fecha DateTime @default(now())
 
+  numero      String? // Nº de boleta / informe de laboratorio
+  tipo        String  @default("retiro") // retiro (camión) | calidad (análisis de laboratorio)
   industria   String?
   litros      Float?
   grasa       Float? // %

@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropic, IA_MODEL } from "@/lib/ia";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -12,23 +14,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // Obtener últimos 90 días de producción (NUEVO modelo)
+    // Obtener últimos 90 días de producción (ambos modelos de registro)
     const fechaDesde = new Date();
     fechaDesde.setDate(fechaDesde.getDate() - 90);
 
-    const registros = await prisma.produccionLechera.findMany({
-      where: {
-        userId: session.user.id,
-        fecha: {
-          gte: fechaDesde,
+    const [registros, registrosLecheros] = await Promise.all([
+      prisma.produccionLechera.findMany({
+        where: {
+          userId: session.user.id,
+          fecha: {
+            gte: fechaDesde,
+          },
         },
-      },
-      orderBy: {
-        fecha: "asc",
-      },
-    });
+        orderBy: {
+          fecha: "asc",
+        },
+      }),
+      prisma.registroLechero.findMany({
+        where: {
+          userId: session.user.id,
+          fecha: { gte: fechaDesde },
+        },
+        orderBy: { fecha: "asc" },
+      }),
+    ]);
 
-    if (registros.length < 7) {
+    if (registros.length + registrosLecheros.length < 7) {
       return NextResponse.json(
         { error: "Se necesitan al menos 7 días de registros" },
         { status: 400 }
@@ -45,6 +56,14 @@ export async function POST(request: Request) {
       acc[fecha].registros += 1;
       return acc;
     }, {});
+    registrosLecheros.forEach((r) => {
+      const fecha = r.fecha.toISOString().split("T")[0];
+      if (!produccionPorDia[fecha]) {
+        produccionPorDia[fecha] = { fecha, litros: 0, registros: 0 };
+      }
+      produccionPorDia[fecha].litros += r.litros;
+      produccionPorDia[fecha].registros += 1;
+    });
 
     const serie = Object.values(produccionPorDia).sort((a: any, b: any) => 
       a.fecha.localeCompare(b.fecha)
