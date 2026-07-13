@@ -5,8 +5,15 @@
 // y Farmacia & Stock Veterinario (stock real de insumos).
 
 import React, { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Icon } from "@/components/mc";
 import { AnimalRow, TratamientoAPI, fmtFechaCorta } from "./tipos";
+
+// Vaca 3D (react-three-fiber) — solo cliente.
+const Cow3D = dynamic(() => import("./cow3d"), {
+  ssr: false,
+  loading: () => <div style={{ height: 320, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 12 }}>Cargando modelo 3D…</div>,
+});
 import {
   CowHeatmap,
   ModalDiagnosticarAnimal,
@@ -47,6 +54,7 @@ export function AnimSanidad({
   const [modalTratamiento, setModalTratamiento] = useState(false);
   const [verAnimal, setVerAnimal] = useState<AnimalRow | null>(null);
   const [filtroHosp, setFiltroHosp] = useState<"activos" | "todos">("activos");
+  const [vista3D, setVista3D] = useState(true);
 
   const activos = animales.filter((a) => a.activo);
 
@@ -212,14 +220,24 @@ export function AnimSanidad({
         <div className="col gap-16">
           {/* Análisis Corporal */}
           <div className="mc-card col gap-10">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
               <div>
                 <div className="mc-card__title">Análisis Corporal</div>
                 <div style={{ fontSize: 11, color: "var(--mc-muted)", marginTop: 2 }}>Bovina · Enfermería activa</div>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: enEnfermeria > 0 ? "#dc2626" : "#16a34a", background: enEnfermeria > 0 ? "#fef2f2" : "#f0fdf4", padding: "3px 8px", borderRadius: 20 }}>{enEnfermeria} en Enf.</span>
+              <div className="row gap-8" style={{ alignItems: "center" }}>
+                <div className="mc-seg">
+                  <button className={vista3D ? "is-on" : ""} onClick={() => setVista3D(true)}>3D</button>
+                  <button className={!vista3D ? "is-on" : ""} onClick={() => setVista3D(false)}>2D</button>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: enEnfermeria > 0 ? "#dc2626" : "#16a34a", background: enEnfermeria > 0 ? "#fef2f2" : "#f0fdf4", padding: "3px 8px", borderRadius: 20 }}>{enEnfermeria} en Enf.</span>
+              </div>
             </div>
-            <CowHeatmap stats={zonaStats} />
+            {vista3D ? (
+              <Cow3D zonas={zonaStats.map((z) => ({ zona: z.zona, pct: z.pct, casos: z.casos, cond: z.cond, label: ZONA_INFO_SANIDAD[z.zona]?.label || z.zona }))} />
+            ) : (
+              <CowHeatmap stats={zonaStats} />
+            )}
             <div style={{ borderTop: "1px solid var(--mc-line)", paddingTop: 10 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--mc-muted)", marginBottom: 7 }}>Zonas más afectadas</div>
               {zonasTop.length === 0 && <div style={{ fontSize: 12, color: "var(--mc-text-3)" }}>Sin casos activos por zona. 👍</div>}
