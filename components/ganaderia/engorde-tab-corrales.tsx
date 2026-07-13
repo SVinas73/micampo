@@ -73,10 +73,10 @@ export function EngordeCorrales({ corrales, raciones, onRefresh }: { corrales: C
           </div>
         </div>
         {activos.length === 0 ? (
-          <div className="mc-empty" style={{ padding: "40px 0" }}>
-            <div className="mc-empty__icon"><Icon name="cow" size={22} /></div>
-            Sin corrales de engorde cargados
-            <button className="mc-btn mc-btn--primary mc-btn--sm" style={{ marginTop: 10 }} onClick={() => setModalIngreso(true)}><Icon name="plus" size={12} /> Crear el primer corral</button>
+          <div className="mc-empty" style={{ padding: "40px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <div className="mc-empty__icon" style={{ margin: 0 }}><Icon name="cow" size={22} /></div>
+            <div>Sin corrales de engorde cargados</div>
+            <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setModalIngreso(true)}><Icon name="plus" size={12} /> Crear el primer corral</button>
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>

@@ -163,48 +163,57 @@ export function CowHeatmap({
           ))}
         </defs>
 
+        {/* Sombra de piso */}
+        <ellipse cx="180" cy="203" rx="118" ry="6.5" fill="#1e293b" opacity="0.06" />
+
         {/* Cola */}
-        <path d="M280,78 Q310,55 308,72 Q306,90 294,105 Q286,115 282,112" fill="none" stroke="#b8c8b8" strokeWidth="3.5" strokeLinecap="round" />
-        <ellipse cx="282" cy="114" rx="8" ry="5" fill="#cdd8cd" stroke="#b8c8b8" strokeWidth="1" />
-
-        {/* Cuerpo */}
-        <path d="M88,70 C 108,50 165,42 225,48 C 262,52 283,70 282,98 C 281,124 260,142 230,148 Q 205,154 175,154 Q 148,154 128,148 C 100,140 80,122 78,104 C 76,86 82,74 88,70 Z" fill="url(#cowBodyGradH)" stroke="#c0cec0" strokeWidth="1.5" filter="url(#cowShadow)" />
-        <path d="M88,104 Q130,148 175,154 Q205,154 230,148" fill="none" stroke="#c8d4c8" strokeWidth="0.8" />
-
-        {/* Ubre */}
-        <path d="M170,150 Q175,164 182,168 Q192,172 202,168 Q212,162 214,150" fill="#f5b8c8" stroke="#e8a0b8" strokeWidth="1" opacity="0.85" />
-        {[178, 188, 198, 208].map((tx, i) => (
-          <rect key={i} x={tx - 2} y={166} width="4" height="7" rx="2" fill="#f0a0b8" stroke="#e090a8" strokeWidth="0.5" />
-        ))}
-
-        {/* Patas delanteras */}
-        <path d="M 98,146 L 96,148 L 96,196 L 106,196 L 108,148 Z" fill="url(#cowLegGrad)" stroke="#b8c8b8" strokeWidth="1" />
-        <rect x="96" y="188" width="12" height="8" rx="3" fill="#8fa08f" />
-        <path d="M 115,146 L 113,148 L 112,196 L 122,196 L 124,148 Z" fill="#d0d8d0" stroke="#b8c8b8" strokeWidth="1" />
-        <rect x="112" y="188" width="12" height="8" rx="3" fill="#849484" />
+        <path d="M279,90 Q293,95 294,116 Q294,133 287,148" fill="none" stroke="#c2ccc2" strokeWidth="3" strokeLinecap="round" />
+        <path d="M285,146 Q282,155 287,161 Q292,155 290,146 Z" fill="#9fb09f" />
 
         {/* Patas traseras */}
-        <path d="M 215,148 L 213,150 L 212,196 L 222,196 L 224,150 Z" fill="url(#cowLegGrad)" stroke="#b8c8b8" strokeWidth="1" />
-        <rect x="212" y="188" width="12" height="8" rx="3" fill="#8fa08f" />
-        <path d="M 232,148 L 230,150 L 229,196 L 239,196 L 242,150 Z" fill="#d0d8d0" stroke="#b8c8b8" strokeWidth="1" />
-        <rect x="229" y="188" width="12" height="8" rx="3" fill="#849484" />
+        <path d="M244,139 L242,168 L240,196 L249,196 L250,168 L252,140 Z" fill="url(#cowLegGrad)" stroke="#b8c8b8" strokeWidth="1" />
+        <rect x="239" y="193" width="12" height="7" rx="2.5" fill="#7f907f" />
+        <path d="M223,141 L221,168 L220,196 L229,196 L230,168 L231,142 Z" fill="#d3dbd3" stroke="#b8c8b8" strokeWidth="1" />
+        <rect x="219" y="193" width="12" height="7" rx="2.5" fill="#748474" />
 
-        {/* Cuello + cabeza */}
-        <path d="M 58,80 Q 68,64 88,66 Q 92,68 90,78 Q 88,88 78,92 Q 64,96 56,88 Q 50,82 58,80 Z" fill="url(#cowBodyGradH)" stroke="#c0cec0" strokeWidth="1.2" />
-        <path d="M 14,90 Q 8,82 10,70 Q 12,58 24,54 Q 38,50 50,56 Q 62,62 60,76 Q 58,90 46,98 Q 32,106 20,100 Q 12,96 14,90 Z" fill="url(#cowBodyGradH)" stroke="#c0cec0" strokeWidth="1.4" />
-        <ellipse cx="38" cy="50" rx="10" ry="6" fill="#d8e0d8" stroke="#c0cec0" strokeWidth="1" transform="rotate(-15,38,50)" />
-        <ellipse cx="38" cy="50" rx="6" ry="3.5" fill="#e8d0c8" opacity="0.7" transform="rotate(-15,38,50)" />
-        <ellipse cx="12" cy="88" rx="11" ry="8" fill="#ddd0c4" stroke="#c4b8b0" strokeWidth="1" />
-        <ellipse cx="8" cy="88" rx="2.5" ry="2" fill="#b8a898" opacity="0.6" transform="rotate(-10,8,88)" />
-        <ellipse cx="15" cy="90" rx="2.5" ry="2" fill="#b8a898" opacity="0.6" transform="rotate(10,15,90)" />
-        <path d="M 30,52 Q 24,42 32,38" fill="none" stroke="#c8b878" strokeWidth="2.5" strokeLinecap="round" />
-        <ellipse cx="36" cy="68" rx="4" ry="3.5" fill="white" stroke="#8a9a8a" strokeWidth="0.8" />
-        <ellipse cx="36" cy="68" rx="2" ry="2.5" fill="#2d3a2d" opacity="0.85" />
-        <circle cx="37" cy="67" r="0.8" fill="white" opacity="0.8" />
+        {/* Patas delanteras */}
+        <path d="M119,137 L117,168 L116,196 L125,196 L126,168 L127,139 Z" fill="url(#cowLegGrad)" stroke="#b8c8b8" strokeWidth="1" />
+        <rect x="115" y="193" width="12" height="7" rx="2.5" fill="#7f907f" />
+        <path d="M99,139 L97,168 L96,196 L105,196 L106,168 L107,141 Z" fill="#d3dbd3" stroke="#b8c8b8" strokeWidth="1" />
+        <rect x="95" y="193" width="12" height="7" rx="2.5" fill="#748474" />
+
+        {/* Ubre */}
+        <path d="M195,145 Q199,166 210,170 Q223,173 233,165 Q240,158 238,144 Z" fill="#f3b6c6" stroke="#e39fb4" strokeWidth="1" opacity="0.9" />
+        {[205, 215, 224, 232].map((tx, i) => (
+          <rect key={i} x={tx - 2} y={168} width="3.6" height="8" rx="1.8" fill="#eda6bd" />
+        ))}
+
+        {/* Cuerpo */}
+        <path d="M96,74 C 128,56 186,50 236,56 C 262,59 282,70 282,92 C 282,116 268,134 244,142 C 214,152 150,153 120,147 C 96,142 80,126 78,106 C 76,90 84,80 96,74 Z" fill="url(#cowBodyGradH)" stroke="#bccabc" strokeWidth="1.6" filter="url(#cowShadow)" />
+        <path d="M120,147 Q150,153 214,150" fill="none" stroke="#c8d4c8" strokeWidth="0.8" opacity="0.7" />
+
+        {/* Cuello */}
+        <path d="M96,78 Q74,72 60,82 Q52,88 56,98 Q66,92 82,92 Q94,90 98,84 Z" fill="url(#cowBodyGradH)" stroke="#bccabc" strokeWidth="1.2" />
+
+        {/* Cabeza */}
+        <path d="M56,80 Q40,74 30,82 Q18,92 22,104 Q26,114 40,112 Q54,110 58,98 Q60,88 56,80 Z" fill="url(#cowBodyGradH)" stroke="#bccabc" strokeWidth="1.3" />
+        {/* Hocico */}
+        <ellipse cx="24" cy="104" rx="10" ry="7.5" fill="#e6d3c8" stroke="#cbb8ac" strokeWidth="1" />
+        <ellipse cx="20" cy="104" rx="2" ry="1.6" fill="#b09a8c" opacity="0.6" />
+        <ellipse cx="27" cy="106" rx="2" ry="1.6" fill="#b09a8c" opacity="0.6" />
+        {/* Oreja */}
+        <path d="M52,74 Q58,64 66,66 Q62,74 56,80 Z" fill="#d6ded6" stroke="#bccabc" strokeWidth="1" />
+        {/* Cuerno */}
+        <path d="M50,68 Q47,58 53,54" fill="none" stroke="#cbb878" strokeWidth="2.4" strokeLinecap="round" />
+        {/* Ojo */}
+        <ellipse cx="44" cy="92" rx="3.4" ry="3" fill="white" stroke="#889888" strokeWidth="0.7" />
+        <circle cx="43.5" cy="92" r="1.8" fill="#2d3a2d" />
+        <circle cx="44.4" cy="91.2" r="0.6" fill="white" />
 
         {/* Manchas Holstein */}
-        <path d="M140,62 Q152,56 160,64 Q165,72 155,78 Q143,82 136,74 Q130,66 140,62Z" fill="#2d3a2d" opacity="0.08" />
-        <path d="M195,72 Q205,68 210,76 Q212,84 202,86 Q192,86 192,78 Q190,72 195,72Z" fill="#2d3a2d" opacity="0.07" />
+        <path d="M150,66 Q168,58 180,70 Q186,82 172,88 Q152,92 144,78 Q140,68 150,66Z" fill="#2d3a2d" opacity="0.08" />
+        <path d="M210,74 Q228,70 234,82 Q236,94 220,96 Q206,94 205,84 Q205,74 210,74Z" fill="#2d3a2d" opacity="0.07" />
+        <path d="M110,96 Q122,90 130,100 Q132,110 120,112 Q108,110 106,102 Z" fill="#2d3a2d" opacity="0.06" />
 
         {/* Zonas de calor */}
         {zonas.map((z) => (
@@ -709,10 +718,10 @@ export function ModalDiagnosticarAnimal({
 /* ============ REGISTRAR TRATAMIENTO CON SEGUIMIENTO (5 pasos) ============ */
 
 const TIPOS_TRATAMIENTO_SANIDAD = [
-  { id: "Tratamiento", emoji: "💊" },
-  { id: "Vacunación", emoji: "💉" },
-  { id: "Control", emoji: "🔍" },
-  { id: "Otro", emoji: "➕" },
+  { id: "Tratamiento", icon: "flask" },
+  { id: "Vacunación", icon: "syringe" },
+  { id: "Control", icon: "search" },
+  { id: "Otro", icon: "plus" },
 ];
 
 export function ModalRegistrarTratamientoSanitario({
@@ -835,7 +844,7 @@ export function ModalRegistrarTratamientoSanitario({
                   return (
                     <div key={t.id} onClick={() => setTipo(t.id)} style={{ position: "relative", padding: "16px 10px", borderRadius: "var(--r-md)", cursor: "pointer", textAlign: "center", border: `1.5px solid ${sel ? "var(--mc-red)" : "var(--mc-line-2)"}`, background: sel ? "var(--mc-red-bg)" : "var(--mc-surface)", transition: "0.15s" }}>
                       {sel && <span style={{ position: "absolute", top: 6, right: 6, width: 16, height: 16, borderRadius: "50%", background: "var(--mc-red)", display: "grid", placeItems: "center" }}><Icon name="check" size={10} style={{ color: "#fff" }} /></span>}
-                      <div style={{ fontSize: 24, marginBottom: 6 }}>{t.emoji}</div>
+                      <div style={{ marginBottom: 6, display: "grid", placeItems: "center" }}><Icon name={t.icon} size={22} /></div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: sel ? "var(--mc-red)" : "var(--mc-ink)" }}>{t.id}</div>
                     </div>
                   );

@@ -196,7 +196,7 @@ export function AgregarCampoModal({
               )}
               <span style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.4, flex: 1, minWidth: 180 }}>
                 {dibujadoEnMapa
-                  ? "Contorno dibujado ✓ — se guardará tal cual."
+                  ? "Contorno dibujado — se guardará tal cual."
                   : lat && lng
                     ? `Se generará un lote de ~${hectareas || 0} ha centrado en estas coordenadas. Para el contorno exacto, dibujalo.`
                     : "Pegá coordenadas o dibujá el contorno en el mapa."}

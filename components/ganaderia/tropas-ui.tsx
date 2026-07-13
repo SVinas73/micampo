@@ -40,22 +40,21 @@ export function KpiMovCard({
   barPct?: number | null;
   pulse?: boolean;
 }) {
+  // KPI canónico del sistema (mc-kpi) con barra opcional; misma tipografía/tamaño que Agronomía.
   return (
-    <div className="mc-card mc-kpi-hover" style={{ padding: "16px 18px", transition: "all .2s", minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
-        <Icon name={ico} size={14} style={{ color: "#8a938d", flexShrink: 0 }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#8a938d", textTransform: "uppercase", letterSpacing: ".06em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</span>
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: valColor || "var(--mc-ink)", letterSpacing: "-.02em", animation: pulse ? "pulse-val 2s infinite" : undefined }}>
+    <div className="mc-kpi">
+      <span className="mc-kpi__glyph"><Icon name={ico} size={14} /></span>
+      <div className="mc-kpi__label">{title}</div>
+      <div className="mc-kpi__value" style={{ color: valColor, animation: pulse ? "pulse-val 2s infinite" : undefined }}>
         {val}
-        {valSuffix && <span style={{ fontSize: 14, fontWeight: 500, color: "#8a938d", marginLeft: 4 }}>{valSuffix}</span>}
+        {valSuffix && <span style={{ fontSize: "0.5em", fontWeight: 500, color: "var(--mc-text-3)", marginLeft: 4 }}>{valSuffix}</span>}
       </div>
       {typeof barPct === "number" && (
-        <div style={{ height: 6, background: "var(--mc-line)", borderRadius: 999, marginTop: 8, marginBottom: 4 }}>
+        <div style={{ height: 6, background: "var(--mc-line)", borderRadius: 999, marginTop: 2, marginBottom: 2 }}>
           <div style={{ width: `${Math.max(0, Math.min(100, barPct))}%`, height: "100%", background: "var(--mc-green-600)", borderRadius: 999, transition: "width .3s" }} />
         </div>
       )}
-      <div style={{ fontSize: 12, color: subColor || "var(--mc-text-2)", marginTop: typeof barPct === "number" ? 0 : 4 }}>{sub}</div>
+      {sub != null && sub !== "" && <div className="mc-kpi__delta" style={subColor ? { color: subColor } : undefined}>{sub}</div>}
     </div>
   );
 }
@@ -157,7 +156,7 @@ export function FichaTropaCard({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,.75)", letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 5 }}>
-              {raza || tropa.categoria || "Tropa"} {esTambo ? "· 🥛 Tambo" : "· 🐂 Cría/Engorde"}
+              {raza || tropa.categoria || "Tropa"} {esTambo ? "· Tambo" : "· Cría/Engorde"}
             </div>
             <div style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: "-.01em", lineHeight: 1.1 }}>{tropa.nombre}</div>
           </div>
@@ -345,11 +344,11 @@ export function MovVentanaOptima({ tropa }: { tropa: TropaAPI | null }) {
       {clima ? (
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--mc-surface-2)", borderRadius: 10, padding: "8px 12px" }}>
-            <span style={{ fontSize: 18 }}>🌡️</span>
+            <Icon name="thermometer" size={16} />
             <span style={{ fontSize: 15, fontWeight: 800, color: "var(--mc-ink)" }}>{clima.max}°C</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--mc-surface-2)", borderRadius: 10, padding: "8px 12px" }}>
-            <span style={{ fontSize: 18 }}>💧</span>
+            <Icon name="droplet" size={16} />
             <span style={{ fontSize: 15, fontWeight: 800, color: "var(--mc-ink)" }}>{clima.humedad}%</span>
           </div>
           <div style={{ flex: 1, fontSize: 12, color: "var(--mc-text-2)", lineHeight: 1.4, minWidth: 140 }}>

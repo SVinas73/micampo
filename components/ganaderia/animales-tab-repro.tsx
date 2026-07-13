@@ -229,7 +229,7 @@ export function AnimRepro({
                   <tr key={a.dbId} style={{ borderTop: "1px solid var(--mc-line)", background: i % 2 === 0 ? "var(--mc-surface)" : "var(--mc-surface-2)" }}>
                     <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
                       <div className="row gap-8">
-                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 16, flexShrink: 0 }}>🐄</div>
+                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 16, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--mc-ink)" }}>{a.nombre || a.id}</div>
                           <div style={{ fontSize: 11, color: "var(--mc-muted)" }}>{a.id} · {a.categoria}</div>

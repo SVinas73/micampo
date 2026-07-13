@@ -125,7 +125,7 @@ export function AnimSanidad({
         <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "14px 20px 12px", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--mc-line)" }}>
             <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-              <div className="mc-card__title">🏥 Hospital Digital & Seguimiento</div>
+              <div className="mc-card__title" style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon name="heart" size={16} /> Hospital Digital & Seguimiento</div>
               <div style={{ fontSize: 11, color: "var(--mc-muted)", marginTop: 2 }}>Tratamientos activos en curso</div>
             </div>
             <div className="mc-seg">
@@ -156,7 +156,7 @@ export function AnimSanidad({
                   <tr key={t.id}>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 9, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, border: `1.5px solid ${color}35`, flexShrink: 0 }}>🐄</div>
+                        <div style={{ width: 34, height: 34, borderRadius: 9, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, border: `1.5px solid ${color}35`, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 13 }}>#{(t.animal?.caravana || "").replace(/^#/, "")}</div>
                           <div style={{ fontSize: 11, color: "var(--mc-muted)" }}>{t.animal?.categoria || "—"}</div>
@@ -222,7 +222,7 @@ export function AnimSanidad({
             <CowHeatmap stats={zonaStats} />
             <div style={{ borderTop: "1px solid var(--mc-line)", paddingTop: 10 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--mc-muted)", marginBottom: 7 }}>Zonas más afectadas</div>
-              {zonasTop.length === 0 && <div style={{ fontSize: 12, color: "var(--mc-text-3)" }}>Sin casos activos por zona. 👍</div>}
+              {zonasTop.length === 0 && <div style={{ fontSize: 12, color: "var(--mc-text-3)" }}>Sin casos activos por zona.</div>}
               {zonasTop.map((z, i) => {
                 const color = z.pct >= 10 ? "#dc2626" : z.pct >= 6 ? "#d97706" : "#f59e0b";
                 return (
@@ -277,7 +277,7 @@ export function AnimSanidad({
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                         <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: sc.bg, color: sc.text }}>{sc.label}</span>
-                        <a href="/logistica-inventario" title="Reponer stock" style={{ width: 26, height: 26, borderRadius: 7, border: "1.5px solid var(--mc-line-2)", background: "var(--mc-surface)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, textDecoration: "none" }}>🛒</a>
+                        <a href="/logistica-inventario" title="Reponer stock" style={{ width: 26, height: 26, borderRadius: 7, border: "1.5px solid var(--mc-line-2)", background: "var(--mc-surface)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}><Icon name="box" size={13} /></a>
                       </div>
                     </div>
                   );

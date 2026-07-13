@@ -132,7 +132,7 @@ Respondé SOLO con JSON válido con este shape exacto:
   "analisis": "análisis clínico breve (2-3 oraciones) mencionando el historial del rodeo si es relevante",
   "diagnosticosProbables": [{"nombre": "...", "probabilidad": 0-100}],
   "protocolos": [
-    {"id":"recomendado","nombre":"...","badge":"🏆 Recomendado por IA","medicamento":"...","tasaExito":0-100,"stock":true,"retiroHoras":N,"costo":USD},
+    {"id":"recomendado","nombre":"...","badge":"Recomendado por IA","medicamento":"...","tasaExito":0-100,"stock":true,"retiroHoras":N,"costo":USD},
     {"id":"economico","nombre":"Alternativa Económica","medicamento":"...","tasaExito":0-100,"stock":true,"retiroHoras":N,"costo":USD},
     {"id":"premium","nombre":"Alternativa Premium / Corto Retiro","medicamento":"...","tasaExito":0-100,"stock":true,"retiroHoras":N,"costo":USD}
   ]

@@ -462,7 +462,7 @@ export default function MapaLibre({ lotes, notas = [], satVisible = true, ndviVi
           .setLngLat(coords)
           .setHTML(
             notaPopupHtml(nombre, nota, prioridad) +
-            `<button class="mc-nota-del" data-id="${escapeHtml(id)}" style="margin-top:8px;width:100%;padding:6px 10px;border:1px solid #d13a3a44;border-radius:8px;background:#d13a3a12;color:#d13a3a;font-size:11.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">🗑 Eliminar nota</button>`
+            `<button class="mc-nota-del" data-id="${escapeHtml(id)}" style="margin-top:8px;width:100%;padding:6px 10px;border:1px solid #d13a3a44;border-radius:8px;background:#d13a3a12;color:#d13a3a;font-size:11.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">Eliminar nota</button>`
           )
           .addTo(map);
         popup.getElement()?.querySelector<HTMLButtonElement>(".mc-nota-del")?.addEventListener("click", () => {

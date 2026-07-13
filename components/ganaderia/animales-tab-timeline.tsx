@@ -44,12 +44,12 @@ type DetalleTimeline = {
 };
 
 const CAT: Record<string, { color: string; bg: string; icon: string; label: string }> = {
-  Salud: { color: "#16a34a", bg: "#f0fdf4", icon: "❤️", label: "Salud" },
-  Producción: { color: "#2563eb", bg: "#eff6ff", icon: "🥛", label: "Producción" },
-  Reproducción: { color: "#db2777", bg: "#fdf2f8", icon: "🌸", label: "Reproducción" },
-  Movimiento: { color: "#d97706", bg: "#fffbeb", icon: "🔁", label: "Movimiento" },
-  Nacimiento: { color: "#059669", bg: "#ecfdf5", icon: "🌱", label: "Nacimiento" },
-  Peso: { color: "#7c3aed", bg: "#faf5ff", icon: "⚖️", label: "Peso" },
+  Salud: { color: "#16a34a", bg: "#f0fdf4", icon: "heart", label: "Salud" },
+  Producción: { color: "#2563eb", bg: "#eff6ff", icon: "droplets", label: "Producción" },
+  Reproducción: { color: "#db2777", bg: "#fdf2f8", icon: "egg", label: "Reproducción" },
+  Movimiento: { color: "#d97706", bg: "#fffbeb", icon: "route", label: "Movimiento" },
+  Nacimiento: { color: "#059669", bg: "#ecfdf5", icon: "sprout", label: "Nacimiento" },
+  Peso: { color: "#7c3aed", bg: "#faf5ff", icon: "scale", label: "Peso" },
 };
 
 function catDeEvento(tipoEvento: string): keyof typeof CAT {
@@ -119,9 +119,9 @@ export function AnimTimeline({
         anio: d.getFullYear(),
         hora: d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
         titulo: e.titulo,
-        badge: e.importante ? "Hito ✦" : undefined,
+        badge: e.importante ? "Hito" : undefined,
         detalle: e.descripcion || (e.valorNumerico ? `${e.valorNumerico} ${e.unidad || ""}` : e.ubicacion || "—"),
-        sub: e.ubicacion ? `📍 ${e.ubicacion}` : undefined,
+        sub: e.ubicacion || undefined,
       };
     });
   }, [detalle]);
@@ -169,7 +169,7 @@ export function AnimTimeline({
           <div className="col gap-6" style={{ marginTop: 8, textAlign: "left" }}>
             {sugerencias.map((a) => (
               <div key={a.dbId} onClick={() => onSeleccionar(a)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, cursor: "pointer", border: "1px solid var(--mc-line)", background: "var(--mc-surface)" }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 15, flexShrink: 0 }}>🐄</div>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", color: "#0a5a24", flexShrink: 0 }}><Icon name="cow" size={16} /></div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--mc-ink)" }}>{a.nombre || a.id}</div>
                   <div style={{ fontSize: 11.5, color: "var(--mc-text-3)" }}>{a.id} · {a.categoria} · {a.lote}</div>
@@ -210,7 +210,7 @@ export function AnimTimeline({
               const active = filter === f;
               return (
                 <button key={f} onClick={() => setFilter(f)} style={{ padding: "4px 11px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", border: active ? `1.5px solid ${cat?.color || "#16a34a"}` : "1.5px solid var(--mc-line)", background: active ? cat?.color || "#16a34a" : "var(--mc-surface-2)", color: active ? "white" : "#64748b", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 12 }}>{cat?.icon || "📋"}</span>{f}
+                  <Icon name={cat?.icon || "list"} size={12} />{f}
                 </button>
               );
             })}
@@ -306,7 +306,7 @@ export function AnimTimeline({
                 </div>
                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{a.raza !== "—" ? a.raza : a.categoria} {a.rfid ? <>&nbsp;·&nbsp; {a.rfid}</> : null}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                  {a.rfid && <span style={{ fontSize: 10, fontWeight: 700, background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "2px 8px", borderRadius: 20 }}>📡 RFID Activo</span>}
+                  {a.rfid && <span style={{ fontSize: 10, fontWeight: 700, background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "2px 8px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 3 }}><Icon name="tag" size={10} /> RFID Activo</span>}
                   {a.prodNum !== null && <span style={{ fontSize: 10, fontWeight: 700, background: "#eff6ff", border: "1px solid #bfdbfe", color: "#2563eb", padding: "2px 8px", borderRadius: 20 }}>En Producción</span>}
                 </div>
               </div>
@@ -315,7 +315,7 @@ export function AnimTimeline({
             <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Árbol Genealógico</div>
             <div style={{ position: "relative" }}>
               <div style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid #bfdbfe", background: "#eff6ff", display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#93c5fd,#bfdbfe)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🐂</div>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#93c5fd,#bfdbfe)", display: "flex", alignItems: "center", justifyContent: "center", color: "#1e40af", flexShrink: 0 }}><Icon name="beef" size={18} /></div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, marginBottom: 1 }}>Padre</div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#1e40af" }}>{gen?.padre?.caravana ? `Toro ${gen.padre.caravana}` : a.padre ? `Toro ${a.padre}` : "Sin registro"}</div>
@@ -328,7 +328,7 @@ export function AnimTimeline({
                 <text x="50%" y="19" textAnchor="middle" fontSize="6" fontWeight="800" fill="#16a34a">TÚ</text>
               </svg>
               <div style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid #bbf7d0", background: "#f0fdf4", display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#86efac,#bbf7d0)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🐄</div>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#86efac,#bbf7d0)", display: "flex", alignItems: "center", justifyContent: "center", color: "#15803d", flexShrink: 0 }}><Icon name="cow" size={18} /></div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, marginBottom: 1 }}>Madre</div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#15803d" }}>{gen?.madre?.caravana ? `Vaca ${gen.madre.caravana}` : a.madre ? `Vaca ${a.madre}` : "Sin registro"}</div>
@@ -344,7 +344,7 @@ export function AnimTimeline({
                 <div style={{ marginTop: 14, padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--mc-line-2)", background: "var(--mc-surface-2)", display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ display: "flex" }}>
                     {crias.slice(0, 3).map((c, i) => (
-                      <div key={c.dbId} style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#fde68a,#fef3c7)", border: "2px solid #fde047", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginLeft: i > 0 ? -8 : 0, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>🐄</div>
+                      <div key={c.dbId} style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#fde68a,#fef3c7)", border: "2px solid #fde047", display: "flex", alignItems: "center", justifyContent: "center", color: "#a16207", marginLeft: i > 0 ? -8 : 0, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}><Icon name="cow" size={15} /></div>
                     ))}
                   </div>
                   <div>
@@ -366,7 +366,7 @@ export function AnimTimeline({
             {/* Peso / Producción */}
             <div style={{ padding: 16, borderRight: "1px solid var(--mc-line)", borderBottom: "1px solid var(--mc-line)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#f0fdf4", border: "1.5px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>⚖️</div>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#f0fdf4", border: "1.5px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}><Icon name="scale" size={12} /></div>
                 <span style={{ fontSize: 10, fontWeight: 800, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.07em" }}>Peso & Prod.</span>
               </div>
               <div style={{ fontSize: 16, fontWeight: 900, color: "var(--mc-ink)", marginBottom: 2 }}>
@@ -384,7 +384,7 @@ export function AnimTimeline({
             {/* Reproductivo */}
             <div style={{ padding: 16, borderBottom: "1px solid var(--mc-line)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#fdf2f8", border: "1.5px solid #fbcfe8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>🌸</div>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#fdf2f8", border: "1.5px solid #fbcfe8", display: "flex", alignItems: "center", justifyContent: "center", color: "#db2777" }}><Icon name="egg" size={12} /></div>
                 <span style={{ fontSize: 10, fontWeight: 800, color: "#db2777", textTransform: "uppercase", letterSpacing: "0.07em" }}>Reproductivo</span>
               </div>
               <div style={{ fontSize: 14, fontWeight: 900, color: "#db2777", marginBottom: 6 }}>
@@ -413,7 +413,7 @@ export function AnimTimeline({
             {/* Sanidad */}
             <div style={{ padding: 16, borderRight: "1px solid var(--mc-line)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#f0fdf4", border: "1.5px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>🏥</div>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#f0fdf4", border: "1.5px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}><Icon name="heart" size={12} /></div>
                 <span style={{ fontSize: 10, fontWeight: 800, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.07em" }}>Sanidad</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
@@ -429,7 +429,7 @@ export function AnimTimeline({
               </div>
               {proximaVacuna && (
                 <div style={{ padding: "8px 10px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0", fontSize: 11 }}>
-                  <div style={{ fontWeight: 700, color: "#16a34a" }}>💉 Próx. dosis:</div>
+                  <div style={{ fontWeight: 700, color: "#16a34a", display: "flex", alignItems: "center", gap: 4 }}><Icon name="syringe" size={11} /> Próx. dosis:</div>
                   <div style={{ color: "#64748b", marginTop: 1 }}>{fmtFecha(proximaVacuna)}</div>
                 </div>
               )}
@@ -438,7 +438,7 @@ export function AnimTimeline({
             {/* Genética */}
             <div style={{ padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#faf5ff", border: "1.5px solid #e9d5ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>🧬</div>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: "#faf5ff", border: "1.5px solid #e9d5ff", display: "flex", alignItems: "center", justifyContent: "center", color: "#7c3aed" }}><Icon name="microscope" size={12} /></div>
                 <span style={{ fontSize: 10, fontWeight: 800, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.07em" }}>Genética</span>
               </div>
               {meritoGenetico !== null ? (

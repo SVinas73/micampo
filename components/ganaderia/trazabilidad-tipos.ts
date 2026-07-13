@@ -26,7 +26,7 @@ export type ConfigPais = {
 export const CONFIG_REGULATORIO: Record<PaisKey, ConfigPais> = {
   uruguay: {
     pais: "Uruguay",
-    bandera: "🇺🇾",
+    bandera: "UY",
     organismo: "MGAP",
     sistema: "SNIG",
     identificadorEstablecimiento: "DICOSE",
@@ -37,7 +37,7 @@ export const CONFIG_REGULATORIO: Record<PaisKey, ConfigPais> = {
   },
   argentina: {
     pais: "Argentina",
-    bandera: "🇦🇷",
+    bandera: "AR",
     organismo: "SENASA",
     sistema: "SIGSA",
     identificadorEstablecimiento: "RENSPA",

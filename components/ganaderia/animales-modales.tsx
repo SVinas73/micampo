@@ -295,7 +295,7 @@ export function VerDetalleAnimalModal({
               <button onClick={() => setModalEvento(true)} className="mc-btn mc-btn--sm" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff" }}>
                 <Icon name="plus" size={13} /> Registrar Evento
               </button>
-              <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", fontSize: 16 }}>✕</button>
+              <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center" }}><Icon name="x" size={15} /></button>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 14, marginTop: 6, flexWrap: "wrap" }}>
@@ -304,7 +304,7 @@ export function VerDetalleAnimalModal({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={animal.api.foto} alt={animal.id} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                "🐄"
+                <Icon name="cow" size={26} />
               )}
             </div>
             <div>
@@ -316,7 +316,7 @@ export function VerDetalleAnimalModal({
                 {[animal.categoria, animal.raza, animal.estado].filter((b) => b && b !== "—").map((b) => (
                   <span key={b as string} style={{ padding: "2px 10px", borderRadius: 12, background: "rgba(255,255,255,0.2)", fontSize: 11, fontWeight: 600 }}>{b}</span>
                 ))}
-                {!animal.ok && <span style={{ padding: "2px 10px", borderRadius: 12, background: "rgba(239,68,68,0.7)", fontSize: 11, fontWeight: 700 }}>⚠ Requiere Atención</span>}
+                {!animal.ok && <span style={{ padding: "2px 10px", borderRadius: 12, background: "rgba(239,68,68,0.7)", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="alert-triangle" size={11} /> Requiere Atención</span>}
               </div>
             </div>
             <div style={{ marginLeft: "auto", display: "flex", gap: 20 }}>
@@ -342,7 +342,7 @@ export function VerDetalleAnimalModal({
               {([
                 ["Lote", animal.lote],
                 ["Raza", animal.raza],
-                ["Sexo", animal.sexo === "M" ? "♂ Macho" : "♀ Hembra"],
+                ["Sexo", animal.sexo === "M" ? "Macho" : "Hembra"],
                 ["Origen", animal.api.origen || "—"],
                 ["RFID", animal.rfid || "—"],
                 ["Cond. Nacimiento", animal.api.condicionNacimiento || "—"],
@@ -360,7 +360,7 @@ export function VerDetalleAnimalModal({
               {([
                 ["Condición corporal", condCorporal ? `${condCorporal} / 5` : "—"],
                 ["Ciclo reproductivo", h?.estadoActual || "—"],
-                ["Vacunas al día", vacunaReciente ? "Sí ✓" : "Sin registro"],
+                ["Vacunas al día", vacunaReciente ? "Sí" : "Sin registro"],
               ] as [string, string][]).map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid var(--mc-line)", fontSize: 12 }}>
                   <span style={{ color: "var(--mc-text-3)" }}>{k}</span>
@@ -371,7 +371,7 @@ export function VerDetalleAnimalModal({
 
             {tratamientos.length > 0 ? (
               <div style={{ background: "#fee2e2", border: "2px solid #fca5a5", borderRadius: 10, padding: "12px 14px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#dc2626", marginBottom: 8 }}>⚠ Tratamientos Activos</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#dc2626", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}><Icon name="alert-triangle" size={11} /> Tratamientos Activos</div>
                 {tratamientos.map((t) => (
                   <div key={t.id} style={{ padding: "8px 10px", borderRadius: 8, background: "#fff", border: "1px solid #fca5a5", marginBottom: 6 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#7f1d1d", marginBottom: 3 }}>{t.medicamento || t.diagnostico}</div>
@@ -387,7 +387,7 @@ export function VerDetalleAnimalModal({
               </div>
             ) : (
               <div style={{ background: "var(--mc-green-50)", border: "1.5px solid var(--mc-green-200)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 20 }}>✅</span>
+                <Icon name="check-circle" size={20} style={{ color: "#16a34a" }} />
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#15803d" }}>Sin Tratamientos Activos</div>
                   <div style={{ fontSize: 11, color: "#16a34a" }}>Animal en buen estado de salud</div>
@@ -502,7 +502,7 @@ export function VerDetalleAnimalModal({
             <MCard title="Genealogía / Pedigree">
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg,#0a5a24,#16a34a)", display: "grid", placeItems: "center", fontSize: 22, boxShadow: "0 2px 8px rgba(22,163,74,0.3)", border: "3px solid var(--mc-surface)" }}>🐄</div>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg,#0a5a24,#16a34a)", display: "grid", placeItems: "center", fontSize: 22, boxShadow: "0 2px 8px rgba(22,163,74,0.3)", border: "3px solid var(--mc-surface)" }}><Icon name="cow" size={16} /></div>
                   <div style={{ marginTop: 5, textAlign: "center" }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: "var(--mc-ink)" }}>{animal.id}</div>
                     <div style={{ fontSize: 10, color: "var(--mc-text-3)" }}>{animal.raza}</div>
@@ -517,7 +517,7 @@ export function VerDetalleAnimalModal({
                 <div style={{ height: 14 }} />
                 <div style={{ display: "flex", gap: 12, width: "100%" }}>
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#dbeafe", display: "grid", placeItems: "center", fontSize: 20, border: "2.5px solid #93c5fd" }}>🐂</div>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#dbeafe", display: "grid", placeItems: "center", fontSize: 20, border: "2.5px solid #93c5fd" }}><Icon name="beef" size={16} /></div>
                     <div style={{ textAlign: "center" }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8" }}>{padreCarav ? `Toro ${padreCarav}` : "Sin registro"}</div>
                       {padreRaza && <div style={{ fontSize: 9, color: "var(--mc-text-3)" }}>{padreRaza}</div>}
@@ -525,7 +525,7 @@ export function VerDetalleAnimalModal({
                     </div>
                   </div>
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#fce7f3", display: "grid", placeItems: "center", fontSize: 20, border: "2.5px solid #f9a8d4" }}>🐄</div>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#fce7f3", display: "grid", placeItems: "center", fontSize: 20, border: "2.5px solid #f9a8d4" }}><Icon name="cow" size={16} /></div>
                     <div style={{ textAlign: "center" }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#be185d" }}>{madreCarav ? `Vaca ${madreCarav}` : "Sin registro"}</div>
                       {madreRaza && <div style={{ fontSize: 9, color: "var(--mc-text-3)" }}>{madreRaza}</div>}
@@ -575,7 +575,7 @@ export function VerDetalleAnimalModal({
                 {reproHistory.slice(0, 4).map((r, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, background: r.ok ? "var(--mc-green-50)" : "#fff7ed", border: `1px solid ${r.ok ? "var(--mc-green-200)" : "#fed7aa"}` }}>
                     <div style={{ width: 18, height: 18, borderRadius: "50%", background: r.ok ? "#16a34a" : "#f59e0b", display: "grid", placeItems: "center", flexShrink: 0 }}>
-                      <span style={{ fontSize: 9, color: "#fff", fontWeight: 700 }}>{r.ok ? "✓" : "✗"}</span>
+                      <Icon name={r.ok ? "check" : "x"} size={11} style={{ color: "#fff" }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "var(--mc-ink)" }}>{r.evento}</div>
@@ -898,7 +898,7 @@ export function NuevoAnimalModal({
             <div style={{ fontSize: 11, opacity: 0.75, letterSpacing: "0.05em", marginBottom: 2 }}>Ganadería / Animales</div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>Registro de Nuevo Animal</div>
           </div>
-          <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", fontSize: 16 }}>✕</button>
+          <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center" }}><Icon name="x" size={15} /></button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 20, padding: "20px 28px", overflowY: "auto", flex: 1 }}>
@@ -908,12 +908,12 @@ export function NuevoAnimalModal({
               <Field label="Tipo de Animal">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5 }}>
                   {[
-                    { label: "🐄 Bovino", val: "Bovino" },
-                    { label: "🐴 Equino", val: "Equino" },
-                    { label: "🐑 Ovino", val: "Ovino" },
-                    { label: "🐷 Porcino", val: "Porcino" },
-                    { label: "🐐 Caprino", val: "Caprino" },
-                    { label: "➕ Otro", val: "Otro" },
+                    { label: "Bovino", val: "Bovino" },
+                    { label: "Equino", val: "Equino" },
+                    { label: "Ovino", val: "Ovino" },
+                    { label: "Porcino", val: "Porcino" },
+                    { label: "Caprino", val: "Caprino" },
+                    { label: "Otro", val: "Otro" },
                   ].map(({ label, val }) => (
                     <button
                       key={val}
@@ -930,7 +930,7 @@ export function NuevoAnimalModal({
               </Field>
               <Field label="Sexo">
                 <div style={{ display: "flex", gap: 6 }}>
-                  {[{ label: "♂ Macho", val: "Macho" }, { label: "♀ Hembra", val: "Hembra" }].map(({ label, val }) => (
+                  {[{ label: "Macho", val: "Macho" }, { label: "Hembra", val: "Hembra" }].map(({ label, val }) => (
                     <button
                       key={val}
                       onClick={() => setSexo(val)}
@@ -971,7 +971,7 @@ export function NuevoAnimalModal({
                     <img src={foto} alt="foto" style={{ maxHeight: 80, borderRadius: 6 }} />
                   ) : (
                     <>
-                      <span style={{ fontSize: 22 }}>📷</span>
+                      <Icon name="camera" size={22} />
                       <span>Subir foto</span>
                     </>
                   )}
@@ -1041,7 +1041,7 @@ export function NuevoAnimalModal({
               </Field>
               <Field label="Categoría Sugerida (auto)">
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "1.5px solid var(--mc-green-200)", borderRadius: 8, background: "var(--mc-green-50)" }}>
-                  <span style={{ fontSize: 18 }}>{tipoAnimal === "Bovino" ? "🐄" : tipoAnimal === "Equino" ? "🐴" : tipoAnimal === "Ovino" ? "🐑" : tipoAnimal === "Porcino" ? "🐷" : "🐐"}</span>
+                  <Icon name={tipoAnimal === "Bovino" ? "cow" : "tag"} size={18} style={{ color: "#16a34a" }} />
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a" }}>{catSugerida}</div>
                     <div style={{ fontSize: 10, color: "var(--mc-text-3)" }}>asignado automáticamente</div>

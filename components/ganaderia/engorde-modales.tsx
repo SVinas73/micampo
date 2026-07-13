@@ -322,7 +322,7 @@ export function ModalProgramarEnvio({ corrales, onClose, onGuardado }: { corrale
           fetch(`/api/corrales-engorde/${a.corralId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: "Cerrado" }) })
         )
       );
-      onGuardado && onGuardado(`✓ Envío confirmado · DT-e #${dte?.numero || ""} generado — pendiente de cierre en Trazabilidad`);
+      onGuardado && onGuardado(`Envío confirmado · DT-e #${dte?.numero || ""} generado — pendiente de cierre en Trazabilidad`);
       onClose();
     } finally {
       setGuardando(false);

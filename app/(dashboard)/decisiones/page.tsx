@@ -43,7 +43,7 @@ export default function DecisionesPage() {
       const r = await fetch("/api/alertas/enviar", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const d = await r.json();
       if (d.sinAlertas) setAviso("Sin alertas urgentes para enviar hoy.");
-      else if (d.enviado) setAviso("Alertas enviadas a tu WhatsApp ✓");
+      else if (d.enviado) setAviso("Alertas enviadas a tu WhatsApp");
       else if (!d.configurado) setAviso("WhatsApp aún no configurado: cargá el número para recibir las alertas en el teléfono.");
       else setAviso("No se pudo enviar. Revisá la configuración de WhatsApp.");
     } catch {

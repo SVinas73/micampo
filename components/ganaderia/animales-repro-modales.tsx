@@ -91,7 +91,7 @@ export function ModalRegistrarCelo({
             </div>
             {animalSel && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, border: "2px solid var(--mc-green-500)", background: "var(--mc-green-50)", marginBottom: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 15, flexShrink: 0 }}>🐄</div>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 15, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--mc-ink)" }}>{animalSel.nombre || animalSel.id}</div>
                   <div style={{ fontSize: 11.5, color: "var(--mc-text-3)" }}>{animalSel.id} · {animalSel.raza !== "—" ? animalSel.raza : animalSel.categoria}</div>
@@ -103,7 +103,7 @@ export function ModalRegistrarCelo({
               <div className="col gap-6" style={{ maxHeight: 160, overflowY: "auto" }}>
                 {resultados.map((a) => (
                   <div key={a.dbId} onClick={() => setAnimalSel(a)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, cursor: "pointer", border: "1px solid var(--mc-line)", background: "var(--mc-surface)" }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 15, flexShrink: 0 }}>🐄</div>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 15, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--mc-ink)" }}>{a.nombre || a.id}</div>
                       <div style={{ fontSize: 11.5, color: "var(--mc-text-3)" }}>{a.id} · {a.raza !== "—" ? a.raza : a.categoria}</div>
@@ -249,7 +249,7 @@ export function ModalRegistrarInseminacion({
                 const sel = animalSel && animalSel.dbId === a.dbId;
                 return (
                   <div key={a.dbId} onClick={() => { setAnimalSel(a); setManualId(""); }} style={{ flexShrink: 0, width: 112, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 8px", borderRadius: 12, cursor: "pointer", border: sel ? "2px solid var(--mc-green-500)" : "1px solid var(--mc-line)", background: sel ? "var(--mc-green-50)" : "var(--mc-surface)" }}>
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 16 }}>🐄</div>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 16 }}><Icon name="cow" size={16} /></div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mc-ink)", textAlign: "center" }}>{a.id}</div>
                     <span className="mc-badge mc-badge--amber" style={{ fontSize: 9.5 }}>Celo: {a.celoDesde || "—"}</span>
                   </div>
@@ -258,7 +258,7 @@ export function ModalRegistrarInseminacion({
               {celoRecientes.length === 0 && !animalPrefill && <div style={{ fontSize: 12, color: "var(--mc-text-3)", padding: "8px 0" }}>Sin celos recientes registrados.</div>}
               {animalPrefill && !celoRecientes.some((c) => c.dbId === animalPrefill.dbId) && (
                 <div style={{ flexShrink: 0, width: 112, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 8px", borderRadius: 12, border: "2px solid var(--mc-green-500)", background: "var(--mc-green-50)" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 16 }}>🐄</div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 16 }}><Icon name="cow" size={16} /></div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mc-ink)", textAlign: "center" }}>{animalPrefill.id}</div>
                   <span className="mc-badge mc-badge--green" style={{ fontSize: 9.5 }}>Seleccionada</span>
                 </div>
@@ -379,7 +379,7 @@ export function ModalDiagnosticoGestacion({
         <div style={{ padding: "18px 24px 16px", borderBottom: "1px solid var(--mc-line)", flexShrink: 0 }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
             <div className="row gap-10" style={{ alignItems: "center" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>🐄</div>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--mc-ink)" }}>{a.nombre || a.id} <span style={{ fontWeight: 500, color: "var(--mc-text-3)", fontSize: 12.5 }}>{a.id}{a.raza !== "—" ? " · " + a.raza : ""}</span></div>
                 <div style={{ fontSize: 12, color: "var(--mc-text-3)", marginTop: 2 }}>{a.fechaServicio ? `Servida el ${a.fechaServicio}` : "Sin servicio registrado"}</div>
@@ -514,7 +514,7 @@ export function ModalPerdidaGestacion({
         <div style={{ padding: "18px 24px 16px", borderBottom: "1px solid var(--mc-line)", flexShrink: 0 }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
             <div className="row gap-10" style={{ alignItems: "center" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>🐄</div>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--mc-ink)" }}>{a.nombre || a.id} <span style={{ fontWeight: 500, color: "var(--mc-text-3)", fontSize: 12.5 }}>{a.id}</span></div>
                 <div style={{ fontSize: 12, color: "var(--mc-text-3)", marginTop: 2 }}>Estaba Preñada</div>
@@ -649,7 +649,7 @@ export function ModalTratamientoGestacion({
         <div style={{ padding: "18px 24px 16px", borderBottom: "1px solid var(--mc-line)", flexShrink: 0 }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
             <div className="row gap-10" style={{ alignItems: "center" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>🐄</div>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--mc-ink)" }}>{a.nombre || a.id} <span style={{ fontWeight: 500, color: "var(--mc-text-3)", fontSize: 12.5 }}>{a.id}</span></div>
                 <div style={{ fontSize: 12, color: "var(--mc-text-3)", marginTop: 2 }}>{a.cicloEstado === "prenada" ? "Preñada" : a.estado}</div>
@@ -844,7 +844,7 @@ export function ModalPartoRegistro({
         <div style={{ padding: "18px 24px 16px", borderBottom: "1px solid var(--mc-line)", flexShrink: 0 }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
             <div className="row gap-10" style={{ alignItems: "center" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>🐄</div>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--mc-ink)" }}>{a.nombre || a.id} <span style={{ fontWeight: 500, color: "var(--mc-text-3)", fontSize: 12.5 }}>{a.id}</span></div>
                 <div style={{ fontSize: 12, color: "var(--mc-text-3)", marginTop: 2 }}>{a.dia >= 268 ? "A Término" : `Día ${a.dia} de gestación`}</div>
@@ -1007,7 +1007,7 @@ export function ModalDetalleCicloReproductivo({
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--mc-line)", flexShrink: 0 }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <div className="row gap-10" style={{ alignItems: "center" }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 19, flexShrink: 0 }}>🐄</div>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#e8f5e9", display: "grid", placeItems: "center", fontSize: 19, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
               <div>
                 <div className="mc-modal__title" style={{ fontSize: 19 }}>{a.nombre || a.id}</div>
                 <div style={{ fontSize: 11.5, color: "var(--mc-text-3)" }}>{a.id} · {a.raza !== "—" ? a.raza : a.categoria}</div>

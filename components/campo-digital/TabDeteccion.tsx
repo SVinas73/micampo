@@ -705,7 +705,7 @@ function EnfermedadesAnalisisIA({
                   {datos.enfermedad}{" "}
                   {datos.nombreCientifico && <span style={{ fontStyle: "italic", color: "var(--mc-text-2)", fontSize: 13 }}>({datos.nombreCientifico})</span>}
                 </div>
-                <span className={`mc-badge mt-4 ${datos.severidad === "Alta" ? "mc-badge--red" : datos.severidad === "Media" ? "mc-badge--amber" : "mc-badge--green"}`}>⬤ Severidad {datos.severidad}</span>
+                <span className={`mc-badge mt-4 ${datos.severidad === "Alta" ? "mc-badge--red" : datos.severidad === "Media" ? "mc-badge--amber" : "mc-badge--green"}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "currentColor", display: "inline-block" }} /> Severidad {datos.severidad}</span>
                 <div className="col gap-4 mt-12">
                   {datos.lesiones.slice(0, 3).map((l, i) => (
                     <div key={i} className="row gap-6" style={{ alignItems: "center", fontSize: 12 }}>

@@ -5,8 +5,28 @@
 // hoja de ruta del día y ventana óptima de arreo. Todo derivado de la API.
 
 import React, { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Icon, useToast } from "@/components/mc";
+import type { LoteMapaSat } from "./tropas-mapa-sat";
+
+// Mapa satelital real (Leaflet + Esri); se carga solo en cliente.
+const TropasMapaSat = dynamic(() => import("./tropas-mapa-sat"), {
+  ssr: false,
+  loading: () => <div style={{ height: 440, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 12 }}>Cargando mapa satelital…</div>,
+});
+
+/** ¿El lote tiene un polígono dibujado utilizable? */
+function tieneGeo(coordenadas?: string | null): boolean {
+  if (!coordenadas) return false;
+  try {
+    const g = JSON.parse(coordenadas);
+    if (Array.isArray(g)) return g.length >= 3;
+    return Array.isArray(g?.coordinates?.[0]) && g.coordinates[0].length >= 3;
+  } catch {
+    return false;
+  }
+}
 import { AnimalRow } from "./tipos";
 import {
   LoteGeoAPI,
@@ -71,7 +91,8 @@ export function MovResumen({
   const [tooltip, setTooltip] = useState<{ id: string; dato: string; x: number; y: number } | null>(null);
   const [fichaVisible, setFichaVisible] = useState(false);
   const [capa, setCapa] = useState<Capa>("ocupacion");
-  const [satelital, setSatelital] = useState(false);
+  const satelital = false; // el esquema se dibuja plano; el mapa real usa tiles satelitales de Esri
+  const [modoMapa, setModoMapa] = useState<"sat" | "esquema">("sat");
   const [loteRutaSel, setLoteRutaSel] = useState<string | null>(null);
   const [modalPlanif, setModalPlanif] = useState(false);
   const [modalTraslado, setModalTraslado] = useState(false);
@@ -163,6 +184,41 @@ export function MovResumen({
     { k: "rutaDia", label: "Ruta del Día" },
   ];
 
+  // ── Mapa satelital real: color + etiqueta por lote según la capa activa ──
+  const hayGeo = useMemo(() => lotes.some((l) => tieneGeo(l.coordenadas)), [lotes]);
+  const colorLoteCapa = (nombre: string): { color: string; label: string } => {
+    const tropaEn = tropaEnLote(nombre);
+    const cant = tropaEn ? tropaEn._count?.animales ?? tropaEn.animales?.length ?? 0 : 0;
+    const legsLote = movsHoy.filter((m) => m.origenNombre === nombre || m.destinoNombre === nombre).length;
+    const descanso = diasDescansoLote(nombre, movimientos, tropas);
+    const tc = tropaEn ? colores[tropaEn.id] : null;
+    const raza = tropaEn ? razaPredominante(tropaEn) : null;
+    let color = "#94a3b8";
+    if (capa === "ocupacion" || capa === "cantidades" || capa === "raza") color = tc || "#94a3b8";
+    else if (capa === "descanso") color = descanso === null ? "#94a3b8" : descanso >= 21 ? "#16a34a" : descanso >= 7 ? "#d97706" : "#dc2626";
+    else if (capa === "rutaDia") color = loteRutaSel === nombre ? "#3b82f6" : legsLote > 0 ? "#f59e0b" : "#94a3b8";
+    const label =
+      capa === "ocupacion" ? (tropaEn ? `${tropaEn.nombre} · ${cant} cab.` : "Libre") :
+      capa === "cantidades" ? (tropaEn ? `${cant} cabezas` : "Sin animales") :
+      capa === "descanso" ? (descanso === null ? "Sin registros" : descanso === 0 ? "Ocupado" : `${descanso} días de descanso`) :
+      capa === "raza" ? (raza || (tropaEn ? "Sin razas registradas" : "Sin hacienda")) :
+      legsLote > 0 ? `${legsLote} movimiento${legsLote === 1 ? "" : "s"} hoy` : "Sin movimientos hoy";
+    return { color, label };
+  };
+  const lotesMapa: LoteMapaSat[] = lotes.map((l) => {
+    const { color, label } = colorLoteCapa(l.nombre);
+    return { id: l.id, nombre: l.nombre, coordenadas: l.coordenadas, color, label, selected: loteRutaSel === l.nombre, clickable: capa === "rutaDia" || !!tropaEnLote(l.nombre) };
+  });
+  const onSelectLoteMapa = (id: string) => {
+    const l = lotes.find((x) => x.id === id);
+    if (!l) return;
+    if (capa === "rutaDia") setLoteRutaSel((p) => (p === l.nombre ? null : l.nombre));
+    else {
+      const t = tropaEnLote(l.nombre);
+      if (t) abrirFicha(t);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       {toast.node}
@@ -247,13 +303,12 @@ export function MovResumen({
                   <button key={c.k} className={capa === c.k ? "is-on" : ""} onClick={() => { setCapa(c.k); setLoteRutaSel(null); }}>{c.label}</button>
                 ))}
               </div>
-              <button
-                className="mc-btn mc-btn--secondary mc-btn--sm"
-                style={{ fontSize: 11, padding: "3px 10px", background: satelital ? "#1e293b" : undefined, color: satelital ? "white" : undefined, borderColor: satelital ? "#1e293b" : undefined }}
-                onClick={() => setSatelital((s) => !s)}
-              >
-                <Icon name="map" size={12} /> Vista Satelital
-              </button>
+              {hayGeo && (
+                <div className="mc-seg">
+                  <button className={modoMapa === "sat" ? "is-on" : ""} onClick={() => setModoMapa("sat")}><Icon name="map" size={12} /> Satelital</button>
+                  <button className={modoMapa === "esquema" ? "is-on" : ""} onClick={() => setModoMapa("esquema")}>Esquema</button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -270,6 +325,8 @@ export function MovResumen({
                   </div>
                   <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => router.push("/lotes")}>Ir a Lotes <Icon name="arrow-right" size={12} /></button>
                 </div>
+              ) : modoMapa === "sat" && hayGeo ? (
+                <TropasMapaSat lotes={lotesMapa} onSelect={onSelectLoteMapa} height={440} />
               ) : (
                 <svg viewBox="100 40 440 420" style={{ width: "100%", height: 440, display: "block" }}>
                   <defs>
@@ -342,7 +399,6 @@ export function MovResumen({
                         )}
                         {capa === "raza" && tropaEn && raza && (
                           <g>
-                            <text x={l.cx} y={l.cy - 22} textAnchor="middle" fontSize="14">🐄</text>
                             <text x={l.cx} y={l.cy - 9} textAnchor="middle" fontSize="9" fontWeight="700" fill={satelital ? "#ffffff" : "#1e293b"}>{raza}</text>
                           </g>
                         )}

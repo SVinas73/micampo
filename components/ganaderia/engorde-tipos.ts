@@ -102,7 +102,7 @@ export function estadoCorral(c: CorralAPI): "listo" | "cerca" | "proceso" {
 }
 
 export const estadoConf: Record<string, { label: string; bg: string; color: string }> = {
-  listo: { label: "Listo ✓", bg: "#dcfce7", color: "#16a34a" },
+  listo: { label: "Listo", bg: "#dcfce7", color: "#16a34a" },
   cerca: { label: "Cerca ~", bg: "#fef9c3", color: "#ca8a04" },
   proceso: { label: "En proceso", bg: "var(--mc-surface-3)", color: "var(--mc-text-2)" },
 };

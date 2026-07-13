@@ -1287,7 +1287,7 @@ function NuevoAnalisisModal({
         k: d.potasio != null ? String(d.potasio) : f.k,
         fecha: typeof d.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.fecha) ? d.fecha : f.fecha,
       }));
-      toast.show("Valores cargados del PDF con IA ✓ — revisalos antes de guardar");
+      toast.show("Valores cargados del PDF con IA — revisalos antes de guardar");
     } catch {
       toast.show("No se pudo interpretar el PDF", "err");
     } finally {

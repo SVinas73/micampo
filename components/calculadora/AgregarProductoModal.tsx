@@ -163,7 +163,7 @@ export function AgregarProductoModal({
         }}
       >
         <div className="font-semi text-sm" style={{ color: "var(--mc-green-700)", marginBottom: 4 }}>
-          📦 Logística
+          Logística
         </div>
         <div className="text-sm" style={{ color: "var(--mc-ink)" }}>
           Para <strong>{num(area)} Has</strong> necesitás{" "}
