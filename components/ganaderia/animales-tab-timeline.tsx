@@ -90,22 +90,24 @@ export function AnimTimeline({
   const [buscarAnimal, setBuscarAnimal] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [hoveredEvt, setHoveredEvt] = useState<number | null>(null);
-  const [detalle, setDetalle] = useState<DetalleTimeline | null>(null);
+  // Detalle cacheado por animal: evitamos resetear a null de forma síncrona en el
+  // efecto (deriva del animal seleccionado + el último fetch resuelto).
+  const [detalleRaw, setDetalleRaw] = useState<{ dbId: string; data: DetalleTimeline | null } | null>(null);
 
   useEffect(() => {
-    if (!animalSel) {
-      setDetalle(null);
-      return;
-    }
+    if (!animalSel) return;
     let ok = true;
-    fetch(`/api/animales/${animalSel.dbId}`)
+    const dbId = animalSel.dbId;
+    fetch(`/api/animales/${dbId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => ok && setDetalle(d))
+      .then((d) => ok && setDetalleRaw({ dbId, data: d }))
       .catch(() => {});
     return () => {
       ok = false;
     };
   }, [animalSel]);
+
+  const detalle = animalSel && detalleRaw && detalleRaw.dbId === animalSel.dbId ? detalleRaw.data : null;
 
   const eventos = useMemo(() => {
     if (!detalle) return [] as { cat: keyof typeof CAT; fecha: string; anio: number; hora: string; titulo: string; badge?: string; detalle: string; sub?: string }[];

@@ -62,7 +62,7 @@ export function AnimSanidad({
         ...Array(Math.max(0, t.dosisTotales - t.dosisAplicadas - 1)).fill("pending"),
       ];
       const enRetiro = t.finRetiro && new Date(t.finRetiro) > new Date();
-      const horasRetiro = enRetiro ? Math.ceil((new Date(t.finRetiro!).getTime() - Date.now()) / 3600000) : 0;
+      const horasRetiro = enRetiro ? Math.ceil((new Date(t.finRetiro!).getTime() - new Date().getTime()) / 3600000) : 0;
       return {
         t,
         doses,

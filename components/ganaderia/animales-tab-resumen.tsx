@@ -129,7 +129,7 @@ export function AnimResumen({
   // ── Calendario sanitario real: alertas con fechaLimite + próximas dosis ──
   const calendarioData = useMemo(() => {
     const items: { evento: string; vence: string; prioridad: string; color: string; fecha: number }[] = [];
-    const hoy = Date.now();
+    const hoy = new Date().getTime();
     for (const al of alertas) {
       if (al.estado === "Completada") continue;
       const f = al.fechaLimite ? new Date(al.fechaLimite).getTime() : null;
@@ -183,7 +183,7 @@ export function AnimResumen({
     }
     // Nacidos hoy
     for (const a of animales) {
-      if (a.fechaNacimiento && Date.now() - new Date(a.fechaNacimiento).getTime() < 24 * 3600 * 1000) {
+      if (a.fechaNacimiento && new Date().getTime() - new Date(a.fechaNacimiento).getTime() < 24 * 3600 * 1000) {
         items.push({ nombre: `Ternero ${a.id}`, estado: "Nuevo", color: "#16a34a", detalle: "Nacido hoy", row: a });
       }
     }

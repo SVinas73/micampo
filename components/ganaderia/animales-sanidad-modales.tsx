@@ -313,7 +313,9 @@ export function CowProfileSVG({
   const est = { ...defaultEstados, ...(estados || {}) };
   const showUdder = sexo === "H" && enLactancia;
 
-  const Point = ({ x, y, zona, label }: { x: number; y: number; zona: string; label: string }) => (
+  // Helper que devuelve un elemento (no un componente) para evitar crear
+  // componentes durante el render; cierra sobre `est`.
+  const point = (x: number, y: number, zona: string, label: string) => (
     <circle cx={x} cy={y} r="3.1" fill={est[zona].color} stroke="#fff" strokeWidth="1" style={{ cursor: "pointer" }}>
       <title>{`${label}: ${est[zona].obs}`}</title>
     </circle>
@@ -338,14 +340,14 @@ export function CowProfileSVG({
       <circle cx="126" cy="34" r="1" fill="#f87171" opacity="0.7" />
       <circle cx="116" cy="25" r="1.9" fill="#1e3a1e" />
       <circle cx="116.6" cy="24.3" r="0.6" fill="white" />
-      <Point x={116} y={25} zona="cabeza" label="Cabeza / Ojos" />
-      <Point x={97} y={37} zona="cuello" label="Cuello / Papada" />
-      <Point x={80} y={36} zona="costillas" label="Costillas / Tórax" />
-      <Point x={68} y={26} zona="columna" label="Columna / Lomo" />
-      <Point x={42} y={36} zona="cadera" label="Cadera / Anca" />
-      {showUdder && <Point x={58} y={68} zona="ubre" label="Ubre" />}
-      <Point x={53} y={78} zona="patas" label="Pezuñas / Patas" />
-      <Point x={24} y={68} zona="cola" label="Cola" />
+      {point(116, 25, "cabeza", "Cabeza / Ojos")}
+      {point(97, 37, "cuello", "Cuello / Papada")}
+      {point(80, 36, "costillas", "Costillas / Tórax")}
+      {point(68, 26, "columna", "Columna / Lomo")}
+      {point(42, 36, "cadera", "Cadera / Anca")}
+      {showUdder && point(58, 68, "ubre", "Ubre")}
+      {point(53, 78, "patas", "Pezuñas / Patas")}
+      {point(24, 68, "cola", "Cola")}
     </svg>
   );
 }

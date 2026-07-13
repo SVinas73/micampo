@@ -254,7 +254,7 @@ export function VerDetalleAnimalModal({
     ? (detalle.registrosPeso[detalle.registrosPeso.length - 1] as { condicionCorporal?: number | null }).condicionCorporal
     : null;
   const vacunaReciente = (detalle?.eventosSanitarios || []).some(
-    (e) => e.tipo === "Vacunación" && Date.now() - new Date(e.fecha).getTime() < 365 * 24 * 3600 * 1000
+    (e) => e.tipo === "Vacunación" && new Date().getTime() - new Date(e.fecha).getTime() < 365 * 24 * 3600 * 1000
   );
 
   return (

@@ -51,7 +51,18 @@ export default function AnimalesPage() {
   const [timelineSel, setTimelineSel] = useState<AnimalRow | null>(null);
 
   const cargar = useCallback(() => {
-    fetch("/api/animales").then((r) => (r.ok ? r.json() : [])).then((d) => setAnimalesAPI(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch("/api/animales").then((r) => (r.ok ? r.json() : [])).then((d) => {
+      const list: AnimalAPI[] = Array.isArray(d) ? d : [];
+      setAnimalesAPI(list);
+      // Abrir ficha pendiente proveniente de otro submódulo (una sola vez, al llegar los datos)
+      const pendiente = typeof window !== "undefined" ? sessionStorage.getItem("mc-ficha-pendiente") : null;
+      if (pendiente && list.length) {
+        sessionStorage.removeItem("mc-ficha-pendiente");
+        const norm = (v: string) => v.replace(/^#/, "").toLowerCase();
+        const found = list.map(mapAnimal).find((a) => norm(a.id) === norm(pendiente) || a.dbId === pendiente);
+        if (found) setVerDetalle(found);
+      }
+    }).catch(() => {});
     fetch("/api/tropas").then((r) => (r.ok ? r.json() : [])).then((d) => setTropas(Array.isArray(d) ? d : [])).catch(() => {});
     fetch("/api/tratamientos-sanitarios").then((r) => (r.ok ? r.json() : [])).then((d) => setTratamientos(Array.isArray(d) ? d : [])).catch(() => {});
     fetch("/api/alertas-sanitarias").then((r) => (r.ok ? r.json() : [])).then((d) => setAlertas(Array.isArray(d) ? d : [])).catch(() => {});
@@ -68,18 +79,6 @@ export default function AnimalesPage() {
 
   const animales = useMemo(() => animalesAPI.map(mapAnimal), [animalesAPI]);
   const activos = useMemo(() => animales.filter((a) => a.activo), [animales]);
-
-  // Ficha pendiente desde otro submódulo (ej. Producción Lechera)
-  useEffect(() => {
-    if (animales.length === 0) return;
-    const pendiente = typeof window !== "undefined" ? sessionStorage.getItem("mc-ficha-pendiente") : null;
-    if (pendiente) {
-      sessionStorage.removeItem("mc-ficha-pendiente");
-      const norm = (v: string) => v.replace(/^#/, "").toLowerCase();
-      const encontrado = animales.find((a) => norm(a.id) === norm(pendiente) || a.dbId === pendiente);
-      if (encontrado) setVerDetalle(encontrado);
-    }
-  }, [animales]);
 
   /* ── Mutaciones ── */
   const onDarDeBaja = async (dbId: string, datos: BajaInfo) => {
@@ -157,10 +156,11 @@ export default function AnimalesPage() {
     return animales.reduce((s, a) => s + (a.api.eventosReproductivos || []).filter((e) => e.tipo === "Parto" && new Date(e.fecha) >= ini).length, 0);
   }, [animales]);
   const partosProxMes = useMemo(() => {
-    const en30 = Date.now() + 30 * 24 * 3600 * 1000;
+    const ahora = new Date().getTime();
+    const en30 = ahora + 30 * 24 * 3600 * 1000;
     return activos.filter((a) => {
       const f = a.api.historialReproductivo?.fechaEsperadaParto;
-      return f && new Date(f).getTime() <= en30 && new Date(f).getTime() >= Date.now();
+      return f && new Date(f).getTime() <= en30 && new Date(f).getTime() >= ahora;
     }).length;
   }, [activos]);
 
@@ -202,7 +202,7 @@ export default function AnimalesPage() {
       .filter((a) => a.estado !== "Completada" && a.fechaLimite && new Date(a.fechaLimite) > new Date())
       .sort((a, b) => new Date(a.fechaLimite!).getTime() - new Date(b.fechaLimite!).getTime());
     if (futuras.length === 0) return null;
-    const dias = Math.ceil((new Date(futuras[0].fechaLimite!).getTime() - Date.now()) / (24 * 3600 * 1000));
+    const dias = Math.ceil((new Date(futuras[0].fechaLimite!).getTime() - new Date().getTime()) / (24 * 3600 * 1000));
     return { dias, titulo: futuras[0].titulo };
   }, [alertas]);
 
