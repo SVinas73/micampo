@@ -187,7 +187,7 @@ export function ModalDetalleReproductor({ toro, crias, onClose }: { toro: Reprod
               </div>
               <div style={{ padding: "16px 14px 18px", display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg,#0a5a24,#16a34a)", display: "grid", placeItems: "center", fontSize: 22, boxShadow: "0 2px 8px rgba(22,163,74,0.3)", border: "3px solid var(--mc-surface)" }}>🐂</div>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg,#0a5a24,#16a34a)", display: "grid", placeItems: "center", fontSize: 22, boxShadow: "0 2px 8px rgba(22,163,74,0.3)", border: "3px solid var(--mc-surface)" }}><Icon name="beef" size={16} /></div>
                   <div style={{ marginTop: 5, textAlign: "center" }}><div style={{ fontSize: 12, fontWeight: 800, color: "var(--mc-ink)" }}>{toro.id}</div><div style={{ fontSize: 10, color: "#64748b" }}>{toro.raza || "—"}</div></div>
                 </div>
                 {destacadas.length > 0 ? (
@@ -196,7 +196,7 @@ export function ModalDetalleReproductor({ toro, crias, onClose }: { toro: Reprod
                     <div style={{ display: "flex", gap: 10, width: "100%", justifyContent: "center" }}>
                       {destacadas.map((c) => (
                         <div key={c.dbId} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, maxWidth: 90 }}>
-                          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--mc-green-50)", display: "grid", placeItems: "center", fontSize: 16, border: "2.5px solid #86efac" }}>🐄</div>
+                          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--mc-green-50)", display: "grid", placeItems: "center", fontSize: 16, border: "2.5px solid #86efac" }}><Icon name="cow" size={16} /></div>
                           <div style={{ textAlign: "center" }}><div style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-ink)" }}>{c.id}</div><div style={{ fontSize: 9, color: "#64748b" }}>{c.peso !== "N/A" ? `${c.peso} kg` : "—"}</div></div>
                         </div>
                       ))}

@@ -29,14 +29,13 @@ export function useAbrirFicha() {
 /* ============ KPI card estilo panel ============ */
 
 export function PLKpiCard({ title, ico, val, sub, color }: { title: string; ico: string; val: React.ReactNode; sub: React.ReactNode; color?: string }) {
+  // Usa el KPI canónico del sistema (mc-kpi): misma fuente, tamaño y color que Agronomía.
   return (
-    <div className="mc-card mc-kpi-hover" style={{ padding: "16px 18px", transition: "all .2s", cursor: "default", minWidth: 0 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#8a938d", textTransform: "uppercase", letterSpacing: ".06em", lineHeight: 1.3 }}>{title}</div>
-        <Icon name={ico} size={16} style={{ color: "#8a938d", flexShrink: 0 }} />
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.02em", marginBottom: 4, color: color || "var(--mc-ink)" }}>{val}</div>
-      <div style={{ fontSize: 12, color: "var(--mc-text-2)", lineHeight: 1.3 }}>{sub}</div>
+    <div className="mc-kpi">
+      <span className="mc-kpi__glyph"><Icon name={ico} size={14} /></span>
+      <div className="mc-kpi__label">{title}</div>
+      <div className="mc-kpi__value" style={color ? { color } : undefined}>{val}</div>
+      {sub != null && sub !== "" && <div className="mc-kpi__delta">{sub}</div>}
     </div>
   );
 }
@@ -563,7 +562,7 @@ export function PLVacaModal({ vaca, esperada, onClose }: { vaca: VacaLechera; es
 
         {/* Footer */}
         <div style={{ padding: "12px 20px", borderTop: "1px solid var(--mc-line)", display: "flex", gap: 8, flexShrink: 0 }}>
-          <button onClick={() => setModalObs(true)} className="mc-btn mc-btn--ghost" style={{ flex: 1, fontSize: 12 }}>📋 Registrar observación</button>
+          <button onClick={() => setModalObs(true)} className="mc-btn mc-btn--ghost" style={{ flex: 1, fontSize: 12 }}><Icon name="pen" size={13} />Registrar observación</button>
           <button className="mc-btn mc-btn--primary" style={{ flex: 1, fontSize: 12 }} onClick={() => abrirFicha(vaca.caravana)}>Ver ficha en Animales →</button>
         </div>
         {modalObs && <ModalRegistrarObservacion vaca={vaca} onClose={() => setModalObs(false)} />}
@@ -657,7 +656,7 @@ export function PLVacaDrawer({ vaca, esperada, onClose }: { vaca: VacaLechera; e
           </div>
         </div>
         <div style={{ padding: "12px 20px", borderTop: "1px solid var(--mc-line)", display: "flex", gap: 8, flexShrink: 0 }}>
-          <button className="mc-btn mc-btn--ghost" style={{ flex: 1, fontSize: 12 }} onClick={() => setModalObs(true)}>📋 Registrar observación</button>
+          <button className="mc-btn mc-btn--ghost" style={{ flex: 1, fontSize: 12 }} onClick={() => setModalObs(true)}><Icon name="pen" size={13} />Registrar observación</button>
           <button className="mc-btn mc-btn--primary" style={{ flex: 1, fontSize: 12 }} onClick={() => abrirFicha(vaca.caravana)}>Ver ficha en Animales →</button>
         </div>
         {modalObs && <ModalRegistrarObservacion vaca={vaca} onClose={() => setModalObs(false)} />}

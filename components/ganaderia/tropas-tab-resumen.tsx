@@ -342,7 +342,6 @@ export function MovResumen({
                         )}
                         {capa === "raza" && tropaEn && raza && (
                           <g>
-                            <text x={l.cx} y={l.cy - 22} textAnchor="middle" fontSize="14">🐄</text>
                             <text x={l.cx} y={l.cy - 9} textAnchor="middle" fontSize="9" fontWeight="700" fill={satelital ? "#ffffff" : "#1e293b"}>{raza}</text>
                           </g>
                         )}

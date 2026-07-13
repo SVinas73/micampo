@@ -506,7 +506,7 @@ export function MovHistorial({
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999, background: ts.bg, color: ts.color }}>{tipo}</span>
                       <EstadoBadge m={detalle} />
-                      {detalle.rutina && <span style={{ fontSize: 11, fontWeight: 600, color: "var(--mc-text-2)" }}>{detalle.rutina.emoji || "🔄"} {detalle.rutina.nombre}</span>}
+                      {detalle.rutina && <span style={{ fontSize: 11, fontWeight: 600, color: "var(--mc-text-2)" }}>{detalle.rutina.nombre}</span>}
                     </div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: "var(--mc-ink)", letterSpacing: "-.01em", marginBottom: 3 }}>{detalle.tropa?.nombre || "Tropa"}</div>
                     <div style={{ fontSize: 12, color: "var(--mc-text-3)" }}>
@@ -554,7 +554,7 @@ export function MovHistorial({
                         {i < arr.length - 1 && (
                           <div style={{ flex: 1, display: "flex", alignItems: "center", paddingTop: 6, minWidth: 30 }}>
                             <div style={{ flex: 1, height: 1.5, background: "#16a34a", opacity: 0.4 }} />
-                            <span style={{ fontSize: 12, color: "#16a34a", opacity: 0.6 }}>→</span>
+                            <span style={{ fontSize: 12, color: "var(--mc-text-3)" }}>→</span>
                             <div style={{ flex: 1, height: 1.5, background: "#16a34a", opacity: 0.4 }} />
                           </div>
                         )}
@@ -611,7 +611,7 @@ export function MovHistorial({
                 </button>
                 {detalle.estado === "Ejecutado" && (
                   <button className="mc-btn mc-btn--sm" style={{ flex: 2, justifyContent: "center", border: "1.5px solid #16a34a", color: "#16a34a", background: "transparent", fontSize: 11 }} disabled={accionando} onClick={() => crearRetorno(detalle)}>
-                    ↩ Crear retorno
+                    Crear retorno
                   </button>
                 )}
               </div>
@@ -632,7 +632,7 @@ export function MovHistorial({
           <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ color: "#fca5a5", border: "1px solid rgba(252,165,165,.3)" }} disabled={accionando} onClick={eliminarSeleccionados}>
             <Icon name="trash" size={12} />Eliminar
           </button>
-          <button onClick={() => setSelected([])} style={{ background: "none", border: "none", color: "rgba(255,255,255,.5)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
+          <button onClick={() => setSelected([])} style={{ background: "none", border: "none", color: "rgba(255,255,255,.5)", cursor: "pointer", lineHeight: 1 }}><Icon name="x" size={16} /></button>
         </div>
       )}
     </div>

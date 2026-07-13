@@ -348,7 +348,7 @@ export function AnimResumen({
         <div style={{ flex: 1, overflowY: "auto", minHeight: 0, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
           {atencionData.length === 0 && (
             <div className="mc-empty" style={{ padding: 20, border: "none" }}>
-              <div style={{ fontSize: 12.5 }}>Sin animales que requieran atención. 👍</div>
+              <div style={{ fontSize: 12.5 }}>Sin animales que requieran atención.</div>
             </div>
           )}
           {atencionData.map((a, i) => (

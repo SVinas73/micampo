@@ -43,12 +43,12 @@ export function AnimGanadoResumen({ animales }: { animales: AnimalRow[] }) {
   // Distribución por categoría
   const categorias = useMemo(() => {
     const CFG: Record<string, { color: string; icon: string }> = {
-      Vaca: { color: "#0a5a24", icon: "🐄" },
-      Novillo: { color: "#475569", icon: "🐂" },
-      Ternero: { color: "#84cc16", icon: "🐣" },
-      Ternera: { color: "#84cc16", icon: "🐣" },
-      Vaquillona: { color: "#16a34a", icon: "🐮" },
-      Toro: { color: "#1e3a5f", icon: "🐂" },
+      Vaca: { color: "#0a5a24", icon: "cow" },
+      Novillo: { color: "#475569", icon: "beef" },
+      Ternero: { color: "#84cc16", icon: "cow" },
+      Ternera: { color: "#84cc16", icon: "cow" },
+      Vaquillona: { color: "#16a34a", icon: "cow" },
+      Toro: { color: "#1e3a5f", icon: "beef" },
     };
     const acc = new Map<string, number>();
     activos.forEach((a) => acc.set(a.categoria, (acc.get(a.categoria) || 0) + 1));
@@ -59,7 +59,7 @@ export function AnimGanadoResumen({ animales }: { animales: AnimalRow[] }) {
         n,
         pct: total > 0 ? Math.round((n / total) * 1000) / 10 : 0,
         color: CFG[label]?.color || "#94a3b8",
-        icon: CFG[label]?.icon || "🐄",
+        icon: CFG[label]?.icon || "cow",
       }));
   }, [activos, total]);
   const totalCat = categorias.reduce((s, c) => s + c.n, 0);
@@ -226,7 +226,7 @@ export function AnimGanadoResumen({ animales }: { animales: AnimalRow[] }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
           {categorias.map((c, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 18, lineHeight: 1, width: 22 }}>{c.icon}</span>
+              <span style={{ width: 22, display: "grid", placeItems: "center", color: c.color }}><Icon name={c.icon} size={18} /></span>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "var(--mc-ink)" }}>{c.label}</span>
@@ -275,11 +275,11 @@ export function AnimGanadoResumen({ animales }: { animales: AnimalRow[] }) {
         </div>
         {edadPromAnios !== null && (
           <div style={{ marginTop: 14, padding: "8px 14px", background: "var(--mc-green-50)", borderRadius: 9, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 22 }}>📊</span>
+            <span style={{ color: "#16a34a", display: "grid", placeItems: "center" }}><Icon name="chart" size={20} /></span>
             <div style={{ flex: 1 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#16a34a" }}>{edadPromAnios} años</span>
               <span style={{ fontSize: 11, color: "var(--mc-text-3)", marginLeft: 6 }}>edad promedio · </span>
-              <span style={{ fontSize: 11, color: edadPromAnios >= 4 && edadPromAnios <= 6 ? "#16a34a" : "var(--mc-amber)", fontWeight: 600 }}>Objetivo 4–6 años {edadPromAnios >= 4 && edadPromAnios <= 6 ? "✓" : ""}</span>
+              <span style={{ fontSize: 11, color: edadPromAnios >= 4 && edadPromAnios <= 6 ? "#16a34a" : "var(--mc-amber)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>Objetivo 4–6 años {edadPromAnios >= 4 && edadPromAnios <= 6 && <Icon name="check" size={11} />}</span>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: "var(--mc-text-3)" }}>Rango dominante</div>
@@ -503,8 +503,8 @@ export function AnimGanado({
                     <td className="mc-cell--mono" style={{ fontWeight: 600, color: "var(--mc-ink)" }}>{a.id}</td>
                     <td className="mc-cell--emph">{a.categoria}</td>
                     <td>{a.raza}</td>
-                    <td style={{ textAlign: "center", fontSize: 16, lineHeight: 1 }}>
-                      {a.sexo === "M" ? <span title="Macho" style={{ color: "#3b82f6" }}>♂</span> : <span title="Hembra" style={{ color: "#ec4899" }}>♀</span>}
+                    <td style={{ textAlign: "center" }}>
+                      {a.sexo === "M" ? <span title="Macho" style={{ color: "#3b82f6", fontWeight: 700, fontSize: 12 }}>M</span> : <span title="Hembra" style={{ color: "#ec4899", fontWeight: 700, fontSize: 12 }}>H</span>}
                     </td>
                     <td>{a.edad}</td>
                     <td className="mc-cell--num">{a.peso !== "N/A" ? `${a.peso} kg` : "N/A"}</td>

@@ -709,10 +709,10 @@ export function ModalDiagnosticarAnimal({
 /* ============ REGISTRAR TRATAMIENTO CON SEGUIMIENTO (5 pasos) ============ */
 
 const TIPOS_TRATAMIENTO_SANIDAD = [
-  { id: "Tratamiento", emoji: "💊" },
-  { id: "Vacunación", emoji: "💉" },
-  { id: "Control", emoji: "🔍" },
-  { id: "Otro", emoji: "➕" },
+  { id: "Tratamiento", icon: "flask" },
+  { id: "Vacunación", icon: "syringe" },
+  { id: "Control", icon: "search" },
+  { id: "Otro", icon: "plus" },
 ];
 
 export function ModalRegistrarTratamientoSanitario({
@@ -835,7 +835,7 @@ export function ModalRegistrarTratamientoSanitario({
                   return (
                     <div key={t.id} onClick={() => setTipo(t.id)} style={{ position: "relative", padding: "16px 10px", borderRadius: "var(--r-md)", cursor: "pointer", textAlign: "center", border: `1.5px solid ${sel ? "var(--mc-red)" : "var(--mc-line-2)"}`, background: sel ? "var(--mc-red-bg)" : "var(--mc-surface)", transition: "0.15s" }}>
                       {sel && <span style={{ position: "absolute", top: 6, right: 6, width: 16, height: 16, borderRadius: "50%", background: "var(--mc-red)", display: "grid", placeItems: "center" }}><Icon name="check" size={10} style={{ color: "#fff" }} /></span>}
-                      <div style={{ fontSize: 24, marginBottom: 6 }}>{t.emoji}</div>
+                      <div style={{ marginBottom: 6, display: "grid", placeItems: "center" }}><Icon name={t.icon} size={22} /></div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: sel ? "var(--mc-red)" : "var(--mc-ink)" }}>{t.id}</div>
                     </div>
                   );

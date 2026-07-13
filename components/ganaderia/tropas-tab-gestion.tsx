@@ -56,7 +56,7 @@ function segmentosDeTropa(t: TropaAPI, movsHoy: MovTropaAPI[]): { segs: Seg[]; a
       s: Math.max(h, hm),
       e: Math.min(24, Math.max(h, hm) + dur),
       t: atrasado ? "alerta" : "movimiento",
-      l: atrasado ? `Atrasado → ${m.destinoNombre || "?"} ⚠️` : m.estado === "En curso" ? "En Ruta" : `→ ${m.destinoNombre || "?"}`,
+      l: atrasado ? `Atrasado → ${m.destinoNombre || "?"}` : m.estado === "En curso" ? "En Ruta" : `→ ${m.destinoNombre || "?"}`,
     });
     h = Math.min(24, Math.max(h, hm) + dur);
     loc = m.destinoNombre || loc;
@@ -363,7 +363,7 @@ export function MovGestion({
                         })}
                       </div>
                       <div style={{ display: "flex", gap: 4, paddingRight: 10, flexShrink: 0 }}>
-                        <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ fontSize: 10, padding: "3px 8px", height: 26 }} onClick={() => setModalAsignar(t)}>📍 Asignar</button>
+                        <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ fontSize: 10, padding: "3px 8px", height: 26 }} onClick={() => setModalAsignar(t)}><Icon name="map-pin" size={11} /> Asignar</button>
                         {modoSeg && (
                           <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ fontSize: 10, padding: "3px 8px", height: 26 }} onClick={() => setModalMover(t)}>→ Mover</button>
                         )}
@@ -419,7 +419,7 @@ export function MovGestion({
               {rutinaSel ? (
                 <div style={{ padding: "12px 14px", background: "#f0fdf4", border: "1.5px solid #16a34a", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <span style={{ fontSize: 20 }}>{rutinaSel.emoji || "🔄"}</span>
+                    <Icon name="repeat" size={18} />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--mc-ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{rutinaSel.nombre}</div>
                       <div style={{ fontSize: 11, color: "var(--mc-text-2)" }}>Rutina seleccionada</div>
@@ -457,7 +457,7 @@ export function MovGestion({
                         onClick={() => setRutinaSel(r)}
                         style={{ padding: "12px 14px", borderRadius: 12, border: sel ? "2px solid #16a34a" : "1.5px solid var(--mc-line)", background: sel ? "#f0fdf4" : "var(--mc-surface)", display: "flex", alignItems: "center", gap: 10, transition: "all .15s", cursor: "pointer" }}
                       >
-                        <span style={{ fontSize: 20, flexShrink: 0 }}>{r.emoji || "🔄"}</span>
+                        <Icon name="repeat" size={18} style={{ flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--mc-ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nombre}</div>
                           <div style={{ fontSize: 11, color: "var(--mc-text-2)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

@@ -431,7 +431,7 @@ export function ModalDetalleTropa({
                       <tr key={a.id}>
                         <td className="mc-cell--emph">#{a.caravana.replace(/^#/, "")}</td>
                         <td>{a.raza || "—"}</td>
-                        <td>{a.sexo === "Macho" || a.sexo === "M" ? "♂" : "♀"}</td>
+                        <td>{a.sexo === "Macho" || a.sexo === "M" ? "M" : "H"}</td>
                         <td>{a.registrosPeso?.[0]?.peso ? `${Math.round(a.registrosPeso[0].peso)} kg` : "—"}</td>
                         <td><span className="mc-badge mc-badge--neutral">{estadoAnimalTropa(a)}</span></td>
                         <td><button onClick={() => onMoverAnimal(a.id, a.caravana)} className="mc-btn mc-btn--ghost mc-btn--sm" style={{ padding: "3px 8px" }}><Icon name="move-right" size={11} />Mover</button></td>
@@ -632,7 +632,7 @@ export function ModalNuevoTraslado({
       <div className="mc-modal" style={{ width: "min(500px,96vw)", padding: 0, overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid var(--mc-line)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>⚠️</span>
+            <Icon name="alert-triangle" size={20} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 19, fontWeight: 900, color: "var(--mc-ink)", letterSpacing: "-.02em" }}>Nuevo Traslado Inmediato</div>
               <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Ejecutará el movimiento en tiempo real.</div>
@@ -653,7 +653,7 @@ export function ModalNuevoTraslado({
           <div>
             <div style={{ fontSize: 11, fontWeight: 800, color: "#dc2626", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>Destino</div>
             <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-              {([{ id: "lote", label: "🗺️ Lote / Potrero" }, { id: "tropa", label: "🐄 Otra Tropa" }] as const).map((opt) => (
+              {([{ id: "lote", label: "Lote / Potrero" }, { id: "tropa", label: "Otra Tropa" }] as const).map((opt) => (
                 <button key={opt.id} onClick={() => setDestTipo(opt.id)} style={{ flex: 1, padding: "8px 12px", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700, border: destTipo === opt.id ? "2px solid #16a34a" : "1.5px solid var(--mc-line-2)", background: destTipo === opt.id ? "var(--mc-green-50)" : "var(--mc-surface)", color: destTipo === opt.id ? "#16a34a" : "#64748b" }}>{opt.label}</button>
               ))}
             </div>
@@ -769,7 +769,7 @@ export function ModalPlanificarMovimiento({
     const mN = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
     const dLabel = `${dNames[fd.getDay()]} ${fd.getDate()} ${mN[fd.getMonth()]}`;
     const t = tropas.find((x) => x.id === (tropaSel || tropaDeRutina));
-    return `📅 ${dLabel}  ·  ${mHora}  ·  ${t?.nombre || "—"}${rutinaObj ? ` · ${rutinaObj.nombre}` : ""}\n${ruta.length > 0 ? ruta.join(" → ") : `→ ${mLote || "—"}`}  ·  ${mResp || "sin responsable"}`;
+    return `${dLabel}  ·  ${mHora}  ·  ${t?.nombre || "—"}${rutinaObj ? ` · ${rutinaObj.nombre}` : ""}\n${ruta.length > 0 ? ruta.join(" → ") : `→ ${mLote || "—"}`}  ·  ${mResp || "sin responsable"}`;
   };
 
   return (
@@ -786,7 +786,7 @@ export function ModalPlanificarMovimiento({
               return (
                 <React.Fragment key={s.n}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 21, height: 21, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, background: done || active ? "#16a34a" : "#e2e8f0", color: done || active ? "white" : "#94a3b8" }}>{done ? "✓" : s.n}</div>
+                    <div style={{ width: 21, height: 21, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, background: done || active ? "#16a34a" : "#e2e8f0", color: done || active ? "white" : "#94a3b8" }}>{done ? <Icon name="check" size={12} /> : s.n}</div>
                     <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? "var(--mc-ink)" : done ? "#16a34a" : "#94a3b8" }}>{s.l}</span>
                   </div>
                   {i < arr.length - 1 && <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />}
@@ -811,7 +811,7 @@ export function ModalPlanificarMovimiento({
                 return (
                   <div key={r.id} onClick={() => setRutinaSel(sel ? null : r.id)} style={{ padding: "13px 15px", borderRadius: 12, cursor: "pointer", border: sel ? "2px solid #16a34a" : "1.5px solid var(--mc-line-2)", background: sel ? "var(--mc-green-50)" : "var(--mc-surface)", transition: "all .14s", display: "flex", alignItems: "center", gap: 13, position: "relative" }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--mc-green-50)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>
-                      {r.emoji || "🔄"}
+                      <Icon name="repeat" size={18} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
@@ -846,7 +846,7 @@ export function ModalPlanificarMovimiento({
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {rutinaObj && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "var(--mc-green-50)", border: "1px solid #86efac" }}>
-                  <span style={{ fontSize: 16 }}>{rutinaObj.emoji || "🔄"}</span>
+                  <Icon name="repeat" size={16} />
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#15803d" }}>{rutinaObj.nombre}</span>
                 </div>
               )}
@@ -875,7 +875,7 @@ export function ModalPlanificarMovimiento({
             <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
               {rutinaObj && (
                 <div style={{ padding: "11px 15px", borderRadius: 10, background: "var(--mc-green-50)", border: "1px solid #86efac", display: "flex", alignItems: "center", gap: 11 }}>
-                  <span style={{ fontSize: 17 }}>{rutinaObj.emoji || "🔄"}</span>
+                  <Icon name="repeat" size={16} />
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                       <span style={{ fontSize: 13, fontWeight: 800, color: "#15803d" }}>{rutinaObj.nombre}</span>
@@ -942,7 +942,7 @@ export function ModalPlanificarMovimiento({
               else confirmar();
             }}
           >
-            {paso < 3 ? "Siguiente →" : guardando ? "Guardando…" : "✓ Confirmar"}
+            {paso < 3 ? "Siguiente →" : guardando ? "Guardando…" : "Confirmar"}
           </button>
         </div>
       </div>
@@ -1093,7 +1093,7 @@ export function ModalNuevaRutina({
               return (
                 <React.Fragment key={n}>
                   <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0, background: done || active ? "#16a34a" : "#e2e8f0", color: done || active ? "white" : "#94a3b8", border: active ? "3px solid #bbf7d0" : "none" }}>
-                    {done ? "✓" : n}
+                    {done ? <Icon name="check" size={12} /> : n}
                   </div>
                   {i < 3 && <div style={{ flex: 1, height: 2, background: paso > n ? "#16a34a" : "#e2e8f0", margin: "0 8px" }} />}
                 </React.Fragment>
@@ -1123,7 +1123,7 @@ export function ModalNuevaRutina({
                     const p = pal[t.id] || pal.rotacion;
                     return (
                       <div key={t.id} onClick={() => setTipo(t.id)} style={{ border: sel ? `2px solid ${p.bdr}` : "1.5px solid var(--mc-line)", background: sel ? p.bg : "var(--mc-surface)", borderRadius: 14, padding: "16px 14px", cursor: "pointer", position: "relative", transition: "all .18s", boxShadow: sel ? `0 4px 16px ${p.bdr}25` : "none" }}>
-                        {sel && <div style={{ position: "absolute", top: 10, right: 10, width: 19, height: 19, borderRadius: "50%", background: p.bdr, color: "white", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>✓</div>}
+                        {sel && <div style={{ position: "absolute", top: 10, right: 10, width: 19, height: 19, borderRadius: "50%", background: p.bdr, color: "white", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}><Icon name="check" size={11} /></div>}
                         <div style={{ width: 42, height: 42, borderRadius: 12, background: sel ? p.ibg : "var(--mc-surface-3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, transition: "background .18s" }}>
                           <Icon name={t.icon} size={22} style={{ color: sel ? p.ic : "var(--mc-text-2)" }} />
                         </div>
@@ -1276,7 +1276,7 @@ export function ModalNuevaRutina({
             disabled={guardando || (paso === 1 && !nombre.trim())}
             className="mc-btn mc-btn--primary"
           >
-            {paso === 4 ? (guardando ? "Guardando…" : rutina ? "✓ Guardar Cambios" : "✓ Crear Rutina") : "Siguiente →"}
+            {paso === 4 ? (guardando ? "Guardando…" : rutina ? "Guardar Cambios" : "Crear Rutina") : "Siguiente →"}
           </button>
         </div>
       </div>
@@ -1315,7 +1315,7 @@ export function DrawerVerRutina({
           <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div style={{ fontSize: 9, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4 }}>Rutina · {rutina.tipo}</div>
-              <div className="mc-modal__title" style={{ fontSize: 20 }}>{rutina.emoji ? `${rutina.emoji} ` : ""}{rutina.nombre}</div>
+              <div className="mc-modal__title" style={{ fontSize: 20 }}>{rutina.nombre}</div>
               <div style={{ fontSize: 12, color: "var(--mc-text-2)", marginTop: 3 }}>{freqLabel(rutina)} · {rutina.estado}</div>
             </div>
             <button onClick={onClose} className="mc-icon-btn"><Icon name="x" size={14} /></button>
@@ -1429,7 +1429,7 @@ export function ModalAsignarRutina({
             const sel = rutinaId === r.id;
             return (
               <div key={r.id} onClick={() => setRutinaId(r.id)} style={{ padding: "10px 12px", borderRadius: 10, cursor: "pointer", border: sel ? "2px solid var(--mc-green-500)" : "1px solid var(--mc-line)", background: sel ? "var(--mc-green-50)" : "var(--mc-surface)", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18 }}>{r.emoji || "🔄"}</span>
+                <Icon name="repeat" size={16} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--mc-ink)" }}>{r.nombre}</div>
                   <div style={{ fontSize: 11, color: "var(--mc-text-3)" }}>{freqLabel(r)} · {rutaDeRutina(r).join(" → ") || "sin ruta"}</div>

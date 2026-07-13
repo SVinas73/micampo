@@ -41,9 +41,9 @@ export function PLCalidad({ boletas, onRefresh }: { boletas: BoletaAPI[]; onRefr
 
   const kpis = [
     { label: "RCS", ico: "microscope", val: ultimo?.ccs != null ? `${Math.round(ultimo.ccs)} mil` : "—", sub: ultimo?.ccs != null ? (ultimo.ccs < 200 ? "cél/ml · Buena calidad (<200k)" : "cél/ml · Alto (≥200k)") : "sin análisis", color: ultimo?.ccs != null ? (ultimo.ccs < 200 ? "var(--mc-green-700)" : "var(--mc-red)") : undefined },
-    { label: "Grasa", ico: "droplets", val: ultimo?.grasa != null ? `${ultimo.grasa.toFixed(1).replace(".", ",")}%` : "—", sub: ultimo?.grasa != null ? (ultimo.grasa >= 3.5 ? "objetivo >3,5% · ✓ cumple" : "objetivo >3,5% · ✗") : "sin análisis", color: ultimo?.grasa != null ? (ultimo.grasa >= 3.5 ? "var(--mc-green-700)" : "var(--mc-red)") : undefined },
-    { label: "Proteína", ico: "bolt", val: ultimo?.proteina != null ? `${ultimo.proteina.toFixed(1).replace(".", ",")}%` : "—", sub: ultimo?.proteina != null ? (ultimo.proteina >= 3.0 ? "objetivo >3,0% · ✓ cumple" : "objetivo >3,0% · ✗") : "sin análisis", color: ultimo?.proteina != null ? (ultimo.proteina >= 3.0 ? "var(--mc-green-700)" : "var(--mc-red)") : undefined },
-    { label: "Temperatura Tanque", ico: "thermometer", val: ultimo?.temperatura != null ? `${ultimo.temperatura.toFixed(1).replace(".", ",")}°C` : "—", sub: ultimo?.temperatura != null ? (ultimo.temperatura <= 6 ? "máx. permitido: 6°C · ok" : "máx. 6°C · ✗") : "sin análisis", color: ultimo?.temperatura != null ? (ultimo.temperatura <= 6 ? "var(--mc-green-700)" : "var(--mc-red)") : undefined },
+    { label: "Grasa", ico: "droplets", val: ultimo?.grasa != null ? `${ultimo.grasa.toFixed(1).replace(".", ",")}%` : "—", sub: ultimo?.grasa != null ? (ultimo.grasa >= 3.5 ? "objetivo >3,5% · cumple" : "objetivo >3,5% · no cumple") : "sin análisis", color: ultimo?.grasa != null ? (ultimo.grasa >= 3.5 ? "var(--mc-green-700)" : "var(--mc-red)") : undefined },
+    { label: "Proteína", ico: "bolt", val: ultimo?.proteina != null ? `${ultimo.proteina.toFixed(1).replace(".", ",")}%` : "—", sub: ultimo?.proteina != null ? (ultimo.proteina >= 3.0 ? "objetivo >3,0% · cumple" : "objetivo >3,0% · no cumple") : "sin análisis", color: ultimo?.proteina != null ? (ultimo.proteina >= 3.0 ? "var(--mc-green-700)" : "var(--mc-red)") : undefined },
+    { label: "Temperatura Tanque", ico: "thermometer", val: ultimo?.temperatura != null ? `${ultimo.temperatura.toFixed(1).replace(".", ",")}°C` : "—", sub: ultimo?.temperatura != null ? (ultimo.temperatura <= 6 ? "máx. permitido: 6°C · ok" : "máx. 6°C · excede") : "sin análisis", color: ultimo?.temperatura != null ? (ultimo.temperatura <= 6 ? "var(--mc-green-700)" : "var(--mc-red)") : undefined },
     { label: "Próximo Análisis", ico: "calendar", val: proxDias !== null ? (proxDias <= 0 ? "Pendiente" : `En ${proxDias} días`) : "—", sub: diasUltimo !== null ? `último análisis: hace ${diasUltimo} días` : "sin análisis previos", color: "var(--mc-amber)" },
   ];
 
@@ -232,7 +232,7 @@ export function PLCalidad({ boletas, onRefresh }: { boletas: BoletaAPI[]; onRefr
                 })}
               </div>
               <div style={{ marginTop: 12 }}>
-                <span className={`mc-badge ${todoOk ? "mc-badge--green" : "mc-badge--red"}`} style={{ fontSize: 12, padding: "5px 12px" }}>{todoOk ? "✓ Calidad Aprobada" : "⚠ Calidad Observada"}</span>
+                <span className={`mc-badge ${todoOk ? "mc-badge--green" : "mc-badge--red"}`} style={{ fontSize: 12, padding: "5px 12px" }}>{todoOk ? "Calidad Aprobada" : "Calidad Observada"}</span>
               </div>
             </>
           ) : (
@@ -259,7 +259,7 @@ export function PLCalidad({ boletas, onRefresh }: { boletas: BoletaAPI[]; onRefr
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--mc-ink)", fontFamily: "var(--ff-mono)" }}>{fmtCorto(r.fecha)}</span>
                     {r.industria && <span style={{ fontSize: 11, color: "var(--mc-text-3)" }}>· {r.industria}</span>}
                     <div style={{ flex: 1 }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: ok ? "var(--mc-green-50)" : "var(--mc-amber-bg)", color: ok ? "var(--mc-green-700)" : "var(--mc-amber)", border: `1px solid ${ok ? "var(--mc-green-200)" : "rgba(196,132,16,.2)"}` }}>{ok ? "✓ Ok" : "⚠ Atención"}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: ok ? "var(--mc-green-50)" : "var(--mc-amber-bg)", color: ok ? "var(--mc-green-700)" : "var(--mc-amber)", border: `1px solid ${ok ? "var(--mc-green-200)" : "rgba(196,132,16,.2)"}` }}>{ok ? "Ok" : "Atención"}</span>
                   </div>
                   <div style={{ fontSize: 11, color: "var(--mc-text-3)", fontFamily: "var(--ff-mono)" }}>
                     {r.ccs != null ? `RCS ${Math.round(r.ccs)}k` : ""}{r.grasa != null ? ` · Gr ${r.grasa.toFixed(1)}` : ""}{r.proteina != null ? ` · Pr ${r.proteina.toFixed(1)}` : ""}

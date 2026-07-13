@@ -810,8 +810,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .mc-btn--secondary:hover { background: var(--mc-surface-3); border-color: var(--mc-muted); }
 
-.mc-btn--ghost { background: transparent; color: var(--mc-text-2); }
-.mc-btn--ghost:hover { background: var(--mc-surface-3); color: var(--mc-ink); }
+/* Ghost: fondo sólido de superficie + borde sutil (nunca transparente) */
+.mc-btn--ghost { background: var(--mc-surface); color: var(--mc-text-2); border-color: var(--mc-line); }
+.mc-btn--ghost:hover { background: var(--mc-surface-3); color: var(--mc-ink); border-color: var(--mc-line-2); }
 
 .mc-btn--danger { background: var(--mc-surface); color: var(--mc-red); border-color: var(--mc-line-2); }
 .mc-btn--danger:hover { background: var(--mc-red-bg); border-color: var(--mc-red); }
@@ -1602,6 +1603,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   color: var(--mc-text-2);
   border: 1px dashed var(--mc-line-2);
   border-radius: var(--r-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 .mc-empty__icon {
   width: 48px; height: 48px;
@@ -1609,7 +1614,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background: var(--mc-surface-3);
   display: grid; place-items: center;
   color: var(--mc-text-3);
-  margin: 0 auto 12px;
+  margin: 0;
 }
 
 

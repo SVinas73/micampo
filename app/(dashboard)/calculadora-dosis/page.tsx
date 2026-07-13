@@ -504,7 +504,7 @@ function TabNuevo({
                   <div className="text-sm font-semi" style={{ color: "var(--mc-ink)" }}>{recoIA.producto} · {recoIA.dosis} {recoIA.unidad}{recoIA.caldo ? ` · caldo ${recoIA.caldo} L/Ha` : ""}</div>
                   <div className="text-xs" style={{ color: "var(--mc-text-2)" }}><b>{recoIA.objetivo}</b>{recoIA.justificacion ? ` — ${recoIA.justificacion}` : ""}</div>
                   {recoIA.advertencias && recoIA.advertencias.length > 0 && (
-                    <div className="text-xs" style={{ color: "var(--mc-amber)" }}>⚠ {recoIA.advertencias.join(" · ")}</div>
+                    <div className="text-xs" style={{ color: "var(--mc-amber)", display: "flex", alignItems: "center", gap: 5 }}><Icon name="alert-triangle" size={12} /> {recoIA.advertencias.join(" · ")}</div>
                   )}
                   <button className="mc-btn mc-btn--secondary mc-btn--sm" style={{ alignSelf: "flex-start" }} onClick={aplicarRecoIA}>
                     <Icon name="check" size={12} />Aplicar a la mezcla

@@ -140,9 +140,9 @@ export function plEstBadge(e: string): { bg: string; tc: string; b: string } {
 }
 
 export function plVsCfg(p: number): { c: string; pre: string; bc: string } {
-  if (p >= 90) return { c: "var(--mc-green-600)", pre: "✓", bc: "#16a34a" };
+  if (p >= 90) return { c: "var(--mc-green-600)", pre: "", bc: "#16a34a" };
   if (p >= 75) return { c: "var(--mc-amber)", pre: "~", bc: "#c48410" };
-  return { c: "var(--mc-red)", pre: "↓", bc: "#c93434" };
+  return { c: "var(--mc-red)", pre: "", bc: "#c93434" };
 }
 
 export function plDelColor(d: number): string {

@@ -243,7 +243,7 @@ export default function MapaPrecision({
       {modoEdicion && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg z-[1000] text-sm">
           <p className="font-medium text-gray-700">
-            💡 <strong>Polígono:</strong> Click en el primer punto para cerrar | 
+            <strong>Polígono:</strong> Click en el primer punto para cerrar | 
             <strong> Rectángulo:</strong> Más fácil, click y arrastrá
           </p>
         </div>

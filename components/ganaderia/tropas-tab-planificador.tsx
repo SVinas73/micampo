@@ -142,7 +142,7 @@ export function MovPlanificador({
 
   const sbStyle = (m: MovTropaAPI) =>
     m.estado === "Ejecutado"
-      ? { bg: "#dcfce7", color: "#15803d", label: "Completado ✓" }
+      ? { bg: "#dcfce7", color: "#15803d", label: "Completado" }
       : m.estado === "En curso"
       ? { bg: "#fef3c7", color: "#d97706", label: "En curso" }
       : { bg: "var(--mc-surface-3)", color: "#64748b", label: "Pendiente" };
@@ -280,7 +280,7 @@ export function MovPlanificador({
             </div>
             <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 700, color: "var(--mc-ink)", minWidth: 160 }}>{wkTitle()}</div>
             <div style={{ display: "flex", background: "var(--mc-surface-3)", borderRadius: 20, padding: 3, gap: 2 }}>
-              {([["semana", "📅 Semana"], ["mes", "📆 Mes"]] as const).map(([v, l]) => (
+              {([["semana", "Semana"], ["mes", "Mes"]] as const).map(([v, l]) => (
                 <button key={v} onClick={() => setVista(v)} style={{ padding: "4px 12px", borderRadius: 16, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, background: vista === v ? "#16a34a" : "transparent", color: vista === v ? "white" : "var(--mc-text-2)", transition: "all .15s" }}>
                   {l}
                 </button>
@@ -336,7 +336,7 @@ export function MovPlanificador({
                         >
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
                             <span style={{ fontSize: 9, fontWeight: 800, color: col.text, fontVariantNumeric: "tabular-nums" }}>{ev.horario || "—"}</span>
-                            {done && <span style={{ fontSize: 9, color: col.text }}>✓</span>}
+                            {done && <Icon name="check" size={9} style={{ color: col.text }} />}
                             {enCurso && <span style={{ width: 5, height: 5, borderRadius: "50%", background: col.border, display: "inline-block", animation: "mc-pulse 1.4s infinite", flexShrink: 0 }} />}
                           </div>
                           <div style={{ fontSize: 9, fontWeight: 700, color: "var(--mc-ink)", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -537,26 +537,26 @@ export function MovPlanificador({
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
                       <span style={{ padding: "2px 7px", borderRadius: 4, background: sb.bg, color: sb.color, fontSize: 9, fontWeight: 700 }}>{sb.label}</span>
-                      <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#94a3b8", lineHeight: 1, padding: "0 2px" }}>✕</button>
+                      <button onClick={() => setPopover(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#94a3b8", lineHeight: 1, padding: "0 2px" }}><Icon name="x" size={13} /></button>
                     </div>
                   </div>
                   <div style={{ padding: "11px 13px", display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ display: "flex", gap: 7 }}>
-                      <span style={{ fontSize: 12, flexShrink: 0 }}>📅</span>
+                      <Icon name="calendar" size={12} style={{ flexShrink: 0, color: "var(--mc-text-3)" }} />
                       <span style={{ fontSize: 11, color: "var(--mc-ink)" }}>{DIAS_S[d.getDay()]} — {d.getDate()} de {MESES[d.getMonth()]} {d.getFullYear()}</span>
                     </div>
                     <div style={{ display: "flex", gap: 7 }}>
-                      <span style={{ fontSize: 12, flexShrink: 0 }}>🕐</span>
+                      <Icon name="clock" size={12} style={{ flexShrink: 0, color: "var(--mc-text-3)" }} />
                       <span style={{ fontSize: 11, color: "var(--mc-ink)" }}>{ev.horario || "Sin horario"}{ev.duracionMin ? ` · ${ev.duracionMin} min estimados` : ""}</span>
                     </div>
                     {ev.responsable && (
                       <div style={{ display: "flex", gap: 7 }}>
-                        <span style={{ fontSize: 12, flexShrink: 0 }}>👤</span>
+                        <Icon name="users" size={12} style={{ flexShrink: 0, color: "var(--mc-text-3)" }} />
                         <span style={{ fontSize: 11, color: "var(--mc-ink)" }}>{ev.responsable}</span>
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 12, flexShrink: 0 }}>📍</span>
+                      <Icon name="map-pin" size={12} style={{ flexShrink: 0, color: "var(--mc-text-3)" }} />
                       {[ev.origenNombre || "?", ev.destinoNombre || "?"].map((l, i, arr) => (
                         <React.Fragment key={i}>
                           <span style={{ padding: "2px 6px", borderRadius: 4, background: col.bg, border: `1px solid ${col.border}44`, fontSize: 10, fontWeight: 600, color: col.text }}>{l}</span>
@@ -565,22 +565,22 @@ export function MovPlanificador({
                       ))}
                     </div>
                     <div style={{ display: "flex", gap: 7 }}>
-                      <span style={{ fontSize: 12 }}>🐄</span>
+                      <span style={{ fontSize: 12 }}><Icon name="cow" size={16} /></span>
                       <span style={{ fontSize: 11, color: "var(--mc-ink)" }}>{ev.tropa?.nombre || "Tropa"} · {ev.cabezas || 0} cab.</span>
                     </div>
                     {ev.notas && <div style={{ fontSize: 10.5, color: "var(--mc-text-2)", background: "var(--mc-surface-2)", borderRadius: 8, padding: "6px 9px" }}>{ev.notas}</div>}
                     {ev.estado === "Ejecutado" && (
-                      <div style={{ padding: "5px 9px", borderRadius: 8, background: "#f0fdf4", fontSize: 10, color: "#15803d", fontWeight: 600 }}>✓ Movimiento ejecutado</div>
+                      <div style={{ padding: "5px 9px", borderRadius: 8, background: "#f0fdf4", fontSize: 10, color: "#15803d", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}><Icon name="check" size={11} /> Movimiento ejecutado</div>
                     )}
                   </div>
                   <div style={{ padding: "9px 13px", borderTop: "1px solid var(--mc-line)", display: "flex", gap: 5 }}>
                     {ev.estado !== "Ejecutado" && (
                       <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ flex: 1, justifyContent: "center", fontSize: 11, color: "#16a34a" }} disabled={accionando} onClick={() => completarMov(ev)}>
-                        ✓ Completar
+                        Completar
                       </button>
                     )}
                     <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ flex: 1, justifyContent: "center", fontSize: 11, color: "var(--mc-red)" }} disabled={accionando} onClick={() => eliminarMov(ev)}>
-                      🗑 Eliminar
+                      Eliminar
                     </button>
                   </div>
                 </>

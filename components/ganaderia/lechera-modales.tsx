@@ -140,7 +140,7 @@ export function PLModalOrdene({
               <div style={{ borderRadius: 12, border: "2px solid #FF9D00", background: "#fff8ee", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#b36200", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 2 }}>Pendientes de registro de producción</div>
                 {pendientes.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "#b36200", opacity: 0.6, fontStyle: "italic" }}>No hay turnos pendientes. Los turnos finalizados sin producción aparecerán aquí.</div>
+                  <div style={{ fontSize: 12, color: "var(--mc-text-3)", fontStyle: "italic" }}>No hay turnos pendientes. Los turnos finalizados sin producción aparecerán aquí.</div>
                 ) : (
                   pendientes.map((nombre) => (
                     <div key={nombre} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "var(--mc-surface)", borderRadius: 8, border: "1px solid rgba(255,157,0,.3)" }}>
@@ -176,7 +176,7 @@ export function PLModalOrdene({
                         <Icon name={ico} size={18} style={{ color: turnoSel === i ? "var(--mc-green-600)" : "var(--mc-text-3)", marginBottom: 6 }} />
                         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mc-ink)" }}>{t.nombre}</div>
                         <div style={{ fontSize: 11, color: "var(--mc-text-3)" }}>{t.hora}</div>
-                        {done && <div style={{ fontSize: 10, color: "#16a34a", fontWeight: 700, marginTop: 4 }}>✓ Completado</div>}
+                        {done && <div style={{ fontSize: 10, color: "#16a34a", fontWeight: 700, marginTop: 4 }}>Completado</div>}
                       </div>
                     );
                   })}
@@ -588,7 +588,7 @@ export function PLModalAddTurno({ onClose, onGuardado }: { onClose: () => void; 
             <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} style={{ ...inp, width: "auto" }} />
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Nota / motivo <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, opacity: 0.6 }}>(opcional)</span></div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Nota / motivo <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--mc-text-3)" }}>(opcional)</span></div>
             <textarea placeholder="Ej: Turno extra por alta producción" style={{ ...inp, minHeight: 70, resize: "vertical" }} value={nota} onChange={(e) => setNota(e.target.value)} />
           </div>
           <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--mc-surface-2)", fontSize: 12, color: "var(--mc-text-3)", lineHeight: 1.5 }}>
@@ -684,15 +684,15 @@ export function PLModalBoleta({ litrosOrdenadosHoy, onClose, onGuardado }: { lit
           </div>
           <div style={{ background: "var(--mc-surface-2)", borderRadius: 10, padding: "12px 16px" }}>
             <div style={{ fontSize: 12, color: "var(--mc-text-2)", lineHeight: 1.8 }}>
-              <div>🥛 Ordeñado hoy: <strong>{nfLt.format(Math.round(litrosOrdenadosHoy))} lt</strong></div>
-              <div>🚛 Retirado: <strong>{nfLt.format(retirado)} lt</strong></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="droplets" size={13} /> Ordeñado hoy: <strong>{nfLt.format(Math.round(litrosOrdenadosHoy))} lt</strong></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="truck" size={13} /> Retirado: <strong>{nfLt.format(retirado)} lt</strong></div>
               {litrosOrdenadosHoy > 0 && retirado > 0 && (
                 <div style={{ color: mermaPct > 5 ? "#c93434" : "var(--mc-text-2)" }}>
-                  📊 Merma: <strong>{merma > 0 ? nfLt.format(Math.round(merma)) : 0} lt ({mermaPct.toFixed(1)}%)</strong>
+                  <Icon name="chart" size={13} /> Merma: <strong>{merma > 0 ? nfLt.format(Math.round(merma)) : 0} lt ({mermaPct.toFixed(1)}%)</strong>
                 </div>
               )}
             </div>
-            {mermaPct > 5 && <div style={{ marginTop: 8, fontSize: 11, color: "#c93434", fontWeight: 600 }}>⚠ Merma inusualmente alta — verificar registros de ordeñe</div>}
+            {mermaPct > 5 && <div style={{ marginTop: 8, fontSize: 11, color: "#c93434", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}><Icon name="alert-triangle" size={11} /> Merma inusualmente alta — verificar registros de ordeñe</div>}
           </div>
         </div>
         <div style={{ padding: "12px 22px", borderTop: "1px solid var(--mc-line)", display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0 }}>
@@ -794,7 +794,7 @@ export function PLModalCalidad({ onClose, onGuardado }: { onClose: () => void; o
                 <input type="text" value={lab} onChange={(e) => setLab(e.target.value)} placeholder="Ej: La Láctea" style={inp} />
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--mc-text-3)", marginBottom: 5 }}>Nº informe <span style={{ opacity: 0.5, fontWeight: 400 }}>(opc.)</span></div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--mc-text-3)", marginBottom: 5 }}>Nº informe <span style={{ color: "var(--mc-text-3)", fontWeight: 400 }}>(opc.)</span></div>
                 <input type="text" value={nro} onChange={(e) => setNro(e.target.value)} placeholder="LAB-…" style={inp} />
               </div>
             </div>
@@ -842,7 +842,7 @@ export function PLModalCalidad({ onClose, onGuardado }: { onClose: () => void; o
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {([["RCS", `${vals.rcs}k`, inRange.rcs], ["Grasa", `${vals.gr}%`, inRange.gr], ["Proteína", `${vals.pr}%`, inRange.pr], ["Temp", `${vals.temp}°C`, inRange.temp]] as const).map(([k, v, ok]) => (
                   <span key={k} style={{ fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 999, background: ok ? "var(--mc-surface)" : "rgba(201,52,52,.1)", color: ok ? "var(--mc-green-700)" : "var(--mc-red)", border: `1px solid ${ok ? "var(--mc-green-200)" : "rgba(201,52,52,.3)"}` }}>
-                    {ok ? "✓" : "✗"} {k} {v}
+                    {ok ? <Icon name="check" size={11} /> : <Icon name="x" size={11} />} {k} {v}
                   </span>
                 ))}
               </div>
@@ -869,24 +869,24 @@ export function PLRetiroCard({ boleta, litrosHoy, onCargar }: { boleta: BoletaAP
       {boleta ? (
         <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
           {[
-            ["📅", new Date(boleta.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) + " · " + new Date(boleta.fecha).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) + " hs"],
-            ["🥛", `${nfLt.format(Math.round(boleta.litros || 0))} lt retirados`],
-            ...(boleta.temperatura != null ? [["🌡", `${boleta.temperatura}°C temperatura`]] : []),
-            ...(litrosHoy > 0 && boleta.litros ? [["📊", `Merma: ${nfLt.format(Math.max(0, Math.round(litrosHoy - boleta.litros)))} lt (${litrosHoy > 0 ? (((litrosHoy - boleta.litros) / litrosHoy) * 100).toFixed(1) : 0}% de lo ordeñado)`]] : []),
+            ["calendar", new Date(boleta.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }) + " · " + new Date(boleta.fecha).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) + " hs"],
+            ["droplets", `${nfLt.format(Math.round(boleta.litros || 0))} lt retirados`],
+            ...(boleta.temperatura != null ? [["thermometer", `${boleta.temperatura}°C temperatura`]] : []),
+            ...(litrosHoy > 0 && boleta.litros ? [["chart", `Merma: ${nfLt.format(Math.max(0, Math.round(litrosHoy - boleta.litros)))} lt (${litrosHoy > 0 ? (((litrosHoy - boleta.litros) / litrosHoy) * 100).toFixed(1) : 0}% de lo ordeñado)`]] : []),
           ].map(([ico, txt], i) => (
             <div key={i} style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <span style={{ fontSize: 14 }}>{ico}</span>
+              <Icon name={ico} size={14} style={{ color: "var(--mc-text-3)" }} />
               <span style={{ fontSize: 13, color: "var(--mc-text-2)" }}>{txt}</span>
             </div>
           ))}
           {boleta.numero && (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 14 }}>📄</span>
+              <Icon name="pdf" size={14} style={{ color: "var(--mc-green-600)" }} />
               <span style={{ fontSize: 13, color: "var(--mc-green-600)", fontWeight: 600 }}>Boleta #{boleta.numero}</span>
             </div>
           )}
           <div style={{ marginTop: 4 }}>
-            <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>✓ Boleta cargada</span>
+            <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>Boleta cargada</span>
           </div>
         </div>
       ) : (

@@ -2202,7 +2202,7 @@ export default function MaquinariaPage() {
             {/* Columna: Esperando Repuestos */}
             <Card>
               <CardHeader className="pb-3 bg-orange-50">
-                <CardTitle className="text-sm">⏳ Esperando Repuestos</CardTitle>
+                <CardTitle className="text-sm">Esperando Repuestos</CardTitle>
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
                 {ordenesTaller
