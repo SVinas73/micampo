@@ -6,9 +6,16 @@
 // del heatmap se calculan de los tratamientos reales.
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { Icon, IABadge } from "@/components/mc";
 import { AnimalRow, TratamientoAPI } from "./tipos";
 import { SecNum } from "./animales-modales";
+
+// Vaca 3D (react-three-fiber) para elegir la zona afectada — solo cliente.
+const Cow3D = dynamic(() => import("./cow3d"), {
+  ssr: false,
+  loading: () => <div style={{ height: 260, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 12 }}>Cargando modelo 3D…</div>,
+});
 
 /* ============ Config de zonas anatómicas (dominio veterinario) ============ */
 
@@ -544,8 +551,14 @@ export function ModalDiagnosticarAnimal({
             <div>
               <SecNum n={2} title="¿Dónde está el problema?" />
               <div className="row gap-16" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
-                <div style={{ width: 300, flexShrink: 0, background: "var(--mc-surface-2)", borderRadius: 12, border: "1px solid var(--mc-line)", padding: "14px 16px 10px" }}>
-                  <CowHeatmap selectable selected={zonaSel} onSelect={selectZona} />
+                <div style={{ width: 320, flexShrink: 0, borderRadius: 12, border: "1px solid var(--mc-line)", overflow: "hidden" }}>
+                  <Cow3D
+                    height={260}
+                    selectable
+                    selected={zonaSel}
+                    onSelect={selectZona}
+                    zonas={Object.entries(ZONA_INFO_SANIDAD).map(([zona, z]) => ({ zona, pct: 0, casos: 0, cond: "", label: z.label }))}
+                  />
                 </div>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   {zonaInfo ? (
