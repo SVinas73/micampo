@@ -1,14 +1,14 @@
 "use client";
 
-// Pestaña Resumen de Mov. de Tropas: panel de gestión con mapa esquemático
-// de lotes reales (capas de ocupación/cantidades/descanso/raza/ruta del día),
-// hoja de ruta del día y ventana óptima de arreo. Todo derivado de la API.
+// Pestaña Resumen de Mov. de Tropas: Panel de Gestión con mapa satelital REAL
+// (polígonos de lotes con capas de ocupación/cantidades/descanso/raza/ruta del
+// día), hoja de ruta del día y ventana óptima de arreo. Todo derivado de la API.
 
 import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Icon, useToast } from "@/components/mc";
-import type { LoteMapaSat } from "./tropas-mapa-sat";
+import type { LoteMapaSat, RutaMapaSat } from "./tropas-mapa-sat";
 
 // Mapa satelital real (Leaflet + Esri); se carga solo en cliente.
 const TropasMapaSat = dynamic(() => import("./tropas-mapa-sat"), {
@@ -16,29 +16,17 @@ const TropasMapaSat = dynamic(() => import("./tropas-mapa-sat"), {
   loading: () => <div style={{ height: 440, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 12 }}>Cargando mapa satelital…</div>,
 });
 
-/** ¿El lote tiene un polígono dibujado utilizable? */
-function tieneGeo(coordenadas?: string | null): boolean {
-  if (!coordenadas) return false;
-  try {
-    const g = JSON.parse(coordenadas);
-    if (Array.isArray(g)) return g.length >= 3;
-    return Array.isArray(g?.coordinates?.[0]) && g.coordinates[0].length >= 3;
-  } catch {
-    return false;
-  }
-}
 import { AnimalRow } from "./tipos";
 import {
   LoteGeoAPI,
-  LoteSVG,
   MovTropaAPI,
   RutinaAPI,
   TropaAPI,
+  centroDeLote,
   diasDescansoLote,
   fechaStrMov,
   mapaColoresTropas,
   movAtrasado,
-  proyectarLotes,
   razaPredominante,
   toDateStr,
 } from "./tropas-tipos";
@@ -53,20 +41,6 @@ import {
 } from "./tropas-modales";
 
 type Capa = "ocupacion" | "cantidades" | "descanso" | "raza" | "rutaDia";
-
-/** Puntos "1 animal = 1 punto" en espiral alrededor del centroide del lote. */
-function dotsDeTropa(l: LoteSVG, cant: number): [number, number][] {
-  const pts = l.pts.split(" ").map((s) => s.split(",").map(Number));
-  const rMax = Math.max(14, Math.min(...[Math.max(...pts.map((p) => Math.abs(p[0] - l.cx))), Math.max(...pts.map((p) => Math.abs(p[1] - l.cy)))]) * 0.7);
-  const n = Math.min(cant, 24);
-  const out: [number, number][] = [];
-  for (let i = 0; i < n; i++) {
-    const ang = i * 2.399963; // ángulo áureo — distribución pareja sin aleatoriedad
-    const r = rMax * Math.sqrt((i + 0.5) / n);
-    out.push([l.cx + r * Math.cos(ang), l.cy + r * Math.sin(ang)]);
-  }
-  return out;
-}
 
 export function MovResumen({
   tropas,
@@ -88,11 +62,8 @@ export function MovResumen({
   const router = useRouter();
   const toast = useToast();
   const [selTropaId, setSelTropaId] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<{ id: string; dato: string; x: number; y: number } | null>(null);
   const [fichaVisible, setFichaVisible] = useState(false);
   const [capa, setCapa] = useState<Capa>("ocupacion");
-  const satelital = false; // el esquema se dibuja plano; el mapa real usa tiles satelitales de Esri
-  const [modoMapa, setModoMapa] = useState<"sat" | "esquema">("sat");
   const [loteRutaSel, setLoteRutaSel] = useState<string | null>(null);
   const [modalPlanif, setModalPlanif] = useState(false);
   const [modalTraslado, setModalTraslado] = useState(false);
@@ -103,7 +74,6 @@ export function MovResumen({
   const [ejecutando, setEjecutando] = useState<string | null>(null);
 
   const colores = useMemo(() => mapaColoresTropas(tropas), [tropas]);
-  const lotesSVG = useMemo(() => proyectarLotes(lotes), [lotes]);
   const hoyStr = toDateStr(new Date());
 
   const movsHoy = useMemo(
@@ -129,29 +99,11 @@ export function MovResumen({
   const tropaEnLote = (nombreLote: string) => tropas.find((t) => t.lote?.nombre === nombreLote);
   const selTropa = tropas.find((t) => t.id === selTropaId) || null;
 
-  /* Ruta del día: tramos del lote seleccionado (o todos si hay pocos) */
-  const legsSel = loteRutaSel
-    ? movsHoy.filter((m) => m.origenNombre === loteRutaSel || m.destinoNombre === loteRutaSel)
-    : [];
-
-  /* Anclas para destinos que no son lotes del mapa (corrales, frigoríficos…) */
-  const externos = useMemo(() => {
-    const nombres = new Set<string>();
-    movsHoy.forEach((m) => {
-      [m.origenNombre, m.destinoNombre].forEach((n) => {
-        if (n && !lotesSVG.some((l) => l.nombre === n)) nombres.add(n);
-      });
-    });
-    const out: Record<string, { x: number; y: number }> = {};
-    Array.from(nombres).forEach((n, i) => { out[n] = { x: 500, y: 90 + i * 44 }; });
-    return out;
-  }, [movsHoy, lotesSVG]);
-
-  const puntoDeNombre = (nombre?: string | null) => {
+  /* Ruta del día sobre el satélite: tramos geolocalizados por el centro real de cada lote */
+  const centroDeNombre = (nombre?: string | null): [number, number] | null => {
     if (!nombre) return null;
-    const l = lotesSVG.find((x) => x.nombre === nombre);
-    if (l) return { x: l.cx, y: l.cy };
-    return externos[nombre] || null;
+    const l = lotes.find((x) => x.nombre === nombre);
+    return l ? centroDeLote(l) : null;
   };
 
   const ejecutarMov = async (m: MovTropaAPI) => {
@@ -185,8 +137,8 @@ export function MovResumen({
   ];
 
   // ── Mapa satelital real: color + etiqueta por lote según la capa activa ──
-  const hayGeo = useMemo(() => lotes.some((l) => tieneGeo(l.coordenadas)), [lotes]);
-  const colorLoteCapa = (nombre: string): { color: string; label: string } => {
+  const hayGeo = useMemo(() => lotes.some((l) => centroDeLote(l) !== null), [lotes]);
+  const colorLoteCapa = (nombre: string): { color: string; label: string; etiqueta: string | null } => {
     const tropaEn = tropaEnLote(nombre);
     const cant = tropaEn ? tropaEn._count?.animales ?? tropaEn.animales?.length ?? 0 : 0;
     const legsLote = movsHoy.filter((m) => m.origenNombre === nombre || m.destinoNombre === nombre).length;
@@ -203,11 +155,24 @@ export function MovResumen({
       capa === "descanso" ? (descanso === null ? "Sin registros" : descanso === 0 ? "Ocupado" : `${descanso} días de descanso`) :
       capa === "raza" ? (raza || (tropaEn ? "Sin razas registradas" : "Sin hacienda")) :
       legsLote > 0 ? `${legsLote} movimiento${legsLote === 1 ? "" : "s"} hoy` : "Sin movimientos hoy";
-    return { color, label };
+    const etiqueta =
+      capa === "ocupacion" || capa === "cantidades" ? (tropaEn ? `${cant} cab.` : null) :
+      capa === "descanso" ? (descanso !== null ? `${descanso}d` : null) :
+      capa === "raza" ? raza :
+      legsLote > 0 ? `${legsLote} mov.` : null;
+    return { color, label, etiqueta };
   };
   const lotesMapa: LoteMapaSat[] = lotes.map((l) => {
-    const { color, label } = colorLoteCapa(l.nombre);
-    return { id: l.id, nombre: l.nombre, coordenadas: l.coordenadas, color, label, selected: loteRutaSel === l.nombre, clickable: capa === "rutaDia" || !!tropaEnLote(l.nombre) };
+    const { color, label, etiqueta } = colorLoteCapa(l.nombre);
+    return { id: l.id, nombre: l.nombre, coordenadas: l.coordenadas, centroLatitud: l.centroLatitud, centroLongitud: l.centroLongitud, color, label, etiqueta, selected: loteRutaSel === l.nombre, clickable: capa === "rutaDia" || !!tropaEnLote(l.nombre) };
+  });
+  // Tramos de la Ruta del Día dibujados sobre el satélite (todos, o los del lote seleccionado)
+  const legsRuta = capa === "rutaDia" ? (loteRutaSel ? movsHoy.filter((m) => m.origenNombre === loteRutaSel || m.destinoNombre === loteRutaSel) : movsHoy) : [];
+  const rutasMapa: RutaMapaSat[] = legsRuta.flatMap((m) => {
+    const a = centroDeNombre(m.origenNombre);
+    const b = centroDeNombre(m.destinoNombre);
+    if (!a || !b || (a[0] === b[0] && a[1] === b[1])) return [];
+    return [{ a, b, color: colores[m.tropaId] || "#f59e0b", label: `${m.cabezas || 0} cab.` }];
   });
   const onSelectLoteMapa = (id: string) => {
     const l = lotes.find((x) => x.id === id);
@@ -303,17 +268,11 @@ export function MovResumen({
                   <button key={c.k} className={capa === c.k ? "is-on" : ""} onClick={() => { setCapa(c.k); setLoteRutaSel(null); }}>{c.label}</button>
                 ))}
               </div>
-              {hayGeo && (
-                <div className="mc-seg">
-                  <button className={modoMapa === "sat" ? "is-on" : ""} onClick={() => setModoMapa("sat")}><Icon name="map" size={12} /> Satelital</button>
-                  <button className={modoMapa === "esquema" ? "is-on" : ""} onClick={() => setModoMapa("esquema")}>Esquema</button>
-                </div>
-              )}
             </div>
           </div>
 
           <div style={{ position: "relative", margin: "0 14px 14px" }}>
-            <div style={{ position: "relative", background: satelital ? "linear-gradient(160deg,#2d3b24 0%,#3f4f30 55%,#2d3b24 100%)" : "linear-gradient(160deg,#e8f5e9 0%,#f0f4f8 60%,#e8f0fe 100%)", borderRadius: 14, overflow: "hidden", minHeight: 440 }}>
+            <div style={{ position: "relative", background: "var(--mc-surface-2)", borderRadius: 14, overflow: "hidden", minHeight: 440 }}>
               {lotes.length === 0 ? (
                 <div style={{ minHeight: 440, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 24, textAlign: "center" }}>
                   <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(255,255,255,.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -325,156 +284,21 @@ export function MovResumen({
                   </div>
                   <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => router.push("/lotes")}>Ir a Lotes <Icon name="arrow-right" size={12} /></button>
                 </div>
-              ) : modoMapa === "sat" && hayGeo ? (
-                <TropasMapaSat lotes={lotesMapa} onSelect={onSelectLoteMapa} height={440} />
               ) : (
-                <svg viewBox="100 40 440 420" style={{ width: "100%", height: 440, display: "block" }}>
-                  <defs>
-                    <pattern id="gridTropas" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M40 0L0 0 0 40" fill="none" stroke="#cbd5e155" strokeWidth="0.5" />
-                    </pattern>
-                    <pattern id="satStripesTropas" width="18" height="18" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-                      <rect width="18" height="18" fill="#3f5233" />
-                      <rect width="9" height="18" fill="#4a5d3a" />
-                    </pattern>
-                    {legsSel.map((m, i) => (
-                      <marker key={i} id={`arrow-ruta-${i}`} markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                        <path d="M0,0 L6,3 L0,6 Z" fill={colores[m.tropaId] || "#16a34a"} />
-                      </marker>
-                    ))}
-                  </defs>
-                  <rect x="100" y="40" width="440" height="420" fill={satelital ? "url(#satStripesTropas)" : "url(#gridTropas)"} />
-                  {satelital && (
-                    <text x="320" y="250" textAnchor="middle" fontSize="12" fill="#ffffff99" fontFamily="monospace">VISTA SATELITAL — esquema</text>
+                <>
+                  <TropasMapaSat lotes={lotesMapa} rutas={rutasMapa} onSelect={onSelectLoteMapa} height={440} />
+                  {!hayGeo && (
+                    <div style={{ position: "absolute", left: "50%", bottom: 14, transform: "translateX(-50%)", background: "rgba(15,23,42,.85)", color: "#fff", fontSize: 11.5, fontWeight: 600, padding: "8px 14px", borderRadius: 10, zIndex: 20, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+                      <Icon name="map-pin" size={13} />
+                      Dibujá el contorno de tus lotes en Campo Digital → Lotes para verlos en el mapa
+                    </div>
                   )}
-
-                  {lotesSVG.map((l) => {
-                    const tropaEn = tropaEnLote(l.nombre);
-                    const cant = tropaEn ? tropaEn._count?.animales ?? tropaEn.animales?.length ?? 0 : 0;
-                    const legsLote = movsHoy.filter((m) => m.origenNombre === l.nombre || m.destinoNombre === l.nombre).length;
-                    const descanso = diasDescansoLote(l.nombre, movimientos, tropas);
-                    const tc = tropaEn ? colores[tropaEn.id] : null;
-                    let fill = "#e2e8f077";
-                    if (capa === "ocupacion") fill = tc ? tc + "55" : "#e2e8f077";
-                    else if (capa === "cantidades") fill = tc ? tc + "33" : "#e2e8f077";
-                    else if (capa === "descanso") fill = descanso === null ? "#e2e8f077" : descanso >= 21 ? "#16a34a55" : descanso >= 7 ? "#d9770655" : "#dc262655";
-                    else if (capa === "raza") fill = tc ? tc + "33" : "#e2e8f077";
-                    else if (capa === "rutaDia") fill = loteRutaSel === l.nombre ? "#3b82f655" : legsLote > 0 ? "#f59e0b33" : "#e2e8f055";
-                    const raza = tropaEn ? razaPredominante(tropaEn) : null;
-                    const dato =
-                      capa === "ocupacion" ? (tropaEn ? `${tropaEn.nombre} · ${cant} cab.` : "Libre") :
-                      capa === "cantidades" ? (tropaEn ? `${cant} cabezas asignadas` : "Sin animales asignados") :
-                      capa === "descanso" ? (descanso === null ? "Sin registros de descanso" : descanso === 0 ? "Ocupado" : `${descanso} días de descanso`) :
-                      capa === "raza" ? (raza || (tropaEn ? "Sin razas registradas" : "Sin hacienda")) :
-                      legsLote > 0 ? `${legsLote} movimiento${legsLote === 1 ? "" : "s"} hoy` : "Sin movimientos hoy";
-                    return (
-                      <g
-                        key={l.id}
-                        onMouseEnter={() => setTooltip({ id: l.nombre, dato, x: l.cx, y: l.cy })}
-                        onMouseLeave={() => setTooltip(null)}
-                        onClick={() => {
-                          if (capa === "rutaDia") setLoteRutaSel((p) => (p === l.nombre ? null : l.nombre));
-                          else if (tropaEn) abrirFicha(tropaEn);
-                        }}
-                        style={{ cursor: capa === "rutaDia" || tropaEn ? "pointer" : "default" }}
-                      >
-                        <polygon points={l.pts} fill={fill} stroke={satelital ? "#ffffffaa" : "#94a3b855"} strokeWidth={loteRutaSel === l.nombre ? 3 : 1.5} />
-                        <text x={l.cx} y={l.cy + 4} textAnchor="middle" fontSize="10" fill={satelital ? "#ffffff" : "#475569"} fontWeight="500" opacity={satelital ? 0.9 : 0.7}>{l.nombre}</text>
-                        {capa === "ocupacion" && tropaEn && tc && (
-                          <g>
-                            <rect x={l.cx - 30} y={l.cy - 26} width="60" height="16" rx="8" fill={tc} />
-                            <text x={l.cx} y={l.cy - 15} textAnchor="middle" fontSize="8.5" fill="white" fontWeight="700">
-                              {tropaEn.nombre.length > 11 ? tropaEn.nombre.slice(0, 10) + "…" : tropaEn.nombre}
-                            </text>
-                          </g>
-                        )}
-                        {capa === "cantidades" && tropaEn && (
-                          <g>
-                            <rect x={l.cx - 28} y={l.cy - 26} width="56" height="16" rx="8" fill="#1e293bdd" />
-                            <text x={l.cx} y={l.cy - 15} textAnchor="middle" fontSize="9" fill="white" fontWeight="700">{cant} cab.</text>
-                          </g>
-                        )}
-                        {capa === "descanso" && descanso !== null && (
-                          <text x={l.cx} y={l.cy - 12} textAnchor="middle" fontSize="11" fontWeight="800" fill={descanso >= 21 ? "#15803d" : descanso >= 7 ? "#92400e" : "#991b1b"}>{descanso}d</text>
-                        )}
-                        {capa === "raza" && tropaEn && raza && (
-                          <g>
-                            <text x={l.cx} y={l.cy - 9} textAnchor="middle" fontSize="9" fontWeight="700" fill={satelital ? "#ffffff" : "#1e293b"}>{raza}</text>
-                          </g>
-                        )}
-                        {capa === "rutaDia" && legsLote > 0 && (
-                          <text x={l.cx} y={l.cy - 12} textAnchor="middle" fontSize="10" fontWeight="800" fill="#92400e">{legsLote} mov.</text>
-                        )}
-                      </g>
-                    );
-                  })}
-
-                  {/* Capa Cantidades: 1 punto ≈ 1 animal */}
-                  {capa === "cantidades" &&
-                    tropas.map((t) => {
-                      const l = t.lote?.nombre ? lotesSVG.find((x) => x.nombre === t.lote?.nombre) : null;
-                      if (!l) return null;
-                      const cant = t._count?.animales ?? t.animales?.length ?? 0;
-                      if (!cant) return null;
-                      return (
-                        <g key={t.id} onClick={() => abrirFicha(t)} style={{ cursor: "pointer" }}>
-                          {dotsDeTropa(l, cant).map((d, i) => (
-                            <circle key={i} cx={d[0]} cy={d[1]} r="4" fill={colores[t.id]} stroke={selTropaId === t.id ? "white" : "transparent"} strokeWidth="1.5" opacity={selTropaId === t.id ? 1 : 0.75} />
-                          ))}
-                        </g>
-                      );
-                    })}
-
-                  {/* Capa Ruta del Día */}
-                  {capa === "rutaDia" && (
-                    <g>
-                      {Object.entries(externos).map(([nombre, p]) => (
-                        <g key={nombre}>
-                          <rect x={p.x - 38} y={p.y - 10} width="76" height="20" rx="10" fill="#475569" opacity="0.9" />
-                          <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize="8.5" fill="white" fontWeight="700">
-                            {nombre.length > 15 ? nombre.slice(0, 14) + "…" : nombre}
-                          </text>
-                        </g>
-                      ))}
-                      {legsSel.map((m, i) => {
-                        const p1 = puntoDeNombre(m.origenNombre);
-                        const p2 = puntoDeNombre(m.destinoNombre);
-                        if (!p1 || !p2) return null;
-                        const col = colores[m.tropaId] || "#16a34a";
-                        const done = m.estado === "Ejecutado";
-                        return (
-                          <g key={i}>
-                            <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={col} strokeWidth={m.estado === "En curso" ? 3 : 2} strokeDasharray={done ? "0" : "6,4"} opacity={m.estado === "En curso" ? 1 : 0.8} markerEnd={`url(#arrow-ruta-${i})`} />
-                            <text x={(p1.x + p2.x) / 2} y={(p1.y + p2.y) / 2 - 6} textAnchor="middle" fontSize="9" fontWeight="700" fill={col}>
-                              {m.horario || ""} {m.tropa?.nombre || ""}
-                            </text>
-                          </g>
-                        );
-                      })}
-                    </g>
-                  )}
-
-                  {/* Rosa de los vientos */}
-                  <g transform="translate(515,65)">
-                    <circle cx="0" cy="0" r="16" fill="white" stroke="#cbd5e1" strokeWidth="1" />
-                    <text x="0" y="-4" textAnchor="middle" fontSize="9" fontWeight="800" fill="#1e293b">N</text>
-                    <polygon points="0,-12 -4,2 0,-1 4,2" fill="#16a34a" />
-                  </g>
-                  <text x="115" y="450" fontSize="9" fill={satelital ? "#ffffffaa" : "#64748b"} fontStyle="italic">Mapa esquemático de lotes</text>
-                </svg>
-              )}
-
-              {/* Tooltip */}
-              {tooltip && lotes.length > 0 && (
-                <div style={{ position: "absolute", left: `${((tooltip.x - 100) / 440) * 100}%`, top: `${((tooltip.y - 40) / 420) * 100}%`, transform: "translate(-50%,-120%)", background: "#1e293b", color: "white", padding: "6px 10px", borderRadius: 8, fontSize: 11, pointerEvents: "none", whiteSpace: "nowrap", boxShadow: "0 4px 14px rgba(0,0,0,.25)", zIndex: 15 }}>
-                  <span style={{ fontWeight: 800 }}>{tooltip.id}</span>
-                  <span style={{ opacity: 0.85, marginLeft: 6 }}>{tooltip.dato}</span>
-                </div>
+                </>
               )}
 
               {/* Leyenda tropas */}
               {(capa === "cantidades" || capa === "ocupacion") && tropas.length > 0 && (
-                <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(255,255,255,0.92)", padding: "10px 12px", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,.08)", display: "flex", flexDirection: "column", gap: 5, maxHeight: 180, overflowY: "auto" }}>
+                <div style={{ position: "absolute", top: 12, right: 12, zIndex: 20, background: "rgba(255,255,255,0.92)", padding: "10px 12px", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,.08)", display: "flex", flexDirection: "column", gap: 5, maxHeight: 180, overflowY: "auto" }}>
                   {tropas.map((t) => (
                     <div key={t.id} onClick={() => setSelTropaId(t.id)} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", opacity: selTropaId === t.id ? 1 : 0.6, fontWeight: selTropaId === t.id ? 700 : 400 }}>
                       <div style={{ width: 10, height: 10, borderRadius: "50%", background: colores[t.id], flexShrink: 0 }} />

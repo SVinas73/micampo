@@ -4,7 +4,7 @@
 // radar de condición de tropa, ficha flotante sobre el mapa y la
 // ventana óptima de arreo (clima real de /api/clima).
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/mc";
 import {
   MovTropaAPI,
@@ -263,11 +263,29 @@ export function FichaTropaCard({
 
 /* ============ VENTANA ÓPTIMA DE ARREO (clima real) ============ */
 
-type ClimaVentana = { temperatura: number; humedad: number; max: number };
+type HoraClima = { hora: number; temp: number; humedad: number; viento: number };
+type ClimaVentana = { humedad: number; max: number; horas: HoraClima[] };
+
+const ARREO_INI = 8;
+const ARREO_FIN = 19;
+
+/** Riesgo de arreo según temperatura real de esa hora. */
+function riesgoArreo(temp: number): { nivel: string; color: string; detalle: string } {
+  if (temp >= 32) return { nivel: "Riesgo alto", color: "#dc2626", detalle: "Estrés térmico severo: evitá mover hacienda a esta hora." };
+  if (temp >= 28) return { nivel: "Riesgo moderado", color: "#d97706", detalle: "Calor: mover despacio, con agua disponible en destino." };
+  if (temp >= 22) return { nivel: "Favorable", color: "#16a34a", detalle: "Condiciones aptas para el arreo." };
+  return { nivel: "Óptimo", color: "#16a34a", detalle: "Sin estrés térmico para el arreo." };
+}
+
+const colorTemp = (t: number) => (t >= 32 ? "#ef4444" : t >= 28 ? "#f97316" : t >= 24 ? "#eab308" : t >= 20 ? "#84cc16" : "#16a34a");
 
 export function MovVentanaOptima({ tropa }: { tropa: TropaAPI | null }) {
   const [clima, setClima] = useState<ClimaVentana | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [horaSel, setHoraSel] = useState<number | null>(null); // null = todavía sin datos
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef(false);
+  const [arrastrando, setArrastrando] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -275,36 +293,79 @@ export function MovVentanaOptima({ tropa }: { tropa: TropaAPI | null }) {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!vivo || !d?.actual) return;
-        setClima({ temperatura: d.actual.temperatura, humedad: d.actual.humedad, max: d.dias?.[0]?.max ?? d.actual.temperatura });
+        const horas: HoraClima[] = Array.isArray(d.horasDia) ? d.horasDia : [];
+        setClima({ humedad: d.actual.humedad, max: d.dias?.[0]?.max ?? d.actual.temperatura, horas });
       })
       .catch(() => {})
       .finally(() => { if (vivo) setCargando(false); });
     return () => { vivo = false; };
   }, []);
 
-  const horaIni = 8;
-  const horaFin = 19;
-  const ticks = [8, 10, 12, 14, 16, 18];
+  // Temperatura real (interpolada) a una hora fraccional del día
+  const tempA = (h: number): number | null => {
+    const hs = clima?.horas || [];
+    if (hs.length === 0) return clima ? clima.max : null;
+    const h0 = hs.find((x) => x.hora === Math.floor(h));
+    const h1 = hs.find((x) => x.hora === Math.min(23, Math.floor(h) + 1));
+    if (!h0) return hs[hs.length - 1].temp;
+    if (!h1) return h0.temp;
+    const f = h - Math.floor(h);
+    return Math.round((h0.temp + (h1.temp - h0.temp) * f) * 10) / 10;
+  };
+  const humedadA = (h: number): number | null => {
+    const hs = clima?.horas || [];
+    const hh = hs.find((x) => x.hora === Math.round(h));
+    return hh ? hh.humedad : clima ? clima.humedad : null;
+  };
 
-  let horaRec = 9;
-  let riesgo: { nivel: string; color: string; detalle: string } = { nivel: "Favorable", color: "#16a34a", detalle: "Condiciones aptas la mayor parte del día." };
-  if (clima) {
-    if (clima.max >= 30) {
-      horaRec = 17.5;
-      riesgo = { nivel: "Riesgo alto", color: "#dc2626", detalle: "al mediodía. Mover después de las 17:00." };
-    } else if (clima.max >= 26) {
-      horaRec = 17;
-      riesgo = { nivel: "Riesgo moderado", color: "#d97706", detalle: "en horas de calor. Preferir mañana temprano o tarde." };
-    } else if (clima.max >= 22) {
-      horaRec = 9;
-      riesgo = { nivel: "Favorable", color: "#16a34a", detalle: "Mover temprano para aprovechar el fresco." };
-    } else {
-      horaRec = 10;
-      riesgo = { nivel: "Óptimo", color: "#16a34a", detalle: "Sin estrés térmico previsto para el arreo." };
-    }
-  }
-  const posPct = ((horaRec - horaIni) / (horaFin - horaIni)) * 100;
-  const horaLabel = `${Math.floor(horaRec)}:${horaRec % 1 ? "30" : "00"}`;
+  // Hora recomendada REAL: la más fresca dentro de la ventana laboral (prefiere la mañana en empates)
+  const horaRec = (() => {
+    const hs = (clima?.horas || []).filter((x) => x.hora >= ARREO_INI && x.hora <= ARREO_FIN);
+    if (hs.length === 0) return 9;
+    return hs.reduce((best, x) => (x.temp < best.temp ? x : best), hs[0]).hora;
+  })();
+
+  const horaActiva = horaSel ?? horaRec;
+  const tempActiva = tempA(horaActiva);
+  const riesgo = tempActiva !== null ? riesgoArreo(tempActiva) : null;
+
+  // Gradiente del track construido con las temperaturas reales de cada hora
+  const gradiente = (() => {
+    const hs = (clima?.horas || []).filter((x) => x.hora >= ARREO_INI && x.hora <= ARREO_FIN);
+    if (hs.length < 2) return "linear-gradient(to right, #94a3b8, #cbd5e1)";
+    const stops = hs.map((x) => {
+      const pct = ((x.hora - ARREO_INI) / (ARREO_FIN - ARREO_INI)) * 100;
+      return `${colorTemp(x.temp)} ${pct.toFixed(1)}%`;
+    });
+    return `linear-gradient(to right, ${stops.join(", ")})`;
+  })();
+
+  // Drag del knob: pointer events sobre el track (touch + mouse)
+  const horaDesdeEvento = (clientX: number) => {
+    const el = trackRef.current;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const f = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    return Math.round((ARREO_INI + f * (ARREO_FIN - ARREO_INI)) * 2) / 2; // pasos de 30 min
+  };
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!clima) return;
+    dragRef.current = true;
+    setArrastrando(true);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const h = horaDesdeEvento(e.clientX);
+    if (h !== null) setHoraSel(h);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const h = horaDesdeEvento(e.clientX);
+    if (h !== null) setHoraSel(h);
+  };
+  const onPointerUp = () => { dragRef.current = false; setArrastrando(false); };
+
+  const pctDe = (h: number) => ((h - ARREO_INI) / (ARREO_FIN - ARREO_INI)) * 100;
+  const fmtHora = (h: number) => `${Math.floor(h)}:${h % 1 ? "30" : "00"}`;
+  const ticks = [8, 10, 12, 14, 16, 18];
 
   return (
     <div className="mc-card" style={{ padding: "18px 20px" }}>
@@ -321,18 +382,35 @@ export function MovVentanaOptima({ tropa }: { tropa: TropaAPI | null }) {
           )}
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--mc-ink)", letterSpacing: "-.02em" }}>{clima ? horaLabel : "—"}</div>
-          <div style={{ fontSize: 10, color: "var(--mc-text-3)", fontWeight: 600 }}>Hora recomendada</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--mc-ink)", letterSpacing: "-.02em" }}>{clima ? fmtHora(horaRec) : "—"}</div>
+          <div style={{ fontSize: 10, color: "var(--mc-text-3)", fontWeight: 600 }}>Hora recomendada (la más fresca)</div>
         </div>
       </div>
 
+      {/* Slider interactivo: arrastrá para explorar la temperatura real de cada hora */}
       <div style={{ position: "relative", marginBottom: 8 }}>
-        <div style={{ height: 20, borderRadius: 12, background: "linear-gradient(to right, #84cc16 0%, #eab308 30%, #f97316 50%, #ef4444 62%, #eab308 78%, #16a34a 100%)", boxShadow: "0 2px 8px rgba(0,0,0,.12)", position: "relative", opacity: clima ? 1 : 0.35 }}>
+        <div
+          ref={trackRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          style={{ height: 20, borderRadius: 12, background: gradiente, boxShadow: "0 2px 8px rgba(0,0,0,.12)", position: "relative", opacity: clima ? 1 : 0.35, cursor: clima ? "pointer" : "default", touchAction: "none" }}
+        >
           {clima && (
-            <div style={{ position: "absolute", left: `${Math.max(2, Math.min(98, posPct))}%`, top: "50%", transform: "translate(-50%,-50%)", width: 22, height: 22, background: "white", borderRadius: "50%", boxShadow: "0 2px 8px rgba(0,0,0,.25)", border: "2.5px solid #16a34a" }} />
+            <>
+              {/* Marca de la hora recomendada */}
+              <div style={{ position: "absolute", left: `${Math.max(1, Math.min(99, pctDe(horaRec)))}%`, top: -5, transform: "translateX(-50%)", width: 2.5, height: 30, background: "var(--mc-ink)", borderRadius: 2, opacity: 0.55, pointerEvents: "none" }} />
+              {/* Knob arrastrable */}
+              <div style={{ position: "absolute", left: `${Math.max(2, Math.min(98, pctDe(horaActiva)))}%`, top: "50%", transform: "translate(-50%,-50%)", width: 24, height: 24, background: "white", borderRadius: "50%", boxShadow: "0 2px 8px rgba(0,0,0,.3)", border: `3px solid ${riesgo?.color || "#16a34a"}`, pointerEvents: "none", transition: arrastrando ? "none" : "left .12s ease" }}>
+                <div style={{ position: "absolute", top: -26, left: "50%", transform: "translateX(-50%)", background: "var(--mc-ink)", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 6, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                  {fmtHora(horaActiva)}{tempActiva !== null ? ` · ${tempActiva}°C` : ""}
+                </div>
+              </div>
+            </>
           )}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
           {ticks.map((h) => (
             <span key={h} style={{ fontSize: 10, color: "var(--mc-text-3)", fontWeight: 600 }}>{h}:00</span>
           ))}
@@ -345,15 +423,18 @@ export function MovVentanaOptima({ tropa }: { tropa: TropaAPI | null }) {
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--mc-surface-2)", borderRadius: 10, padding: "8px 12px" }}>
             <Icon name="thermometer" size={16} />
-            <span style={{ fontSize: 15, fontWeight: 800, color: "var(--mc-ink)" }}>{clima.max}°C</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "var(--mc-ink)" }}>{tempActiva !== null ? `${tempActiva}°C` : "—"}</span>
+            <span style={{ fontSize: 10, color: "var(--mc-text-3)", fontWeight: 600 }}>a las {fmtHora(horaActiva)}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--mc-surface-2)", borderRadius: 10, padding: "8px 12px" }}>
             <Icon name="droplet" size={16} />
-            <span style={{ fontSize: 15, fontWeight: 800, color: "var(--mc-ink)" }}>{clima.humedad}%</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "var(--mc-ink)" }}>{humedadA(horaActiva) ?? "—"}%</span>
           </div>
-          <div style={{ flex: 1, fontSize: 12, color: "var(--mc-text-2)", lineHeight: 1.4, minWidth: 140 }}>
-            <span style={{ fontWeight: 800, color: riesgo.color }}>{riesgo.nivel}</span> {riesgo.detalle}
-          </div>
+          {riesgo && (
+            <div style={{ flex: 1, fontSize: 12, color: "var(--mc-text-2)", lineHeight: 1.4, minWidth: 140 }}>
+              <span style={{ fontWeight: 800, color: riesgo.color }}>{riesgo.nivel}.</span> {riesgo.detalle}
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ fontSize: 12, color: "var(--mc-text-3)" }}>{cargando ? "Consultando pronóstico…" : "Sin datos de clima disponibles."}</div>

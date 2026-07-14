@@ -77,6 +77,8 @@ export type LoteGeoAPI = {
   nombre: string;
   hectareas: number;
   coordenadas?: string | null;
+  centroLatitud?: number | null;
+  centroLongitud?: number | null;
 };
 
 export const PALETA_TROPAS = ["#16a34a", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444", "#0891b2", "#ec4899", "#d97706"];
@@ -128,95 +130,6 @@ export function freqLabel(r: RutinaAPI | null | undefined): string {
   if (!c.freq) return "—";
   if (c.freq === "Cada X días") return `Cada ${c.freqDias || 0} días`;
   return c.freq;
-}
-
-/* ── Proyección de lotes reales a un viewBox SVG (mapa esquemático) ── */
-
-export type LoteSVG = {
-  id: string;
-  nombre: string;
-  hectareas: number;
-  pts: string; // "x,y x,y ..."
-  cx: number;
-  cy: number;
-};
-
-function parseCoords(raw: string | null | undefined): [number, number][] {
-  if (!raw) return [];
-  try {
-    const arr = JSON.parse(raw) as unknown;
-    if (!Array.isArray(arr)) return [];
-    return (arr as unknown[])
-      .map((p): [number, number] | null => {
-        if (Array.isArray(p) && p.length >= 2 && typeof p[0] === "number" && typeof p[1] === "number") return [p[0], p[1]];
-        if (p && typeof p === "object" && "lat" in (p as object) && "lng" in (p as object)) {
-          const q = p as { lat: number; lng: number };
-          return [q.lat, q.lng];
-        }
-        return null;
-      })
-      .filter((p): p is [number, number] => p !== null);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Proyecta los lotes reales (coordenadas geográficas) al viewBox del mapa
- * esquemático (100..540 × 40..460). Los lotes sin coordenadas se dibujan como
- * rectángulos en una grilla, para que el mapa siempre funcione.
- */
-export function proyectarLotes(lotes: LoteGeoAPI[], viewW = 440, viewH = 420, offX = 100, offY = 40): LoteSVG[] {
-  const conGeo = lotes.map((l) => ({ l, coords: parseCoords(l.coordenadas) })).filter((x) => x.coords.length >= 3);
-  const out: LoteSVG[] = [];
-
-  if (conGeo.length > 0) {
-    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-    for (const { coords } of conGeo) {
-      for (const [lat, lng] of coords) {
-        minLat = Math.min(minLat, lat);
-        maxLat = Math.max(maxLat, lat);
-        minLng = Math.min(minLng, lng);
-        maxLng = Math.max(maxLng, lng);
-      }
-    }
-    const pad = 24;
-    const spanLat = Math.max(1e-6, maxLat - minLat);
-    const spanLng = Math.max(1e-6, maxLng - minLng);
-    const px = (lng: number) => offX + pad + ((lng - minLng) / spanLng) * (viewW - pad * 2);
-    const py = (lat: number) => offY + pad + ((maxLat - lat) / spanLat) * (viewH - pad * 2);
-    for (const { l, coords } of conGeo) {
-      const pts = coords.map(([lat, lng]) => `${px(lng).toFixed(1)},${py(lat).toFixed(1)}`).join(" ");
-      const cx = coords.reduce((s, c) => s + px(c[1]), 0) / coords.length;
-      const cy = coords.reduce((s, c) => s + py(c[0]), 0) / coords.length;
-      out.push({ id: l.id, nombre: l.nombre, hectareas: l.hectareas, pts, cx, cy });
-    }
-  }
-
-  // Lotes sin geometría → grilla de rectángulos
-  const sinGeo = lotes.filter((l) => !out.some((o) => o.id === l.id));
-  const cols = Math.max(1, Math.ceil(Math.sqrt(sinGeo.length)));
-  const cw = (viewW - 40) / cols;
-  const filas = Math.max(1, Math.ceil(sinGeo.length / cols));
-  const ch = (viewH - 40) / filas;
-  sinGeo.forEach((l, i) => {
-    if (out.length > 0) {
-      // Si hay lotes con geo, los sin-geo van como fichas chicas abajo a la izquierda
-      const x = offX + 16 + (i % 3) * 90;
-      const y = offY + viewH - 70 - Math.floor(i / 3) * 46;
-      out.push({ id: l.id, nombre: l.nombre, hectareas: l.hectareas, pts: `${x},${y} ${x + 80},${y} ${x + 80},${y + 38} ${x},${y + 38}`, cx: x + 40, cy: y + 19 });
-    } else {
-      const col = i % cols;
-      const fila = Math.floor(i / cols);
-      const x = offX + 20 + col * cw;
-      const y = offY + 20 + fila * ch;
-      const w = cw - 14;
-      const h = ch - 14;
-      out.push({ id: l.id, nombre: l.nombre, hectareas: l.hectareas, pts: `${x},${y} ${x + w},${y} ${x + w},${y + h} ${x},${y + h}`, cx: x + w / 2, cy: y + h / 2 });
-    }
-  });
-
-  return out;
 }
 
 /** Días de descanso de un lote = días desde que la última tropa salió de él. */
@@ -297,4 +210,66 @@ export function diasEnLote(t: TropaAPI, movimientos: MovTropaAPI[]): number | nu
     .sort((a, b) => fechaStrMov(b.fecha).localeCompare(fechaStrMov(a.fecha)))[0];
   if (!llegada) return null;
   return Math.max(0, Math.floor((Date.now() - dateLocalDeISO(llegada.fecha).getTime()) / (24 * 3600 * 1000)));
+}
+
+/* ============ Geometría de lotes (GeoJSON guardado por Campo Digital) ============ */
+
+const esLatLngPt = (p: number[]) => Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180;
+
+/** Extrae el anillo exterior [ [lat,lng], ... ] de una geometría en cualquiera de los formatos que guarda la app. */
+export function ringDeCoordenadas(coordenadas?: string | null): [number, number][] | null {
+  if (!coordenadas) return null;
+  let geo: unknown = coordenadas;
+  if (typeof geo === "string") {
+    try {
+      geo = JSON.parse(geo);
+    } catch {
+      return null;
+    }
+  }
+  // Feature / FeatureCollection → geometry
+  const g0 = geo as { type?: string; geometry?: unknown; features?: { geometry?: unknown }[] };
+  if (g0?.type === "Feature" && g0.geometry) geo = g0.geometry;
+  else if (g0?.type === "FeatureCollection" && g0.features?.[0]?.geometry) geo = g0.features[0].geometry;
+
+  const g = geo as { type?: string; coordinates?: unknown } | unknown[];
+  let ring: unknown = null;
+  if (Array.isArray(g)) {
+    // Array crudo: [[x,y],...] o [[[x,y],...]] o [{lat,lng},...]
+    ring = Array.isArray(g[0]) && Array.isArray((g[0] as unknown[])[0]) ? g[0] : g;
+  } else if (g?.type === "MultiPolygon") {
+    ring = (g.coordinates as number[][][][])?.[0]?.[0];
+  } else if (g?.coordinates) {
+    ring = (g.coordinates as number[][][])?.[0];
+  }
+  if (!Array.isArray(ring)) return null;
+
+  const pts: [number, number][] = [];
+  for (const c of ring as unknown[]) {
+    if (Array.isArray(c) && c.length >= 2 && isFinite(Number(c[0])) && isFinite(Number(c[1]))) {
+      pts.push([Number(c[0]), Number(c[1])]);
+    } else {
+      const o = c as { lat?: number; lng?: number };
+      if (o && typeof o.lat === "number" && typeof o.lng === "number") pts.push([o.lat, o.lng]);
+    }
+  }
+  if (pts.length < 3) return null;
+
+  // GeoJSON es [lng,lat]; si los puntos ya vienen como [lat,lng] los detectamos
+  // (lat válida y lng "grande") y no los damos vuelta dos veces.
+  const yaLatLng = pts.every((p) => esLatLngPt(p)) && pts.some((p) => Math.abs(p[1]) > 90);
+  const out = yaLatLng ? pts : pts.map(([x, y]) => [y, x] as [number, number]);
+  return out.every((p) => esLatLngPt(p)) ? out : null;
+}
+
+/** Centroide simple del anillo (promedio de vértices) o el centro guardado del lote. */
+export function centroDeLote(l: { coordenadas?: string | null; centroLatitud?: number | null; centroLongitud?: number | null }): [number, number] | null {
+  const ring = ringDeCoordenadas(l.coordenadas);
+  if (ring) {
+    const lat = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+    const lng = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+    return [lat, lng];
+  }
+  if (typeof l.centroLatitud === "number" && typeof l.centroLongitud === "number") return [l.centroLatitud, l.centroLongitud];
+  return null;
 }

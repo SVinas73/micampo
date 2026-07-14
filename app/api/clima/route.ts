@@ -127,6 +127,20 @@ export async function GET(request: Request) {
     // Ventana de pulverización por hora (próximas 6h) a partir del pronóstico horario
     const h = data.hourly;
     const ahora = new Date();
+
+    // Horas de HOY (0-23) para ventanas horarias del día (ej: arreo de tropas)
+    const hoyPrefijo = (d.time as string[])[0]; // "YYYY-MM-DD" local del pronóstico
+    const horasDia = Array.isArray(h?.time)
+      ? (h.time as string[])
+          .map((t, i) => ({ t, i }))
+          .filter(({ t }) => t.startsWith(hoyPrefijo))
+          .map(({ t, i }) => ({
+            hora: parseInt(t.slice(11, 13), 10),
+            temp: Math.round((h.temperature_2m?.[i] ?? c.temperature_2m) * 10) / 10,
+            humedad: Math.round(h.relative_humidity_2m?.[i] ?? c.relative_humidity_2m),
+            viento: Math.round(h.wind_speed_10m?.[i] ?? c.wind_speed_10m),
+          }))
+      : [];
     let startIdx = 0;
     if (Array.isArray(h?.time)) {
       const idx = (h.time as string[]).findIndex((t) => new Date(t).getTime() >= ahora.getTime() - 30 * 60000);
@@ -156,6 +170,7 @@ export async function GET(request: Request) {
       actual,
       dias,
       horas,
+      horasDia,
       alertas,
       ubicacion: { lat: Number(lat), lon: Number(lon), nombre: data.timezone || "Campo" },
       actualizado: new Date().toISOString(),
