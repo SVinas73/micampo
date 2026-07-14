@@ -13,7 +13,6 @@
 import React, { Suspense, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, ContactShadows, Billboard, useGLTF } from "@react-three/drei";
-import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import * as THREE from "three";
 
 export type ZonaHeat3D = { zona: string; pct: number; casos: number; cond: string; label: string };
@@ -48,33 +47,55 @@ const C_BODY = "#e3e8ee";
 const TARGET_LEN = 3.2; // largo objetivo del modelo (unidades de escena)
 const GROUND_Y = -0.9; // altura del plano de apoyo (patas / sombra)
 
-/* ── Malla real de la vaca (glb) con material clínico gris ── */
+/* ── Malla real de la vaca (glb) con material clínico gris ──
+   La malla del archivo es skinned/animada, pero acá sólo necesitamos la pose
+   de reposo. Extraemos la geometría en world-space (bakeando la matriz del
+   nodo) y la mostramos como malla ESTÁTICA: así renderiza siempre (una malla
+   skinned puede quedar culleada por su bounding-sphere de bind-pose y volverse
+   invisible aunque el raycasting la encuentre). Sin esqueleto = sin los 25
+   clips de animación. */
 function VacaMesh() {
   const { scene } = useGLTF(MODEL_URL);
-  const model = useMemo(() => {
-    const root = cloneSkinned(scene) as THREE.Object3D;
-    const mat = new THREE.MeshStandardMaterial({ color: C_BODY, roughness: 0.62, metalness: 0.06, flatShading: true });
-    root.traverse((o) => {
+  const { partes, scale, position } = useMemo(() => {
+    scene.updateWorldMatrix(true, true);
+    const geos: THREE.BufferGeometry[] = [];
+    scene.traverse((o) => {
       const m = o as THREE.Mesh;
-      if (m.isMesh) {
-        m.material = mat;
-        m.castShadow = true;
-        m.receiveShadow = false;
-        m.frustumCulled = false;
-      }
+      if (!m.isMesh || !m.geometry) return;
+      const src = m.geometry;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", (src.getAttribute("position") as THREE.BufferAttribute).clone());
+      if (src.index) g.setIndex(src.index.clone());
+      g.applyMatrix4(m.matrixWorld); // bakea la pose de reposo a world-space
+      g.computeVertexNormals();
+      geos.push(g);
     });
-    // Normalizar: escala uniforme al largo objetivo, centrado en X/Z y apoyado en el piso.
-    const box = new THREE.Box3().setFromObject(root);
-    const size = new THREE.Vector3();
-    const center = new THREE.Vector3();
-    box.getSize(size);
-    box.getCenter(center);
+    // Bounding-box combinado para normalizar (escala + apoyo en el piso).
+    const box = new THREE.Box3();
+    for (const g of geos) {
+      g.computeBoundingBox();
+      if (g.boundingBox) box.union(g.boundingBox);
+    }
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
     const s = TARGET_LEN / (size.z || 1);
-    root.scale.setScalar(s);
-    root.position.set(-center.x * s, GROUND_Y - box.min.y * s, -center.z * s);
-    return root;
+    return {
+      partes: geos,
+      scale: s,
+      position: [-center.x * s, GROUND_Y - box.min.y * s, -center.z * s] as [number, number, number],
+    };
   }, [scene]);
-  return <primitive object={model} />;
+  const mat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: C_BODY, roughness: 0.62, metalness: 0.06, flatShading: true }),
+    [],
+  );
+  return (
+    <group scale={scale} position={position}>
+      {partes.map((g, i) => (
+        <mesh key={i} geometry={g} material={mat} castShadow />
+      ))}
+    </group>
+  );
 }
 
 /* Punto de zona: disco plano chico (billboard, siempre mira a cámara), no una
