@@ -2,161 +2,79 @@
 
 // Vaca 3D (react-three-fiber) para Sanidad › Análisis Corporal y para el
 // selector de zona del modal "Diagnosticar Animal".
-// Estilo clínico low-poly: malla facetada monocroma (flatShading + wireframe
-// sutil) con líneas de despiece blancas entre zonas, rotable con OrbitControls.
-// Marcadores de zona clickeables: en modo lectura se colorean por intensidad de
-// casos reales (heatmap 3D); en modo seleccionable eligen la zona afectada.
+// Usa la malla real (public/models/vaca.glb) con el MISMO formato clínico:
+// material gris monocromo facetado (flatShading), fondo estudio, sombra de
+// contacto y controles orbitales. Los 25 clips de animación no se reproducen:
+// se muestra la pose de reposo.
+// Marcadores de zona clickeables, proyectados por raycasting sobre la piel:
+// en modo lectura se colorean por intensidad de casos reales (heatmap 3D); en
+// modo seleccionable eligen la zona afectada. Se iluminan al pasar el mouse.
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { Suspense, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Html, ContactShadows, Billboard } from "@react-three/drei";
+import { OrbitControls, Html, ContactShadows, Billboard, useGLTF } from "@react-three/drei";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import * as THREE from "three";
 
 export type ZonaHeat3D = { zona: string; pct: number; casos: number; cond: string; label: string };
 
-/* Posición 3D de cada zona sobre el cuerpo (cabeza en -X, cola en +X).
-   Cobertura clínica completa: cabeza/ojos/boca, cuello, tórax, panza, lomo,
-   piel (flanco), cadera, genital-perineal, ubre, cola y patas. */
-const ZONA_3D: Record<string, [number, number, number]> = {
-  cabeza: [-1.7, 0.62, 0.1],
-  ojos: [-1.9, 0.42, 0.22],
-  boca: [-2.1, 0.14, 0.1],
-  cuello: [-1.1, 0.66, 0.18],
-  columna: [0.0, 0.82, 0],
-  costillas: [-0.42, 0.2, 0.62],
-  panza: [0.05, -0.52, 0.36],
-  piel: [0.32, 0.34, 0.58],
-  cadera: [0.82, 0.66, 0.16],
-  genital: [1.18, -0.1, 0.16],
-  ubre: [0.5, -0.9, 0.1],
-  cola: [1.48, 0.28, 0],
-  patas: [-0.74, -0.92, 0.36],
+const MODEL_URL = "/models/vaca.glb";
+useGLTF.preload(MODEL_URL);
+
+/* Anclas de zona como fracción del bounding-box del modelo (invariante a
+   escala/posición) + dirección de salida. La malla mira a +Z (cabeza), +Y
+   arriba, ±X a los flancos. Verificado por raycasting contra la malla real:
+   los 13 puntos caen sobre la piel en su ubicación anatómica. */
+const ZONA_ANCLA: Record<string, { frac: [number, number, number]; dir: [number, number, number] }> = {
+  cabeza: { frac: [0.5, 0.874, 0.853], dir: [0, 0.7, 0.5] },
+  ojos: { frac: [0.651, 0.819, 0.877], dir: [0.5, 0, 0.7] },
+  boca: { frac: [0.5, 0.678, 0.939], dir: [0, -0.25, 0.9] },
+  cuello: { frac: [0.565, 0.741, 0.667], dir: [0.35, 0.5, 0.35] },
+  columna: { frac: [0.5, 0.667, 0.357], dir: [0, 1, 0] },
+  costillas: { frac: [0.672, 0.601, 0.518], dir: [1, 0, 0.15] },
+  panza: { frac: [0.5, 0.449, 0.394], dir: [0, -1, 0] },
+  piel: { frac: [0.716, 0.558, 0.332], dir: [1, 0.1, -0.1] },
+  cadera: { frac: [0.651, 0.754, 0.159], dir: [0.55, 0.5, -0.35] },
+  genital: { frac: [0.5, 0.558, 0.084], dir: [0, -0.25, -1] },
+  ubre: { frac: [0.5, 0.34, 0.202], dir: [0, -1, 0.05] },
+  cola: { frac: [0.5, 0.863, 0.078], dir: [0, 0.35, -1] },
+  patas: { frac: [0.759, 0.296, 0.605], dir: [0.7, -0.25, 0.15] },
 };
 
 const heatColor = (pct: number) => (pct >= 10 ? "#dc2626" : pct >= 6 ? "#ea580c" : pct >= 3 ? "#f59e0b" : "#65a30d");
 
-/* Paleta clínica monocroma (como la referencia) */
+/* Paleta clínica monocroma (mismo formato que la versión anterior) */
 const C_BODY = "#e3e8ee";
-const C_HEAD = "#e9edf2";
-const C_LEG = "#d7dde4";
-const C_DARK = "#c6cdd6";
-const C_HOOF = "#9aa4af";
-const C_WIRE = "#aab4bf";
-const C_SEAM = "#ffffff";
+const TARGET_LEN = 3.2; // largo objetivo del modelo (unidades de escena)
+const GROUND_Y = -0.9; // altura del plano de apoyo (patas / sombra)
 
-/* ── Pieza facetada: sólido flatShading + wireframe sutil (malla triangulada visible) ── */
-function Pieza({
-  geo,
-  color = C_BODY,
-  position,
-  rotation,
-  scale,
-  wire = true,
-}: {
-  geo: THREE.BufferGeometry;
-  color?: string;
-  position?: [number, number, number];
-  rotation?: [number, number, number];
-  scale?: [number, number, number] | number;
-  wire?: boolean;
-}) {
-  return (
-    <group position={position} rotation={rotation} scale={scale}>
-      <mesh geometry={geo} castShadow>
-        <meshStandardMaterial color={color} flatShading roughness={0.55} metalness={0.08} />
-      </mesh>
-      {wire && (
-        <mesh geometry={geo}>
-          <meshBasicMaterial color={C_WIRE} wireframe transparent opacity={0.28} />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
-/* Anillo blanco de "despiece" alrededor del cuerpo en la posición x dada. */
-function Seam({ x }: { x: number }) {
-  // Cuerpo: esfera escalada [1.3, 0.74, 0.64] → sección en x: f = sqrt(1-(x/1.3)^2)
-  const f = Math.sqrt(Math.max(0.05, 1 - (x / 1.3) ** 2));
-  const ry = 0.74 * f * 1.035;
-  const rz = 0.64 * f * 1.035;
-  return (
-    <mesh position={[x, 0, 0]} rotation={[0, Math.PI / 2, 0]} scale={[rz, ry, 1]}>
-      <torusGeometry args={[1, 0.02, 8, 64]} />
-      <meshStandardMaterial color={C_SEAM} roughness={0.4} metalness={0} />
-    </mesh>
-  );
-}
-
-function CowBody() {
-  // Geometrías low-poly compartidas (pocos segmentos → facetas visibles)
-  const gBody = useMemo(() => new THREE.SphereGeometry(1, 18, 12), []);
-  const gPart = useMemo(() => new THREE.SphereGeometry(1, 12, 9), []);
-  const gSmall = useMemo(() => new THREE.SphereGeometry(1, 8, 6), []);
-  const gLeg = useMemo(() => new THREE.CylinderGeometry(0.85, 1, 1, 8), []);
-  const gHoof = useMemo(() => new THREE.CylinderGeometry(1, 1.05, 1, 8), []);
-  const gHorn = useMemo(() => new THREE.ConeGeometry(1, 1.4, 6), []);
-  const gTail = useMemo(() => new THREE.CylinderGeometry(0.6, 1, 1, 6), []);
-
-  const legPos: [number, number][] = [
-    [-0.72, 0.34], [-0.72, -0.34], [0.86, 0.34], [0.86, -0.34],
-  ];
-
-  return (
-    <group>
-      {/* Cuerpo (barril) */}
-      <Pieza geo={gBody} position={[0, 0, 0]} scale={[1.3, 0.74, 0.64]} />
-      {/* Líneas de despiece blancas (como el diagrama de zonas de la referencia) */}
-      <Seam x={-0.58} />
-      <Seam x={0.14} />
-      <Seam x={0.72} />
-      {/* Cuello */}
-      <Pieza geo={gPart} position={[-1.12, 0.34, 0]} rotation={[0, 0, 0.55]} scale={[0.52, 0.46, 0.46]} />
-      {/* Cabeza */}
-      <Pieza geo={gPart} color={C_HEAD} position={[-1.64, 0.34, 0]} scale={[0.48, 0.38, 0.36]} />
-      {/* Hocico */}
-      <Pieza geo={gSmall} color={C_DARK} position={[-2.06, 0.16, 0]} scale={[0.26, 0.22, 0.26]} />
-      {/* Orejas */}
-      {[-0.32, 0.32].map((z, i) => (
-        <Pieza key={i} geo={gSmall} color={C_LEG} position={[-1.56, 0.56, z]} rotation={[z > 0 ? 0.7 : -0.7, 0, 0.25]} scale={[0.08, 0.2, 0.13]} />
-      ))}
-      {/* Cuernos */}
-      {[-0.18, 0.18].map((z, i) => (
-        <group key={i} position={[-1.66, 0.68, z]} rotation={[z > 0 ? -0.25 : 0.25, 0, 0.45]}>
-          <mesh geometry={gHorn} scale={[0.05, 0.2, 0.05]} castShadow>
-            <meshStandardMaterial color={C_DARK} flatShading roughness={0.45} />
-          </mesh>
-        </group>
-      ))}
-      {/* Ojos */}
-      {[-0.24, 0.24].map((z, i) => (
-        <mesh key={i} geometry={gSmall} position={[-1.9, 0.4, z]} scale={0.05}>
-          <meshStandardMaterial color="#3a4149" roughness={0.3} />
-        </mesh>
-      ))}
-      {/* Patas + pezuñas */}
-      {legPos.map(([x, z], i) => (
-        <group key={i}>
-          <Pieza geo={gLeg} color={i % 2 ? C_DARK : C_LEG} position={[x, -0.72, z]} scale={[0.14, 0.62, 0.14]} />
-          <mesh geometry={gHoof} position={[x, -1.2, z]} scale={[0.165, 0.13, 0.175]} castShadow>
-            <meshStandardMaterial color={C_HOOF} flatShading roughness={0.6} />
-          </mesh>
-        </group>
-      ))}
-      {/* Ubre (monocroma, como la referencia) */}
-      <Pieza geo={gPart} color={C_HEAD} position={[0.52, -0.56, 0]} scale={[0.32, 0.26, 0.38]} />
-      {[[0.4, 0.14], [0.62, 0.14], [0.4, -0.14], [0.62, -0.14]].map(([x, z], i) => (
-        <mesh key={i} geometry={gSmall} position={[x, -0.8, z]} scale={[0.035, 0.09, 0.035]}>
-          <meshStandardMaterial color={C_LEG} flatShading roughness={0.6} />
-        </mesh>
-      ))}
-      {/* Cola */}
-      <Pieza geo={gTail} color={C_LEG} position={[1.4, 0.06, 0]} rotation={[0, 0, -0.5]} scale={[0.05, 0.58, 0.05]} wire={false} />
-      <mesh geometry={gSmall} position={[1.62, -0.42, 0]} scale={0.1}>
-        <meshStandardMaterial color={C_DARK} flatShading roughness={0.8} />
-      </mesh>
-    </group>
-  );
+/* ── Malla real de la vaca (glb) con material clínico gris ── */
+function VacaMesh() {
+  const { scene } = useGLTF(MODEL_URL);
+  const model = useMemo(() => {
+    const root = cloneSkinned(scene) as THREE.Object3D;
+    const mat = new THREE.MeshStandardMaterial({ color: C_BODY, roughness: 0.62, metalness: 0.06, flatShading: true });
+    root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) {
+        m.material = mat;
+        m.castShadow = true;
+        m.receiveShadow = false;
+        m.frustumCulled = false;
+      }
+    });
+    // Normalizar: escala uniforme al largo objetivo, centrado en X/Z y apoyado en el piso.
+    const box = new THREE.Box3().setFromObject(root);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+    const s = TARGET_LEN / (size.z || 1);
+    root.scale.setScalar(s);
+    root.position.set(-center.x * s, GROUND_Y - box.min.y * s, -center.z * s);
+    return root;
+  }, [scene]);
+  return <primitive object={model} />;
 }
 
 /* Punto de zona: disco plano chico (billboard, siempre mira a cámara), no una
@@ -242,9 +160,10 @@ function Marcador({
   );
 }
 
-/* Proyecta cada zona sobre la superficie de la vaca por raycasting: dispara un
-   rayo desde fuera hacia el centro en la dirección de la zona y toma el punto de
-   piel más externo. Así los puntos quedan SIEMPRE sobre el cuerpo. */
+/* Proyecta cada zona sobre la superficie de la vaca por raycasting: calcula el
+   ancla anatómica desde el bounding-box del modelo y dispara un rayo desde
+   fuera hacia el ancla en la dirección de salida, tomando el punto de piel más
+   externo. Así los puntos quedan SIEMPRE sobre el cuerpo. */
 function ZoneProjector({
   surfaceRef,
   parentRef,
@@ -260,35 +179,101 @@ function ZoneProjector({
     const surf = surfaceRef.current;
     const parent = parentRef.current;
     if (!surf || !parent) return;
-    const rc = new THREE.Raycaster();
     surf.updateWorldMatrix(true, true);
     const meshes: THREE.Mesh[] = [];
     surf.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) meshes.push(m); });
     if (meshes.length === 0) return;
-    const center = new THREE.Vector3();
-    surf.getWorldPosition(center);
+    const box = new THREE.Box3().setFromObject(surf);
+    if (box.isEmpty()) return;
+    const min = box.min;
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const R = Math.max(size.x, size.y, size.z) * 3;
+    const rc = new THREE.Raycaster();
+    rc.far = R * 4;
     const out: Record<string, [number, number, number]> = {};
-    for (const [zona, target] of Object.entries(ZONA_3D)) {
-      const dir = new THREE.Vector3(target[0], target[1], target[2]).normalize();
-      const origin = center.clone().add(dir.clone().multiplyScalar(8));
-      rc.set(origin, dir.clone().negate());
-      rc.far = 20;
+    for (const [zona, { frac, dir }] of Object.entries(ZONA_ANCLA)) {
+      const anchor = new THREE.Vector3(
+        min.x + frac[0] * size.x,
+        min.y + frac[1] * size.y,
+        min.z + frac[2] * size.z,
+      );
+      const d = new THREE.Vector3(dir[0], dir[1], dir[2]).normalize();
+      const origin = anchor.clone().add(d.clone().multiplyScalar(R));
+      rc.set(origin, d.clone().negate());
       const hits = rc.intersectObjects(meshes, false);
       if (hits.length > 0) {
         const p = hits[0].point.clone();
-        let n = dir.clone();
+        let n = d.clone();
         if (hits[0].face) n = hits[0].face.normal.clone().transformDirection(hits[0].object.matrixWorld).normalize();
-        p.add(n.multiplyScalar(0.025)); // apenas por encima de la piel
+        p.add(n.multiplyScalar(0.02)); // apenas por encima de la piel
         const local = parent.worldToLocal(p);
         out[zona] = [local.x, local.y, local.z];
       } else {
-        out[zona] = target;
+        // fallback: ancla proyectada al parent
+        const local = parent.worldToLocal(anchor.clone());
+        out[zona] = [local.x, local.y, local.z];
       }
     }
     onReady(out);
     done.current = true;
   });
   return null;
+}
+
+function Escena({
+  zonas,
+  selectable,
+  selected,
+  onSelect,
+}: {
+  zonas: ZonaHeat3D[];
+  selectable: boolean;
+  selected: string | null;
+  onSelect?: (zona: string) => void;
+}) {
+  const [hov, setHov] = useState<string | null>(null);
+  const [zonePos, setZonePos] = useState<Record<string, [number, number, number]>>({});
+  const statMap = useMemo(() => new Map(zonas.map((z) => [z.zona, z])), [zonas]);
+  const parentRef = useRef<THREE.Group>(null);
+  const surfaceRef = useRef<THREE.Group>(null);
+  const listo = Object.keys(zonePos).length > 0;
+
+  return (
+    <group ref={parentRef}>
+      <group ref={surfaceRef}>
+        <VacaMesh />
+      </group>
+      <ZoneProjector surfaceRef={surfaceRef} parentRef={parentRef} onReady={setZonePos} />
+      {listo && Object.entries(ZONA_ANCLA).map(([zona]) => {
+        const pos = zonePos[zona];
+        if (!pos) return null;
+        const s = statMap.get(zona);
+        const pct = s?.pct ?? 0;
+        const sel = selectable && selected === zona;
+        const color = selectable
+          ? (sel ? "#16a34a" : "#64748b")
+          : s && s.casos > 0 ? heatColor(pct) : "#94a3b8";
+        const label = selectable
+          ? (s?.label || zona)
+          : s && s.casos > 0 ? `${s.label}: ${pct}% · ${s.cond}` : `${s?.label || zona}: sin casos`;
+        return (
+          <Marcador
+            key={zona}
+            pos={pos}
+            color={color}
+            label={label}
+            activo={hov === zona}
+            seleccionado={sel}
+            clickable={selectable}
+            onHover={() => setHov(zona)}
+            onLeave={() => setHov(null)}
+            onClick={selectable && onSelect ? () => onSelect(zona) : undefined}
+          />
+        );
+      })}
+    </group>
+  );
 }
 
 export default function Cow3D({
@@ -304,52 +289,18 @@ export default function Cow3D({
   selected?: string | null;
   onSelect?: (zona: string) => void;
 }) {
-  const [hov, setHov] = useState<string | null>(null);
-  const [zonePos, setZonePos] = useState<Record<string, [number, number, number]>>({});
-  const statMap = useMemo(() => new Map(zonas.map((z) => [z.zona, z])), [zonas]);
-  const parentRef = useRef<THREE.Group>(null);
-  const surfaceRef = useRef<THREE.Group>(null);
-
   return (
     <div style={{ width: "100%", height, borderRadius: 14, overflow: "hidden", background: "linear-gradient(165deg,#f3f6f9 0%,#e4eaf0 60%,#d9e1e9 100%)", position: "relative" }}>
-      <Canvas shadows camera={{ position: [2.5, 1.4, 4.4], fov: 40 }} dpr={[1, 2]} onPointerMissed={() => setHov(null)}>
+      <Canvas shadows camera={{ position: [2.5, 1.4, 4.4], fov: 40 }} dpr={[1, 2]}>
         <ambientLight intensity={0.85} />
         <directionalLight position={[4, 6, 4]} intensity={1.05} castShadow shadow-mapSize={[1024, 1024]} />
         <directionalLight position={[-5, 3, -3]} intensity={0.4} />
         <directionalLight position={[0, 2, -5]} intensity={0.25} />
-        <group position={[0, 0.42, 0]} ref={parentRef}>
-          <group ref={surfaceRef}>
-            <CowBody />
-          </group>
-          <ZoneProjector surfaceRef={surfaceRef} parentRef={parentRef} onReady={setZonePos} />
-          {Object.entries(ZONA_3D).map(([zona, base]) => {
-            const s = statMap.get(zona);
-            const pct = s?.pct ?? 0;
-            const sel = selectable && selected === zona;
-            const color = selectable
-              ? (sel ? "#16a34a" : "#64748b")
-              : s && s.casos > 0 ? heatColor(pct) : "#94a3b8";
-            const label = selectable
-              ? (s?.label || zona)
-              : s && s.casos > 0 ? `${s.label}: ${pct}% · ${s.cond}` : `${s?.label || zona}: sin casos`;
-            return (
-              <Marcador
-                key={zona}
-                pos={zonePos[zona] || base}
-                color={color}
-                label={label}
-                activo={hov === zona}
-                seleccionado={sel}
-                clickable={selectable}
-                onHover={() => setHov(zona)}
-                onLeave={() => setHov(null)}
-                onClick={selectable && onSelect ? () => onSelect(zona) : undefined}
-              />
-            );
-          })}
-        </group>
-        <ContactShadows position={[0, -0.92, 0]} opacity={0.32} scale={7} blur={2.6} far={3} />
-        <OrbitControls enablePan={false} autoRotate={!selectable} autoRotateSpeed={0.7} minDistance={3} maxDistance={8} minPolarAngle={Math.PI / 6} maxPolarAngle={Math.PI / 1.9} target={[0, 0.2, 0]} />
+        <Suspense fallback={null}>
+          <Escena zonas={zonas} selectable={selectable} selected={selected} onSelect={onSelect} />
+        </Suspense>
+        <ContactShadows position={[0, GROUND_Y, 0]} opacity={0.32} scale={7} blur={2.6} far={3} />
+        <OrbitControls enablePan={false} autoRotate={!selectable} autoRotateSpeed={0.7} minDistance={3} maxDistance={8} minPolarAngle={Math.PI / 6} maxPolarAngle={Math.PI / 1.9} target={[0, 0.15, 0]} />
       </Canvas>
       {selectable && (
         <div style={{ position: "absolute", left: "50%", bottom: 8, transform: "translateX(-50%)", fontSize: 10.5, fontWeight: 600, color: "#64748b", background: "rgba(255,255,255,.8)", padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap", pointerEvents: "none" }}>
