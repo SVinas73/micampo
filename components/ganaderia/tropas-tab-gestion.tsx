@@ -431,7 +431,7 @@ export function MovGestion({
                 </div>
               ) : (
                 <div style={{ border: "2px dashed var(--mc-line-2)", borderRadius: 10, padding: "20px 16px", textAlign: "center", background: "var(--mc-surface-2)" }}>
-                  <Icon name="hand" size={22} style={{ color: "#94a3b8", marginBottom: 6 }} />
+                  <Icon name="repeat" size={22} style={{ color: "#94a3b8", marginBottom: 6 }} />
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--mc-text-2)", marginBottom: 4 }}>Elegí una rutina de la biblioteca</div>
                   <div style={{ fontSize: 11, color: "var(--mc-text-3)" }}>y confirmá el plan del día</div>
                 </div>

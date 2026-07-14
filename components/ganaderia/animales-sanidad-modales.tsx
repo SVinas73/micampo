@@ -20,11 +20,16 @@ const Cow3D = dynamic(() => import("./cow3d"), {
 /* ============ Config de zonas anatómicas (dominio veterinario) ============ */
 
 export const ZONA_INFO_SANIDAD: Record<string, { label: string; chips: string[]; diags: string[] }> = {
-  cabeza: { label: "Cabeza / Ojos", chips: ["Fiebre", "Secreción nasal", "Ojos llorosos"], diags: ["Queratoconjuntivitis", "Rinotraqueítis Infecciosa", "Fiebre de Leche"] },
+  cabeza: { label: "Cabeza", chips: ["Fiebre", "Secreción nasal", "Decaimiento"], diags: ["Rinotraqueítis Infecciosa", "Fiebre de Leche", "Meningoencefalitis"] },
+  ojos: { label: "Ojos", chips: ["Ojos llorosos", "Nube / opacidad", "Enrojecimiento"], diags: ["Queratoconjuntivitis", "Carcinoma ocular", "Cuerpo extraño"] },
+  boca: { label: "Boca / Hocico", chips: ["Salivación excesiva", "Aftas / úlceras", "Dificultad para comer"], diags: ["Fiebre Aftosa", "Actinomicosis", "Estomatitis"] },
   cuello: { label: "Cuello / Papada", chips: ["Ganglios inflamados", "Rigidez", "Herida"], diags: ["Actinobacilosis", "Absceso", "Linfadenitis"] },
-  costillas: { label: "Costillas / Tórax", chips: ["Dificultad respiratoria", "Tos", "Pérdida de peso"], diags: ["Neumonía", "Timpanismo", "Pleuresía"] },
+  costillas: { label: "Costillas / Tórax", chips: ["Dificultad respiratoria", "Tos", "Pérdida de peso"], diags: ["Neumonía", "Pleuresía", "Tuberculosis"] },
+  panza: { label: "Panza / Abdomen", chips: ["Distensión abdominal", "Diarrea", "Falta de rumia"], diags: ["Timpanismo", "Acidosis Ruminal", "Indigestión / Empacho"] },
+  piel: { label: "Piel / Pelaje", chips: ["Costras o lesiones", "Caída de pelo", "Picazón"], diags: ["Sarna", "Dermatofilosis", "Parasitosis Externa"] },
   columna: { label: "Columna / Lomo", chips: ["Postura anormal", "Dolor al tacto", "Rigidez"], diags: ["Hipocalcemia", "Lesión Medular", "Distocia Previa"] },
   cadera: { label: "Cadera / Anca", chips: ["Dificultad para levantarse", "Cojera", "Hinchazón"], diags: ["Paresia Puerperal", "Luxación de Cadera", "Miopatía"] },
+  genital: { label: "Genital / Perineal", chips: ["Secreción anormal", "Prolapso", "Retención de placenta"], diags: ["Metritis", "Prolapso Uterino", "Retención Placentaria"] },
   ubre: { label: "Ubre", chips: ["Inflamación", "Leche anormal", "Dolor al tacto"], diags: ["Mastitis Clínica", "Mastitis Subclínica", "Edema de Ubre"] },
   patas: { label: "Pezuñas / Patas", chips: ["Cojera", "Hinchazón", "Herida visible"], diags: ["Pietín", "Laminitis", "Absceso Podal"] },
   cola: { label: "Cola", chips: ["Suciedad / Diarrea", "Herida", "Parásitos"], diags: ["Diarrea Infecciosa", "Parasitosis", "Dermatitis"] },
@@ -34,6 +39,10 @@ export const MARCA_ZONAS_SANIDAD = [
   { id: "cola", label: "Cola" },
   { id: "patas", label: "Patas" },
   { id: "cabeza", label: "Cabeza" },
+  { id: "cuello", label: "Cuello" },
+  { id: "panza", label: "Panza" },
+  { id: "ubre", label: "Ubre" },
+  { id: "piel", label: "Piel" },
 ];
 export const MARCA_COLORES_SANIDAD = ["#dc2626", "#f59e0b", "#2563eb", "#16a34a", "#7c3aed", "#111827"];
 
@@ -95,210 +104,6 @@ export function zonasDesdeTratamientos(tratamientos: TratamientoAPI[], totalAnim
     pct: Math.round((e.casos / base) * 1000) / 10,
     cond: Array.from(e.conds.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || "—",
   }));
-}
-
-const ZONA_POS: Record<string, { cx: number; cy: number }> = {
-  ubre: { cx: 210, cy: 152 },
-  patas: { cx: 110, cy: 185 },
-  cuello: { cx: 72, cy: 85 },
-  columna: { cx: 185, cy: 60 },
-  cabeza: { cx: 32, cy: 88 },
-  costillas: { cx: 150, cy: 98 },
-  cadera: { cx: 252, cy: 102 },
-  cola: { cx: 292, cy: 96 },
-};
-
-export function CowHeatmap({
-  selectable = false,
-  selected = null,
-  onSelect,
-  stats = [],
-}: {
-  selectable?: boolean;
-  selected?: string | null;
-  onSelect?: (zona: string) => void;
-  stats?: ZonaStat[];
-}) {
-  const [hov, setHov] = useState<string | null>(null);
-  const heatColor = (pct: number) => (pct >= 10 ? "#dc2626" : pct >= 6 ? "#ea580c" : pct >= 3 ? "#f59e0b" : "#65a30d");
-  const heatLabel = (pct: number) => (pct >= 10 ? "Crítica" : pct >= 6 ? "Alta" : pct >= 3 ? "Media" : "Baja");
-
-  // En modo seleccionable mostramos TODAS las zonas (aunque no tengan casos)
-  // para que se pueda elegir cualquiera; en modo lectura solo las que tienen casos.
-  const statMap = new Map(stats.map((s) => [s.zona, s]));
-  const zonaIds = selectable ? Object.keys(ZONA_INFO_SANIDAD) : stats.map((s) => s.zona);
-  const zonas = zonaIds
-    .filter((z) => ZONA_POS[z])
-    .map((z) => {
-      const s = statMap.get(z);
-      const pct = s?.pct ?? 0;
-      return {
-        id: z,
-        zona: z,
-        label: ZONA_INFO_SANIDAD[z]?.label || z,
-        pct,
-        casos: s?.casos ?? 0,
-        cond: s?.cond || "Sin casos",
-        color: s ? heatColor(pct) : "#65a30d",
-        r: 9 + Math.min(12, pct * 0.75),
-        ...ZONA_POS[z],
-      };
-    });
-  const hovZ = zonas.find((z) => z.id === hov);
-
-  return (
-    <div style={{ position: "relative" }}>
-      <svg viewBox="0 0 340 220" width="100%" style={{ display: "block" }}>
-        <defs>
-          <linearGradient id="cowBodyGradH" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#eef2ee" />
-            <stop offset="100%" stopColor="#dde4dd" />
-          </linearGradient>
-          <linearGradient id="cowLegGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#d8dfd8" />
-            <stop offset="100%" stopColor="#c4ccc4" />
-          </linearGradient>
-          <filter id="cowShadow" x="-5%" y="-5%" width="110%" height="120%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#1e293b" floodOpacity="0.08" />
-          </filter>
-          {zonas.map((z) => (
-            <radialGradient key={z.id + "g"} id={"czg" + z.id}>
-              <stop offset="0%" stopColor={z.color} stopOpacity="0.9" />
-              <stop offset="70%" stopColor={z.color} stopOpacity="0.45" />
-              <stop offset="100%" stopColor={z.color} stopOpacity="0.05" />
-            </radialGradient>
-          ))}
-        </defs>
-
-        {/* Sombra de piso */}
-        <ellipse cx="180" cy="203" rx="118" ry="6.5" fill="#1e293b" opacity="0.06" />
-
-        {/* Cola */}
-        <path d="M279,90 Q293,95 294,116 Q294,133 287,148" fill="none" stroke="#c2ccc2" strokeWidth="3" strokeLinecap="round" />
-        <path d="M285,146 Q282,155 287,161 Q292,155 290,146 Z" fill="#9fb09f" />
-
-        {/* Patas traseras */}
-        <path d="M244,139 L242,168 L240,196 L249,196 L250,168 L252,140 Z" fill="url(#cowLegGrad)" stroke="#b8c8b8" strokeWidth="1" />
-        <rect x="239" y="193" width="12" height="7" rx="2.5" fill="#7f907f" />
-        <path d="M223,141 L221,168 L220,196 L229,196 L230,168 L231,142 Z" fill="#d3dbd3" stroke="#b8c8b8" strokeWidth="1" />
-        <rect x="219" y="193" width="12" height="7" rx="2.5" fill="#748474" />
-
-        {/* Patas delanteras */}
-        <path d="M119,137 L117,168 L116,196 L125,196 L126,168 L127,139 Z" fill="url(#cowLegGrad)" stroke="#b8c8b8" strokeWidth="1" />
-        <rect x="115" y="193" width="12" height="7" rx="2.5" fill="#7f907f" />
-        <path d="M99,139 L97,168 L96,196 L105,196 L106,168 L107,141 Z" fill="#d3dbd3" stroke="#b8c8b8" strokeWidth="1" />
-        <rect x="95" y="193" width="12" height="7" rx="2.5" fill="#748474" />
-
-        {/* Ubre */}
-        <path d="M195,145 Q199,166 210,170 Q223,173 233,165 Q240,158 238,144 Z" fill="#f3b6c6" stroke="#e39fb4" strokeWidth="1" opacity="0.9" />
-        {[205, 215, 224, 232].map((tx, i) => (
-          <rect key={i} x={tx - 2} y={168} width="3.6" height="8" rx="1.8" fill="#eda6bd" />
-        ))}
-
-        {/* Cuerpo */}
-        <path d="M96,74 C 128,56 186,50 236,56 C 262,59 282,70 282,92 C 282,116 268,134 244,142 C 214,152 150,153 120,147 C 96,142 80,126 78,106 C 76,90 84,80 96,74 Z" fill="url(#cowBodyGradH)" stroke="#bccabc" strokeWidth="1.6" filter="url(#cowShadow)" />
-        <path d="M120,147 Q150,153 214,150" fill="none" stroke="#c8d4c8" strokeWidth="0.8" opacity="0.7" />
-
-        {/* Cuello */}
-        <path d="M96,78 Q74,72 60,82 Q52,88 56,98 Q66,92 82,92 Q94,90 98,84 Z" fill="url(#cowBodyGradH)" stroke="#bccabc" strokeWidth="1.2" />
-
-        {/* Cabeza */}
-        <path d="M56,80 Q40,74 30,82 Q18,92 22,104 Q26,114 40,112 Q54,110 58,98 Q60,88 56,80 Z" fill="url(#cowBodyGradH)" stroke="#bccabc" strokeWidth="1.3" />
-        {/* Hocico */}
-        <ellipse cx="24" cy="104" rx="10" ry="7.5" fill="#e6d3c8" stroke="#cbb8ac" strokeWidth="1" />
-        <ellipse cx="20" cy="104" rx="2" ry="1.6" fill="#b09a8c" opacity="0.6" />
-        <ellipse cx="27" cy="106" rx="2" ry="1.6" fill="#b09a8c" opacity="0.6" />
-        {/* Oreja */}
-        <path d="M52,74 Q58,64 66,66 Q62,74 56,80 Z" fill="#d6ded6" stroke="#bccabc" strokeWidth="1" />
-        {/* Cuerno */}
-        <path d="M50,68 Q47,58 53,54" fill="none" stroke="#cbb878" strokeWidth="2.4" strokeLinecap="round" />
-        {/* Ojo */}
-        <ellipse cx="44" cy="92" rx="3.4" ry="3" fill="white" stroke="#889888" strokeWidth="0.7" />
-        <circle cx="43.5" cy="92" r="1.8" fill="#2d3a2d" />
-        <circle cx="44.4" cy="91.2" r="0.6" fill="white" />
-
-        {/* Manchas Holstein */}
-        <path d="M150,66 Q168,58 180,70 Q186,82 172,88 Q152,92 144,78 Q140,68 150,66Z" fill="#2d3a2d" opacity="0.08" />
-        <path d="M210,74 Q228,70 234,82 Q236,94 220,96 Q206,94 205,84 Q205,74 210,74Z" fill="#2d3a2d" opacity="0.07" />
-        <path d="M110,96 Q122,90 130,100 Q132,110 120,112 Q108,110 106,102 Z" fill="#2d3a2d" opacity="0.06" />
-
-        {/* Zonas de calor */}
-        {zonas.map((z) => (
-          <g key={z.id}>
-            <circle
-              cx={z.cx}
-              cy={z.cy}
-              r={z.r * 1.6}
-              fill={"url(#czg" + z.id + ")"}
-              opacity={hov && hov !== z.id ? 0.2 : 0.7}
-              style={{ transition: "opacity 0.18s", cursor: selectable ? "pointer" : "default" }}
-              onMouseEnter={() => setHov(z.id)}
-              onMouseLeave={() => setHov(null)}
-              onClick={() => selectable && onSelect && onSelect(z.zona)}
-            />
-            <circle
-              cx={z.cx}
-              cy={z.cy}
-              r={z.r * 0.65}
-              fill={z.color}
-              stroke="white"
-              strokeWidth={hov === z.id ? 2 : 1}
-              opacity={hov && hov !== z.id ? 0.3 : 0.92}
-              style={{ cursor: selectable ? "pointer" : "default", transition: "all 0.18s", transform: hov === z.id ? "scale(1.2)" : "scale(1)", transformOrigin: `${z.cx}px ${z.cy}px` }}
-              onMouseEnter={() => setHov(z.id)}
-              onMouseLeave={() => setHov(null)}
-              onClick={() => selectable && onSelect && onSelect(z.zona)}
-            />
-            {selectable && selected === z.zona && (
-              <circle cx={z.cx} cy={z.cy} r={z.r * 1.6 + 5} fill="none" stroke="var(--mc-green-600)" strokeWidth="2.5" style={{ pointerEvents: "none" }} />
-            )}
-          </g>
-        ))}
-
-        {/* Tooltip */}
-        {hovZ && (() => {
-          const tx = Math.min(Math.max(hovZ.cx, 55), 290);
-          const ty = hovZ.cy - hovZ.r * 1.6 - 6;
-          const label = hovZ.casos > 0 ? `${hovZ.label}: ${hovZ.pct}% · ${hovZ.cond}` : `${hovZ.label}: sin casos`;
-          const w = label.length * 4.8 + 16;
-          return (
-            <g style={{ pointerEvents: "none" }}>
-              <rect x={tx - w / 2} y={ty - 14} width={w} height={16} rx="4" fill="#1e293b" opacity="0.93" />
-              <text x={tx} y={ty - 3} textAnchor="middle" fontSize="7" fill="white" fontWeight="600" fontFamily="system-ui">{label}</text>
-            </g>
-          );
-        })()}
-      </svg>
-
-      {stats.length > 0 && (
-        <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Intensidad:</span>
-            {[1, 3, 6, 10].map((p) => (
-              <div key={p} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: heatColor(p) }} />
-                <span style={{ fontSize: 10, color: "var(--mc-muted)" }}>{heatLabel(p)}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 10px", marginTop: 4 }}>
-            {zonas.filter((z) => z.casos > 0).map((z) => (
-              <div
-                key={z.id}
-                style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer", opacity: hov && hov !== z.id ? 0.35 : 1, transition: "opacity 0.15s" }}
-                onMouseEnter={() => setHov(z.id)}
-                onMouseLeave={() => setHov(null)}
-              >
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: z.color, flexShrink: 0 }} />
-                <span style={{ color: "var(--mc-muted)" }}>{z.label}</span>
-                <span style={{ fontWeight: 700, color: z.color }}>{z.pct}%</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
 }
 
 /* ============ CowProfileSVG (avatar de perfil, timeline) ============ */

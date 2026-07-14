@@ -79,6 +79,7 @@ export type LoteGeoAPI = {
   coordenadas?: string | null;
   centroLatitud?: number | null;
   centroLongitud?: number | null;
+  establecimientoId?: string | null;
 };
 
 export const PALETA_TROPAS = ["#16a34a", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444", "#0891b2", "#ec4899", "#d97706"];

@@ -766,7 +766,16 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
               box-shadow .16s ease, transform .12s cubic-bezier(.2,.8,.3,1);
 }
 .mc-btn:active { transform: translateY(1px) scale(0.99); }
-.mc-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+/* Deshabilitado: sólido (superficie + texto muteado), nunca transparente */
+.mc-btn:disabled {
+  opacity: 1;
+  background: var(--mc-surface-2);
+  color: var(--mc-text-3);
+  border-color: var(--mc-line);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
 .mc-btn--pill { border-radius: var(--r-pill); }
 .mc-btn--block { width: 100%; }
 .mc-btn--sm { padding: 7px 13px; font-size: 12px; gap: 6px; border-radius: 9px; }

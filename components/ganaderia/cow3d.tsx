@@ -9,21 +9,28 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Html, ContactShadows } from "@react-three/drei";
+import { OrbitControls, Html, ContactShadows, Billboard } from "@react-three/drei";
 import * as THREE from "three";
 
 export type ZonaHeat3D = { zona: string; pct: number; casos: number; cond: string; label: string };
 
-/* Posición 3D de cada zona sobre el cuerpo (cabeza en -X, cola en +X). */
+/* Posición 3D de cada zona sobre el cuerpo (cabeza en -X, cola en +X).
+   Cobertura clínica completa: cabeza/ojos/boca, cuello, tórax, panza, lomo,
+   piel (flanco), cadera, genital-perineal, ubre, cola y patas. */
 const ZONA_3D: Record<string, [number, number, number]> = {
-  cabeza: [-1.82, 0.44, 0.16],
-  cuello: [-1.1, 0.66, 0.2],
+  cabeza: [-1.7, 0.62, 0.1],
+  ojos: [-1.9, 0.42, 0.22],
+  boca: [-2.1, 0.14, 0.1],
+  cuello: [-1.1, 0.66, 0.18],
   columna: [0.0, 0.82, 0],
-  costillas: [-0.32, 0.14, 0.64],
-  cadera: [0.82, 0.66, 0.18],
-  cola: [1.46, 0.3, 0],
-  patas: [-0.74, -0.9, 0.36],
-  ubre: [0.54, -0.6, 0.24],
+  costillas: [-0.42, 0.2, 0.62],
+  panza: [0.05, -0.52, 0.36],
+  piel: [0.32, 0.34, 0.58],
+  cadera: [0.82, 0.66, 0.16],
+  genital: [1.18, -0.1, 0.16],
+  ubre: [0.54, -0.62, 0.26],
+  cola: [1.48, 0.28, 0],
+  patas: [-0.74, -0.92, 0.36],
 };
 
 const heatColor = (pct: number) => (pct >= 10 ? "#dc2626" : pct >= 6 ? "#ea580c" : pct >= 3 ? "#f59e0b" : "#65a30d");
@@ -152,6 +159,8 @@ function CowBody() {
   );
 }
 
+/* Punto de zona: disco plano chico (billboard, siempre mira a cámara), no una
+   esfera. Aro blanco fino + relleno de color; discreto salvo hover/selección. */
 function Marcador({
   pos,
   color,
@@ -173,37 +182,48 @@ function Marcador({
   onLeave: () => void;
   onClick?: () => void;
 }) {
-  const ref = useRef<THREE.Mesh>(null);
+  const ref = useRef<THREE.Group>(null);
   useFrame((state) => {
     if (!ref.current) return;
-    if (activo || seleccionado) {
-      const s = 1 + Math.sin(state.clock.elapsedTime * 4) * 0.12;
-      ref.current.scale.setScalar(0.085 * s);
-    } else {
-      ref.current.scale.setScalar(0.07);
-    }
+    const base = activo || seleccionado ? 1.35 : 1;
+    const pulso = seleccionado ? 1 + Math.sin(state.clock.elapsedTime * 4) * 0.08 : 1;
+    ref.current.scale.setScalar(base * pulso);
   });
   return (
     <group position={pos}>
-      <mesh
-        ref={ref}
-        onPointerOver={(e) => { e.stopPropagation(); onHover(); if (clickable) document.body.style.cursor = "pointer"; }}
-        onPointerOut={() => { onLeave(); document.body.style.cursor = "default"; }}
-        onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(); } }}
-      >
-        <sphereGeometry args={[1, 18, 18]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={activo || seleccionado ? 0.55 : 0.25} roughness={0.35} />
-      </mesh>
-      {/* Aro de selección */}
-      {seleccionado && (
-        <mesh rotation={[Math.PI / 2, 0, 0]} scale={0.14}>
-          <torusGeometry args={[1, 0.09, 8, 32]} />
-          <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.4} />
-        </mesh>
-      )}
+      <Billboard>
+        <group ref={ref}>
+          {/* Zona de toque invisible más generosa que el punto visible */}
+          <mesh
+            onPointerOver={(e) => { e.stopPropagation(); onHover(); if (clickable) document.body.style.cursor = "pointer"; }}
+            onPointerOut={() => { onLeave(); document.body.style.cursor = "default"; }}
+            onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(); } }}
+            visible={false}
+          >
+            <circleGeometry args={[0.11, 16]} />
+          </mesh>
+          {/* Aro blanco */}
+          <mesh>
+            <ringGeometry args={[0.036, 0.048, 24]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.95} depthWrite={false} />
+          </mesh>
+          {/* Punto de color */}
+          <mesh>
+            <circleGeometry args={[0.034, 24]} />
+            <meshBasicMaterial color={color} transparent opacity={activo || seleccionado ? 1 : 0.9} />
+          </mesh>
+          {/* Halo de selección */}
+          {seleccionado && (
+            <mesh>
+              <ringGeometry args={[0.058, 0.07, 24]} />
+              <meshBasicMaterial color={color} transparent opacity={0.8} depthWrite={false} />
+            </mesh>
+          )}
+        </group>
+      </Billboard>
       {(activo || seleccionado) && (
         <Html center distanceFactor={8} style={{ pointerEvents: "none" }}>
-          <div style={{ background: "#1e293b", color: "#fff", fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6, whiteSpace: "nowrap", transform: "translateY(-24px)", boxShadow: "0 4px 12px rgba(0,0,0,.3)" }}>{label}</div>
+          <div style={{ background: "#1e293b", color: "#fff", fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6, whiteSpace: "nowrap", transform: "translateY(-20px)", boxShadow: "0 4px 12px rgba(0,0,0,.3)" }}>{label}</div>
         </Html>
       )}
     </group>
