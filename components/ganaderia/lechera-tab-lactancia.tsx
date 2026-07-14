@@ -107,22 +107,23 @@ export function PLEstadoLactancia({ vacas, esperada }: { vacas: VacaLechera[]; e
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {modal && <PLVacaModal vaca={modal} esperada={esperada} onClose={() => setModal(null)} />}
 
-      {/* KPIs */}
+      {/* KPIs — mismo diseño que Agronomía (mc-kpi canónico): valor en tinta 34px
+          display; el color/severidad va por modificador de card y en el delta. */}
       <div className="grid g-cols-5" style={{ gap: 10 }}>
         {[
-          { lbl: "En Ordeñe", ico: "droplets", val: `${enOrdenne.length} vacas`, sub: "activas en lactancia", cls: "mc-kpi mc-kpi--accent" as const, vc: undefined },
-          { lbl: "Secas", ico: "cloud", val: `${secas.length} vacas`, sub: "en período de descanso", cls: "mc-kpi" as const, vc: undefined },
-          { lbl: "Próx. a Secar", ico: "clock", val: `${proxSecar.length} vacas`, sub: "≥270 DEL", cls: "mc-kpi mc-kpi--warn" as const, vc: "var(--mc-amber)" },
-          { lbl: "Días en Leche Prom.", ico: "activity", val: delProm !== null ? `${delProm} días` : "—", sub: "desde el último parto · rodeo", cls: "mc-kpi" as const, del: true, vc: undefined },
-          { lbl: "Bajo Curva", ico: "alert-triangle", val: `${bajoCurva.length} vacas`, sub: "produciendo <80% esp.", cls: "mc-kpi" as const, vc: "var(--mc-red)" },
+          { lbl: "En Ordeñe", ico: "droplets", val: `${enOrdenne.length} vacas`, sub: "activas en lactancia", cls: "mc-kpi mc-kpi--accent" as const, dcls: "" },
+          { lbl: "Secas", ico: "cloud", val: `${secas.length} vacas`, sub: "en período de descanso", cls: "mc-kpi" as const, dcls: "" },
+          { lbl: "Próx. a Secar", ico: "clock", val: `${proxSecar.length} vacas`, sub: "≥270 DEL", cls: "mc-kpi mc-kpi--warn" as const, dcls: "mc-kpi__delta--warn" },
+          { lbl: "Días en Leche Prom.", ico: "activity", val: delProm !== null ? `${delProm} días` : "—", sub: "desde el último parto · rodeo", cls: "mc-kpi" as const, del: true, dcls: "" },
+          { lbl: "Bajo Curva", ico: "alert-triangle", val: `${bajoCurva.length} vacas`, sub: "produciendo <80% esp.", cls: "mc-kpi" as const, dcls: bajoCurva.length > 0 ? "mc-kpi__delta--down" : "" },
         ].map((k, i) => (
           <div key={i} className={k.cls} style={{ position: "relative" }}>
             <div className="mc-kpi__label">
-              <Icon name={k.ico} size={13} style={{ color: "var(--mc-text-3)" }} />{k.lbl}
+              {k.lbl}
               {k.del && <span title={KPI_INFO} style={{ marginLeft: 3, cursor: "help", color: "var(--mc-text-3)", display: "inline-flex", alignItems: "center" }}><Icon name="info" size={11} /></span>}
             </div>
-            <div className="mc-kpi__value" style={{ fontSize: 26, fontWeight: 700, ...(k.vc ? { color: k.vc } : {}) }}>{k.val}</div>
-            <div className="mc-kpi__delta">{k.sub}</div>
+            <div className="mc-kpi__value">{k.val}</div>
+            <div className={`mc-kpi__delta ${k.dcls}`}>{k.sub}</div>
             <div className="mc-kpi__glyph"><Icon name={k.ico} size={14} /></div>
           </div>
         ))}

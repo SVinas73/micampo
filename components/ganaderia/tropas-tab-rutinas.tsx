@@ -200,16 +200,15 @@ export function MovRutinas({
           title="Cumplimiento"
           ico="check"
           val={cumplimiento !== null ? `${cumplimiento}%` : "—"}
-          valColor={cumplimiento !== null && cumplimiento >= 80 ? "#16a34a" : undefined}
+          trend={cumplimiento !== null && cumplimiento >= 80 ? "up" : undefined}
           sub={evaluables > 0 ? `${ejecutadas} de ${evaluables} ejecuciones en plazo` : "Sin ejecuciones registradas"}
         />
         <KpiMovCard
           title="Alertas"
           ico="shield"
           val={`${vencidas} Vencida${vencidas === 1 ? "" : "s"}`}
-          valColor={vencidas > 0 ? "#c93434" : "#16a34a"}
+          trend={vencidas > 0 ? "down" : "up"}
           sub={vencidas > 0 ? "Ejecuciones de rutina atrasadas" : "Todas las rutinas al día"}
-          subColor={vencidas > 0 ? "#c93434" : undefined}
         />
       </div>
 

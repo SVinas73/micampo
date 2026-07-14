@@ -28,7 +28,7 @@ const ZONA_3D: Record<string, [number, number, number]> = {
   piel: [0.32, 0.34, 0.58],
   cadera: [0.82, 0.66, 0.16],
   genital: [1.18, -0.1, 0.16],
-  ubre: [0.54, -0.62, 0.26],
+  ubre: [0.5, -0.9, 0.1],
   cola: [1.48, 0.28, 0],
   patas: [-0.74, -0.92, 0.36],
 };
@@ -183,16 +183,35 @@ function Marcador({
   onClick?: () => void;
 }) {
   const ref = useRef<THREE.Group>(null);
+  const glowRef = useRef<THREE.Mesh>(null);
+  const on = activo || seleccionado;
   useFrame((state) => {
-    if (!ref.current) return;
-    const base = activo || seleccionado ? 1.35 : 1;
-    const pulso = seleccionado ? 1 + Math.sin(state.clock.elapsedTime * 4) * 0.08 : 1;
-    ref.current.scale.setScalar(base * pulso);
+    if (ref.current) {
+      const base = on ? 1.4 : 1;
+      const pulso = seleccionado ? 1 + Math.sin(state.clock.elapsedTime * 4) * 0.08 : 1;
+      ref.current.scale.setScalar(base * pulso);
+    }
+    // Halo "encendido" al hover: crece y late con opacidad
+    if (glowRef.current) {
+      const m = glowRef.current.material as THREE.MeshBasicMaterial;
+      if (on) {
+        const t = 1 + Math.sin(state.clock.elapsedTime * 5) * 0.18;
+        glowRef.current.scale.setScalar(t);
+        m.opacity = 0.55 + Math.sin(state.clock.elapsedTime * 5) * 0.2;
+      } else {
+        m.opacity = 0;
+      }
+    }
   });
   return (
     <group position={pos}>
       <Billboard>
-        <group ref={ref}>
+        {/* Glow aditivo (se "ilumina" al pasar el mouse / seleccionar) */}
+        <mesh ref={glowRef} renderOrder={2}>
+          <circleGeometry args={[0.12, 28]} />
+          <meshBasicMaterial color={color} transparent opacity={0} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} />
+        </mesh>
+        <group ref={ref} renderOrder={3}>
           {/* Zona de toque invisible más generosa que el punto visible */}
           <mesh
             onPointerOver={(e) => { e.stopPropagation(); onHover(); if (clickable) document.body.style.cursor = "pointer"; }}
@@ -200,34 +219,76 @@ function Marcador({
             onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(); } }}
             visible={false}
           >
-            <circleGeometry args={[0.11, 16]} />
+            <circleGeometry args={[0.12, 16]} />
           </mesh>
           {/* Aro blanco */}
-          <mesh>
-            <ringGeometry args={[0.036, 0.048, 24]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.95} depthWrite={false} />
+          <mesh renderOrder={3}>
+            <ringGeometry args={[0.036, 0.05, 28]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={on ? 1 : 0.92} depthWrite={false} depthTest={false} />
           </mesh>
           {/* Punto de color */}
-          <mesh>
-            <circleGeometry args={[0.034, 24]} />
-            <meshBasicMaterial color={color} transparent opacity={activo || seleccionado ? 1 : 0.9} />
+          <mesh renderOrder={4}>
+            <circleGeometry args={[0.034, 28]} />
+            <meshBasicMaterial color={color} transparent opacity={on ? 1 : 0.9} depthWrite={false} depthTest={false} />
           </mesh>
-          {/* Halo de selección */}
-          {seleccionado && (
-            <mesh>
-              <ringGeometry args={[0.058, 0.07, 24]} />
-              <meshBasicMaterial color={color} transparent opacity={0.8} depthWrite={false} />
-            </mesh>
-          )}
         </group>
       </Billboard>
-      {(activo || seleccionado) && (
+      {on && (
         <Html center distanceFactor={8} style={{ pointerEvents: "none" }}>
           <div style={{ background: "#1e293b", color: "#fff", fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6, whiteSpace: "nowrap", transform: "translateY(-20px)", boxShadow: "0 4px 12px rgba(0,0,0,.3)" }}>{label}</div>
         </Html>
       )}
     </group>
   );
+}
+
+/* Proyecta cada zona sobre la superficie de la vaca por raycasting: dispara un
+   rayo desde fuera hacia el centro en la dirección de la zona y toma el punto de
+   piel más externo. Así los puntos quedan SIEMPRE sobre el cuerpo. */
+function ZoneProjector({
+  surfaceRef,
+  parentRef,
+  onReady,
+}: {
+  surfaceRef: React.RefObject<THREE.Group | null>;
+  parentRef: React.RefObject<THREE.Group | null>;
+  onReady: (pos: Record<string, [number, number, number]>) => void;
+}) {
+  const done = useRef(false);
+  useFrame(() => {
+    if (done.current) return;
+    const surf = surfaceRef.current;
+    const parent = parentRef.current;
+    if (!surf || !parent) return;
+    const rc = new THREE.Raycaster();
+    surf.updateWorldMatrix(true, true);
+    const meshes: THREE.Mesh[] = [];
+    surf.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) meshes.push(m); });
+    if (meshes.length === 0) return;
+    const center = new THREE.Vector3();
+    surf.getWorldPosition(center);
+    const out: Record<string, [number, number, number]> = {};
+    for (const [zona, target] of Object.entries(ZONA_3D)) {
+      const dir = new THREE.Vector3(target[0], target[1], target[2]).normalize();
+      const origin = center.clone().add(dir.clone().multiplyScalar(8));
+      rc.set(origin, dir.clone().negate());
+      rc.far = 20;
+      const hits = rc.intersectObjects(meshes, false);
+      if (hits.length > 0) {
+        const p = hits[0].point.clone();
+        let n = dir.clone();
+        if (hits[0].face) n = hits[0].face.normal.clone().transformDirection(hits[0].object.matrixWorld).normalize();
+        p.add(n.multiplyScalar(0.025)); // apenas por encima de la piel
+        const local = parent.worldToLocal(p);
+        out[zona] = [local.x, local.y, local.z];
+      } else {
+        out[zona] = target;
+      }
+    }
+    onReady(out);
+    done.current = true;
+  });
+  return null;
 }
 
 export default function Cow3D({
@@ -244,7 +305,10 @@ export default function Cow3D({
   onSelect?: (zona: string) => void;
 }) {
   const [hov, setHov] = useState<string | null>(null);
+  const [zonePos, setZonePos] = useState<Record<string, [number, number, number]>>({});
   const statMap = useMemo(() => new Map(zonas.map((z) => [z.zona, z])), [zonas]);
+  const parentRef = useRef<THREE.Group>(null);
+  const surfaceRef = useRef<THREE.Group>(null);
 
   return (
     <div style={{ width: "100%", height, borderRadius: 14, overflow: "hidden", background: "linear-gradient(165deg,#f3f6f9 0%,#e4eaf0 60%,#d9e1e9 100%)", position: "relative" }}>
@@ -253,9 +317,12 @@ export default function Cow3D({
         <directionalLight position={[4, 6, 4]} intensity={1.05} castShadow shadow-mapSize={[1024, 1024]} />
         <directionalLight position={[-5, 3, -3]} intensity={0.4} />
         <directionalLight position={[0, 2, -5]} intensity={0.25} />
-        <group position={[0, 0.42, 0]}>
-          <CowBody />
-          {Object.entries(ZONA_3D).map(([zona, pos]) => {
+        <group position={[0, 0.42, 0]} ref={parentRef}>
+          <group ref={surfaceRef}>
+            <CowBody />
+          </group>
+          <ZoneProjector surfaceRef={surfaceRef} parentRef={parentRef} onReady={setZonePos} />
+          {Object.entries(ZONA_3D).map(([zona, base]) => {
             const s = statMap.get(zona);
             const pct = s?.pct ?? 0;
             const sel = selectable && selected === zona;
@@ -268,7 +335,7 @@ export default function Cow3D({
             return (
               <Marcador
                 key={zona}
-                pos={pos}
+                pos={zonePos[zona] || base}
                 color={color}
                 label={label}
                 activo={hov === zona}
