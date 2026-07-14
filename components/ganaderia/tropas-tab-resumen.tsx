@@ -8,6 +8,7 @@ import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Icon, useToast } from "@/components/mc";
+import { useLoteScope } from "@/components/LoteScope";
 import type { LoteMapaSat, RutaMapaSat } from "./tropas-mapa-sat";
 
 // Mapa satelital real (Leaflet + Esri); se carga solo en cliente.
@@ -61,6 +62,10 @@ export function MovResumen({
 }) {
   const router = useRouter();
   const toast = useToast();
+  // Alcance global del sidebar (mismo mecanismo que Campo Digital → Lotes):
+  // el mapa muestra los lotes del establecimiento elegido.
+  const { establecimientoId } = useLoteScope();
+  const lotesScope = establecimientoId === "todos" ? lotes : lotes.filter((l) => (l.establecimientoId || "") === establecimientoId);
   const [selTropaId, setSelTropaId] = useState<string | null>(null);
   const [fichaVisible, setFichaVisible] = useState(false);
   const [capa, setCapa] = useState<Capa>("ocupacion");
@@ -137,7 +142,7 @@ export function MovResumen({
   ];
 
   // ── Mapa satelital real: color + etiqueta por lote según la capa activa ──
-  const hayGeo = useMemo(() => lotes.some((l) => centroDeLote(l) !== null), [lotes]);
+  const hayGeo = useMemo(() => lotesScope.some((l) => centroDeLote(l) !== null), [lotesScope]);
   const colorLoteCapa = (nombre: string): { color: string; label: string; etiqueta: string | null } => {
     const tropaEn = tropaEnLote(nombre);
     const cant = tropaEn ? tropaEn._count?.animales ?? tropaEn.animales?.length ?? 0 : 0;
@@ -162,7 +167,7 @@ export function MovResumen({
       legsLote > 0 ? `${legsLote} mov.` : null;
     return { color, label, etiqueta };
   };
-  const lotesMapa: LoteMapaSat[] = lotes.map((l) => {
+  const lotesMapa: LoteMapaSat[] = lotesScope.map((l) => {
     const { color, label, etiqueta } = colorLoteCapa(l.nombre);
     return { id: l.id, nombre: l.nombre, coordenadas: l.coordenadas, centroLatitud: l.centroLatitud, centroLongitud: l.centroLongitud, color, label, etiqueta, selected: loteRutaSel === l.nombre, clickable: capa === "rutaDia" || !!tropaEnLote(l.nombre) };
   });
@@ -273,12 +278,12 @@ export function MovResumen({
 
           <div style={{ position: "relative", margin: "0 14px 14px" }}>
             <div style={{ position: "relative", background: "var(--mc-surface-2)", borderRadius: 14, overflow: "hidden", minHeight: 440 }}>
-              {lotes.length === 0 ? (
+              {lotesScope.length === 0 ? (
                 <div style={{ minHeight: 440, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: 24, textAlign: "center" }}>
                   <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(255,255,255,.7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Icon name="map" size={22} style={{ color: "var(--mc-text-3)" }} />
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--mc-ink)" }}>Sin lotes cargados</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--mc-ink)" }}>{lotes.length === 0 ? "Sin lotes cargados" : "Sin lotes en este campo"}</div>
                   <div style={{ fontSize: 12, color: "var(--mc-text-2)", maxWidth: 320 }}>
                     Creá tus lotes/potreros en el módulo de Lotes para ver el mapa de ocupación de tropas.
                   </div>
