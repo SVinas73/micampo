@@ -238,15 +238,14 @@ export function MovGestion({
           sub={activosHoy.length ? `de ${activosHoy.length} traslados completados` : "sin traslados programados"}
         />
         <KpiMovCard title="En Tránsito" ico="move-right" val={String(cabTransito)} valSuffix="cab." sub={cabTransito > 0 ? "Animales en arreo ahora" : "Sin arreos en curso"} pulse={cabTransito > 0} />
-        <KpiMovCard title="Eficiencia Rutina" ico="clock" val={eficiencia !== null ? `${eficiencia}%` : "—"} valColor={eficiencia !== null && eficiencia >= 80 ? "#16a34a" : undefined} sub={eficiencia !== null ? "Cumplimiento últimos 30 días" : "Sin movimientos recientes"} />
+        <KpiMovCard title="Eficiencia Rutina" ico="clock" val={eficiencia !== null ? `${eficiencia}%` : "—"} trend={eficiencia !== null && eficiencia >= 80 ? "up" : undefined} sub={eficiencia !== null ? "Cumplimiento últimos 30 días" : "Sin movimientos recientes"} />
         <KpiMovCard
           title="Alertas"
           ico="alert-triangle"
           val={String(atrasados.length)}
           valSuffix={atrasados.length === 1 ? "Activa" : "Activas"}
-          valColor={atrasados.length > 0 ? "#c93434" : "#16a34a"}
+          trend={atrasados.length > 0 ? "down" : "up"}
           sub={atrasados.length > 0 ? `${atrasados[0].tropa?.nombre || "Tropa"} con traslado atrasado` : "Todo en horario"}
-          subColor={atrasados.length > 0 ? "#c93434" : undefined}
         />
       </div>
 

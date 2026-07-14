@@ -272,7 +272,7 @@ export function MovHistorial({
       <div className="grid g-cols-5" style={{ gap: 10 }}>
         <KpiMovCard title="Total Registros" ico="box" val={String(ultimos12.length)} sub="en los últimos 12 meses" />
         <KpiMovCard title="Cabezas Movidas" ico="move-right" val={cabMovidas.toLocaleString("es-AR")} sub="acumulado del período" />
-        <KpiMovCard title="Tropa Más Activa" ico="chart" val={masActiva ? masActiva.nombre : "—"} valColor={masActiva ? "#16a34a" : undefined} sub={masActivaId ? `${masActivaId[1]} mov. en 12 meses` : "sin movimientos"} />
+        <KpiMovCard title="Tropa Más Activa" ico="chart" val={masActiva ? masActiva.nombre : "—"} sub={masActivaId ? `${masActivaId[1]} mov. en 12 meses` : "sin movimientos"} />
         <KpiMovCard title="Tipo Predominante" ico="tag" val={tipoTop ? tipoTop[0] : "—"} sub={tipoTop && ultimos12.length ? `${Math.round((tipoTop[1] / ultimos12.length) * 100)}% del total` : "sin datos"} />
         <KpiMovCard
           title="Último Movimiento"

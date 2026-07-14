@@ -242,7 +242,6 @@ export function MovPlanificador({
           title="Próximo Arreo"
           ico="clock"
           val={proximo ? (fechaStrMov(proximo.fecha) === hoyStr ? `Hoy ${proximo.horario || ""}` : `${parseInt(fechaStrMov(proximo.fecha).slice(8, 10))} ${MESES[parseInt(fechaStrMov(proximo.fecha).slice(5, 7)) - 1].slice(0, 3)}`) : "—"}
-          valColor={proximo ? "#16a34a" : undefined}
           sub={proximo ? `${proximo.tropa?.nombre || "Tropa"} · ${proximo.origenNombre || "?"} → ${proximo.destinoNombre || "?"}` : "Nada planificado"}
         />
         <KpiMovCard title="Lotes" ico="map-pin" val={String(lotesSem.size)} sub={`de ${lotes.length} lotes involucrados`} />
@@ -250,9 +249,8 @@ export function MovPlanificador({
           title="Conflictos"
           ico="shieldCheck"
           val={conflictos === 0 ? "0 detectados" : String(conflictos)}
-          valColor={conflictos === 0 ? "#16a34a" : "#c93434"}
+          trend={conflictos === 0 ? "up" : "down"}
           sub={conflictos === 0 ? "Sin superposiciones" : "Movimientos superpuestos de una misma tropa"}
-          subColor={conflictos > 0 ? "#c93434" : undefined}
         />
       </div>
 

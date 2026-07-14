@@ -238,7 +238,7 @@ export function MovResumen({
           title="Eficiencia Rutina"
           ico="clock"
           val={eficiencia !== null ? `${eficiencia}%` : "—"}
-          valColor={eficiencia !== null && eficiencia >= 80 ? "#16a34a" : undefined}
+          trend={eficiencia !== null && eficiencia >= 80 ? "up" : undefined}
           sub={eficiencia !== null ? "Cumplimiento últimos 30 días" : "Sin movimientos recientes"}
         />
         <KpiMovCard
@@ -246,9 +246,8 @@ export function MovResumen({
           ico="alert-triangle"
           val={String(atrasados.length)}
           valSuffix={atrasados.length === 1 ? "Activa" : "Activas"}
-          valColor={atrasados.length > 0 ? "#c93434" : "#16a34a"}
+          trend={atrasados.length > 0 ? "down" : "up"}
           sub={atrasados.length > 0 ? `${atrasados[0].tropa?.nombre || "Tropa"} con traslado atrasado` : "Todos los traslados al día"}
-          subColor={atrasados.length > 0 ? "#c93434" : undefined}
         />
       </div>
 

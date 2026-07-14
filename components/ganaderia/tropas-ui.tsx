@@ -29,6 +29,7 @@ export function KpiMovCard({
   subColor,
   barPct,
   pulse,
+  trend,
 }: {
   title: string;
   ico: string;
@@ -39,8 +40,13 @@ export function KpiMovCard({
   subColor?: string;
   barPct?: number | null;
   pulse?: boolean;
+  trend?: "up" | "down" | "warn" | "flat";
 }) {
-  // KPI canónico del sistema (mc-kpi) con barra opcional; misma tipografía/tamaño que Agronomía.
+  // KPI canónico del sistema (mc-kpi) con barra opcional; misma tipografía/tamaño
+  // y colores que Agronomía. El valor va en tinta; la severidad se muestra en la
+  // línea inferior (delta) con flecha + color, igual que el KPI canónico.
+  const tcls =
+    trend === "up" ? "mc-kpi__delta--up" : trend === "down" ? "mc-kpi__delta--down" : trend === "flat" ? "mc-kpi__delta--flat" : trend === "warn" ? "mc-kpi__delta--warn" : "";
   return (
     <div className="mc-kpi">
       <span className="mc-kpi__glyph"><Icon name={ico} size={14} /></span>
@@ -54,7 +60,12 @@ export function KpiMovCard({
           <div style={{ width: `${Math.max(0, Math.min(100, barPct))}%`, height: "100%", background: "var(--mc-green-600)", borderRadius: 999, transition: "width .3s" }} />
         </div>
       )}
-      {sub != null && sub !== "" && <div className="mc-kpi__delta" style={subColor ? { color: subColor } : undefined}>{sub}</div>}
+      {sub != null && sub !== "" && (
+        <div className={`mc-kpi__delta ${tcls}`} style={!trend && subColor ? { color: subColor } : undefined}>
+          {trend && trend !== "flat" && <Icon name={trend === "down" ? "arrowDown" : trend === "warn" ? "alert" : "arrowUp"} size={12} />}
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
