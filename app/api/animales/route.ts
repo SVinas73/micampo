@@ -117,34 +117,43 @@ export async function POST(request: Request) {
       },
     });
 
-    // Peso inicial → registro de peso de nacimiento
-    if (pesoNacimiento && parseFloat(pesoNacimiento) > 0) {
-      await prisma.registroPeso.create({
+    // Registros secundarios (peso inicial + timeline): NO deben hacer fallar el
+    // alta. Si alguno falla, el animal ya quedó creado y devolvemos 201 igual
+    // (evita el "no se pudo crear" + reintento que duplicaría el animal).
+    try {
+      if (pesoNacimiento && parseFloat(pesoNacimiento) > 0) {
+        await prisma.registroPeso.create({
+          data: {
+            animalId: animal.id,
+            peso: parseFloat(pesoNacimiento),
+            fecha: fechaNacimiento ? new Date(fechaNacimiento) : new Date(),
+            tipoMedicion: "Nacimiento",
+            userId: session.user.id,
+          },
+        });
+      }
+    } catch (e) {
+      console.error("Registro de peso inicial falló (no crítico):", e);
+    }
+
+    try {
+      await prisma.eventoVida.create({
         data: {
           animalId: animal.id,
-          peso: parseFloat(pesoNacimiento),
-          fecha: fechaNacimiento ? new Date(fechaNacimiento) : new Date(),
-          tipoMedicion: "Nacimiento",
+          tipoEvento: "Nacimiento",
+          titulo:
+            origen === "Compra"
+              ? `Ingreso por compra · ${caravana}`
+              : `Alta de animal · ${caravana}`,
+          descripcion: [categoria, raza].filter(Boolean).join(" · ") || null,
+          ubicacion: ubicacion || null,
+          importante: true,
           userId: session.user.id,
         },
       });
+    } catch (e) {
+      console.error("Evento de vida (alta) falló (no crítico):", e);
     }
-
-    // Evento de vida (timeline)
-    await prisma.eventoVida.create({
-      data: {
-        animalId: animal.id,
-        tipoEvento: "Nacimiento",
-        titulo:
-          origen === "Compra"
-            ? `Ingreso por compra · ${caravana}`
-            : `Alta de animal · ${caravana}`,
-        descripcion: [categoria, raza].filter(Boolean).join(" · ") || null,
-        ubicacion: ubicacion || null,
-        importante: true,
-        userId: session.user.id,
-      },
-    });
 
     return NextResponse.json(animal, { status: 201 });
   } catch (error) {

@@ -376,7 +376,7 @@ export function ModalDiagnosticarAnimal({
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12.5, color: "var(--mc-text-3)", paddingTop: 8 }}>Hacé clic en un punto del cuerpo para elegir la zona afectada.</div>
+                    <div style={{ fontSize: 12.5, color: "var(--mc-text-3)", paddingTop: 8 }}>Pasá el mouse por una región del cuerpo y hacé clic para elegir la zona afectada.</div>
                   )}
                 </div>
               </div>

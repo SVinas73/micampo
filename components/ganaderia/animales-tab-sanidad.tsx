@@ -8,11 +8,12 @@ import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Icon } from "@/components/mc";
 import { AnimalRow, TratamientoAPI, fmtFechaCorta } from "./tipos";
+import CowAnatomy from "./vaca-anatomia";
 
 // Vaca 3D (react-three-fiber) — solo cliente.
 const Cow3D = dynamic(() => import("./cow3d"), {
   ssr: false,
-  loading: () => <div style={{ height: 320, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 12 }}>Cargando modelo 3D…</div>,
+  loading: () => <div style={{ height: 300, display: "grid", placeItems: "center", color: "var(--mc-text-3)", fontSize: 12 }}>Cargando modelo 3D…</div>,
 });
 import {
   ModalDiagnosticarAnimal,
@@ -53,6 +54,7 @@ export function AnimSanidad({
   const [modalTratamiento, setModalTratamiento] = useState(false);
   const [verAnimal, setVerAnimal] = useState<AnimalRow | null>(null);
   const [filtroHosp, setFiltroHosp] = useState<"activos" | "todos">("activos");
+  const [vistaCuerpo, setVistaCuerpo] = useState<"3d" | "2d">("3d");
 
   const activos = animales.filter((a) => a.activo);
 
@@ -223,9 +225,25 @@ export function AnimSanidad({
                 <div className="mc-card__title">Análisis Corporal</div>
                 <div style={{ fontSize: 11, color: "var(--mc-muted)", marginTop: 2 }}>Bovina · Enfermería activa</div>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: enEnfermeria > 0 ? "#dc2626" : "#16a34a", background: enEnfermeria > 0 ? "#fef2f2" : "#f0fdf4", padding: "3px 8px", borderRadius: 20 }}>{enEnfermeria} en Enf.</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", background: "var(--mc-surface-2)", border: "1px solid var(--mc-line-2)", borderRadius: 8, padding: 2 }}>
+                  {(["3d", "2d"] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setVistaCuerpo(v)}
+                      style={{ padding: "3px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: vistaCuerpo === v ? "var(--mc-surface)" : "transparent", color: vistaCuerpo === v ? "var(--mc-ink)" : "var(--mc-text-3)", boxShadow: vistaCuerpo === v ? "0 1px 2px rgba(0,0,0,.08)" : "none" }}
+                    >{v.toUpperCase()}</button>
+                  ))}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: enEnfermeria > 0 ? "#dc2626" : "#16a34a", background: enEnfermeria > 0 ? "#fef2f2" : "#f0fdf4", padding: "3px 8px", borderRadius: 20 }}>{enEnfermeria} en Enf.</span>
+              </div>
             </div>
-            <Cow3D zonas={zonaStats.map((z) => ({ zona: z.zona, pct: z.pct, casos: z.casos, cond: z.cond, label: ZONA_INFO_SANIDAD[z.zona]?.label || z.zona }))} />
+            {vistaCuerpo === "3d" ? (
+              <Cow3D zonas={zonaStats.map((z) => ({ zona: z.zona, pct: z.pct, casos: z.casos, cond: z.cond, label: ZONA_INFO_SANIDAD[z.zona]?.label || z.zona }))} />
+            ) : (
+              <CowAnatomy zonas={zonaStats.map((z) => ({ zona: z.zona, pct: z.pct, casos: z.casos, cond: z.cond, label: ZONA_INFO_SANIDAD[z.zona]?.label || z.zona }))} />
+            )}
             <div style={{ borderTop: "1px solid var(--mc-line)", paddingTop: 10 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--mc-muted)", marginBottom: 7 }}>Zonas más afectadas</div>
               {zonasTop.length === 0 && <div style={{ fontSize: 12, color: "var(--mc-text-3)" }}>Sin casos activos por zona.</div>}
