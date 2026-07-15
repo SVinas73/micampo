@@ -14,6 +14,7 @@ import React, { Suspense, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Html, ContactShadows, Billboard, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { ZONA_ANATOMIA, ZonaInfoPanel } from "./vaca-zonas";
 
 export type ZonaHeat3D = { zona: string; pct: number; casos: number; cond: string; label: string };
 
@@ -38,15 +39,6 @@ const ZONA_ANCLA: Record<string, { frac: [number, number, number]; dir: [number,
   ubre: { frac: [0.5, 0.34, 0.202], dir: [0, -1, 0.05] },
   cola: { frac: [0.5, 0.863, 0.078], dir: [0, 0.35, -1] },
   patas: { frac: [0.759, 0.296, 0.605], dir: [0.7, -0.25, 0.15] },
-};
-
-/* Nombre anatómico de cada zona (para la etiqueta de hover, aunque no haya
-   casos que aporten label). */
-const ZONA_LABEL: Record<string, string> = {
-  cabeza: "Cabeza", ojos: "Ojos", boca: "Boca / Hocico", cuello: "Cuello / Papada",
-  columna: "Columna / Lomo", costillas: "Costillas / Tórax", panza: "Panza / Abdomen",
-  piel: "Piel / Pelaje", cadera: "Cadera / Anca", genital: "Genital / Perineal",
-  ubre: "Ubre", cola: "Cola", patas: "Pezuñas / Patas",
 };
 
 const heatColor = (pct: number) => (pct >= 10 ? "#dc2626" : pct >= 6 ? "#ea580c" : pct >= 3 ? "#f59e0b" : "#65a30d");
@@ -208,13 +200,13 @@ function Escena({
   selectable,
   selected,
   onSelect,
-  onHoverChange,
+  onHoverZona,
 }: {
   zonas: ZonaHeat3D[];
   selectable: boolean;
   selected: string | null;
   onSelect?: (zona: string) => void;
-  onHoverChange?: (hovering: boolean) => void;
+  onHoverZona?: (zona: string | null) => void;
 }) {
   const [hoverZona, setHoverZona] = useState<string | null>(null);
   const [hoverPoint, setHoverPoint] = useState<[number, number, number] | null>(null);
@@ -247,13 +239,13 @@ function Escena({
     const local = parent.worldToLocal(e.point.clone());
     setHoverZona(z);
     setHoverPoint([local.x, local.y, local.z]);
-    onHoverChange?.(true);
+    onHoverZona?.(z);
     document.body.style.cursor = selectable ? "pointer" : "help";
   };
   const onOut = () => {
     setHoverZona(null);
     setHoverPoint(null);
-    onHoverChange?.(false);
+    onHoverZona?.(null);
     document.body.style.cursor = "default";
   };
   const onClick = (e: ThreeEvent<MouseEvent>) => {
@@ -265,7 +257,7 @@ function Escena({
 
   const labelDe = (z: string): string => {
     const s = statMap.get(z);
-    const base = s?.label || ZONA_LABEL[z] || z;
+    const base = s?.label || ZONA_ANATOMIA[z]?.label || z;
     if (!selectable && s && s.casos > 0) return `${base} · ${s.pct}% · ${s.cond}`;
     return base;
   };
@@ -308,24 +300,30 @@ export default function Cow3D({
   selected?: string | null;
   onSelect?: (zona: string) => void;
 }) {
-  const [hovering, setHovering] = useState(false);
+  const [hoverZona, setHoverZona] = useState<string | null>(null);
+  const statMap = useMemo(() => new Map(zonas.map((z) => [z.zona, z])), [zonas]);
 
   return (
-    <div style={{ width: "100%", height, borderRadius: 14, overflow: "hidden", background: "linear-gradient(165deg,#f3f6f9 0%,#e4eaf0 60%,#d9e1e9 100%)", position: "relative" }}>
-      <Canvas shadows camera={{ position: [2.5, 1.4, 4.4], fov: 40 }} dpr={[1, 2]}>
-        <ambientLight intensity={0.85} />
-        <directionalLight position={[4, 6, 4]} intensity={1.05} castShadow shadow-mapSize={[1024, 1024]} />
-        <directionalLight position={[-5, 3, -3]} intensity={0.4} />
-        <directionalLight position={[0, 2, -5]} intensity={0.25} />
-        <Suspense fallback={null}>
-          <Escena zonas={zonas} selectable={selectable} selected={selected} onSelect={onSelect} onHoverChange={setHovering} />
-        </Suspense>
-        <ContactShadows position={[0, GROUND_Y, 0]} opacity={0.32} scale={7} blur={2.6} far={3} />
-        <OrbitControls enablePan={false} autoRotate={!selectable && !hovering} autoRotateSpeed={0.7} minDistance={3} maxDistance={8} minPolarAngle={Math.PI / 6} maxPolarAngle={Math.PI / 1.9} target={[0, 0.15, 0]} />
-      </Canvas>
-      <div style={{ position: "absolute", left: "50%", bottom: 8, transform: "translateX(-50%)", fontSize: 10.5, fontWeight: 600, color: "#64748b", background: "rgba(255,255,255,.82)", padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap", pointerEvents: "none" }}>
-        {selectable ? "Pasá el mouse por el cuerpo y tocá para elegir la zona" : "Pasá el mouse por el cuerpo para ver cada parte"}
+    <div style={{ width: "100%" }}>
+      <div style={{ width: "100%", height, borderRadius: 14, overflow: "hidden", background: "linear-gradient(165deg,#f3f6f9 0%,#e4eaf0 60%,#d9e1e9 100%)", position: "relative" }}>
+        <Canvas shadows camera={{ position: [2.5, 1.4, 4.4], fov: 40 }} dpr={[1, 2]}>
+          <ambientLight intensity={0.85} />
+          <directionalLight position={[4, 6, 4]} intensity={1.05} castShadow shadow-mapSize={[1024, 1024]} />
+          <directionalLight position={[-5, 3, -3]} intensity={0.4} />
+          <directionalLight position={[0, 2, -5]} intensity={0.25} />
+          <Suspense fallback={null}>
+            <Escena zonas={zonas} selectable={selectable} selected={selected} onSelect={onSelect} onHoverZona={setHoverZona} />
+          </Suspense>
+          <ContactShadows position={[0, GROUND_Y, 0]} opacity={0.32} scale={7} blur={2.6} far={3} />
+          <OrbitControls enablePan={false} autoRotate={!selectable && !hoverZona} autoRotateSpeed={0.7} minDistance={3} maxDistance={8} minPolarAngle={Math.PI / 6} maxPolarAngle={Math.PI / 1.9} target={[0, 0.15, 0]} />
+        </Canvas>
+        <div style={{ position: "absolute", left: "50%", bottom: 8, transform: "translateX(-50%)", fontSize: 10.5, fontWeight: 600, color: "#64748b", background: "rgba(255,255,255,.82)", padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap", pointerEvents: "none" }}>
+          {selectable ? "Pasá el mouse por el cuerpo y tocá para elegir la zona" : "Pasá el mouse por el cuerpo para ver cada parte"}
+        </div>
       </div>
+
+      {/* Panel de detalle de la zona bajo el cursor (mismo que la vista 2D) */}
+      {!selectable && <ZonaInfoPanel zona={hoverZona} stat={hoverZona ? statMap.get(hoverZona) : undefined} />}
     </div>
   );
 }
