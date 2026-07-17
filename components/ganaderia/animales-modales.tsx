@@ -258,10 +258,7 @@ export function VerDetalleAnimalModal({
   );
 
   return (
-    <div
-      style={{ position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <div className="mc-modal-backdrop" style={{ padding: 20 }} onClick={(e) => e.target === e.currentTarget && onClose()}>
       {modalEvento && <ModalRegistrarEvento animalPrefill={animal} onClose={() => setModalEvento(false)} />}
       {editOpen && (
         <ModalEditarAnimal
@@ -752,6 +749,33 @@ const RAZAS_POR_TIPO: Record<string, string[]> = {
   Otro: ["Sin raza definida"],
 };
 
+/* Sección numerada y campo con label — a nivel de módulo (estables): si se
+   definieran dentro del componente, React los remontaría en cada tecla y los
+   inputs perderían el foco (solo se podía escribir una letra por campo). */
+function Sec({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{ width: 22, height: 22, borderRadius: 7, background: "var(--mc-green-600)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: "#fff", fontWeight: 700 }}>{n}</span>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--mc-text-3)" }}>{title}</span>
+        <div style={{ flex: 1, height: 1, background: "var(--mc-line)" }} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mc-field" style={{ marginBottom: 10 }}>
+      <label className="mc-label">{label}</label>
+      {children}
+    </div>
+  );
+}
+
 export function NuevoAnimalModal({
   onClose,
   onCreado,
@@ -865,43 +889,18 @@ export function NuevoAnimalModal({
     }
   };
 
-  const Sec = ({ n, title, children }: { n: string; title: string; children: React.ReactNode }) => (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <div style={{ width: 22, height: 22, borderRadius: 7, background: "var(--mc-green-600)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-          <span style={{ fontSize: 11, color: "#fff", fontWeight: 700 }}>{n}</span>
-        </div>
-        <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--mc-text-3)" }}>{title}</span>
-        <div style={{ flex: 1, height: 1, background: "var(--mc-line)" }} />
-      </div>
-      {children}
-    </div>
-  );
-
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div style={{ marginBottom: 10 }}>
-      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--mc-text-3)", marginBottom: 4 }}>{label}</label>
-      {children}
-    </div>
-  );
-
-  const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "1.5px solid var(--mc-line-2)", borderRadius: 8, fontSize: 13, outline: "none", background: "var(--mc-surface)" };
-
   return (
-    <div
-      style={{ position: "fixed", inset: 0, background: "rgba(15,22,36,0.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div style={{ background: "var(--mc-surface)", borderRadius: 16, width: "min(900px, 96vw)", maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,0.22)", overflow: "hidden" }}>
-        <div style={{ padding: "18px 28px 16px", background: "linear-gradient(135deg, #0a5a24 0%, #16a34a 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div className="mc-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="mc-modal" style={{ width: "min(900px, 96vw)", maxHeight: "92vh", padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
+        <div className="mc-modal__head">
           <div>
-            <div style={{ fontSize: 11, opacity: 0.75, letterSpacing: "0.05em", marginBottom: 2 }}>Ganadería / Animales</div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>Registro de Nuevo Animal</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "var(--mc-green-600)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4 }}>Ganadería · Animales</div>
+            <div className="mc-modal__title" style={{ fontSize: 20 }}>Registro de Nuevo Animal</div>
           </div>
-          <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center" }}><Icon name="x" size={15} /></button>
+          <button onClick={onClose} className="mc-icon-btn"><Icon name="x" size={14} /></button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 20, padding: "20px 28px", overflowY: "auto", flex: 1 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 20, padding: "20px 24px", overflowY: "auto", flex: 1 }}>
           {/* Col 1: Identidad */}
           <div>
             <Sec n="1" title="Identidad">
@@ -945,21 +944,21 @@ export function NuevoAnimalModal({
                 </div>
               </Field>
               <Field label="Nro. Caravana *">
-                <input style={inp} value={caravana} onChange={(e) => setCaravana(e.target.value)} placeholder="Ej: #3311" />
+                <input className="mc-input" value={caravana} onChange={(e) => setCaravana(e.target.value)} placeholder="Ej: #3311" />
               </Field>
               <Field label="Nombre (opcional)">
-                <input style={inp} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Rosa" />
+                <input className="mc-input" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Rosa" />
               </Field>
               <Field label="ID Electrónico / RFID (Opcional)">
-                <input style={inp} value={rfid} onChange={(e) => setRfid(e.target.value)} placeholder="Ej: 076 8230 4821 0" />
+                <input className="mc-input" value={rfid} onChange={(e) => setRfid(e.target.value)} placeholder="Ej: 076 8230 4821 0" />
               </Field>
               <Field label="Raza">
-                <select style={inp} value={raza} onChange={(e) => setRaza(e.target.value)}>
+                <select className="mc-select" value={raza} onChange={(e) => setRaza(e.target.value)}>
                   {razas.map((r) => <option key={r}>{r}</option>)}
                 </select>
               </Field>
               <Field label="Categoría">
-                <select style={inp} value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+                <select className="mc-select" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
                   <option value="">Automática ({catSugerida})</option>
                   {["Vaca", "Vaquillona", "Novillo", "Ternero", "Toro"].map((c) => <option key={c}>{c}</option>)}
                 </select>
@@ -1001,23 +1000,23 @@ export function NuevoAnimalModal({
                 </div>
               </Field>
               <Field label="Fecha de Nacimiento">
-                <input type="date" style={inp} value={fechaNac} onChange={(e) => setFechaNac(e.target.value)} />
+                <input type="date" className="mc-input" value={fechaNac} onChange={(e) => setFechaNac(e.target.value)} />
               </Field>
               <Field label="Peso Inicial (kg)">
-                <input type="number" style={inp} value={pesoInicial} onChange={(e) => setPesoInicial(e.target.value)} placeholder="Ej: 38" />
+                <input type="number" className="mc-input" value={pesoInicial} onChange={(e) => setPesoInicial(e.target.value)} placeholder="Ej: 38" />
               </Field>
               <Field label="Condición al Nacimiento">
-                <select style={inp} value={condNac} onChange={(e) => setCondNac(e.target.value)}>
+                <select className="mc-select" value={condNac} onChange={(e) => setCondNac(e.target.value)}>
                   {["Normal", "Distócico", "Cesárea", "Gemelar"].map((c) => <option key={c}>{c}</option>)}
                 </select>
               </Field>
               <div style={{ marginTop: 6 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--mc-text-3)", marginBottom: 8 }}>Genealogía</div>
                 <Field label="Madre (Dam)">
-                  <input style={inp} value={madre} onChange={(e) => setMadre(e.target.value)} placeholder="Caravana de la madre…" />
+                  <input className="mc-input" value={madre} onChange={(e) => setMadre(e.target.value)} placeholder="Caravana de la madre…" />
                 </Field>
                 <Field label="Padre / Semen (IA)">
-                  <input style={inp} value={padre} onChange={(e) => setPadre(e.target.value)} placeholder="Toro o partida IA…" />
+                  <input className="mc-input" value={padre} onChange={(e) => setPadre(e.target.value)} placeholder="Toro o partida IA…" />
                 </Field>
               </div>
             </Sec>
@@ -1027,14 +1026,14 @@ export function NuevoAnimalModal({
           <div>
             <Sec n="3" title="Asignación">
               <Field label="Asignar a Tropa">
-                <select style={inp} value={tropaId} onChange={(e) => setTropaId(e.target.value)}>
+                <select className="mc-select" value={tropaId} onChange={(e) => setTropaId(e.target.value)}>
                   <option value="">Seleccionar tropa…</option>
                   {tropas.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                 </select>
                 {tropas.length === 0 && <div style={{ fontSize: 10.5, color: "var(--mc-text-3)", marginTop: 4 }}>Todavía no hay tropas — crealas en Mov. de Tropas.</div>}
               </Field>
               <Field label="Lote">
-                <select style={inp} value={loteAsig} onChange={(e) => setLoteAsig(e.target.value)}>
+                <select className="mc-select" value={loteAsig} onChange={(e) => setLoteAsig(e.target.value)}>
                   <option value="">Seleccionar lote…</option>
                   {lotes.map((l) => <option key={l.id} value={l.nombre}>{l.nombre}</option>)}
                 </select>
