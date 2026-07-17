@@ -289,14 +289,25 @@ export function setTurnosPendientes(nombres: string[]) {
 
 export type TurnoEstado = "Completado" | "En Curso" | "Pendiente";
 
-/** Estado real del turno: registros de hoy con ese turno → Completado; iniciado sin registros → En Curso. */
-export function estadoTurno(def: TurnoDef, registrosHoy: RegLecheroAPI[], iniciados: Record<string, string>): { estado: TurnoEstado; litros: number; vacas: number } {
+/** Estado real del turno:
+ *  - registros de hoy con ese turno → Completado (con producción);
+ *  - turno cerrado sin producción (en `pendientes`) → Completado (sin producción);
+ *  - iniciado sin registros → En Curso;
+ *  - resto → Pendiente.
+ *  `cerradoSinProd` distingue el cierre sin producción para la UI. */
+export function estadoTurno(
+  def: TurnoDef,
+  registrosHoy: RegLecheroAPI[],
+  iniciados: Record<string, string>,
+  pendientes: string[] = [],
+): { estado: TurnoEstado; litros: number; vacas: number; cerradoSinProd: boolean } {
   const delTurno = registrosHoy.filter((r) => (r.turno || "") === def.turnoKey || (r.turno || "") === def.nombre);
   const litros = delTurno.reduce((s, r) => s + r.litros, 0);
   const vacas = new Set(delTurno.map((r) => r.animalId)).size;
-  if (litros > 0) return { estado: "Completado", litros, vacas };
-  if (iniciados[def.nombre]) return { estado: "En Curso", litros, vacas };
-  return { estado: "Pendiente", litros, vacas };
+  if (litros > 0) return { estado: "Completado", litros, vacas, cerradoSinProd: false };
+  if (pendientes.includes(def.nombre)) return { estado: "Completado", litros, vacas, cerradoSinProd: true };
+  if (iniciados[def.nombre]) return { estado: "En Curso", litros, vacas, cerradoSinProd: false };
+  return { estado: "Pendiente", litros, vacas, cerradoSinProd: false };
 }
 
 export const nfLt = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
