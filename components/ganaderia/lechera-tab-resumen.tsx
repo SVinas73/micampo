@@ -16,6 +16,7 @@ import {
   hoyStr,
   nfLt,
   turnosIniciados,
+  turnosPendientes,
 } from "./lechera-tipos";
 import { PLBarChart, PLKpiCard, PLVacaDrawer } from "./lechera-ui";
 import { PLModalBoleta, PLModalOrdene } from "./lechera-modales";
@@ -97,6 +98,7 @@ export function PLResumen({
   );
 
   const iniciados = useMemo(() => turnosIniciados(), []);
+  const pendientes = useMemo(() => turnosPendientes(), []);
   const fechaLarga = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "short", year: "numeric" }).replace(/^\w/, (c) => c.toUpperCase());
 
   const exportarCSV = () => {
@@ -220,8 +222,9 @@ export function PLResumen({
             </div>
             <div style={{ padding: "8px 0" }}>
               {turnos.map((t, i) => {
-                const st = estadoTurno(t, registrosHoy, iniciados);
-                const badge = st.estado === "Completado" ? { bg: "#dcfce7", c: "#166534" } : st.estado === "En Curso" ? { bg: "#fef3c7", c: "#92400e" } : { bg: "var(--mc-surface-3)", c: "var(--mc-text-2)" };
+                const st = estadoTurno(t, registrosHoy, iniciados, pendientes);
+                const stLabel = st.cerradoSinProd ? "Cerrado" : st.estado;
+                const badge = st.cerradoSinProd ? { bg: "var(--mc-surface-3)", c: "var(--mc-text-2)" } : st.estado === "Completado" ? { bg: "#dcfce7", c: "#166534" } : st.estado === "En Curso" ? { bg: "#fef3c7", c: "#92400e" } : { bg: "var(--mc-surface-3)", c: "var(--mc-text-2)" };
                 return (
                   <div key={t.nombre} style={{ padding: "14px 18px", borderBottom: i < turnos.length - 1 ? "1px solid var(--mc-line)" : "none" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8, gap: 6, flexWrap: "wrap" }}>
@@ -230,7 +233,7 @@ export function PLResumen({
                         <div style={{ fontSize: 12, color: "var(--mc-text-3)", marginTop: 1 }}>{t.hora} hs</div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.c, animation: st.estado === "En Curso" ? "pulse-val 2s infinite" : undefined }}>{st.estado}</span>
+                        <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.c, animation: st.estado === "En Curso" ? "pulse-val 2s infinite" : undefined }}>{stLabel}</span>
                         {st.litros > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: "var(--mc-ink)" }}>{nfLt.format(Math.round(st.litros))} lt</span>}
                       </div>
                     </div>

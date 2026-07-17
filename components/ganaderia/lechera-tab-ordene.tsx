@@ -65,7 +65,7 @@ export function PLOrdene({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendientes = useMemo(() => turnosPendientes(), [tick]);
 
-  const estados = turnos.map((t) => estadoTurno(t, registrosHoy, iniciados));
+  const estados = turnos.map((t) => estadoTurno(t, registrosHoy, iniciados, pendientes));
   const litrosHoy = registrosHoy.reduce((s, r) => s + r.litros, 0);
   const t1 = estados.find((_, i) => turnos[i].nombre.includes("1er"));
   const t2 = estados.find((_, i) => turnos[i].nombre.includes("2do"));
@@ -127,8 +127,8 @@ export function PLOrdene({
 
       {/* KPIs */}
       <div className="grid g-cols-5" style={{ gap: 10 }}>
-        <PLKpiCard title="1er Ordeñe" ico="sun" val={t1 && t1.litros > 0 ? `${nfLt.format(Math.round(t1.litros))} lt` : "—"} sub={`${turnos.find((t) => t.nombre.includes("1er"))?.hora || "06:00"} hs · ${t1?.estado || "Pendiente"}`} color={t1?.estado === "Completado" ? "#00A738" : undefined} />
-        <PLKpiCard title="2do Ordeñe" ico="clock" val={t2 && t2.litros > 0 ? `${nfLt.format(Math.round(t2.litros))} lt` : "—"} sub={`${turnos.find((t) => t.nombre.includes("2do"))?.hora || "13:00"} hs · ${t2?.estado || "Pendiente"}`} color={t2?.estado === "En Curso" ? "#c48410" : undefined} />
+        <PLKpiCard title="1er Ordeñe" ico="sun" val={t1 && t1.litros > 0 ? `${nfLt.format(Math.round(t1.litros))} lt` : "—"} sub={`${turnos.find((t) => t.nombre.includes("1er"))?.hora || "06:00"} hs · ${t1?.cerradoSinProd ? "Cerrado" : t1?.estado || "Pendiente"}`} color={t1?.estado === "Completado" && !t1?.cerradoSinProd ? "#00A738" : undefined} />
+        <PLKpiCard title="2do Ordeñe" ico="clock" val={t2 && t2.litros > 0 ? `${nfLt.format(Math.round(t2.litros))} lt` : "—"} sub={`${turnos.find((t) => t.nombre.includes("2do"))?.hora || "13:00"} hs · ${t2?.cerradoSinProd ? "Cerrado" : t2?.estado || "Pendiente"}`} color={t2?.estado === "En Curso" ? "#c48410" : undefined} />
         <PLKpiCard title="Total del Día" ico="droplets" val={`${nfLt.format(Math.round(litrosHoy))} lt`} sub="acumulado hasta ahora" />
         <PLKpiCard title="Vacas Ordeñadas" ico="check-circle" val={String(ordenadasHoy)} sub={`de ${enOrdenne} habilitadas hoy`} />
         <PLKpiCard title="Vacas Saltadas" ico="alert-circle" val={String(saltadas)} sub="sin registro en ningún turno" color={saltadas > 0 ? "#c93434" : undefined} />
@@ -160,12 +160,13 @@ export function PLOrdene({
             </div>
           </div>
           {turnos.map((t) => {
-            const st = estadoTurno(t, registrosHoy, iniciados);
+            const st = estadoTurno(t, registrosHoy, iniciados, pendientes);
             return (
               <PLTurnoRow
                 key={t.nombre}
                 turno={t}
                 registrosHoy={registrosHoy}
+                pendientes={pendientes}
                 defaultOpen={st.estado === "En Curso"}
                 onVacaManual={() => setModalVaca(true)}
                 onFinalizar={(turno) => setModalFinalizar(turno)}

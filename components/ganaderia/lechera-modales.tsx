@@ -42,7 +42,7 @@ export function PLModalOrdene({
 }) {
   const [paso, setPaso] = useState(1);
   const iniciados = useMemo(() => turnosIniciados(), []);
-  const estados = useMemo(() => turnos.map((t) => estadoTurno(t, registrosHoy, iniciados)), [turnos, registrosHoy, iniciados]);
+  const estados = useMemo(() => turnos.map((t) => estadoTurno(t, registrosHoy, iniciados, pendientes)), [turnos, registrosHoy, iniciados, pendientes]);
   const primeraPendiente = turnos.findIndex((_, i) => estados[i].estado !== "Completado");
   const [turnoSel, setTurnoSel] = useState(primeraPendiente >= 0 ? primeraPendiente : 0);
 
@@ -298,6 +298,7 @@ export function PLModalOrdene({
 export function PLTurnoRow({
   turno,
   registrosHoy,
+  pendientes = [],
   defaultOpen,
   onVacaManual,
   onFinalizar,
@@ -305,6 +306,7 @@ export function PLTurnoRow({
 }: {
   turno: TurnoDef;
   registrosHoy: RegLecheroAPI[];
+  pendientes?: string[];
   defaultOpen?: boolean;
   onVacaManual: () => void;
   onFinalizar: (t: TurnoDef) => void;
@@ -312,9 +314,12 @@ export function PLTurnoRow({
 }) {
   const [open, setOpen] = useState(defaultOpen || false);
   const iniciados = turnosIniciados();
-  const { estado, litros, vacas } = estadoTurno(turno, registrosHoy, iniciados);
+  const { estado, litros, vacas, cerradoSinProd } = estadoTurno(turno, registrosHoy, iniciados, pendientes);
+  const estadoLabel = cerradoSinProd ? "Cerrado" : estado;
   const horaIni = iniciados[turno.nombre] ? `${turno.hora} hs (inicio: ${iniciados[turno.nombre]})` : `${turno.hora} hs`;
-  const badge = estado === "Completado" ? { bg: "#dcfce7", c: "#166534" } : estado === "En Curso" ? { bg: "#fef3c7", c: "#92400e" } : { bg: "var(--mc-surface-3)", c: "var(--mc-text-2)" };
+  const badge = cerradoSinProd
+    ? { bg: "var(--mc-surface-3)", c: "var(--mc-text-2)" }
+    : estado === "Completado" ? { bg: "#dcfce7", c: "#166534" } : estado === "En Curso" ? { bg: "#fef3c7", c: "#92400e" } : { bg: "var(--mc-surface-3)", c: "var(--mc-text-2)" };
   const ico = turno.nombre.includes("1er") ? "sun" : turno.nombre.includes("2do") ? "clock" : "cloud";
   const icoColor = turno.nombre.includes("1er") ? "#c48410" : turno.nombre.includes("2do") ? "var(--mc-blue)" : "#7c3aed";
   const ultimas = registrosHoy.filter((r) => (r.turno || "") === turno.turnoKey).slice(0, 5);
@@ -356,7 +361,7 @@ export function PLTurnoRow({
           {estado === "En Curso" && (
             <button onClick={(e) => { e.stopPropagation(); onFinalizar(turno); }} style={{ padding: "5px 12px", border: "2px solid var(--mc-amber)", borderRadius: 8, background: "transparent", color: "var(--mc-amber)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>■ Finalizar Turno</button>
           )}
-          <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.c, animation: estado === "En Curso" ? "pulse-val 2s infinite" : undefined, flexShrink: 0 }}>{estado}</span>
+          <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.c, animation: estado === "En Curso" ? "pulse-val 2s infinite" : undefined, flexShrink: 0 }}>{estadoLabel}</span>
         </div>
       </div>
       {open && (
@@ -369,7 +374,15 @@ export function PLTurnoRow({
               </div>
             </>
           )}
-          {estado === "Completado" && (
+          {estado === "Completado" && cerradoSinProd && (
+            <div style={{ background: "var(--mc-surface)", borderRadius: 10, border: "1px solid var(--mc-line)", padding: "12px 14px", marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
+              <Icon name="check" size={15} style={{ color: "var(--mc-text-3)", flexShrink: 0 }} />
+              <div style={{ fontSize: 12.5, color: "var(--mc-text-2)" }}>
+                Turno <strong style={{ color: "var(--mc-ink)" }}>cerrado sin producción</strong>. Podés registrar la producción luego desde “Registrar Ordeñe”.
+              </div>
+            </div>
+          )}
+          {estado === "Completado" && !cerradoSinProd && (
             <div style={{ background: "var(--mc-surface)", borderRadius: 10, border: "1px solid var(--mc-line)", overflow: "hidden", marginTop: 10 }}>
               <div style={{ padding: "8px 12px", background: "var(--mc-surface-2)", fontSize: 10, fontWeight: 700, color: "var(--mc-text-3)", textTransform: "uppercase", letterSpacing: ".06em" }}>Últimas vacas cargadas</div>
               {ultimas.map((r, i) => (
