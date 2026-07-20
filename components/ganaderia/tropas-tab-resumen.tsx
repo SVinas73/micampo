@@ -286,7 +286,7 @@ export function MovResumen({
                   <div style={{ fontSize: 12, color: "var(--mc-text-2)", maxWidth: 320 }}>
                     Creá tus lotes/potreros en el módulo de Lotes para ver el mapa de ocupación de tropas.
                   </div>
-                  <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => router.push("/lotes")}>Ir a Lotes <Icon name="arrow-right" size={12} /></button>
+                  <button className="mc-btn mc-btn--secondary mc-btn--sm" onClick={() => router.push("/campo-digital")}>Ir a Lotes <Icon name="arrow-right" size={12} /></button>
                 </div>
               ) : (
                 <>

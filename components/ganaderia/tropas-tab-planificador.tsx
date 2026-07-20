@@ -15,6 +15,7 @@ import {
   freqLabel,
   mapaColoresTropas,
   parseHora,
+  rutinaActiva,
   toDateStr,
 } from "./tropas-tipos";
 import { KpiMovCard } from "./tropas-ui";
@@ -419,7 +420,7 @@ export function MovPlanificador({
                 <div style={{ fontSize: 12, color: "var(--mc-text-3)", padding: "8px 4px" }}>Sin rutinas creadas.</div>
               )}
               {rutinas.map((r) => {
-                const paused = r.estado !== "activa";
+                const paused = !rutinaActiva(r);
                 const tropaAsig = tropas.find((t) => t.rutinaId === r.id);
                 const col = tropaAsig ? colDe(tropaAsig.id) : { bg: "var(--mc-surface-3)", border: "#94a3b8", text: "#64748b" };
                 const cabs = tropaAsig ? tropaAsig._count?.animales ?? 0 : 0;

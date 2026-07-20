@@ -16,11 +16,13 @@ import {
   TropaAPI,
   colorDeTropa,
   estadoAnimalTropa,
+  estadoRutinaLabel,
   fmtFechaLarga,
   freqLabel,
   parseRutinaConfig,
   pesoPromTropa,
   rutaDeRutina,
+  rutinaActiva,
 } from "./tropas-tipos";
 
 /* ============ NUEVA TROPA ============ */
@@ -724,7 +726,7 @@ export function ModalPlanificarMovimiento({
   const [mNotas, setMNotas] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  const rutinasActivas = rutinas.filter((r) => r.estado !== "Pausada");
+  const rutinasActivas = rutinas.filter(rutinaActiva);
   const rutinaObj = rutinas.find((r) => r.id === rutinaSel) || null;
   const ruta = rutaDeRutina(rutinaObj);
   const tropaDeRutina = rutinaObj?.tropas?.[0]?.id || "";
@@ -816,7 +818,7 @@ export function ModalPlanificarMovimiento({
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                         <span style={{ fontSize: 13, fontWeight: 800, color: sel ? "#16a34a" : "var(--mc-ink)" }}>{r.nombre}</span>
-                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#dcfce7", color: "#15803d", fontWeight: 600 }}>{r.estado}</span>
+                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#dcfce7", color: "#15803d", fontWeight: 600 }}>{estadoRutinaLabel(r)}</span>
                       </div>
                       <div style={{ fontSize: 11, color: "#64748b", marginBottom: 5 }}>{freqLabel(r)}{r.tropas && r.tropas.length > 0 ? ` · ${r.tropas.map((t) => t.nombre).join(", ")}` : ""}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
@@ -1316,7 +1318,7 @@ export function DrawerVerRutina({
             <div>
               <div style={{ fontSize: 9, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4 }}>Rutina · {rutina.tipo}</div>
               <div className="mc-modal__title" style={{ fontSize: 20 }}>{rutina.nombre}</div>
-              <div style={{ fontSize: 12, color: "var(--mc-text-2)", marginTop: 3 }}>{freqLabel(rutina)} · {rutina.estado}</div>
+              <div style={{ fontSize: 12, color: "var(--mc-text-2)", marginTop: 3 }}>{freqLabel(rutina)} · {estadoRutinaLabel(rutina)}</div>
             </div>
             <button onClick={onClose} className="mc-icon-btn"><Icon name="x" size={14} /></button>
           </div>
