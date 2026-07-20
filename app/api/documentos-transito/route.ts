@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         categoria: b.categoria || null,
         cabezas: int(b.cabezas),
         pesoTotal: num(b.pesoTotal),
+        pesoCarcasa: num(b.pesoCarcasa),
         precioKg: num(b.precioKg),
         importe: num(b.importe),
         transporte: b.transporte || null,

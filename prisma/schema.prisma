@@ -4831,7 +4831,8 @@ model DocumentoTransito {
   motivo      String? // Venta, Traslado, Feria...
   categoria   String?
   cabezas     Int?
-  pesoTotal   Float? // kg totales del embarque
+  pesoTotal   Float? // kg totales del embarque (peso vivo)
+  pesoCarcasa Float? // kg totales de carcasa/res (para rendimiento real de faena)
   precioKg    Float? // $/kg acordado
   importe     Float? // $ total
   transporte  String?

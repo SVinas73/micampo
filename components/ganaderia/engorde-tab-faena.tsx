@@ -12,6 +12,7 @@ import {
   diasAFaena,
   estadoCorral,
   nfEng,
+  rendimientoCarcasaReal,
 } from "./engorde-tipos";
 import { ModalProgramarEnvio } from "./engorde-modales";
 
@@ -26,8 +27,9 @@ export function EngordeFaena({ corrales, documentos, onRefresh }: { corrales: Co
   // Historial de faenas = DTE con motivo "Venta"
   const ventas = useMemo(() => documentos.filter((d) => /venta/i.test(d.motivo || "")).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()), [documentos]);
 
-  // Rendimiento carcasa e ingreso proyectado del próximo envío
-  const rendimiento = 54.2;
+  // Rendimiento carcasa real (de las ventas con peso de carcasa cargado) e
+  // ingreso proyectado del próximo envío.
+  const rendimiento = useMemo(() => rendimientoCarcasaReal(ventas), [ventas]);
   const proximoCab = listos[0]?.cabezas ?? 0;
   const proximoPeso = listos[0] ? Math.round(listos[0].pesoActual ?? 0) : 0;
   const precioProm = (() => { const ps = ventas.map((v) => v.precioKg).filter((p): p is number => p != null); return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : listos[0]?.precioMercado ?? null; })();
@@ -48,7 +50,7 @@ export function EngordeFaena({ corrales, documentos, onRefresh }: { corrales: Co
       <div className="grid g-cols-5">
         <KPI label="Listos para Faena" value={nfEng.format(listosCab)} delta={`${listos.length} corrales al objetivo`} trend="up" icon="check-circle" accent />
         <KPI label="Próximo Envío" value={listos[0] ? `${proximoCab} cab.` : "—"} delta={listos[0]?.nombre || "sin corrales listos"} icon="truck" />
-        <KPI label="Rendimiento Carcasa" value={`${coma(rendimiento, 1)}%`} delta="referencia estándar" icon="target" />
+        <KPI label="Rendimiento Carcasa" value={rendimiento !== null ? `${coma(rendimiento, 1)}%` : "—"} delta={rendimiento !== null ? `promedio real · ${ventas.filter((v) => v.pesoTotal && v.pesoCarcasa).length} faena(s)` : "cargá el peso de carcasa al vender"} icon="target" />
         <KPI label="Precio Promedio" value={precioProm !== null ? `$${coma(precioProm, 2)}/kg` : "—"} delta={ventas.length ? "últimos envíos" : "referencia"} icon="dollar" />
         <KPI label="Ingreso Proyectado" value={ingresoProy !== null ? `$${nfEng.format(ingresoProy)}` : "—"} delta="próximo envío estimado" trend="up" icon="arrowUp" accent />
       </div>

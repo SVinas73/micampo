@@ -23,7 +23,7 @@ export async function PATCH(
       if (k in b) data[k] = b[k] === "" ? null : b[k];
     }
     if ("cabezas" in b) data.cabezas = b.cabezas ? parseInt(String(b.cabezas)) : null;
-    for (const k of ["pesoTotal", "precioKg", "importe"] as const) {
+    for (const k of ["pesoTotal", "pesoCarcasa", "precioKg", "importe"] as const) {
       if (k in b) data[k] = b[k] ? parseFloat(String(b[k])) : null;
     }
     if ("vencimiento" in b) data.vencimiento = b.vencimiento ? new Date(b.vencimiento) : null;
