@@ -133,6 +133,21 @@ export function freqLabel(r: RutinaAPI | null | undefined): string {
   return c.freq;
 }
 
+/* El estado de una rutina se guarda con default "Activa" en el schema pero el
+   toggle histórico escribía "activa"/"pausada" en minúscula. Normalizamos la
+   lectura: una rutina está activa salvo que su estado sea explícitamente
+   "pausada" (sin importar mayúsculas). Al escribir usamos ESTADO_RUTINA_*. */
+export const ESTADO_RUTINA_ACTIVA = "Activa";
+export const ESTADO_RUTINA_PAUSADA = "Pausada";
+
+export function rutinaActiva(r: { estado?: string | null } | null | undefined): boolean {
+  return (r?.estado ?? "").trim().toLowerCase() !== "pausada";
+}
+
+export function estadoRutinaLabel(r: { estado?: string | null } | null | undefined): string {
+  return rutinaActiva(r) ? ESTADO_RUTINA_ACTIVA : ESTADO_RUTINA_PAUSADA;
+}
+
 /** Días de descanso de un lote = días desde que la última tropa salió de él. */
 export function diasDescansoLote(nombreLote: string, movimientos: MovTropaAPI[], tropas: TropaAPI[]): number | null {
   const ocupado = tropas.some((t) => t.lote?.nombre === nombreLote);

@@ -19,6 +19,7 @@ import {
   movAtrasado,
   parseHora,
   rutaDeRutina,
+  rutinaActiva,
   toDateStr,
 } from "./tropas-tipos";
 import { KpiMovCard } from "./tropas-ui";
@@ -448,7 +449,7 @@ export function MovGestion({
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" }}>
                   {rutinas.map((r) => {
                     const sel = rutinaSel?.id === r.id;
-                    const activa = r.estado === "activa";
+                    const activa = rutinaActiva(r);
                     return (
                       <div
                         key={r.id}

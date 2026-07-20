@@ -16,6 +16,7 @@ import {
   freqLabel,
   movAtrasado,
   parseRutinaConfig,
+  rutinaActiva,
   toDateStr,
 } from "./tropas-tipos";
 import { KpiMovCard } from "./tropas-ui";
@@ -44,7 +45,7 @@ export function MovRutinas({
   const [vista, setVista] = useState<"cards" | "tabla">("cards");
   const [togglando, setTogglando] = useState<string | null>(null);
 
-  const activas = rutinas.filter((r) => r.estado === "activa");
+  const activas = rutinas.filter(rutinaActiva);
   const hoyStr = toDateStr(new Date());
 
   /* Próxima ejecución: siguiente movimiento planificado ligado a una rutina */
@@ -67,13 +68,13 @@ export function MovRutinas({
   const cumplimiento = evaluables > 0 ? Math.round((ejecutadas / evaluables) * 100) : null;
 
   const filtradas = rutinas.filter((r) =>
-    filtro === "Todas" ? true : filtro === "Activas" ? r.estado === "activa" : r.estado !== "activa"
+    filtro === "Todas" ? true : filtro === "Activas" ? rutinaActiva(r) : !rutinaActiva(r)
   );
 
   const tropasDe = (r: RutinaAPI) => tropas.filter((t) => t.rutinaId === r.id);
 
   const toggleEstado = async (r: RutinaAPI) => {
-    const nuevo = r.estado === "activa" ? "pausada" : "activa";
+    const nuevo = rutinaActiva(r) ? "Pausada" : "Activa";
     setTogglando(r.id);
     try {
       const resp = await fetch(`/api/rutinas-tropa/${r.id}`, {
@@ -82,7 +83,7 @@ export function MovRutinas({
         body: JSON.stringify({ estado: nuevo }),
       });
       if (!resp.ok) throw new Error();
-      toast.show(`Rutina "${r.nombre}" ${nuevo === "activa" ? "activada" : "pausada"}`);
+      toast.show(`Rutina "${r.nombre}" ${nuevo === "Activa" ? "activada" : "pausada"}`);
       onRefresh();
     } catch {
       toast.show("No se pudo cambiar el estado", "err");
@@ -92,7 +93,7 @@ export function MovRutinas({
   };
 
   const RutinaCard = ({ r }: { r: RutinaAPI }) => {
-    const on = r.estado === "activa";
+    const on = rutinaActiva(r);
     const tone = on ? "green" : "amber";
     const tBg = on ? "#dcfce7" : "#fef3c7";
     const tClr = on ? "#15803d" : "#92400e";
@@ -282,7 +283,7 @@ export function MovRutinas({
                       <tr key={r.id}>
                         <td style={{ fontWeight: 600, color: "var(--mc-ink)" }}>{r.emoji ? `${r.emoji} ` : ""}{r.nombre}</td>
                         <td style={{ fontSize: 12, textTransform: "capitalize" }}>{r.tipo}</td>
-                        <td><span className={`mc-badge mc-badge--${r.estado === "activa" ? "green" : "amber"}`}>{r.estado === "activa" ? "Activa" : "Pausada"}</span></td>
+                        <td><span className={`mc-badge mc-badge--${rutinaActiva(r) ? "green" : "amber"}`}>{rutinaActiva(r) ? "Activa" : "Pausada"}</span></td>
                         <td style={{ fontSize: 12, color: "var(--mc-text-2)" }}>{freqLabel(r)}</td>
                         <td style={{ fontSize: 12 }}>{ruta.length ? ruta.join(" → ") : "—"}</td>
                         <td style={{ fontSize: 12 }}>{asignadas.length ? asignadas.map((t) => t.nombre).join(", ") : "—"}</td>
