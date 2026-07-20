@@ -273,7 +273,7 @@ export function PLResumen({
                     </div>
                   )}
                 </div>
-                <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ marginTop: 10, fontSize: 12, color: "var(--mc-text-2)" }} onClick={() => router.push("/nutricion-ganadera")}>Ver en Nutrición →</button>
+                <button className="mc-btn mc-btn--ghost mc-btn--sm" style={{ marginTop: 10, fontSize: 12, color: "var(--mc-text-2)" }} onClick={() => router.push("/ganaderia-avanzada")}>Ver en Nutrición →</button>
               </>
             ) : (
               <div style={{ fontSize: 12, color: "var(--mc-text-3)" }}>Todavía no hay una ración formulada para el tambo.</div>

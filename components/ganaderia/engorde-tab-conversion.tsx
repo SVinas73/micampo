@@ -99,7 +99,7 @@ export function EngordeConversion({ corrales, raciones }: { corrales: CorralAPI[
       </div>
 
       <div className="row gap-8" style={{ justifyContent: "flex-end" }}>
-        <button className="mc-btn mc-btn--ghost" onClick={() => router.push("/nutricion-ganadera")}>Ir a Nutrición <Icon name="arrow-right" size={14} /></button>
+        <button className="mc-btn mc-btn--ghost" onClick={() => router.push("/ganaderia-avanzada")}>Ir a Nutrición <Icon name="arrow-right" size={14} /></button>
       </div>
 
       <div className="grid" style={{ gridTemplateColumns: "minmax(0,1.6fr) minmax(280px,1fr)", gap: 16, alignItems: "start" }}>
@@ -182,7 +182,7 @@ export function EngordeConversion({ corrales, raciones }: { corrales: CorralAPI[
             </div>
           )}
           <div style={{ padding: "10px 16px", borderTop: "1px solid var(--mc-line)" }}>
-            <button className="mc-btn mc-btn--ghost" style={{ width: "100%", justifyContent: "center" }} onClick={() => router.push("/nutricion-ganadera")}>
+            <button className="mc-btn mc-btn--ghost" style={{ width: "100%", justifyContent: "center" }} onClick={() => router.push("/ganaderia-avanzada")}>
               <Icon name="leaf" size={14} />Gestionar raciones en Nutrición
             </button>
           </div>

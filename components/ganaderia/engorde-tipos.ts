@@ -44,6 +44,7 @@ export type DTEAPI = {
   categoria?: string | null;
   cabezas?: number | null;
   pesoTotal?: number | null;
+  pesoCarcasa?: number | null;
   precioKg?: number | null;
   importe?: number | null;
   transporte?: string | null;
@@ -55,6 +56,22 @@ const MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct
 export const fmtDia = (d: Date) => `${d.getDate()} ${MES[d.getMonth()]}`;
 export const nfEng = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 export const coma = (n: number, dec = 1) => n.toFixed(dec).replace(".", ",");
+
+/** Rendimiento de carcasa real (%) = Σ peso carcasa / Σ peso vivo de las ventas
+ *  que tienen ambos pesos cargados. Devuelve null si todavía no hay datos reales
+ *  (nunca un valor "de referencia" inventado). */
+export function rendimientoCarcasaReal(ventas: DTEAPI[]): number | null {
+  let vivo = 0;
+  let carcasa = 0;
+  for (const v of ventas) {
+    if (v.pesoTotal && v.pesoTotal > 0 && v.pesoCarcasa && v.pesoCarcasa > 0) {
+      vivo += v.pesoTotal;
+      carcasa += v.pesoCarcasa;
+    }
+  }
+  if (vivo <= 0) return null;
+  return Math.round((carcasa / vivo) * 1000) / 10;
+}
 
 /** GDP real más reciente de un corral (de la última pesada, o derivado de dos pesadas). */
 export function gdpReal(c: CorralAPI): number | null {

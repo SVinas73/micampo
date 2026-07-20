@@ -268,6 +268,7 @@ export function ModalProgramarEnvio({ corrales, onClose, onGuardado }: { corrale
   const [patente, setPatente] = useState("");
   const [precio, setPrecio] = useState("2.00");
   const [modalidad, setModalidad] = useState<"vivo" | "carcasa">("vivo");
+  const [rendPct, setRendPct] = useState("");
   const [nota, setNota] = useState("");
   const [guardando, setGuardando] = useState(false);
 
@@ -289,9 +290,13 @@ export function ModalProgramarEnvio({ corrales, onClose, onGuardado }: { corrale
 
   const totalCab = items.reduce((s, a) => s + Number(a.cab || 0), 0);
   const totalPesoVivo = items.reduce((s, a) => s + Number(a.cab || 0) * Number(a.peso || 0), 0);
-  const rendimiento = 0.542;
-  const pesoFacturable = modalidad === "carcasa" ? Math.round(totalPesoVivo * rendimiento) : totalPesoVivo;
+  // Rendimiento carcasa ingresado por el usuario (real/estimado del embarque), no un valor fijo.
+  const rendNum = parseFloat(rendPct);
+  const rendValido = !isNaN(rendNum) && rendNum > 0 && rendNum <= 100;
+  const pesoCarcasa = rendValido ? Math.round(totalPesoVivo * (rendNum / 100)) : null;
+  const pesoFacturable = modalidad === "carcasa" ? pesoCarcasa ?? 0 : totalPesoVivo;
   const ingreso = Math.round(pesoFacturable * Number(precio || 0));
+  const faltaRend = modalidad === "carcasa" && !rendValido;
   const fechaLabel = fechaEnvio ? new Date(fechaEnvio + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" }) : "—";
 
   const confirmar = async () => {
@@ -309,6 +314,7 @@ export function ModalProgramarEnvio({ corrales, onClose, onGuardado }: { corrale
           categoria: items.length === 1 ? items[0].nombre : `${items.length} tropas`,
           cabezas: totalCab,
           pesoTotal: totalPesoVivo,
+          pesoCarcasa: pesoCarcasa ?? undefined,
           precioKg: Number(precio || 0),
           importe: ingreso,
           transporte: [transportista, patente].filter(Boolean).join(" · ") || null,
@@ -411,6 +417,15 @@ export function ModalProgramarEnvio({ corrales, onClose, onGuardado }: { corrale
                 </div>
               </div>
             </div>
+            <div style={{ marginBottom: 12 }}>
+              <div className="text-xs text-muted mb-4">Rendimiento carcasa (%){modalidad === "carcasa" ? " · requerido para facturar en gancho" : " · opcional — registra el rendimiento real de la faena"}</div>
+              <input type="number" step="0.1" min="0" max="100" value={rendPct} onChange={(e) => setRendPct(e.target.value)} placeholder="Ej: 56" className="mc-input" style={{ width: "100%", ...(faltaRend ? { borderColor: "var(--mc-amber)" } : {}) }} />
+              {pesoCarcasa !== null ? (
+                <div className="text-xs text-muted" style={{ marginTop: 4 }}>Carcasa estimada: <strong>{nfEng.format(pesoCarcasa)} kg</strong> · {nfEng.format(totalPesoVivo)} kg vivo × {coma(rendNum, 1)}%</div>
+              ) : faltaRend ? (
+                <div className="text-xs" style={{ marginTop: 4, color: "var(--mc-amber)" }}>Ingresá el rendimiento para calcular el peso de carcasa a facturar.</div>
+              ) : null}
+            </div>
             <div className="text-xs text-muted mb-4">Nota opcional</div>
             <textarea value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Observaciones del envío..." className="mc-input" style={{ width: "100%", minHeight: 60, resize: "vertical" }} />
           </div>
@@ -430,7 +445,7 @@ export function ModalProgramarEnvio({ corrales, onClose, onGuardado }: { corrale
 
         <div style={{ padding: "14px 22px", borderTop: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", gap: 10, justifyContent: "flex-end", flexShrink: 0 }}>
           <button className="mc-btn mc-btn--secondary" onClick={onClose}>Cancelar</button>
-          <button className="mc-btn mc-btn--primary" onClick={confirmar} disabled={items.length === 0 || guardando}><Icon name="check" size={14} />Confirmar Envío</button>
+          <button className="mc-btn mc-btn--primary" onClick={confirmar} disabled={items.length === 0 || guardando || faltaRend}><Icon name="check" size={14} />Confirmar Envío</button>
         </div>
       </div>
     </div>
