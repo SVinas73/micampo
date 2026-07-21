@@ -15,6 +15,7 @@ import {
   fechaStrDe,
   hoyStr,
   nfLt,
+  setTurnosPendientes,
   turnosIniciados,
   turnosPendientes,
 } from "./lechera-tipos";
@@ -124,6 +125,8 @@ export function PLResumen({
           vacas={vacas}
           turnos={turnos}
           registrosHoy={registrosHoy}
+          pendientes={pendientes}
+          onRemovePendiente={(n) => setTurnosPendientes(turnosPendientes().filter((x) => x !== n))}
           onClose={() => setModalOrdene(false)}
           onGuardado={() => { toast.show("Ordeñe registrado"); onRefresh(); }}
         />
