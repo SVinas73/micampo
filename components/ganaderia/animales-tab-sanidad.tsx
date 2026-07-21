@@ -22,7 +22,6 @@ import {
   ZONA_INFO_SANIDAD,
   zonasDesdeTratamientos,
 } from "./animales-sanidad-modales";
-import { VerDetalleAnimalModal } from "./animales-modales";
 
 export type StockInsumoAPI = {
   id: string;
@@ -42,17 +41,18 @@ export function AnimSanidad({
   animales,
   tratamientos,
   stockVet,
+  onVerDetalle,
   onGuardado,
 }: {
   animales: AnimalRow[];
   tratamientos: TratamientoAPI[];
   stockVet: StockInsumoAPI[];
+  onVerDetalle?: (a: AnimalRow) => void;
   onGuardado?: () => void;
 }) {
   const [modalDiagnostico, setModalDiagnostico] = useState(false);
   const [modalSeguimiento, setModalSeguimiento] = useState<TratamientoAPI | null>(null);
   const [modalTratamiento, setModalTratamiento] = useState(false);
-  const [verAnimal, setVerAnimal] = useState<AnimalRow | null>(null);
   const [filtroHosp, setFiltroHosp] = useState<"activos" | "todos">("activos");
   const [vistaCuerpo, setVistaCuerpo] = useState<"3d" | "2d">("3d");
 
@@ -119,7 +119,6 @@ export function AnimSanidad({
       {modalDiagnostico && <ModalDiagnosticarAnimal pacientes={activos} onClose={() => setModalDiagnostico(false)} onGuardado={onGuardado} />}
       {modalSeguimiento && <ModalSeguimientoTratamiento tratamiento={modalSeguimiento} onClose={() => setModalSeguimiento(null)} onGuardado={onGuardado} />}
       {modalTratamiento && <ModalRegistrarTratamientoSanitario pacientes={activos} onClose={() => setModalTratamiento(false)} onGuardado={onGuardado} />}
-      {verAnimal && <VerDetalleAnimalModal animal={verAnimal} onClose={() => setVerAnimal(null)} onEditado={onGuardado} />}
 
       {/* Botones de acción */}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
@@ -199,7 +198,7 @@ export function AnimSanidad({
                           title="Ver animal"
                           onClick={() => {
                             const row = animales.find((a) => a.dbId === t.animal?.id);
-                            if (row) setVerAnimal(row);
+                            if (row) onVerDetalle?.(row);
                           }}
                         >
                           <Icon name="eye" size={14} />

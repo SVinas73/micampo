@@ -230,7 +230,7 @@ export default function AnimalesPage() {
       )}
       {nuevoOpen && <NuevoAnimalModal onClose={() => setNuevoOpen(false)} onCreado={() => { cargar(); show("Animal registrado"); }} />}
       {eventoTimelineOpen && <ModalRegistrarEvento animales={animales} animalPrefill={timelineSel} onClose={() => setEventoTimelineOpen(false)} onGuardado={() => { cargar(); show("Evento registrado"); }} />}
-      {diagIA && <ModalDiagnosticarAnimal pacientes={activos} onClose={() => setDiagIA(null)} onGuardado={() => { cargar(); show("Tratamiento guardado"); }} />}
+      {diagIA && <ModalDiagnosticarAnimal pacientes={activos} pacientePrefill={diagIA} onClose={() => setDiagIA(null)} onGuardado={() => { cargar(); show("Tratamiento guardado"); }} />}
 
       <PageHeader
         crumbs={["Ganadería", "Animales"]}
@@ -301,7 +301,7 @@ export default function AnimalesPage() {
             <KPI label="Costo San. p/Cabeza" value={costoSanCab > 0 ? `$${nfES(costoSanCab, 2)}` : "—"} delta="Año actual" trend={costoSanCab > 0 ? "down" : "up"} icon="activity" />
             <KPI label="Próxima Campaña" value={proximaCampania ? `${proximaCampania.dias} días` : "—"} delta={proximaCampania ? proximaCampania.titulo : "Sin campañas programadas"} trend="up" icon="calendar" />
           </div>
-          <AnimSanidad animales={animales} tratamientos={tratamientos} stockVet={stockVet} onGuardado={() => { cargar(); show("Guardado"); }} />
+          <AnimSanidad animales={animales} tratamientos={tratamientos} stockVet={stockVet} onVerDetalle={setVerDetalle} onGuardado={() => { cargar(); show("Guardado"); }} />
         </>
       )}
 

@@ -188,17 +188,19 @@ type ProtocoloIA = {
 
 export function ModalDiagnosticarAnimal({
   pacientes,
+  pacientePrefill,
   onClose,
   onGuardado,
 }: {
   pacientes: AnimalRow[];
+  pacientePrefill?: AnimalRow | null;
   onClose: () => void;
   onGuardado?: () => void;
 }) {
   const pool = pacientes || [];
   const [paso, setPaso] = useState(1);
   const [busqueda, setBusqueda] = useState("");
-  const [animalSel, setAnimalSel] = useState<AnimalRow | null>(null);
+  const [animalSel, setAnimalSel] = useState<AnimalRow | null>(pacientePrefill || null);
   const [zonaSel, setZonaSel] = useState<string | null>(null);
   const [sintomasZona, setSintomasZona] = useState<string[]>([]);
   const [diagPresuntivo, setDiagPresuntivo] = useState("");
