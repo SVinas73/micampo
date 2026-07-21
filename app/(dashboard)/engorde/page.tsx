@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader, Tabs } from "@/components/mc";
-import { CorralAPI, DTEAPI, estadoCorral, gdpReal } from "@/components/ganaderia/engorde-tipos";
+import { CorralAPI, DTEAPI, gdpReal } from "@/components/ganaderia/engorde-tipos";
 import { EngordeResumen } from "@/components/ganaderia/engorde-tab-resumen";
 import { EngordeCorrales } from "@/components/ganaderia/engorde-tab-corrales";
 import { EngordeConversion } from "@/components/ganaderia/engorde-tab-conversion";
@@ -19,6 +19,7 @@ const TABS = ["Resumen", "Corrales", "Nutrición y Conversión", "Curva de Engor
 
 export default function EngordePage() {
   const [tab, setTab] = useState("Resumen");
+  const [corralFocus, setCorralFocus] = useState<string | null>(null);
   const [corrales, setCorrales] = useState<CorralAPI[]>([]);
   const [raciones, setRaciones] = useState<RacionLite[]>([]);
   const [documentos, setDocumentos] = useState<DTEAPI[]>([]);
@@ -45,10 +46,10 @@ export default function EngordePage() {
   return (
     <div className="col gap-20">
       <PageHeader crumbs={["Ganadería", "Engorde"]} title="Engorde" subtitle={subtitle} />
-      <Tabs tabs={TABS} active={tab} onChange={setTab} warnTabs={warnTabs} />
+      <Tabs tabs={TABS} active={tab} onChange={(t) => { setCorralFocus(null); setTab(t); }} warnTabs={warnTabs} />
 
-      {tab === "Resumen" && <EngordeResumen corrales={corrales} raciones={raciones} onRefresh={cargar} onGoToCorrales={() => setTab("Corrales")} />}
-      {tab === "Corrales" && <EngordeCorrales corrales={corrales} raciones={raciones} onRefresh={cargar} />}
+      {tab === "Resumen" && <EngordeResumen corrales={corrales} raciones={raciones} onRefresh={cargar} onGoToCorrales={(id) => { setCorralFocus(id ?? null); setTab("Corrales"); }} />}
+      {tab === "Corrales" && <EngordeCorrales corrales={corrales} raciones={raciones} focusId={corralFocus} onRefresh={cargar} />}
       {tab === "Nutrición y Conversión" && <EngordeConversion corrales={corrales} raciones={raciones} />}
       {tab === "Curva de Engorde (IA)" && <EngordeCurva corrales={corrales} />}
       {tab === "Faena y Venta" && <EngordeFaena corrales={corrales} documentos={documentos} onRefresh={cargar} />}

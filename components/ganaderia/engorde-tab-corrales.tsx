@@ -28,11 +28,13 @@ function ccDeCorral(c: CorralAPI): number | null {
   return m ? parseFloat(m[1]) : null;
 }
 
-export function EngordeCorrales({ corrales, raciones, onRefresh }: { corrales: CorralAPI[]; raciones: RacionLite[]; onRefresh: () => void }) {
+export function EngordeCorrales({ corrales, raciones, focusId, onRefresh }: { corrales: CorralAPI[]; raciones: RacionLite[]; focusId?: string | null; onRefresh: () => void }) {
   const toast = useToast();
   const [modalPesaje, setModalPesaje] = useState<string | boolean>(false);
   const [modalIngreso, setModalIngreso] = useState(false);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Si llegamos desde el Resumen (click en un corral), abrimos su historial de
+  // pesadas ya en el estado inicial (la pestaña se monta con focusId presente).
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => (focusId ? { [focusId]: true } : {}));
   const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
 
   const activos = useMemo(() => corrales.filter((c) => c.estado !== "Cerrado"), [corrales]);
