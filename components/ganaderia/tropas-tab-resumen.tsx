@@ -35,6 +35,7 @@ import { FichaTropaCard, KpiMovCard, MovVentanaOptima } from "./tropas-ui";
 import {
   ModalAsignarAnimal,
   ModalDetalleTropa,
+  ModalEditarTropa,
   ModalEliminarTropa,
   ModalMoverTropa,
   ModalNuevoTraslado,
@@ -73,6 +74,7 @@ export function MovResumen({
   const [modalPlanif, setModalPlanif] = useState(false);
   const [modalTraslado, setModalTraslado] = useState(false);
   const [tropaDetalle, setTropaDetalle] = useState<TropaAPI | null>(null);
+  const [tropaEditar, setTropaEditar] = useState<TropaAPI | null>(null);
   const [tropaMover, setTropaMover] = useState<TropaAPI | null>(null);
   const [tropaEliminar, setTropaEliminar] = useState<TropaAPI | null>(null);
   const [animalAsignar, setAnimalAsignar] = useState<AnimalRow | null>(null);
@@ -209,8 +211,10 @@ export function MovResumen({
             else toast.show(`No se encontró el animal ${caravana}`, "err");
           }}
           onGoToGestion={onGoToGestion}
+          onEditar={(t) => { setTropaDetalle(null); setTropaEditar(t); }}
         />
       )}
+      {tropaEditar && <ModalEditarTropa tropa={tropaEditar} lotes={lotes} onClose={() => setTropaEditar(null)} onGuardado={() => { setTropaEditar(null); onRefresh(); }} />}
       {tropaEliminar && (
         <ModalEliminarTropa
           tropa={tropaEliminar}
