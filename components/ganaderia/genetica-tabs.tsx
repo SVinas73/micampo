@@ -17,7 +17,7 @@ import {
   fmtDep,
   recomendarToros,
 } from "./genetica-tipos";
-import { ModalNuevoReproductor, ModalDetalleReproductor } from "./genetica-modales";
+import { ModalNuevoReproductor, ModalDetalleReproductor, ModalNuevoROI } from "./genetica-modales";
 
 function UsoBar({ pct }: { pct: number }) {
   const color = pct > 70 ? "var(--mc-green-500)" : pct >= 40 ? "var(--mc-amber)" : "#94a3b8";
@@ -223,7 +223,9 @@ export function GeneticaResumen({ toros, torosSinRegistro, onRefresh }: { toros:
 export function GeneticaReproductores({ toros, criasPorPadre }: { toros: ReproductorAPI[]; criasPorPadre: Record<string, AnimalRow[]> }) {
   const [filtro, setFiltro] = useState("Todos");
   const [detalle, setDetalle] = useState<ReproductorAPI | null>(null);
-  const razas = ["Todos", "Angus", "Hereford", "Brangus", "Braford", "Cruza"];
+  // Familias de raza reales del catálogo (primer término: "Angus Negro" → "Angus").
+  const familias = Array.from(new Set(toros.map((t) => (t.raza || "").split(" ")[0]).filter(Boolean))).sort();
+  const razas = ["Todos", ...familias];
   const filtrados = toros.filter((t) => filtro === "Todos" || (t.raza || "").startsWith(filtro));
 
   const conReg = toros.filter((t) => t.registroGenetico);
@@ -279,9 +281,10 @@ export function GeneticaReproductores({ toros, criasPorPadre }: { toros: Reprodu
 
 /* ============ ROI GENÉTICO ============ */
 
-export function GeneticaROI({ toros, roi, hembras }: { toros: ReproductorAPI[]; roi: ROIAPI[]; hembras: HembraLite[] }) {
+export function GeneticaROI({ toros, roi, hembras, onRefresh }: { toros: ReproductorAPI[]; roi: ROIAPI[]; hembras: HembraLite[]; onRefresh?: () => void }) {
   const [hembraSel, setHembraSel] = useState<HembraLite | null>(null);
   const [busqueda, setBusqueda] = useState("");
+  const [modalNuevo, setModalNuevo] = useState(false);
 
   const totalRetorno = roi.reduce((s, r) => s + (r.ingresoTotal - r.inversionTotal), 0);
   const conRetorno = roi.map((r) => ({ r, retorno: r.ingresoTotal - r.inversionTotal }));
@@ -302,11 +305,20 @@ export function GeneticaROI({ toros, roi, hembras }: { toros: ReproductorAPI[]; 
         <KPI label="Inversión Total" value={`$${Math.round(inversionTotal).toLocaleString("es-AR")}`} delta={`en ${roi.length} análisis`} icon="dollar" />
         <KPI label="Análisis de ROI" value={String(roi.length)} delta="reproductores evaluados" trend="up" icon="activity" />
       </div>
-      <div><div style={{ fontSize: 18, fontWeight: 700, color: "var(--mc-ink)" }}>ROI Genético</div><div className="text-xs text-muted mt-4">Retorno de la inversión en genética premium</div></div>
+      {modalNuevo && <ModalNuevoROI toros={toros} onClose={() => setModalNuevo(false)} onGuardado={onRefresh} />}
+
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 10 }}>
+        <div><div style={{ fontSize: 18, fontWeight: 700, color: "var(--mc-ink)" }}>ROI Genético</div><div className="text-xs text-muted mt-4">Retorno de la inversión en genética premium</div></div>
+        <button className="mc-btn mc-btn--primary" onClick={() => setModalNuevo(true)} disabled={toros.length === 0}><Icon name="plus" size={14} />Nuevo Análisis ROI</button>
+      </div>
 
       <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
         {roi.length === 0 ? (
-          <div className="mc-empty" style={{ padding: "40px 0" }}><div className="mc-empty__icon"><Icon name="chart" size={22} /></div>Sin análisis de ROI cargados. Registrá inversiones e ingresos por reproductor.</div>
+          <div className="mc-empty" style={{ padding: "40px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <div className="mc-empty__icon"><Icon name="chart" size={22} /></div>
+            <div>Sin análisis de ROI cargados. Registrá inversiones e ingresos por reproductor.</div>
+            <button className="mc-btn mc-btn--primary mc-btn--sm" onClick={() => setModalNuevo(true)} disabled={toros.length === 0}><Icon name="plus" size={12} /> Nuevo Análisis ROI</button>
+          </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table className="mc-table">

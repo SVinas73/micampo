@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const reproductorId = searchParams.get("reproductorId");
 
-    const where: any = {
+    const where: { userId: string; reproductorId?: string } = {
       userId: session.user.id,
     };
 
@@ -28,6 +28,7 @@ export async function GET(request: Request) {
         reproductor: {
           select: {
             caravana: true,
+            nombre: true,
             tipo: true,
             raza: true,
             sexo: true,
@@ -200,7 +201,7 @@ export async function POST(request: Request) {
     }
 
     // Análisis IA
-    const analisisIA: any = {
+    const analisisIA: { rentabilidad: string; genetica: string; recomendaciones: string[] } = {
       rentabilidad: "",
       genetica: "",
       recomendaciones: [],
@@ -272,7 +273,9 @@ export async function POST(request: Request) {
         reproductor: {
           select: {
             caravana: true,
+            nombre: true,
             tipo: true,
+            raza: true,
           },
         },
       },

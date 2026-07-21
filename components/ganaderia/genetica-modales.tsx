@@ -11,6 +11,8 @@ import { ReproductorAPI, depLeche, depPeso, fmtDep } from "./genetica-tipos";
 
 const RAZAS = ["Angus", "Angus Negro", "Angus Rojo", "Hereford", "Brangus", "Braford", "Cruza Zebu"];
 
+const nfMoney = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+
 export function ModalNuevoReproductor({ torosSinRegistro, onClose, onGuardado }: { torosSinRegistro: AnimalRow[]; onClose: () => void; onGuardado?: () => void }) {
   const [origen, setOrigen] = useState<"rodeo" | "externa">("rodeo");
   const [busqueda, setBusqueda] = useState("");
@@ -235,6 +237,138 @@ export function ModalDetalleReproductor({ toro, crias, onClose }: { toro: Reprod
         </div>
         <div className="mc-modal__foot">
           <button onClick={onClose} className="mc-btn mc-btn--ghost">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============ NUEVO ANÁLISIS DE ROI ============ */
+
+export function ModalNuevoROI({ toros, onClose, onGuardado }: { toros: ReproductorAPI[]; onClose: () => void; onGuardado?: () => void }) {
+  const anioAct = new Date().getFullYear();
+  const [reproductorId, setReproductorId] = useState("");
+  const [periodo, setPeriodo] = useState(`Temporada ${anioAct}`);
+  const [fechaInicio, setFechaInicio] = useState(`${anioAct}-01-01`);
+  const [fechaFin, setFechaFin] = useState(`${anioAct}-12-31`);
+  const [costoAdquisicion, setCostoAdquisicion] = useState("");
+  const [costoMantenimiento, setCostoMantenimiento] = useState("");
+  const [costoServicios, setCostoServicios] = useState("");
+  const [numeroDescendientes, setNumeroDescendientes] = useState("");
+  const [numeroVendidos, setNumeroVendidos] = useState("");
+  const [ingresoVentas, setIngresoVentas] = useState("");
+  const [valorAgregado, setValorAgregado] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  const n = (s: string) => { const v = parseFloat(String(s).replace(/[^\d.-]/g, "")); return isNaN(v) ? 0 : v; };
+  const inversionTotal = n(costoAdquisicion) + n(costoMantenimiento) + n(costoServicios);
+  const ingresoTotal = n(ingresoVentas) + n(valorAgregado);
+  const retorno = ingresoTotal - inversionTotal;
+  const valido = !!reproductorId && !!periodo.trim() && !!fechaInicio && !!fechaFin;
+
+  const guardar = async () => {
+    if (!valido) return;
+    setGuardando(true);
+    try {
+      const r = await fetch("/api/analisis-roi-genetico", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reproductorId,
+          periodo: periodo.trim(),
+          fechaInicio,
+          fechaFin,
+          costoAdquisicion: costoAdquisicion.trim() ? n(costoAdquisicion) : null,
+          costoMantenimiento: n(costoMantenimiento),
+          costoServicios: n(costoServicios),
+          numeroDescendientes: parseInt(numeroDescendientes || "0") || 0,
+          numeroVendidos: parseInt(numeroVendidos || "0") || 0,
+          ingresoVentas: n(ingresoVentas),
+          valorAgregadoGenética: valorAgregado.trim() ? n(valorAgregado) : null,
+          observaciones: observaciones.trim() || null,
+        }),
+      });
+      if (!r.ok) throw new Error();
+      onGuardado?.();
+      onClose();
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="mc-modal-backdrop" onClick={onClose}>
+      <div className="mc-modal" style={{ width: "min(600px,96vw)", padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "92vh" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--mc-line)", flexShrink: 0 }}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "var(--mc-green-600)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 4 }}>Genética · ROI</div>
+              <div className="mc-modal__title" style={{ fontSize: 20 }}>Nuevo Análisis de ROI</div>
+              <div style={{ fontSize: 12, color: "var(--mc-text-3)", marginTop: 2 }}>Registrá inversiones e ingresos de un reproductor para calcular su retorno.</div>
+            </div>
+            <button onClick={onClose} className="mc-icon-btn"><Icon name="x" size={14} /></button>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "18px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+          <div>
+            <SecNum n={1} title="Reproductor y período" />
+            <div className="col gap-10">
+              <div className="mc-field">
+                <label className="mc-label">Reproductor*</label>
+                <select className="mc-select" value={reproductorId} onChange={(e) => { const id = e.target.value; setReproductorId(id); const t = toros.find((x) => x.id === id); if (t && !numeroDescendientes) setNumeroDescendientes(String(t.crias)); }}>
+                  <option value="">Seleccionar toro…</option>
+                  {toros.map((t) => <option key={t.id} value={t.id}>{t.nombre || t.id} · {t.raza || "—"} ({t.crias} crías)</option>)}
+                </select>
+                {toros.length === 0 && <div style={{ fontSize: 11, color: "var(--mc-text-3)", marginTop: 4 }}>No hay reproductores en el catálogo. Agregá uno desde el Resumen.</div>}
+              </div>
+              <div className="mc-field"><label className="mc-label">Período*</label><input className="mc-input" value={periodo} onChange={(e) => setPeriodo(e.target.value)} placeholder="Ej: Temporada 2024" /></div>
+              <div className="grid g-cols-2">
+                <div className="mc-field"><label className="mc-label">Desde*</label><input type="date" className="mc-input" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} /></div>
+                <div className="mc-field"><label className="mc-label">Hasta*</label><input type="date" className="mc-input" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} /></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <SecNum n={2} title="Inversión (USD)" />
+            <div className="grid g-cols-3" style={{ gap: 10 }}>
+              <div className="mc-field"><label className="mc-label">Adquisición</label><input type="number" className="mc-input" value={costoAdquisicion} onChange={(e) => setCostoAdquisicion(e.target.value)} placeholder="0" /></div>
+              <div className="mc-field"><label className="mc-label">Mantenimiento</label><input type="number" className="mc-input" value={costoMantenimiento} onChange={(e) => setCostoMantenimiento(e.target.value)} placeholder="0" /></div>
+              <div className="mc-field"><label className="mc-label">Servicios/IA</label><input type="number" className="mc-input" value={costoServicios} onChange={(e) => setCostoServicios(e.target.value)} placeholder="0" /></div>
+            </div>
+          </div>
+
+          <div>
+            <SecNum n={3} title="Descendencia e ingresos" />
+            <div className="grid g-cols-2" style={{ gap: 10 }}>
+              <div className="mc-field"><label className="mc-label">N° descendientes</label><input type="number" className="mc-input" value={numeroDescendientes} onChange={(e) => setNumeroDescendientes(e.target.value)} placeholder="0" /></div>
+              <div className="mc-field"><label className="mc-label">N° vendidos</label><input type="number" className="mc-input" value={numeroVendidos} onChange={(e) => setNumeroVendidos(e.target.value)} placeholder="0" /></div>
+              <div className="mc-field"><label className="mc-label">Ingreso por ventas (USD)</label><input type="number" className="mc-input" value={ingresoVentas} onChange={(e) => setIngresoVentas(e.target.value)} placeholder="0" /></div>
+              <div className="mc-field"><label className="mc-label">Valor agregado genético (USD)</label><input type="number" className="mc-input" value={valorAgregado} onChange={(e) => setValorAgregado(e.target.value)} placeholder="0" /></div>
+            </div>
+            <div className="mc-field" style={{ marginTop: 10 }}><label className="mc-label">Observaciones (opcional)</label><input className="mc-input" value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas del análisis…" /></div>
+          </div>
+
+          {/* Preview */}
+          <div style={{ background: "var(--mc-surface-2)", border: "1px solid var(--mc-line)", borderRadius: 12, padding: 14, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            {[
+              { lbl: "Inversión", val: `$${nfMoney.format(Math.round(inversionTotal))}`, clr: "var(--mc-ink)" },
+              { lbl: "Ingreso", val: `$${nfMoney.format(Math.round(ingresoTotal))}`, clr: "var(--mc-ink)" },
+              { lbl: "Retorno", val: `${retorno >= 0 ? "+" : "-"}$${nfMoney.format(Math.abs(Math.round(retorno)))}`, clr: retorno >= 0 ? "var(--mc-green-700)" : "var(--mc-red)" },
+            ].map((s) => (
+              <div key={s.lbl} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 9.5, color: "var(--mc-text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>{s.lbl}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: s.clr }}>{s.val}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ padding: "14px 24px", borderTop: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", gap: 10, flexShrink: 0 }}>
+          <button onClick={onClose} className="mc-btn mc-btn--ghost" style={{ flex: 1, justifyContent: "center" }}>Cancelar</button>
+          <button onClick={guardar} className="mc-btn mc-btn--primary" style={{ flex: 2, justifyContent: "center" }} disabled={!valido || guardando}><Icon name="check" size={14} /> {guardando ? "Guardando…" : "Guardar Análisis"}</button>
         </div>
       </div>
     </div>
