@@ -66,7 +66,7 @@ export default function GeneticaPage() {
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
       {tab === "Resumen" && <GeneticaResumen toros={toros} torosSinRegistro={torosSinRegistro} onRefresh={cargar} />}
       {tab === "Reproductores" && <GeneticaReproductores toros={toros} criasPorPadre={criasPorCaravana} />}
-      {tab === "ROI Genético" && <GeneticaROI toros={toros} roi={roi} hembras={hembras} />}
+      {tab === "ROI Genético" && <GeneticaROI toros={toros} roi={roi} hembras={hembras} onRefresh={cargar} />}
     </div>
   );
 }
