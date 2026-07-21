@@ -18,7 +18,7 @@ import { ModalIngresoCorral } from "./engorde-modales";
 
 type RacionLite = { id: string; nombre: string; etapaProductiva?: string | null; animalObjetivo?: string | null };
 
-export function EngordeResumen({ corrales, raciones, onRefresh, onGoToCorrales }: { corrales: CorralAPI[]; raciones: RacionLite[]; onRefresh: () => void; onGoToCorrales?: () => void }) {
+export function EngordeResumen({ corrales, raciones, onRefresh, onGoToCorrales }: { corrales: CorralAPI[]; raciones: RacionLite[]; onRefresh: () => void; onGoToCorrales?: (corralId?: string) => void }) {
   const toast = useToast();
   const [rango, setRango] = useState(60);
   const [modalIngreso, setModalIngreso] = useState(false);
@@ -152,7 +152,7 @@ export function EngordeResumen({ corrales, raciones, onRefresh, onGoToCorrales }
                 const g = gdpReal(c);
                 const ocup = c.capacidad ? Math.round((c.cabezas / c.capacidad) * 100) : null;
                 return (
-                  <div key={c.id} onClick={onGoToCorrales} style={{ padding: "12px 14px", border: "1px solid var(--mc-line)", borderRadius: 10, cursor: onGoToCorrales ? "pointer" : "default" }}>
+                  <div key={c.id} onClick={() => onGoToCorrales?.(c.id)} style={{ padding: "12px 14px", border: "1px solid var(--mc-line)", borderRadius: 10, cursor: onGoToCorrales ? "pointer" : "default" }}>
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                       <div className="font-semi" style={{ color: "var(--mc-ink)", fontSize: 13 }}>{c.nombre}</div>
                       <div className="row gap-8" style={{ alignItems: "center" }}>
@@ -184,7 +184,7 @@ export function EngordeResumen({ corrales, raciones, onRefresh, onGoToCorrales }
           {alertas.length === 0 ? (
             <div className="mc-empty" style={{ padding: "30px 0" }}>
               <div className="mc-empty__icon" style={{ background: "var(--mc-green-50)", color: "var(--mc-green-600)" }}><Icon name="check-circle" size={20} /></div>
-              Todas las tropas cumplen su objetivo de GDP
+              Todos los corrales cumplen su objetivo de GDP
             </div>
           ) : (
             <div className="col gap-8">
