@@ -13,6 +13,12 @@ import { TropaAPI } from "./tropas-tipos";
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
+const TIPOS_DISPOSITIVO = [
+  { id: "boton", label: "Botón RFID + Tarjeta Visual" },
+  { id: "bolo", label: "Bolo Ruminal" },
+  { id: "transponder", label: "Transponder Inyectable" },
+];
+
 /* ============ REGISTRAR APLICACIÓN DE DISPOSITIVO ============ */
 export function ModalRegistrarAplicacion({
   cfg,
@@ -52,6 +58,21 @@ export function ModalRegistrarAplicacion({
         body: JSON.stringify({ campos: { rfid: numero.trim() } }),
       });
       if (!r.ok) throw new Error();
+      // Registrar la identificación como evento de vida para no perder el tipo de
+      // dispositivo ni la fecha de aplicación (escritura secundaria, no fatal).
+      const tipoLabel = TIPOS_DISPOSITIVO.find((t) => t.id === tipoDisp)?.label || tipoDisp;
+      await fetch("/api/eventos-vida", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          animalId: animalSel.animal.dbId,
+          fecha,
+          tipoEvento: "Identificacion",
+          titulo: `Identificación electrónica · ${tipoLabel}`,
+          descripcion: `Dispositivo N° ${numero.trim()} aplicado. Declarar ante ${cfg.organismo} (${cfg.sistema}) dentro de ${cfg.plazoDeclaracionDias} días hábiles.`,
+          importante: true,
+        }),
+      }).catch(() => {});
       onGuardado?.();
       onClose();
     } catch {
@@ -94,11 +115,7 @@ export function ModalRegistrarAplicacion({
           <div>
             <SecNum n={2} title="Tipo de dispositivo" />
             <div className="row gap-10">
-              {[
-                { id: "boton", label: "Botón RFID + Tarjeta Visual" },
-                { id: "bolo", label: "Bolo Ruminal" },
-                { id: "transponder", label: "Transponder Inyectable" },
-              ].map((o) => {
+              {TIPOS_DISPOSITIVO.map((o) => {
                 const sel = tipoDisp === o.id;
                 return (
                   <div key={o.id} onClick={() => setTipoDisp(o.id)} style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, cursor: "pointer", border: sel ? "2px solid var(--mc-green-500)" : "1px solid var(--mc-line)", background: sel ? "var(--mc-green-50)" : "var(--mc-surface)", fontSize: 12, fontWeight: 600, color: "var(--mc-ink)" }}>
