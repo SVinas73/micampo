@@ -44,6 +44,7 @@ export function ModalNuevaTropa({
   const [busqueda, setBusqueda] = useState("");
   const [seleccionados, setSeleccionados] = useState<string[]>([]);
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   const q = busqueda.trim().toLowerCase();
   const disponibles = sinAsignar.filter((a) => q === "" || a.id.toLowerCase().includes(q) || a.raza.toLowerCase().includes(q));
@@ -52,14 +53,21 @@ export function ModalNuevaTropa({
   const crear = async () => {
     if (!nombre.trim()) return;
     setGuardando(true);
+    setError("");
     try {
-      await fetch("/api/tropas", {
+      const r = await fetch("/api/tropas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre: nombre.trim(), categoria, loteId: loteId || null, animalIds: seleccionados }),
       });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "No se pudo crear la tropa");
+      }
       onGuardado && onGuardado();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo crear la tropa");
     } finally {
       setGuardando(false);
     }
@@ -137,6 +145,7 @@ export function ModalNuevaTropa({
           </div>
         </div>
 
+        {error && <div style={{ padding: "10px 24px 0", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", gap: 10, flexShrink: 0 }}>
           <button onClick={onClose} className="mc-btn mc-btn--secondary" style={{ flex: 1, justifyContent: "center" }}>Cancelar</button>
           <button onClick={crear} className="mc-btn mc-btn--primary" style={{ flex: 2, justifyContent: "center" }} disabled={!nombre.trim() || guardando}>
@@ -165,17 +174,27 @@ export function ModalAsignarAnimal({
   const opciones = tropas.filter((t) => t.id !== animal.tropaId);
   const [destino, setDestino] = useState(opciones[0]?.id || "");
   const [confirmado, setConfirmado] = useState(false);
+  const [error, setError] = useState("");
 
   const confirmar = async () => {
     if (!destino) return;
-    await fetch(`/api/tropas/${destino}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agregarAnimalIds: [animal.dbId] }),
-    });
-    setConfirmado(true);
-    onGuardado && onGuardado();
-    setTimeout(onClose, 700);
+    setError("");
+    try {
+      const r = await fetch(`/api/tropas/${destino}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agregarAnimalIds: [animal.dbId] }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "No se pudo mover el animal");
+      }
+      setConfirmado(true);
+      onGuardado && onGuardado();
+      setTimeout(onClose, 700);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo mover el animal");
+    }
   };
 
   const destinoObj = tropas.find((t) => t.id === destino);
@@ -211,6 +230,7 @@ export function ModalAsignarAnimal({
             {opciones.length === 0 && <div style={{ fontSize: 11, color: "var(--mc-text-3)", marginTop: 4 }}>Creá una tropa primero.</div>}
           </div>
         </div>
+        {error && <div style={{ padding: "0 24px 12px", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", gap: 10 }}>
           <button onClick={onClose} className="mc-btn mc-btn--secondary" style={{ flex: 1, justifyContent: "center" }}>Cancelar</button>
           <button onClick={confirmar} disabled={!destino} className="mc-btn mc-btn--primary" style={{ flex: 2, justifyContent: "center" }}>
@@ -238,13 +258,21 @@ export function ModalEliminarTropa({
   const cant = tropa._count?.animales ?? tropa.animales?.length ?? 0;
   const vacia = cant === 0;
   const [borrando, setBorrando] = useState(false);
+  const [error, setError] = useState("");
 
   const eliminar = async () => {
     setBorrando(true);
+    setError("");
     try {
-      await fetch(`/api/tropas/${tropa.id}`, { method: "DELETE" });
+      const r = await fetch(`/api/tropas/${tropa.id}`, { method: "DELETE" });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "No se pudo eliminar la tropa");
+      }
       onEliminada && onEliminada();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo eliminar la tropa");
     } finally {
       setBorrando(false);
     }
@@ -274,6 +302,7 @@ export function ModalEliminarTropa({
             <div style={{ fontSize: 14, color: "var(--mc-ink)" }}>¿Confirmás que querés eliminar <strong>{tropa.nombre}</strong>? Esta acción no se puede deshacer.</div>
           )}
         </div>
+        {error && <div style={{ padding: "0 22px 12px", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <div style={{ padding: "14px 22px", borderTop: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", gap: 10 }}>
           <button onClick={onClose} className="mc-btn mc-btn--secondary" style={{ flex: 1, justifyContent: "center" }}>Cancelar</button>
           {!vacia ? (
@@ -506,17 +535,25 @@ export function ModalEditarTropa({
   const [loteId, setLoteId] = useState(tropa.loteId || "");
   const [color, setColor] = useState(tropa.color || "");
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   const guardar = async () => {
     setGuardando(true);
+    setError("");
     try {
-      await fetch(`/api/tropas/${tropa.id}`, {
+      const r = await fetch(`/api/tropas/${tropa.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre, categoria, loteId: loteId || null, color: color || null }),
       });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "No se pudo guardar la tropa");
+      }
       onGuardado && onGuardado();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar la tropa");
     } finally {
       setGuardando(false);
     }
@@ -561,6 +598,7 @@ export function ModalEditarTropa({
             </div>
           </div>
         </div>
+        {error && <div style={{ padding: "0 22px 12px", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <div className="mc-modal__foot">
           <button onClick={onClose} className="mc-btn mc-btn--secondary">Cancelar</button>
           <button onClick={guardar} disabled={guardando || !nombre.trim()} className="mc-btn mc-btn--primary"><Icon name="check" size={13} />{guardando ? "Guardando…" : "Guardar"}</button>
@@ -589,17 +627,19 @@ export function ModalNuevoTraslado({
   const [destTropa, setDestTropa] = useState("");
   const [motivo, setMotivo] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   const tropaObj = tropas.find((t) => t.id === tropaId);
 
   const ejecutar = async () => {
     if (!tropaId) return;
     setGuardando(true);
+    setError("");
     try {
       if (destTipo === "lote") {
         if (!destLote) return;
         const now = new Date();
-        await fetch("/api/movimientos-tropa", {
+        const r = await fetch("/api/movimientos-tropa", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -612,18 +652,22 @@ export function ModalNuevoTraslado({
             estado: "Ejecutado",
           }),
         });
+        if (!r.ok) throw new Error("No se pudo registrar el traslado");
       } else {
         if (!destTropa) return;
         // Fusionar: mover todos los animales a la tropa destino
         const ids = (tropaObj?.animales || []).map((a) => a.id);
-        await fetch(`/api/tropas/${destTropa}`, {
+        const r = await fetch(`/api/tropas/${destTropa}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ agregarAnimalIds: ids }),
         });
+        if (!r.ok) throw new Error("No se pudo fusionar la tropa");
       }
       onGuardado && onGuardado();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo ejecutar el traslado");
     } finally {
       setGuardando(false);
     }
@@ -684,6 +728,7 @@ export function ModalNuevoTraslado({
           </div>
         </div>
 
+        {error && <div style={{ padding: "0 22px 10px", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600, textAlign: "right" }}>{error}</div>}
         <div style={{ padding: "12px 22px", borderTop: "1px solid var(--mc-line)", display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={onClose} className="mc-btn mc-btn--secondary">Cancelar</button>
           <button onClick={ejecutar} disabled={guardando || !tropaId || (destTipo === "lote" ? !destLote : !destTropa)} className="mc-btn mc-btn--primary">
@@ -725,6 +770,7 @@ export function ModalPlanificarMovimiento({
   const [mResp, setMResp] = useState("");
   const [mNotas, setMNotas] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   const rutinasActivas = rutinas.filter(rutinaActiva);
   const rutinaObj = rutinas.find((r) => r.id === rutinaSel) || null;
@@ -739,10 +785,11 @@ export function ModalPlanificarMovimiento({
     const tId = tropaSel || tropaDeRutina || tropas[0]?.id;
     if (!tId) return;
     setGuardando(true);
+    setError("");
     try {
       const origen = ruta[0] || tropas.find((t) => t.id === tId)?.lote?.nombre || null;
       const destino = mLote || ruta[ruta.length - 1] || null;
-      await fetch("/api/movimientos-tropa", {
+      const r = await fetch("/api/movimientos-tropa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -758,8 +805,14 @@ export function ModalPlanificarMovimiento({
           rutinaId: rutinaSel,
         }),
       });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "No se pudo programar el movimiento");
+      }
       onGuardado && onGuardado();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo programar el movimiento");
     } finally {
       setGuardando(false);
     }
@@ -931,6 +984,7 @@ export function ModalPlanificarMovimiento({
           )}
         </div>
 
+        {error && <div style={{ padding: "0 24px 10px", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <div style={{ padding: "13px 24px", borderTop: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <button className="mc-btn mc-btn--ghost mc-btn--sm" onClick={() => (paso === 1 ? onClose() : setPaso((p) => p - 1))}>
             {paso === 1 ? "Cancelar" : "← Anterior"}
@@ -1038,6 +1092,7 @@ export function ModalNuevaRutina({
     }))
   );
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -1055,6 +1110,7 @@ export function ModalNuevaRutina({
   const guardar = async () => {
     if (!nombre.trim()) return;
     setGuardando(true);
+    setError("");
     try {
       const config: RutinaConfig = {
         secuencia: activeNodes.map((n, i) => ({ lugar: n.lugar, inicio: horarios[i]?.inicio || undefined, fin: horarios[i]?.fin || undefined })),
@@ -1065,13 +1121,17 @@ export function ModalNuevaRutina({
         hasta: tipo === "fija" && fijaModo === "rango" ? fijaHasta : undefined,
       };
       const body = { nombre: nombre.trim(), tipo: tipo || "rotacion", config, tropaIds };
-      if (rutina) {
-        await fetch(`/api/rutinas-tropa/${rutina.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      } else {
-        await fetch("/api/rutinas-tropa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const r = rutina
+        ? await fetch(`/api/rutinas-tropa/${rutina.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        : await fetch("/api/rutinas-tropa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "No se pudo guardar la rutina");
       }
       onGuardado && onGuardado();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar la rutina");
     } finally {
       setGuardando(false);
     }
@@ -1270,6 +1330,7 @@ export function ModalNuevaRutina({
           )}
         </div>
 
+        {error && <div style={{ padding: "10px 24px 0", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <button onClick={() => paso > 1 && setPaso(paso - 1)} disabled={paso === 1} className="mc-btn mc-btn--secondary" style={{ opacity: paso === 1 ? 0.4 : 1 }}>← Anterior</button>
           <span style={{ fontSize: 12, color: "var(--mc-text-3)" }}>Paso {paso} de 4</span>
@@ -1397,17 +1458,25 @@ export function ModalAsignarRutina({
 }) {
   const [rutinaId, setRutinaId] = useState(tropa.rutinaId || "");
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   const confirmar = async () => {
     setGuardando(true);
+    setError("");
     try {
-      await fetch(`/api/tropas/${tropa.id}`, {
+      const r = await fetch(`/api/tropas/${tropa.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rutinaId: rutinaId || null }),
       });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "No se pudo asignar la rutina");
+      }
       onGuardado && onGuardado();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo asignar la rutina");
     } finally {
       setGuardando(false);
     }
@@ -1442,6 +1511,7 @@ export function ModalAsignarRutina({
           })}
           {rutinas.length === 0 && <div style={{ fontSize: 12, color: "var(--mc-text-3)" }}>No hay rutinas creadas — usá la pestaña «Rutinas».</div>}
         </div>
+        {error && <div style={{ padding: "0 22px 12px", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <div className="mc-modal__foot">
           <button onClick={onClose} className="mc-btn mc-btn--secondary">Cancelar</button>
           <button onClick={confirmar} disabled={guardando} className="mc-btn mc-btn--primary"><Icon name="check" size={13} />{guardando ? "Guardando…" : "Asignar"}</button>
@@ -1466,13 +1536,15 @@ export function ModalMoverTropa({
 }) {
   const [destino, setDestino] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   const confirmar = async () => {
     if (!destino) return;
     setGuardando(true);
+    setError("");
     try {
       const now = new Date();
-      await fetch("/api/movimientos-tropa", {
+      const r = await fetch("/api/movimientos-tropa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1485,8 +1557,14 @@ export function ModalMoverTropa({
           estado: "Ejecutado",
         }),
       });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "No se pudo mover la tropa");
+      }
       onGuardado && onGuardado();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo mover la tropa");
     } finally {
       setGuardando(false);
     }
@@ -1518,6 +1596,7 @@ export function ModalMoverTropa({
             </select>
           </div>
         </div>
+        {error && <div style={{ padding: "0 22px 12px", color: "var(--mc-red)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <div className="mc-modal__foot">
           <button onClick={onClose} className="mc-btn mc-btn--secondary">Cancelar</button>
           <button onClick={confirmar} disabled={!destino || guardando} className="mc-btn mc-btn--primary"><Icon name="move-right" size={13} />{guardando ? "Moviendo…" : "Mover Ahora"}</button>
