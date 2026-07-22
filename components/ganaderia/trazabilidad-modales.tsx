@@ -181,6 +181,10 @@ export function ModalNuevoDTE({
   const [error, setError] = useState("");
 
   const requiereAvisoCSM = motivo === "Venta" || motivo === "Faena";
+  // En una compra la hacienda entra al establecimiento propio: el campo libre
+  // es el origen (de dónde se compra) y el destino es el establecimiento propio.
+  const esEntrada = motivo === "Compra";
+  const rotuloContraparte = esEntrada ? "Origen" : "Destino";
 
   const seleccionarTropa = (id: string) => {
     setTropaRefId(id);
@@ -190,7 +194,12 @@ export function ModalNuevoDTE({
 
   const generar = async () => {
     if (!destino.trim()) {
-      setError("Ingresá el destino del movimiento.");
+      setError(`Ingresá el ${rotuloContraparte.toLowerCase()} del movimiento.`);
+      return;
+    }
+    const cab = parseInt(cantidad);
+    if (!cantidad.trim() || isNaN(cab) || cab <= 0) {
+      setError("Ingresá la cantidad de cabezas del movimiento.");
       return;
     }
     setGuardando(true);
@@ -201,14 +210,16 @@ export function ModalNuevoDTE({
         tropa ? `Tropa: ${tropa.nombre}` : null,
         cfg.tieneCertificadoSanitario && requiereAvisoCSM ? (csmCargado ? "CSM cargado" : "CSM pendiente") : null,
       ].filter(Boolean).join(" · ");
+      const propio = "Establecimiento propio";
+      const contraparte = destino.trim();
       const r = await fetch("/api/documentos-transito", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          origen: "Establecimiento propio",
-          destino: destino.trim(),
+          origen: esEntrada ? contraparte : propio,
+          destino: esEntrada ? propio : contraparte,
           motivo,
-          cabezas: cantidad ? parseInt(cantidad) : null,
+          cabezas: cab,
           estado: "Vigente",
           notas: notas || null,
         }),
@@ -239,10 +250,10 @@ export function ModalNuevoDTE({
               <div className="row gap-8" style={{ alignItems: "center", padding: "9px 12px", background: "var(--mc-surface-2)", borderRadius: 10 }}>
                 <Icon name="mapPin" size={14} style={{ color: "var(--mc-text-2)" }} />
                 <span className="text-sm font-semi" style={{ color: "var(--mc-ink)" }}>Establecimiento propio</span>
-                <span className="text-xs text-muted">{cfg.identificadorEstablecimiento} de origen</span>
+                <span className="text-xs text-muted">{cfg.identificadorEstablecimiento} de {esEntrada ? "destino" : "origen"}</span>
               </div>
               <div className="mc-field">
-                <label className="mc-label">Destino*</label>
+                <label className="mc-label">{rotuloContraparte}*</label>
                 <input className="mc-input" value={destino} onChange={(e) => setDestino(e.target.value)} placeholder={`Buscar ${cfg.identificadorEstablecimiento}, feria o frigorífico…`} />
               </div>
             </div>

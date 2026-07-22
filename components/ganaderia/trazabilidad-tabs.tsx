@@ -5,7 +5,7 @@
 // reales (/api/animales, /api/documentos-transito, /api/auditorias-trazabilidad).
 
 import { useState } from "react";
-import { KPI, Icon } from "@/components/mc";
+import { KPI, Icon, useToast } from "@/components/mc";
 import { AnimalRow } from "./tipos";
 import { TropaAPI } from "./tropas-tipos";
 import {
@@ -254,6 +254,7 @@ export function TrazaDTE({
   tropas: TropaAPI[];
   onRefresh: () => void;
 }) {
+  const toast = useToast();
   const [modalNuevo, setModalNuevo] = useState(false);
   const [ahora] = useState(() => new Date());
 
@@ -269,20 +270,29 @@ export function TrazaDTE({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ estado: "Usado" }),
       });
-      if (r.ok) onRefresh();
-    } catch {}
+      if (!r.ok) throw new Error();
+      toast.show(`${cfg.documentoTransito} cerrado`);
+      onRefresh();
+    } catch {
+      toast.show("No se pudo cerrar el documento", "err");
+    }
   };
 
   const eliminarDTE = async (id: string) => {
     if (!confirm("¿Eliminar este documento de tránsito?")) return;
     try {
       const r = await fetch(`/api/documentos-transito/${id}`, { method: "DELETE" });
-      if (r.ok) onRefresh();
-    } catch {}
+      if (!r.ok) throw new Error();
+      toast.show("Documento eliminado");
+      onRefresh();
+    } catch {
+      toast.show("No se pudo eliminar el documento", "err");
+    }
   };
 
   return (
     <div className="col gap-20">
+      {toast.node}
       <div className="grid g-cols-5">
         <KPI label={`${cfg.documentoTransito} Abiertos`} value={String(abiertos)} delta="en tránsito / sin cerrar" trend={abiertos > 0 ? "warn" : "up"} icon="route" />
         <KPI label={`${cfg.documentoTransito} Cerrados (mes)`} value={String(cerrados)} delta="movimientos completados" trend="up" icon="check" />
