@@ -59,6 +59,7 @@ export type TratamientoAPI = {
     categoria?: string | null;
     raza?: string | null;
     ubicacion?: string | null;
+    foto?: string | null;
     tropa?: { nombre: string } | null;
   };
 };

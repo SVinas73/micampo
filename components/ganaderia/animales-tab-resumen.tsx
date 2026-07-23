@@ -81,15 +81,19 @@ export function AnimResumen({
     return counts;
   });
 
-  const META_CABEZAS = useMemo(() => {
-    const max = Math.max(0, ...evolData.map((d) => d.total));
-    return Math.max(10, Math.ceil((max * 1.1) / 10) * 10);
-  }, [evolData]);
-
   const EW = 580, EH = 210, ePadL = 46, ePadR = 20, ePadT = 20, ePadB = 30;
   const eChartW = EW - ePadL - ePadR;
   const eChartH = EH - ePadT - ePadB;
-  const totalMax = Math.max(...evolData.map((d) => d.total), META_CABEZAS) + 40 || 100;
+  // Techo del eje "redondo" con un poco de aire sobre el máximo real. Sin metas
+  // inventadas: la escala se adapta al tamaño real del rodeo.
+  const totalMax = useMemo(() => {
+    const dataMax = Math.max(1, ...evolData.map((d) => d.total));
+    const conAire = Math.ceil(dataMax * 1.15);
+    if (conAire <= 4) return 4;
+    if (conAire <= 10) return Math.ceil(conAire / 2) * 2;
+    const step = Math.pow(10, Math.floor(Math.log10(conAire))) / 2;
+    return Math.ceil(conAire / step) * step;
+  }, [evolData]);
   const exStep = evolData.length > 1 ? eChartW / (evolData.length - 1) : eChartW;
   const ex = (i: number) => ePadL + i * exStep;
   const eyTotal = (v: number) => ePadT + eChartH - (v / totalMax) * eChartH;
@@ -111,8 +115,6 @@ export function AnimResumen({
   };
 
   const totalPath = evolData.map((d, i) => `${i === 0 ? "M" : "L"}${ex(i).toFixed(1)},${eyTotal(d.total).toFixed(1)}`).join(" ");
-  const metaBandY = eyTotal(META_CABEZAS + 15);
-  const metaBandH = Math.max(0, eyTotal(META_CABEZAS - 15) - metaBandY);
   const evolLabelStep = Math.max(1, Math.ceil(evolData.length / 8));
 
   const onEvolMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -221,10 +223,6 @@ export function AnimResumen({
             <>
               <div style={{ position: "relative", padding: "0 4px 6px" }}>
                 <svg ref={evolRef} viewBox={`0 0 ${EW} ${EH}`} width="100%" preserveAspectRatio="xMidYMid meet" style={{ display: "block", overflow: "visible", cursor: "crosshair" }} onMouseMove={onEvolMove} onMouseLeave={() => setHovEvol(null)}>
-                  <rect x={ePadL} y={metaBandY} width={eChartW} height={metaBandH} fill="var(--mc-green-600)" fillOpacity="0.06" />
-                  <line x1={ePadL} y1={eyTotal(META_CABEZAS)} x2={EW - ePadR} y2={eyTotal(META_CABEZAS)} stroke="var(--mc-muted)" strokeWidth="1.3" strokeDasharray="5 4" />
-                  <text x={EW - ePadR} y={eyTotal(META_CABEZAS) - 5} textAnchor="end" fontSize="9.5" fill="var(--mc-text-3)" fontWeight="600">Meta: {nfES(META_CABEZAS)} cab.</text>
-
                   {[0, 0.25, 0.5, 0.75, 1].map((f, gi) => {
                     const v = Math.round(totalMax * (1 - f));
                     const y = ePadT + eChartH * f;
@@ -281,10 +279,6 @@ export function AnimResumen({
                     </button>
                   );
                 })}
-                <span className="row gap-4" style={{ fontSize: 11, alignItems: "center", marginLeft: 4 }}>
-                  <span style={{ width: 14, height: 0, borderTop: "1.5px dashed var(--mc-muted)", display: "inline-block" }} />
-                  <span style={{ color: "#6b7280" }}>Meta establecimiento</span>
-                </span>
               </div>
             </>
           ) : (
