@@ -16,6 +16,7 @@ import {
   calcEdad,
   fmtFecha,
   fmtFechaCorta,
+  fotoDeProgenitor,
 } from "./tipos";
 
 /* ============ helpers visuales compartidos ============ */
@@ -126,6 +127,7 @@ type DetalleAPI = AnimalAPI & {
 
 export function VerDetalleAnimalModal({
   animal,
+  animales = [],
   onClose,
   onDarDeBaja,
   onReactivar,
@@ -133,6 +135,7 @@ export function VerDetalleAnimalModal({
   onEditado,
 }: {
   animal: AnimalRow;
+  animales?: AnimalRow[];
   onClose: () => void;
   onDarDeBaja?: (dbId: string, datos: BajaInfo) => void;
   onReactivar?: (dbId: string) => void;
@@ -248,6 +251,8 @@ export function VerDetalleAnimalModal({
   const madreCarav = detalle?.registroGenetico?.madre?.caravana || detalle?.madre || animal.madre;
   const padreRaza = detalle?.registroGenetico?.padre?.raza || null;
   const madreRaza = detalle?.registroGenetico?.madre?.raza || null;
+  const fotoPadreGen = fotoDeProgenitor(animal, animales, "padre");
+  const fotoMadreGen = fotoDeProgenitor(animal, animales, "madre");
 
   // Estado actual real
   const condCorporal = detalle?.registrosPeso?.length
@@ -499,7 +504,14 @@ export function VerDetalleAnimalModal({
             <MCard title="Genealogía / Pedigree">
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg,#0a5a24,#16a34a)", display: "grid", placeItems: "center", fontSize: 22, boxShadow: "0 2px 8px rgba(22,163,74,0.3)", border: "3px solid var(--mc-surface)" }}><Icon name="cow" size={16} /></div>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--mc-surface-2)", display: "grid", placeItems: "center", overflow: "hidden", color: "var(--mc-text-3)", border: "2px solid var(--mc-line-2)" }}>
+                    {animal.api.foto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={animal.api.foto} alt={animal.id} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <Icon name="cow" size={20} />
+                    )}
+                  </div>
                   <div style={{ marginTop: 5, textAlign: "center" }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: "var(--mc-ink)" }}>{animal.id}</div>
                     <div style={{ fontSize: 10, color: "var(--mc-text-3)" }}>{animal.raza}</div>
@@ -514,19 +526,33 @@ export function VerDetalleAnimalModal({
                 <div style={{ height: 14 }} />
                 <div style={{ display: "flex", gap: 12, width: "100%" }}>
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#dbeafe", display: "grid", placeItems: "center", fontSize: 20, border: "2.5px solid #93c5fd" }}><Icon name="beef" size={16} /></div>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--mc-surface-2)", display: "grid", placeItems: "center", overflow: "hidden", color: "var(--mc-text-3)", border: "2px solid var(--mc-line-2)" }}>
+                      {fotoPadreGen ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={fotoPadreGen} alt="Padre" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <Icon name="cow" size={16} />
+                      )}
+                    </div>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8" }}>{padreCarav ? `Toro ${padreCarav}` : "Sin registro"}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-ink)" }}>{padreCarav ? `Toro ${padreCarav}` : "Sin registro"}</div>
                       {padreRaza && <div style={{ fontSize: 9, color: "var(--mc-text-3)" }}>{padreRaza}</div>}
-                      <div style={{ fontSize: 9, color: "#3b82f6", fontWeight: 600 }}>Padre</div>
+                      <div style={{ fontSize: 9, color: "var(--mc-text-3)", fontWeight: 600 }}>Padre</div>
                     </div>
                   </div>
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#fce7f3", display: "grid", placeItems: "center", fontSize: 20, border: "2.5px solid #f9a8d4" }}><Icon name="cow" size={16} /></div>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--mc-surface-2)", display: "grid", placeItems: "center", overflow: "hidden", color: "var(--mc-text-3)", border: "2px solid var(--mc-line-2)" }}>
+                      {fotoMadreGen ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={fotoMadreGen} alt="Madre" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <Icon name="cow" size={16} />
+                      )}
+                    </div>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#be185d" }}>{madreCarav ? `Vaca ${madreCarav}` : "Sin registro"}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--mc-ink)" }}>{madreCarav ? `Vaca ${madreCarav}` : "Sin registro"}</div>
                       {madreRaza && <div style={{ fontSize: 9, color: "var(--mc-text-3)" }}>{madreRaza}</div>}
-                      <div style={{ fontSize: 9, color: "#ec4899", fontWeight: 600 }}>Madre</div>
+                      <div style={{ fontSize: 9, color: "var(--mc-text-3)", fontWeight: 600 }}>Madre</div>
                     </div>
                   </div>
                 </div>
@@ -635,7 +661,12 @@ export function VerDetalleAnimalModal({
             <button className="mc-btn mc-btn--secondary" onClick={() => { onVerTimeline && onVerTimeline(animal); onClose(); }}>
               <Icon name="list" size={13} />Ver Historial Completo
             </button>
-            <button className="mc-btn mc-btn--primary" onClick={() => { onClose(); router.push("/mov-tropas"); }}>
+            <button className="mc-btn mc-btn--primary" onClick={() => {
+              const loteFoco = animal.api.ubicacion || (animal.lote && animal.lote !== "—" ? animal.lote : "");
+              try { if (loteFoco) sessionStorage.setItem("mc-lote-focus", loteFoco); } catch {}
+              onClose();
+              router.push("/mov-tropas");
+            }}>
               <Icon name="mapPin" size={13} />Ir al Mapa
             </button>
           </div>
@@ -838,6 +869,8 @@ export function NuevoAnimalModal({
   const [padre, setPadre] = useState("");
   const [condNac, setCondNac] = useState("Normal");
   const [foto, setFoto] = useState<string | null>(null);
+  const [fotoPadre, setFotoPadre] = useState<string | null>(null);
+  const [fotoMadre, setFotoMadre] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [tropas, setTropas] = useState<TropaLite[]>([]);
@@ -859,7 +892,9 @@ export function NuevoAnimalModal({
     return meses < 36 ? "Novillo" : "Toro";
   }, [fechaNac, sexo, tipoAnimal]);
 
-  const subirFoto = (file: File | undefined) => {
+  // Redimensiona a máx. 480px y entrega un data URL al setter indicado (se
+  // reutiliza para la foto del animal y las de padre/madre).
+  const procesarFoto = (file: File | undefined, set: (v: string) => void) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -870,7 +905,7 @@ export function NuevoAnimalModal({
         canvas.width = Math.round(img.width * esc);
         canvas.height = Math.round(img.height * esc);
         canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setFoto(canvas.toDataURL("image/jpeg", 0.8));
+        set(canvas.toDataURL("image/jpeg", 0.8));
       };
       img.src = String(reader.result);
     };
@@ -903,6 +938,8 @@ export function NuevoAnimalModal({
           origen,
           condicionNacimiento: condNac,
           foto,
+          fotoPadre,
+          fotoMadre,
           ubicacion: loteAsig || null,
           tropaId: tropaId || null,
         }),
@@ -1013,7 +1050,7 @@ export function NuevoAnimalModal({
                       <span>Subir foto</span>
                     </>
                   )}
-                  <input type="file" style={{ display: "none" }} accept="image/*" onChange={(e) => subirFoto(e.target.files?.[0])} />
+                  <input type="file" style={{ display: "none" }} accept="image/*" onChange={(e) => procesarFoto(e.target.files?.[0], setFoto)} />
                 </label>
               </Field>
             </Sec>
@@ -1052,10 +1089,32 @@ export function NuevoAnimalModal({
               <div style={{ marginTop: 6 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--mc-text-3)", marginBottom: 8 }}>Genealogía</div>
                 <Field label="Madre (Dam)">
-                  <input className="mc-input" value={madre} onChange={(e) => setMadre(e.target.value)} placeholder="Caravana de la madre…" />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input className="mc-input" style={{ flex: 1 }} value={madre} onChange={(e) => setMadre(e.target.value)} placeholder="Caravana de la madre…" />
+                    <label title="Foto de la madre (opcional)" style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, cursor: "pointer", overflow: "hidden", border: "1.5px dashed var(--mc-line-2)", background: "var(--mc-surface-2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mc-text-3)" }}>
+                      {fotoMadre ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={fotoMadre} alt="madre" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <Icon name="camera" size={15} />
+                      )}
+                      <input type="file" style={{ display: "none" }} accept="image/*" onChange={(e) => procesarFoto(e.target.files?.[0], setFotoMadre)} />
+                    </label>
+                  </div>
                 </Field>
                 <Field label="Padre / Semen (IA)">
-                  <input className="mc-input" value={padre} onChange={(e) => setPadre(e.target.value)} placeholder="Toro o partida IA…" />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input className="mc-input" style={{ flex: 1 }} value={padre} onChange={(e) => setPadre(e.target.value)} placeholder="Toro o partida IA…" />
+                    <label title="Foto del padre (opcional)" style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, cursor: "pointer", overflow: "hidden", border: "1.5px dashed var(--mc-line-2)", background: "var(--mc-surface-2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mc-text-3)" }}>
+                      {fotoPadre ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={fotoPadre} alt="padre" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <Icon name="camera" size={15} />
+                      )}
+                      <input type="file" style={{ display: "none" }} accept="image/*" onChange={(e) => procesarFoto(e.target.files?.[0], setFotoPadre)} />
+                    </label>
+                  </div>
                 </Field>
               </div>
             </Sec>

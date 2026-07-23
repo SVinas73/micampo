@@ -6,7 +6,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/mc";
-import { AnimalRow, fmtFecha } from "./tipos";
+import { AnimalRow, fmtFecha, fotoDeProgenitor } from "./tipos";
 
 type EventoVidaAPI = {
   id: string;
@@ -184,6 +184,8 @@ export function AnimTimeline({
   }
 
   const a = animalSel;
+  const fotoPadreArbol = fotoDeProgenitor(a, animales, "padre");
+  const fotoMadreArbol = fotoDeProgenitor(a, animales, "madre");
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(260px, 1fr)", gap: 16, alignItems: "start" }}>
@@ -321,11 +323,18 @@ export function AnimTimeline({
 
             <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Árbol Genealógico</div>
             <div style={{ position: "relative" }}>
-              <div style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid #bfdbfe", background: "#eff6ff", display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#93c5fd,#bfdbfe)", display: "flex", alignItems: "center", justifyContent: "center", color: "#1e40af", flexShrink: 0 }}><Icon name="beef" size={18} /></div>
+              <div style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--mc-surface)", border: "1.5px solid var(--mc-line-2)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mc-text-3)", flexShrink: 0 }}>
+                  {fotoPadreArbol ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={fotoPadreArbol} alt="Padre" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <Icon name="cow" size={18} />
+                  )}
+                </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, marginBottom: 1 }}>Padre</div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#1e40af" }}>{gen?.padre?.caravana ? `Toro ${gen.padre.caravana}` : a.padre ? `Toro ${a.padre}` : "Sin registro"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--mc-ink)" }}>{gen?.padre?.caravana ? `Toro ${gen.padre.caravana}` : a.padre ? `Toro ${a.padre}` : "Sin registro"}</div>
                   {gen?.padre?.raza && <div style={{ fontSize: 10, color: "#64748b", marginTop: 1 }}>{gen.padre.raza}</div>}
                 </div>
               </div>
@@ -334,11 +343,18 @@ export function AnimTimeline({
                 <circle cx="50%" cy="15" r="6" fill="var(--mc-green-50)" stroke="var(--mc-green-400)" strokeWidth="1.5" />
                 <text x="50%" y="19" textAnchor="middle" fontSize="6" fontWeight="800" fill="var(--mc-green-700)">TÚ</text>
               </svg>
-              <div style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--mc-green-200)", background: "var(--mc-green-50)", display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--mc-green-100)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mc-green-700)", flexShrink: 0 }}><Icon name="cow" size={18} /></div>
+              <div style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid var(--mc-line)", background: "var(--mc-surface-2)", display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--mc-surface)", border: "1.5px solid var(--mc-line-2)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mc-text-3)", flexShrink: 0 }}>
+                  {fotoMadreArbol ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={fotoMadreArbol} alt="Madre" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <Icon name="cow" size={18} />
+                  )}
+                </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, marginBottom: 1 }}>Madre</div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--mc-green-700)" }}>{gen?.madre?.caravana ? `Vaca ${gen.madre.caravana}` : a.madre ? `Vaca ${a.madre}` : "Sin registro"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--mc-ink)" }}>{gen?.madre?.caravana ? `Vaca ${gen.madre.caravana}` : a.madre ? `Vaca ${a.madre}` : "Sin registro"}</div>
                   {gen?.madre?.raza && <div style={{ fontSize: 10, color: "#64748b", marginTop: 1 }}>{gen.madre.raza}</div>}
                 </div>
               </div>

@@ -135,6 +135,8 @@ export async function PATCH(
       "origen",
       "condicionNacimiento",
       "foto",
+      "fotoPadre",
+      "fotoMadre",
       "ubicacion",
       "tropaId",
       "madre",

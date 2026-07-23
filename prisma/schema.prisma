@@ -291,6 +291,8 @@ model Animal {
   origen                String? // Nacimiento, Compra
   condicionNacimiento   String? // Normal, Distócico, Cesárea, Gemelar
   foto                  String? // data URL o path
+  fotoPadre             String? // foto del padre cargada al alta (si el padre no es un animal registrado con foto)
+  fotoMadre             String? // foto de la madre cargada al alta (si la madre no es un animal registrada con foto)
   ubicacion             String? // lote/corral actual (nombre legible)
   fechaBaja             DateTime?
   motivoBaja            String? // Venta, Muerte, Descarte...
