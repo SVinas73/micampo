@@ -282,7 +282,7 @@ export function VerDetalleAnimalModal({
       )}
       <div style={{ background: "var(--mc-surface)", borderRadius: 16, width: "min(1180px, 97vw)", maxHeight: "94vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px rgba(0,0,0,0.22)", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ padding: "0 24px", background: "linear-gradient(135deg, #0a5a24 0%, #16a34a 100%)", color: "#fff", flexShrink: 0 }}>
+        <div style={{ padding: "0 24px", background: "linear-gradient(135deg, var(--mc-green-800) 0%, var(--mc-green-600) 100%)", color: "#fff", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 14, paddingBottom: 4, flexWrap: "wrap", gap: 8 }}>
             <div style={{ fontSize: 11, opacity: 0.75, letterSpacing: "0.05em" }}>Ganadería / Animales / Ganado</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -663,6 +663,7 @@ export function ModalEditarAnimal({
   const [rfid, setRfid] = useState(animal.rfid || "");
   const [tropaId, setTropaId] = useState(animal.tropaId || "");
   const [tropas, setTropas] = useState<TropaLite[]>([]);
+  const [foto, setFoto] = useState<string | null>(animal.api.foto || null);
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -672,13 +673,33 @@ export function ModalEditarAnimal({
       .catch(() => {});
   }, []);
 
+  // Redimensiona la imagen a máx. 480px y la guarda como data URL (mismo criterio
+  // que el alta de animal).
+  const subirFoto = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const esc = Math.min(1, 480 / Math.max(img.width, img.height));
+        canvas.width = Math.round(img.width * esc);
+        canvas.height = Math.round(img.height * esc);
+        canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setFoto(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const guardar = async () => {
     setGuardando(true);
     try {
       await fetch(`/api/animales/${animal.dbId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, categoria, raza, ubicacion, rfid, tropaId: tropaId || null }),
+        body: JSON.stringify({ nombre, categoria, raza, ubicacion, rfid, tropaId: tropaId || null, foto }),
       });
       onGuardado();
     } finally {
@@ -726,6 +747,24 @@ export function ModalEditarAnimal({
             <div className="mc-field">
               <label className="mc-label">Ubicación</label>
               <input className="mc-input" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Lote / corral" />
+            </div>
+          </div>
+          <div className="mc-field">
+            <label className="mc-label">Foto</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, padding: "10px 12px", border: "1.5px dashed var(--mc-line-2)", borderRadius: 8, cursor: "pointer", background: "var(--mc-surface-2)" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", background: "var(--mc-green-50)", border: "1.5px solid var(--mc-green-200)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mc-green-600)", flexShrink: 0 }}>
+                  {foto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={foto} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <Icon name="camera" size={20} />
+                  )}
+                </div>
+                <span style={{ fontSize: 12, color: "var(--mc-text-2)" }}>{foto ? "Cambiar foto" : "Subir una foto del animal"}</span>
+                <input type="file" style={{ display: "none" }} accept="image/*" onChange={(e) => subirFoto(e.target.files?.[0])} />
+              </label>
+              {foto && <button type="button" onClick={() => setFoto(null)} className="mc-btn mc-btn--ghost mc-btn--sm">Quitar</button>}
             </div>
           </div>
         </div>
@@ -1037,15 +1076,6 @@ export function NuevoAnimalModal({
                   <option value="">Seleccionar lote…</option>
                   {lotes.map((l) => <option key={l.id} value={l.nombre}>{l.nombre}</option>)}
                 </select>
-              </Field>
-              <Field label="Categoría Sugerida (auto)">
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "1.5px solid var(--mc-green-200)", borderRadius: 8, background: "var(--mc-green-50)" }}>
-                  <Icon name={tipoAnimal === "Bovino" ? "cow" : "tag"} size={18} style={{ color: "#16a34a" }} />
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a" }}>{catSugerida}</div>
-                    <div style={{ fontSize: 10, color: "var(--mc-text-3)" }}>asignado automáticamente</div>
-                  </div>
-                </div>
               </Field>
               <div style={{ marginTop: 14, padding: "12px 14px", background: "var(--mc-surface-2)", borderRadius: 10, border: "1px solid var(--mc-line)" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mc-text-3)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Resumen</div>

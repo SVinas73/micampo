@@ -163,7 +163,14 @@ export function AnimSanidad({
                   <tr key={t.id}>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 9, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, border: `1.5px solid ${color}35`, flexShrink: 0 }}><Icon name="cow" size={16} /></div>
+                        <div style={{ width: 34, height: 34, borderRadius: 9, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, border: `1.5px solid ${color}35`, flexShrink: 0, overflow: "hidden", color }}>
+                          {t.animal?.foto ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={t.animal.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <Icon name="cow" size={16} />
+                          )}
+                        </div>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 13 }}>#{(t.animal?.caravana || "").replace(/^#/, "")}</div>
                           <div style={{ fontSize: 11, color: "var(--mc-muted)" }}>{t.animal?.categoria || "—"}</div>

@@ -31,6 +31,7 @@ export async function GET(request: Request) {
             raza: true,
             sexo: true,
             ubicacion: true,
+            foto: true,
             tropa: { select: { nombre: true } },
           },
         },

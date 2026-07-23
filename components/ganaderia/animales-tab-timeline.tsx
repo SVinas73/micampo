@@ -7,7 +7,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/mc";
 import { AnimalRow, fmtFecha } from "./tipos";
-import { CowProfileSVG } from "./animales-sanidad-modales";
 
 type EventoVidaAPI = {
   id: string;
@@ -44,11 +43,11 @@ type DetalleTimeline = {
 };
 
 const CAT: Record<string, { color: string; bg: string; icon: string; label: string }> = {
-  Salud: { color: "#16a34a", bg: "#f0fdf4", icon: "heart", label: "Salud" },
+  Salud: { color: "#5e7733", bg: "#f1f4ea", icon: "heart", label: "Salud" },
   Producción: { color: "#2563eb", bg: "#eff6ff", icon: "droplets", label: "Producción" },
   Reproducción: { color: "#db2777", bg: "#fdf2f8", icon: "egg", label: "Reproducción" },
   Movimiento: { color: "#d97706", bg: "#fffbeb", icon: "route", label: "Movimiento" },
-  Nacimiento: { color: "#059669", bg: "#ecfdf5", icon: "sprout", label: "Nacimiento" },
+  Nacimiento: { color: "#4a5e29", bg: "#e0e7cd", icon: "sprout", label: "Nacimiento" },
   Peso: { color: "#7c3aed", bg: "#faf5ff", icon: "scale", label: "Peso" },
 };
 
@@ -195,7 +194,7 @@ export function AnimTimeline({
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>Historia de Vida</div>
               <div style={{ fontSize: 19, fontWeight: 800, color: "var(--mc-ink)", letterSpacing: "-0.02em" }}>
-                {a.id} &nbsp;<span style={{ color: "#16a34a" }}>{a.nombre || ""}</span>
+                {a.id} &nbsp;<span style={{ color: "var(--mc-green-700)" }}>{a.nombre || ""}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginLeft: 8 }}>{a.raza !== "—" ? a.raza : a.categoria}</span>
               </div>
             </div>
@@ -281,15 +280,14 @@ export function AnimTimeline({
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Identidad & Linaje */}
         <div className="mc-card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid var(--mc-line)", background: "linear-gradient(135deg,#f0fdf4,var(--mc-surface))" }}>
+          <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid var(--mc-line)", background: "linear-gradient(135deg,var(--mc-green-50),var(--mc-surface))" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.07em" }}>Identidad &amp; Linaje Genético</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mc-green-700)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Identidad &amp; Linaje Genético</div>
               <button
                 title="Ver ficha completa del animal"
                 onClick={() => onVerDetalle && onVerDetalle(a)}
-                style={{ width: 30, height: 30, borderRadius: 8, border: "1.5px solid #bbf7d0", background: "#f0fdf4", color: "#16a34a", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#dcfce7"; e.currentTarget.style.borderColor = "#4ade80"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.borderColor = "#bbf7d0"; }}
+                className="mc-icon-btn"
+                style={{ width: 30, height: 30 }}
               >
                 <Icon name="eye" size={14} />
               </button>
@@ -297,16 +295,25 @@ export function AnimTimeline({
           </div>
           <div style={{ padding: "18px 20px" }}>
             <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 18, paddingBottom: 16, borderBottom: "1px solid var(--mc-line)" }}>
-              <div style={{ width: 72, height: 72, borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg,#bbf7d0,#dcfce7)", border: "3px solid #86efac", overflow: "hidden", boxShadow: "0 0 0 4px #f0fdf4, 0 2px 12px rgba(22,163,74,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <CowProfileSVG sexo={a.sexo} enLactancia={a.prodNum !== null} />
+              <div
+                onClick={() => onVerDetalle && onVerDetalle(a)}
+                title={a.api.foto ? "Ver ficha del animal" : "Agregá una foto desde la ficha del animal"}
+                style={{ width: 72, height: 72, borderRadius: "50%", flexShrink: 0, background: "var(--mc-green-50)", border: "3px solid var(--mc-green-200)", overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mc-green-600)", cursor: onVerDetalle ? "pointer" : "default" }}
+              >
+                {a.api.foto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={a.api.foto} alt={a.id} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <Icon name="camera" size={24} />
+                )}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 18, fontWeight: 900, color: "var(--mc-ink)", letterSpacing: "-0.02em" }}>
-                  {a.id} <span style={{ color: "#16a34a" }}>{a.nombre || ""}</span>
+                  {a.id} <span style={{ color: "var(--mc-green-700)" }}>{a.nombre || ""}</span>
                 </div>
                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{a.raza !== "—" ? a.raza : a.categoria} {a.rfid ? <>&nbsp;·&nbsp; {a.rfid}</> : null}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                  {a.rfid && <span style={{ fontSize: 10, fontWeight: 700, background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", padding: "2px 8px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 3 }}><Icon name="tag" size={10} /> RFID Activo</span>}
+                  {a.rfid && <span style={{ fontSize: 10, fontWeight: 700, background: "var(--mc-green-50)", border: "1px solid var(--mc-green-200)", color: "var(--mc-green-700)", padding: "2px 8px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 3 }}><Icon name="tag" size={10} /> RFID Activo</span>}
                   {a.prodNum !== null && <span style={{ fontSize: 10, fontWeight: 700, background: "#eff6ff", border: "1px solid #bfdbfe", color: "#2563eb", padding: "2px 8px", borderRadius: 20 }}>En Producción</span>}
                 </div>
               </div>
@@ -324,14 +331,14 @@ export function AnimTimeline({
               </div>
               <svg width="100%" height="30" style={{ display: "block", margin: "4px 0" }}>
                 <line x1="50%" y1="0" x2="50%" y2="30" stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="3,3" />
-                <circle cx="50%" cy="15" r="6" fill="#f0fdf4" stroke="#86efac" strokeWidth="1.5" />
-                <text x="50%" y="19" textAnchor="middle" fontSize="6" fontWeight="800" fill="#16a34a">TÚ</text>
+                <circle cx="50%" cy="15" r="6" fill="var(--mc-green-50)" stroke="var(--mc-green-400)" strokeWidth="1.5" />
+                <text x="50%" y="19" textAnchor="middle" fontSize="6" fontWeight="800" fill="var(--mc-green-700)">TÚ</text>
               </svg>
-              <div style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid #bbf7d0", background: "#f0fdf4", display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#86efac,#bbf7d0)", display: "flex", alignItems: "center", justifyContent: "center", color: "#15803d", flexShrink: 0 }}><Icon name="cow" size={18} /></div>
+              <div style={{ padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--mc-green-200)", background: "var(--mc-green-50)", display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--mc-green-100)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--mc-green-700)", flexShrink: 0 }}><Icon name="cow" size={18} /></div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, marginBottom: 1 }}>Madre</div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#15803d" }}>{gen?.madre?.caravana ? `Vaca ${gen.madre.caravana}` : a.madre ? `Vaca ${a.madre}` : "Sin registro"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--mc-green-700)" }}>{gen?.madre?.caravana ? `Vaca ${gen.madre.caravana}` : a.madre ? `Vaca ${a.madre}` : "Sin registro"}</div>
                   {gen?.madre?.raza && <div style={{ fontSize: 10, color: "#64748b", marginTop: 1 }}>{gen.madre.raza}</div>}
                 </div>
               </div>

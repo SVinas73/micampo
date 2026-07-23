@@ -117,12 +117,33 @@ export default function AnimalesPage() {
   };
 
   /* ── KPIs Resumen ── */
-  const nacimientosMes = useMemo(() => {
+  // Altas del mes separadas por origen real: un animal registrado como "Compra"
+  // es un ingreso, no un nacimiento — no hay que rotularlo como tal.
+  const altasMes = useMemo(() => {
     const ini = new Date();
     ini.setDate(1);
     ini.setHours(0, 0, 0, 0);
-    return animales.filter((a) => a.fechaNacimiento && new Date(a.fechaNacimiento) >= ini).length;
+    const enMes = (f?: string | null) => !!f && new Date(f) >= ini;
+    let nacimientos = 0;
+    let compras = 0;
+    for (const a of animales) {
+      const esCompra = (a.api.origen || "").toLowerCase() === "compra";
+      if (esCompra) {
+        if (enMes(a.api.createdAt)) compras += 1;
+      } else if (enMes(a.fechaNacimiento)) {
+        nacimientos += 1;
+      }
+    }
+    return { nacimientos, compras };
   }, [animales]);
+  const altasDelta = useMemo(() => {
+    if (altasMes.nacimientos + altasMes.compras === 0) return "Sin altas este mes";
+    const partes = [
+      altasMes.nacimientos ? `+${altasMes.nacimientos} nacimiento${altasMes.nacimientos > 1 ? "s" : ""}` : null,
+      altasMes.compras ? `+${altasMes.compras} compra${altasMes.compras > 1 ? "s" : ""}` : null,
+    ].filter(Boolean);
+    return `${partes.join(" · ")} este mes`;
+  }, [altasMes]);
 
   const cargaAnimal = useMemo(() => {
     if (hectareas <= 0) return null;
@@ -242,7 +263,7 @@ export default function AnimalesPage() {
       {tab === "Resumen" && (
         <>
           <div className="grid g-cols-5">
-            <KPI label="Cantidad Total" value={nfES(activos.length)} delta={nacimientosMes > 0 ? `+${nacimientosMes} nacimientos este mes` : "Sin altas este mes"} trend="up" icon="cow" accent />
+            <KPI label="Cantidad Total" value={nfES(activos.length)} delta={altasDelta} trend="up" icon="cow" accent />
             <KPI label="Carga Animal" value={cargaAnimal !== null ? `${cargaAnimal} EV/Ha` : "—"} delta={cargaAnimal !== null ? `${nfES(Math.round(hectareas))} ha totales` : "Cargá lotes con hectáreas"} trend={cargaAnimal !== null ? "up" : "warn"} icon="leaf" />
             <KPI label="Estado Sanitario" value={`${saludPct}%`} delta={`${enTratamiento} en tratamiento`} trend={enTratamiento > 0 ? "warn" : "up"} icon="heart" />
             <KPI label="Ganancia Diaria" value={gananciaDiaria !== null ? `${gananciaDiaria} kg/día` : "—"} delta={gananciaDiaria !== null ? "Prom. del rodeo" : "Registrá pesadas"} trend="up" icon="arrowUp" />
