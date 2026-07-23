@@ -73,6 +73,8 @@ export async function POST(request: Request) {
       origen,
       condicionNacimiento,
       foto,
+      fotoPadre,
+      fotoMadre,
       ubicacion,
       tropaId,
     } = await request.json();
@@ -108,6 +110,8 @@ export async function POST(request: Request) {
         origen: origen || null,
         condicionNacimiento: condicionNacimiento || null,
         foto: foto || null,
+        fotoPadre: fotoPadre || null,
+        fotoMadre: fotoMadre || null,
         ubicacion: ubicacion || null,
         tropaId: tropaId || null,
         userId: session.user.id,

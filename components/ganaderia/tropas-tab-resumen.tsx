@@ -70,7 +70,21 @@ export function MovResumen({
   const [selTropaId, setSelTropaId] = useState<string | null>(null);
   const [fichaVisible, setFichaVisible] = useState(false);
   const [capa, setCapa] = useState<Capa>("ocupacion");
-  const [loteRutaSel, setLoteRutaSel] = useState<string | null>(null);
+  // Foco de lote proveniente de otro módulo (ej: "Ir al Mapa" desde la ficha de
+  // un animal): resalta ese lote en el mapa al entrar. Se consume una sola vez.
+  const [loteRutaSel, setLoteRutaSel] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const foco = sessionStorage.getItem("mc-lote-focus");
+      if (foco) {
+        sessionStorage.removeItem("mc-lote-focus");
+        return foco;
+      }
+    } catch {
+      /* noop */
+    }
+    return null;
+  });
   const [modalPlanif, setModalPlanif] = useState(false);
   const [modalTraslado, setModalTraslado] = useState(false);
   const [tropaDetalle, setTropaDetalle] = useState<TropaAPI | null>(null);

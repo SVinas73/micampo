@@ -95,6 +95,8 @@ export type AnimalAPI = {
   origen?: string | null;
   condicionNacimiento?: string | null;
   foto?: string | null;
+  fotoPadre?: string | null;
+  fotoMadre?: string | null;
   ubicacion?: string | null;
   fechaBaja?: string | null;
   motivoBaja?: string | null;
@@ -315,6 +317,28 @@ export function mapAnimal(a: AnimalAPI): AnimalRow {
 }
 
 /** Unidades animal (EV) aproximadas por categoría, para carga animal. */
+/** Normaliza una caravana para comparar (sin "#", en minúscula). */
+const normCarav = (v: string) => v.replace(/^#/, "").trim().toLowerCase();
+
+/**
+ * Foto de un progenitor (padre/madre) para el árbol genealógico:
+ * 1) si el progenitor está registrado como animal (match por caravana), su propia foto;
+ * 2) si no, la foto cargada al dar de alta a la cría (fotoPadre/fotoMadre);
+ * 3) si no hay ninguna, null (se muestra un ícono neutro).
+ */
+export function fotoDeProgenitor(
+  animal: AnimalRow,
+  todos: AnimalRow[],
+  cual: "padre" | "madre"
+): string | null {
+  const carav = cual === "padre" ? animal.padre : animal.madre;
+  if (carav) {
+    const reg = todos.find((a) => normCarav(a.id) === normCarav(carav));
+    if (reg?.api.foto) return reg.api.foto;
+  }
+  return (cual === "padre" ? animal.api.fotoPadre : animal.api.fotoMadre) || null;
+}
+
 export function unidadesAnimal(categoria: string | null | undefined): number {
   switch ((categoria || "").toLowerCase()) {
     case "vaca":

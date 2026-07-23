@@ -242,6 +242,7 @@ export default function AnimalesPage() {
       {verDetalle && (
         <VerDetalleAnimalModal
           animal={verDetalle}
+          animales={animales}
           onClose={() => setVerDetalle(null)}
           onDarDeBaja={onDarDeBaja}
           onReactivar={onReactivar}
